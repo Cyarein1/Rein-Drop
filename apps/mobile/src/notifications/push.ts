@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { ApiClient, PushDeviceProvider } from '@rein-drop/api-client';
 import type { PushState } from '@rein-drop/client-core';
+import { loadNotifications } from './load-notifications';
 
 /**
  * Push on this phone. Rules:
@@ -14,19 +14,29 @@ import type { PushState } from '@rein-drop/client-core';
  * - Development device token flow: a development / store build registers a real Expo push token.
  *   Expo Go can't receive push (SDK 53+), so in development it registers a stable simulated
  *   token instead - the server simulates and logs those pushes - and the whole pipeline is
- *   testable without a dev build.
+ *   testable without a development build. In Expo Go on Android expo-notifications can't even be
+ *   loaded, so there is no OS prompt: turning it on is an in-app opt-in (development only).
  * - Every failure degrades to "alerts stay in your inbox"; nothing here throws to the UI.
  */
 
 /** Must match ALERTS_CHANNEL_ID in the worker (Android notification channel). */
 export const ALERTS_CHANNEL_ID = 'alerts';
 const DEV_TOKEN_KEY = 'reindrop.devPushToken';
+/** Development fallback without expo-notifications: the user's in-app "on" choice. */
+const DEV_OPT_IN_KEY = 'reindrop.devPushOptIn';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 type TokenResult = { ok: true; provider: PushDeviceProvider; token: string } | { ok: false; state: PushState };
+type Permission = { status: 'granted' | 'denied' | 'undetermined'; canAskAgain: boolean };
 
-export async function permissionStatus(): Promise<{ status: 'granted' | 'denied' | 'undetermined'; canAskAgain: boolean }> {
+export async function permissionStatus(): Promise<Permission> {
+  const Notifications = loadNotifications();
+  if (!Notifications) {
+    // No OS permission here; in development the in-app opt-in stands in for it.
+    const optedIn = __DEV__ && (await AsyncStorage.getItem(DEV_OPT_IN_KEY).catch(() => null)) === 'yes';
+    return { status: optedIn ? 'granted' : 'undetermined', canAskAgain: true };
+  }
   try {
     const p = await Notifications.getPermissionsAsync();
     return { status: p.granted ? 'granted' : p.status === 'undetermined' ? 'undetermined' : 'denied', canAskAgain: p.canAskAgain };
@@ -39,6 +49,12 @@ export async function permissionStatus(): Promise<{ status: 'granted' | 'denied'
 export async function enablePush(api: ApiClient): Promise<PushState> {
   if (Platform.OS === 'web') return { status: 'unavailable', reason: 'web' };
   try {
+    const Notifications = loadNotifications();
+    if (!Notifications) {
+      if (!__DEV__) return { status: 'unavailable', reason: 'no_project_id' };
+      await AsyncStorage.setItem(DEV_OPT_IN_KEY, 'yes').catch(() => undefined);
+      return await register(api);
+    }
     await ensureAlertsChannel();
     let permission = await permissionStatus();
     if (permission.status !== 'granted' && permission.canAskAgain) {
@@ -66,12 +82,13 @@ export async function refreshPushRegistration(api: ApiClient): Promise<PushState
   }
 }
 
-/** Stops push to this phone on the server (permission stays as the user set it). */
+/** Stops push to this phone on the server (OS permission stays as the user set it). */
 export async function disablePush(api: ApiClient, deviceId: string): Promise<PushState> {
   try {
     await api.unregisterPushDevice(deviceId);
+    await AsyncStorage.removeItem(DEV_OPT_IN_KEY).catch(() => undefined);
     const permission = await permissionStatus();
-    return permission.status === 'granted' ? { status: 'undetermined' } : { status: 'denied', canAskAgain: permission.canAskAgain };
+    return permission.status === 'denied' ? { status: 'denied', canAskAgain: permission.canAskAgain } : { status: 'undetermined' };
   } catch (err) {
     return { status: 'error', message: err instanceof Error ? err.message : String(err) };
   }
@@ -91,10 +108,11 @@ async function register(api: ApiClient): Promise<PushState> {
 }
 
 async function obtainToken(): Promise<TokenResult> {
+  const Notifications = loadNotifications();
   const projectId: string | undefined = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  // Expo Go (SDK 53+) can't receive push; neither can a simulator. Development falls back to a
-  // simulated token so the server side can still be exercised.
-  if (isExpoGo || !Device.isDevice || !projectId) {
+  // Expo Go (SDK 53+) can't receive push; neither can a simulator; a build without an EAS project
+  // can't get a token. Development falls back to a simulated token so the server side still works.
+  if (!Notifications || isExpoGo || !Device.isDevice || !projectId) {
     if (__DEV__) return { ok: true, provider: 'dev_simulated', token: await devToken() };
     return { ok: false, state: { status: 'unavailable', reason: !Device.isDevice ? 'not_a_device' : 'no_project_id' } };
   }
@@ -120,7 +138,8 @@ function uuidV4(): string {
 }
 
 async function ensureAlertsChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  const Notifications = loadNotifications();
+  if (Platform.OS !== 'android' || !Notifications) return;
   await Notifications.setNotificationChannelAsync(ALERTS_CHANNEL_ID, {
     name: 'Deal alerts',
     importance: Notifications.AndroidImportance.HIGH,

@@ -54,6 +54,20 @@ collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
   development`) - needs the owner's Expo account.
 - Expo push receipts check; badge counts; quiet hours (D22).
 
+**Fix after step 28 - Expo Go on Android crashed on load**
+
+- Symptom (user, Expo Go on Android): repeated "expo-notifications: Android Push notifications
+  ... was removed from Expo Go with the release of SDK 53", then "Route ./_layout.tsx /
+  ./settings.tsx / ./hunts/[id]/start.tsx is missing the required default export" and
+  "Cannot read property 'ErrorBoundary' of undefined".
+- Cause: in Expo Go on Android, merely loading `expo-notifications` throws; `push.ts` and
+  `NotificationsBridge.tsx` imported it at module level, so every route importing them failed.
+- Fix: `src/notifications/load-notifications.ts` loads the module on demand and never in Expo Go
+  on Android (or web). There, development falls back to an in-app opt-in + the simulated device
+  token (no OS prompt - Expo Go can't show push anyway). No file imports `expo-notifications` at
+  module level any more. Verified: mobile typecheck, lint, Android + iOS export bundles;
+  on-device check pending (user).
+
 ### Step 27 - Notification preferences, alerts, deliveries, local simulator + inbox (Build Prompt 24)
 
 **What was added** (rules and rationale: `docs/decisions/0006-alerts-and-notifications.md`)
