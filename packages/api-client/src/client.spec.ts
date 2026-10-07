@@ -76,6 +76,34 @@ describe('createApiClient', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('exposes the structured activation block on ApiError', async () => {
+    const block = {
+      planCode: 'free',
+      reasons: [
+        {
+          code: 'ACTIVE_HUNT_LIMIT_REACHED',
+          message: 'Your plan allows 1 live hunt and 1 is live.',
+          limit: 1,
+          used: 1,
+          resolutions: ['pause_another_hunt', 'upgrade_plan'],
+        },
+      ],
+    };
+    const fetch = fakeFetch(409, {
+      statusCode: 409,
+      code: 'ACTIVATION_BLOCKED',
+      message: 'This hunt cannot go live yet',
+      activationBlock: block,
+      path: `/hunts/${ID}/activate`,
+      timestamp: NOW,
+    });
+    await expect(client(fetch).transitionHunt(ID, 'activate')).rejects.toMatchObject({
+      status: 409,
+      code: 'ACTIVATION_BLOCKED',
+      activationBlock: block,
+    });
+  });
+
   it('posts lifecycle actions to /hunts/:id/<action>', async () => {
     const fetch = fakeFetch(200, { ...HUNT, status: 'LIVE', activatedAt: NOW });
     await expect(client(fetch).transitionHunt(ID, 'activate')).resolves.toMatchObject({ status: 'LIVE' });

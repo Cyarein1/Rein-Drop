@@ -532,6 +532,12 @@ model Plan {
   isActive          Boolean  @default(true)
   /// Seeded for local development only; must never be offered to real users.
   isDevelopmentOnly Boolean  @default(false)
+  /// The free plan users get without a subscription.
+  isFree            Boolean  @default(false)
+  /// Display order on the plan gate.
+  sortOrder         Int      @default(0)
+  /// False while entitlement limits are placeholders (awaiting cost calculations).
+  limitsFinal       Boolean  @default(false)
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @db.Timestamptz(3)
 
@@ -539,8 +545,8 @@ model Plan {
   subscriptions Subscription[]
 }
 
-/// A capability or limit granted by a plan.
-/// TODO(product): entitlement keys and limits are not defined yet.
+/// A capability or limit granted by a plan. Keys are defined in @rein-drop/contracts
+/// (ENTITLEMENT_KEYS); a missing row means "not granted".
 model Entitlement {
   id        String   @id @default(uuid(7)) @db.Uuid
   planId    String   @db.Uuid
@@ -548,6 +554,8 @@ model Entitlement {
   key       String
   /// Numeric limit; null means unlimited (or not a metered feature).
   limit     Int?
+  /// Non-numeric value (e.g. monitoring priority tier).
+  value     String?
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 

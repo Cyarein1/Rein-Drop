@@ -1,10 +1,10 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   createHuntRequestSchema,
+  evaluateActivation,
   HUNT_TRANSITIONS,
-  huntLiveReadinessProblems,
   restoredStatus,
-  type ApiErrorDetail,
+  type ActivationCheck,
   type CreateHuntRequest,
   type Hunt,
   type HuntAction,
@@ -16,8 +16,13 @@ import {
   type UpdateHuntRequest,
 } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient } from '@rein-drop/db';
-import { AppException, ValidationFailedException } from '../../common/errors/app.exception.js';
+import {
+  ActivationBlockedException,
+  AppException,
+  ValidationFailedException,
+} from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { PlansService } from '../plans/plans.service.js';
 import {
   criteriaOf,
   defaultHuntName,
@@ -47,7 +52,10 @@ const ACTION_EVENT: Record<HuntAction, HuntEventType> = {
  */
 @Injectable()
 export class HuntsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly plans: PlansService,
+  ) {}
 
   /** Newest first. Without a status filter, archived hunts are left out. */
   async list(userId: string, query: ListHuntsQuery): Promise<Page<Hunt>> {
@@ -108,7 +116,17 @@ export class HuntsService {
       const changes = diffCriteria(before, merged);
       if (Object.keys(changes).length === 0) return current;
 
-      if (row.status === 'LIVE') this.assertLiveReady(merged, 'This change would stop the hunt from running');
+      if (row.status === 'LIVE') {
+        // A live hunt must stay runnable under the plan (the active-hunt count is unchanged by an edit).
+        const plan = await this.plans.planForUser(userId, tx);
+        const reasons = evaluateActivation(plan.entitlements, 0, merged);
+        if (reasons.length > 0) {
+          throw new ActivationBlockedException(
+            { planCode: plan.code, reasons },
+            'This change would stop the hunt from running',
+          );
+        }
+      }
 
       if (changes.marketplaces) await this.syncMarketplaces(tx, row, merged.marketplaces);
       const updated = await tx.hunt.update({
@@ -150,10 +168,15 @@ export class HuntsService {
       }
       const to = action === 'restore' ? await this.statusBeforeArchive(tx, row.id) : HUNT_TRANSITIONS[action].to;
       if (to === 'LIVE') {
-        // TODO(plan-gate): check plan entitlements (active hunts, marketplaces, Hot Hunts)
-        // here before going live (App Flow Blueprint sections 6 and 14). Deferred until the
-        // plan limits are decided - they depend on infrastructure cost calculations.
-        this.assertLiveReady(criteriaOf(toHunt(row)), 'This hunt is not ready to go live');
+        // Serialize go-live per user so two concurrent activations cannot both pass the limit.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
+        const check = await this.evaluate(tx, userId, row);
+        if (check.reasons.length > 0) {
+          // The hunt is left untouched: a draft stays a draft (Blueprint section 14).
+          throw new ActivationBlockedException({ planCode: check.planCode, reasons: check.reasons });
+        }
+        // TODO(plan-gate): the plan-selection / payment step (Blueprint section 6) comes before
+        // activation in the product flow; limits are placeholders until the cost model is done.
       }
 
       const now = new Date();
@@ -179,6 +202,23 @@ export class HuntsService {
     });
   }
 
+  /** Preview: could this hunt go live now, and if not, why (same rules as activation). */
+  async activationCheck(userId: string, huntId: string): Promise<ActivationCheck> {
+    const row = await this.findOwned(this.prisma, userId, huntId);
+    if (row.status === 'LIVE') {
+      return { huntId, canActivate: false, planCode: (await this.plans.planForUser(userId)).code, reasons: [] };
+    }
+    const { planCode, reasons } = await this.evaluate(this.prisma, userId, row);
+    return { huntId, canActivate: reasons.length === 0 && row.status !== 'ARCHIVED', planCode, reasons };
+  }
+
+  /** LIVE hunts the user has (the active-hunt allowance counts these). */
+  countLive(userId: string, db: Tx | PrismaClient = this.prisma, excludeHuntId?: string): Promise<number> {
+    return db.hunt.count({
+      where: { userId, status: 'LIVE', ...(excludeHuntId ? { id: { not: excludeHuntId } } : {}) },
+    });
+  }
+
   /** The hunt's history, oldest first. */
   async events(userId: string, huntId: string): Promise<HuntEvent[]> {
     const row = await this.findOwned(this.prisma, userId, huntId);
@@ -187,6 +227,13 @@ export class HuntsService {
   }
 
   // -------------------------------------------------------------------------
+
+  /** Plan + usage + readiness for taking `row` live. */
+  private async evaluate(db: Tx | PrismaClient, userId: string, row: HuntRow) {
+    const plan = await this.plans.planForUser(userId, db);
+    const inUse = await this.countLive(userId, db, row.id);
+    return { planCode: plan.code, reasons: evaluateActivation(plan.entitlements, inUse, criteriaOf(toHunt(row))) };
+  }
 
   /** Status a restored hunt returns to, from its most recent ARCHIVED event. */
   private async statusBeforeArchive(tx: Tx, huntId: string) {
@@ -214,14 +261,6 @@ export class HuntsService {
       );
     }
     return { ...result.data, name: result.data.name ?? candidate.name };
-  }
-
-  private assertLiveReady(criteria: HuntCriteria, message: string): void {
-    const problems = huntLiveReadinessProblems(criteria);
-    if (problems.length > 0) {
-      const details: ApiErrorDetail[] = problems.map((p) => ({ path: 'body.location', message: p }));
-      throw new AppException('CONFLICT', message, HttpStatus.CONFLICT, details);
-    }
   }
 
   /** Marketplace keys -> ids; only enabled marketplaces can be chosen. */

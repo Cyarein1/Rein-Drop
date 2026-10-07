@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { activationBlockSchema } from './plans.js';
 
 export const API_ERROR_CODES = [
   'BAD_REQUEST',
@@ -7,6 +8,8 @@ export const API_ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'CONFLICT',
+  /** A hunt cannot go live (plan limits or readiness) - see `activationBlock`. HTTP 409. */
+  'ACTIVATION_BLOCKED',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
   'NOT_IMPLEMENTED',
@@ -32,6 +35,8 @@ export const apiErrorBodySchema = z.object({
   /** Safe to show to developers; never contains stack traces or secrets. */
   message: z.string(),
   details: z.array(apiErrorDetailSchema).optional(),
+  /** Present with code ACTIVATION_BLOCKED: structured reasons and what the user can do. */
+  activationBlock: activationBlockSchema.optional(),
   requestId: z.string().optional(),
   path: z.string(),
   timestamp: z.string(),

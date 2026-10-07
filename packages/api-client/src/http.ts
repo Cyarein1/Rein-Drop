@@ -61,7 +61,7 @@ export async function send<T>(http: HttpOptions, spec: RequestSpec<T>): Promise<
     const error = apiErrorBodySchema.safeParse(body);
     if (error.success) {
       const e = error.data;
-      throw new ApiError(e.message, e.statusCode, e.code, e.details, e.requestId);
+      throw new ApiError(e.message, e.statusCode, e.code, e.details, e.requestId, e.activationBlock);
     }
     throw new ApiError(`${spec.method} ${spec.path} failed with HTTP ${response.status}`, response.status);
   }

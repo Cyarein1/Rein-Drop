@@ -4,6 +4,7 @@ import {
   idSchema,
   listHuntsQuerySchema,
   updateHuntRequestSchema,
+  type ActivationCheck,
   type Hunt,
   type HuntEvent,
   type Page,
@@ -47,6 +48,12 @@ export class HuntsController {
   @Patch(':id')
   update(@CurrentUser() user: Principal, @Param() params: HuntIdParams, @Body() body: UpdateHuntDto): Promise<Hunt> {
     return this.hunts.update(user.userId, params.id, body);
+  }
+
+  /** Could this hunt go live now? Same rules as activation (plan limits + readiness). */
+  @Get(':id/activation-check')
+  activationCheck(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<ActivationCheck> {
+    return this.hunts.activationCheck(user.userId, params.id);
   }
 
   @Get(':id/events')

@@ -1,13 +1,20 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '../billing/billing.module.js';
+import { PlansController } from './plans.controller.js';
+import { PlansService } from './plans.service.js';
 
 /**
- * Plans - Plans and entitlements: what each plan grants, and entitlement checks.
+ * Plans - Plans and entitlements: what each plan grants.
  *
  * Owns: Plan, Entitlement
- * TODO(product): entitlement keys and limits.
- *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * Seeded limits are PLACEHOLDERS (`limitsFinal: false`) until the cost model is done;
+ * prices are not modelled. Endpoints: GET /plans.
+ * Exports PlansService (`planForUser`) - Hunts enforces it at activation.
  */
-@Module({})
+@Module({
+  imports: [BillingModule],
+  controllers: [PlansController],
+  providers: [PlansService],
+  exports: [PlansService],
+})
 export class PlansModule {}

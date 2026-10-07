@@ -4,6 +4,44 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 16 - Plans, entitlements, activation enforcement
+
+**What was added** (decision record: `docs/decisions/0003-plans-entitlements-placeholders.md`)
+
+- Contracts (`plans.ts`): `ENTITLEMENT_KEYS`, typed `PlanEntitlements` (active hunts, marketplaces,
+  Hot Hunts {available, limit} as a future flag, monitoring priority, analytics history days,
+  seats), `Plan` (pricing `free` | `tbd`, `limitsFinal`), `EntitlementEvaluation`,
+  `ActivationBlock` reasons (`ACTIVE_HUNT_LIMIT_REACHED` {limit, used}, `MARKETPLACE_NOT_IN_PLAN`,
+  `PRIORITY_NOT_IN_PLAN`, `NOT_READY`) with resolutions (`pause_another_hunt`, `upgrade_plan`,
+  `edit_hunt`), pure `evaluateActivation()` shared by API and clients. New error code
+  `ACTIVATION_BLOCKED` (409) with `activationBlock` on the error body.
+- Database: migration `..._plan_entitlements` (Plan `isFree`, `sortOrder`, `limitsFinal`;
+  Entitlement `value`). Seed: Free / Pro / Ultimate with **placeholder** limits in one marked
+  `PLAN_CATALOGUE`, no prices; old `dev-free` / `dev-pro` deactivated (not deleted). Seed keeps
+  each plan's entitlements exactly in sync with the catalogue.
+- API: Billing `SubscriptionsService` (active/trialing, unexpired subscription -> plan, else Free);
+  Plans `PlansService` + `GET /plans`; entitlement rows fail closed when missing;
+  Hunts enforces on activate/resume (per-user advisory lock against concurrent activations) and on
+  edits to LIVE hunts; `GET /hunts/:id/activation-check`; Entitlements composition module with
+  `GET /me/entitlements` (plan, entitlements, usage, remaining).
+- api-client: `listPlans`, `getEntitlements`, `checkHuntActivation`; `ApiError.activationBlock`.
+
+**What works (verified)**
+
+- `pnpm build` 12/12, `pnpm typecheck` 19/19, `pnpm lint` 19/19; tests: contracts 35, api 75
+  (+entitlement mapping) + e2e 36 + **integration 8 on real Postgres** (plans list without prices;
+  Free limit reached -> 409 with structured reason, draft untouched with only a CREATED event;
+  activation-check preview; pause frees a slot; resume gated; subscription to Pro lifts the
+  limit; eBay-only plan blocks Facebook on activate and on live edit), api-client 11.
+- Seed run twice: 3 active plans with 8 entitlements each; integration cleanup verified.
+
+**Not done**
+
+- No plan-gate / payment UI and no subscription creation (billing provider TBD); everyone is on
+  Free unless a subscription row exists.
+- Review screen does not yet call `activation-check` (Start watching stays disabled).
+
+
 ### Step 15 - Create Hunt flow (web + mobile), Review, save as draft
 
 **What was added**

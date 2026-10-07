@@ -17,6 +17,7 @@ interface NormalizedError {
   code: ApiErrorCode;
   message: string;
   details?: ApiErrorDetail[];
+  activationBlock?: ApiErrorBody['activationBlock'];
 }
 
 const CODE_BY_STATUS: Partial<Record<number, ApiErrorCode>> = {
@@ -63,6 +64,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       code: error.code,
       message: error.message,
       ...(error.details ? { details: error.details } : {}),
+      ...(error.activationBlock ? { activationBlock: error.activationBlock } : {}),
       ...(requestId ? { requestId } : {}),
       path,
       timestamp: new Date().toISOString(),
@@ -78,6 +80,7 @@ export function normalize(exception: unknown): NormalizedError {
       code: exception.code,
       message: exception.message,
       ...(exception.details ? { details: exception.details } : {}),
+      ...(exception.extras?.activationBlock ? { activationBlock: exception.extras.activationBlock } : {}),
     };
   }
 

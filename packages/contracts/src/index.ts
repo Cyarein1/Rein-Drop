@@ -18,5 +18,6 @@ export * from './locale.js';
 export * from './seller-snapshot.js';
 export * from './home-summary.js';
 export * from './hunts.js';
+export * from './plans.js';
 export * from './listings.js';
 export * from './deals.js';

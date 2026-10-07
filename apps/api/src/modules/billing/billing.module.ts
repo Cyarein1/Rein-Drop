@@ -1,13 +1,17 @@
 import { Module } from '@nestjs/common';
+import { SubscriptionsService } from './subscriptions.service.js';
 
 /**
  * Billing - Subscriptions and the billing-provider integration.
  *
  * Owns: Subscription
- * TODO(billing): provider TBD (Stripe leading candidate); mobile billing TBD.
+ * TODO(billing): provider TBD (Stripe leading candidate); mobile billing TBD. Prices are not
+ * modelled until decided.
  *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * Exports SubscriptionsService (which plan a user is on) for the Plans module.
  */
-@Module({})
+@Module({
+  providers: [SubscriptionsService],
+  exports: [SubscriptionsService],
+})
 export class BillingModule {}
