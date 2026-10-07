@@ -140,6 +140,10 @@ model SellerProfile {
   userId      String  @unique @db.Uuid
   displayName String?
 
+  // Gate before the five questions: "Are you a reseller?" (null = not answered).
+  // Only resellers answer Q1-Q5; non-resellers see "coming soon" for now.
+  isReseller Boolean?
+
   // Q1 - What do you usually hunt for?
   huntCategories          String[]  @default([])
   huntCategoriesOther     String?

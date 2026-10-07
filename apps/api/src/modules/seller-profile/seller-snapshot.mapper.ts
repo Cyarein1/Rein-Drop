@@ -4,6 +4,7 @@ import {
   HUNT_CATEGORIES,
   IMPROVEMENT_GOALS,
   RESELLER_STAGES,
+  sellerSnapshotStatus,
   SOURCING_CHANNELS,
   type DealRule,
   type SellerSnapshot,
@@ -14,6 +15,7 @@ import type { SellerProfile } from '@rein-drop/db';
 /** The SellerProfile columns that hold the Seller Snapshot. */
 export type SnapshotRow = Pick<
   SellerProfile,
+  | 'isReseller'
   | 'huntCategories'
   | 'huntCategoriesOther'
   | 'resellerStage'
@@ -50,6 +52,8 @@ const isImprovementGoal = oneOf(IMPROVEMENT_GOALS);
 export function toSellerSnapshot(row: SnapshotRow | null): SellerSnapshot {
   if (!row) {
     return {
+      isReseller: null,
+      status: 'not_started',
       categories: [],
       categoriesOther: null,
       stage: null,
@@ -63,17 +67,28 @@ export function toSellerSnapshot(row: SnapshotRow | null): SellerSnapshot {
   }
   const categories = row.huntCategories.filter(isHuntCategory);
   const sources = row.sourcingChannels.filter(isSourcingChannel);
-  return {
+  const answers = {
     categories,
-    categoriesOther: categories.includes('other') ? row.huntCategoriesOther : null,
     stage: isResellerStage(row.resellerStage) ? row.resellerStage : null,
     sources,
-    sourcesOther: sources.includes('other') ? row.sourcingChannelsOther : null,
     dealRule: toDealRule(row),
     improvementGoal: isImprovementGoal(row.improvementGoal) ? row.improvementGoal : null,
+  };
+  return {
+    isReseller: row.isReseller,
+    status: sellerSnapshotStatus(row.isReseller, answers),
+    ...answers,
+    categoriesOther: categories.includes('other') ? row.huntCategoriesOther : null,
+    sourcesOther: sources.includes('other') ? row.sourcingChannelsOther : null,
     completedAt: row.snapshotCompletedAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/** True when the request contains any of the five profile answers (not just the gate). */
+export function hasProfileAnswers(answers: UpdateSellerSnapshotRequest): boolean {
+  const { isReseller: _gate, ...profile } = answers;
+  return Object.values(profile).some((v) => v !== undefined);
 }
 
 function toDealRule(row: SnapshotRow): DealRule | null {
@@ -103,6 +118,8 @@ function toDealRule(row: SnapshotRow): DealRule | null {
  */
 export function toSnapshotColumns(answers: UpdateSellerSnapshotRequest): SnapshotColumns {
   const columns: SnapshotColumns = {};
+
+  if (answers.isReseller !== undefined) columns.isReseller = answers.isReseller;
 
   if (answers.categories !== undefined) {
     columns.huntCategories = answers.categories;

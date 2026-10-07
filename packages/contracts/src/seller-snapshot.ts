@@ -13,6 +13,25 @@ import { isoDateTimeSchema, moneySchema } from './common.js';
  */
 
 export const SELLER_SNAPSHOT_QUESTION_COUNT = 5;
+
+/**
+ * Gate asked BEFORE the five questions (product decision, 2026-10-07 - a deliberate
+ * deviation from the Blueprint's "maximum five questions"). Only resellers continue
+ * to the Seller Snapshot; the non-reseller experience is not designed yet.
+ * TODO(product): define what non-resellers (people hunting for something for
+ * themselves) get - currently "coming soon".
+ */
+export const RESELLER_INTENT_COPY = {
+  question: 'Are you a reseller?',
+  options: {
+    yes: 'Yes - I buy to resell',
+    no: "No - I'm looking for something for myself",
+  },
+  comingSoon: {
+    title: 'Coming soon',
+    body: "Rein Drop is built for resellers right now. Hunting for things for yourself is coming soon - we'll let you know.",
+  },
+} as const;
 export const OTHER_TEXT_MAX_LENGTH = 60;
 
 // Q1 - What do you usually hunt for? (multi-select)
@@ -192,9 +211,11 @@ function otherTextRules(
 /**
  * `PATCH /me/seller-snapshot` body - save one or more answers as the user
  * progresses (one question per screen). Omitted questions keep their answer.
+ * The five answers are only accepted for resellers: `isReseller` must already be
+ * true or be set to true in the same request (otherwise 409 CONFLICT).
  */
 export const updateSellerSnapshotRequestSchema = z
-  .object(answerFields)
+  .object({ isReseller: z.boolean(), ...answerFields })
   .partial()
   .refine((body) => Object.values(body).some((v) => v !== undefined), 'Provide at least one answer')
   .superRefine(otherTextRules);
@@ -203,6 +224,7 @@ export type UpdateSellerSnapshotRequest = z.infer<typeof updateSellerSnapshotReq
 /**
  * `PUT /me/seller-snapshot` body - save all five answers at once (e.g. editing
  * from Settings). Every question is required; "Other" text stays optional.
+ * Saving the full snapshot also records `isReseller: true`.
  */
 export const saveSellerSnapshotRequestSchema = z
   .object({
@@ -221,7 +243,23 @@ export type SaveSellerSnapshotRequestInput = z.input<typeof saveSellerSnapshotRe
  * Deliberately contains no geography: exact location/radius belongs to each Hunt
  * (App Flow Blueprint section 5), not to the seller profile.
  */
+export const SELLER_SNAPSHOT_STATUSES = [
+  /** "Are you a reseller?" not answered yet. */
+  'not_started',
+  /** Answered "no" - show the coming-soon experience. */
+  'not_reseller',
+  /** Reseller with fewer than five answers. */
+  'in_progress',
+  /** Reseller with all five answers. */
+  'complete',
+] as const;
+export type SellerSnapshotStatus = (typeof SELLER_SNAPSHOT_STATUSES)[number];
+
 export const sellerSnapshotSchema = z.object({
+  /** Answer to the gate question; null = not answered. */
+  isReseller: z.boolean().nullable(),
+  /** Derived by the server - clients route on this instead of re-deriving it. */
+  status: z.enum(SELLER_SNAPSHOT_STATUSES),
   categories: z.array(z.enum(HUNT_CATEGORIES)),
   categoriesOther: z.string().nullable(),
   stage: z.enum(RESELLER_STAGES).nullable(),
@@ -235,7 +273,9 @@ export const sellerSnapshotSchema = z.object({
 export type SellerSnapshot = z.infer<typeof sellerSnapshotSchema>;
 
 /** How many of the five questions have an answer - drives "2 of 5" progress on every platform. */
-export function answeredQuestionCount(snapshot: SellerSnapshot): number {
+export function answeredQuestionCount(
+  snapshot: Pick<SellerSnapshot, 'categories' | 'stage' | 'sources' | 'dealRule' | 'improvementGoal'>,
+): number {
   return [
     snapshot.categories.length > 0,
     snapshot.stage !== null,
@@ -243,4 +283,14 @@ export function answeredQuestionCount(snapshot: SellerSnapshot): number {
     snapshot.dealRule !== null,
     snapshot.improvementGoal !== null,
   ].filter(Boolean).length;
+}
+
+/** The one place the snapshot status is derived (used by the API). */
+export function sellerSnapshotStatus(
+  isReseller: boolean | null,
+  answers: Pick<SellerSnapshot, 'categories' | 'stage' | 'sources' | 'dealRule' | 'improvementGoal'>,
+): SellerSnapshotStatus {
+  if (isReseller === null) return 'not_started';
+  if (!isReseller) return 'not_reseller';
+  return answeredQuestionCount(answers) === SELLER_SNAPSHOT_QUESTION_COUNT ? 'complete' : 'in_progress';
 }

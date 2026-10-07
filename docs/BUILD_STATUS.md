@@ -4,6 +4,32 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 12 - "Are you a reseller?" gate before the Seller Snapshot
+
+**Product decision (user, 2026-10-07):** ask "Are you a reseller?" before the five Seller
+Snapshot questions. Yes -> the five questions. No -> "coming soon" (non-reseller experience not
+designed yet - `TODO(product)`). **Deliberate deviation** from App Flow Blueprint section 1
+("maximum five questions"): resellers now see six onboarding screens. The profile itself still has
+exactly five questions; the gate is not one of them.
+
+**What changed**
+
+- Contracts: `isReseller` (PATCH, boolean) + `RESELLER_INTENT_COPY` (question, yes/no labels,
+  coming-soon title/body), response gains `isReseller` and server-derived `status`
+  (`not_started` | `not_reseller` | `in_progress` | `complete`), `sellerSnapshotStatus()`.
+- Database: migration `..._reseller_gate` adds `SellerProfile.isReseller` (nullable boolean).
+- API rules: the five answers require `isReseller = true` (stored or in the same PATCH) - else
+  409 CONFLICT; PUT (all five) records `isReseller: true`; "complete" requires a reseller with all
+  five answers; answering "no" keeps earlier answers so switching back restores them.
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: api 67 + e2e 26,
+  contracts 19, api-client 9, others unchanged.
+- Live (running API + Postgres): not_started -> "no" = not_reseller -> profile answer 409 ->
+  "yes" + Q1 = in_progress -> PUT all five = complete. Dev user reset to not_started afterwards.
+
+
 ### Step 11 - Seller Snapshot persistence + API
 
 **What was added**

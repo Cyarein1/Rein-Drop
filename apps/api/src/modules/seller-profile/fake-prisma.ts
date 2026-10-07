@@ -5,6 +5,7 @@ type ProfileRow = SnapshotRow & { userId: string };
 
 const emptyRow = (userId: string): ProfileRow => ({
   userId,
+  isReseller: null,
   huntCategories: [],
   huntCategoriesOther: null,
   resellerStage: null,

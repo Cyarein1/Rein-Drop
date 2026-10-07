@@ -4,9 +4,11 @@ import {
   DEAL_CRITERIA,
   HUNT_CATEGORIES,
   IMPROVEMENT_GOALS,
+  RESELLER_INTENT_COPY,
   RESELLER_STAGES,
   saveSellerSnapshotRequestSchema,
   SELLER_SNAPSHOT_COPY,
+  sellerSnapshotStatus,
   SELLER_SNAPSHOT_QUESTION_COUNT,
   sellerSnapshotSchema,
   SOURCING_CHANNELS,
@@ -15,6 +17,8 @@ import {
 } from './index.js';
 
 const EMPTY: SellerSnapshot = {
+  isReseller: null,
+  status: 'not_started',
   categories: [],
   categoriesOther: null,
   stage: null,
@@ -108,6 +112,34 @@ describe('saveSellerSnapshotRequestSchema', () => {
   });
 });
 
+describe('reseller gate', () => {
+  it('is separate from the five profile questions', () => {
+    expect(SELLER_SNAPSHOT_QUESTION_COUNT).toBe(5);
+    expect(Object.keys(SELLER_SNAPSHOT_COPY)).not.toContain('isReseller');
+    expect(RESELLER_INTENT_COPY.comingSoon.title).toBe('Coming soon');
+  });
+
+  it('PATCH accepts the gate answer on its own', () => {
+    expect(updateSellerSnapshotRequestSchema.parse({ isReseller: false })).toEqual({ isReseller: false });
+    expect(updateSellerSnapshotRequestSchema.safeParse({ isReseller: 'yes' }).success).toBe(false);
+  });
+
+  it('derives the status', () => {
+    expect(sellerSnapshotStatus(null, EMPTY)).toBe('not_started');
+    expect(sellerSnapshotStatus(false, EMPTY)).toBe('not_reseller');
+    expect(sellerSnapshotStatus(true, { ...EMPTY, stage: 'side_income' })).toBe('in_progress');
+    expect(
+      sellerSnapshotStatus(true, {
+        categories: ['tools'],
+        stage: 'side_income',
+        sources: ['ebay'],
+        dealRule: { criterion: 'case_by_case' },
+        improvementGoal: 'track_profit',
+      }),
+    ).toBe('complete');
+  });
+});
+
 describe('answeredQuestionCount', () => {
   it('counts answered questions for "n of 5" progress', () => {
     expect(answeredQuestionCount(EMPTY)).toBe(0);
@@ -115,6 +147,8 @@ describe('answeredQuestionCount', () => {
     expect(answeredQuestionCount(partial)).toBe(2);
     const full: SellerSnapshot = {
       ...partial,
+      isReseller: true,
+      status: 'complete',
       sources: ['facebook_marketplace', 'ebay'],
       dealRule: { criterion: 'min_profit', target: { amountMinor: 15000, currency: 'USD' } },
       improvementGoal: 'stop_checking_marketplaces',

@@ -1,8 +1,9 @@
-import { toSellerSnapshot, toSnapshotColumns, type SnapshotRow } from './seller-snapshot.mapper.js';
+import { hasProfileAnswers, toSellerSnapshot, toSnapshotColumns, type SnapshotRow } from './seller-snapshot.mapper.js';
 
 const UPDATED = new Date('2026-10-07T03:00:00.000Z');
 
 const row = (overrides: Partial<SnapshotRow> = {}): SnapshotRow => ({
+  isReseller: null,
   huntCategories: [],
   huntCategoriesOther: null,
   resellerStage: null,
@@ -26,6 +27,7 @@ describe('toSellerSnapshot', () => {
   it('maps stored answers', () => {
     const snapshot = toSellerSnapshot(
       row({
+        isReseller: true,
         huntCategories: ['phones_tablets', 'other'],
         huntCategoriesOther: 'Vinyl',
         resellerStage: 'side_income',
@@ -38,6 +40,8 @@ describe('toSellerSnapshot', () => {
       }),
     );
     expect(snapshot).toEqual({
+      isReseller: true,
+      status: 'complete',
       categories: ['phones_tablets', 'other'],
       categoriesOther: 'Vinyl',
       stage: 'side_income',
@@ -67,9 +71,25 @@ describe('toSellerSnapshot', () => {
   });
 });
 
+describe('status', () => {
+  it('follows the reseller gate', () => {
+    expect(toSellerSnapshot(row()).status).toBe('not_started');
+    expect(toSellerSnapshot(row({ isReseller: false, resellerStage: 'side_income' })).status).toBe('not_reseller');
+    expect(toSellerSnapshot(row({ isReseller: true, resellerStage: 'side_income' })).status).toBe('in_progress');
+  });
+});
+
+describe('hasProfileAnswers', () => {
+  it('ignores the gate answer', () => {
+    expect(hasProfileAnswers({ isReseller: true })).toBe(false);
+    expect(hasProfileAnswers({ isReseller: true, stage: 'side_income' })).toBe(true);
+  });
+});
+
 describe('toSnapshotColumns', () => {
   it('only touches the questions in the request', () => {
     expect(toSnapshotColumns({ stage: 'full_time' })).toEqual({ resellerStage: 'full_time' });
+    expect(toSnapshotColumns({ isReseller: false })).toEqual({ isReseller: false });
   });
 
   it('clears "Other" text when Other is deselected, keeps it when Other stays without new text', () => {

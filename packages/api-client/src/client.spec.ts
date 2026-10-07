@@ -87,6 +87,8 @@ describe('createApiClient', () => {
 
   it('PATCHes a validated Seller Snapshot answer to /me/seller-snapshot', async () => {
     const snapshot = {
+      isReseller: true,
+      status: 'in_progress',
       categories: [],
       categoriesOther: null,
       stage: 'side_income',

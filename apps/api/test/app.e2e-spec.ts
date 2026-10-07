@@ -116,11 +116,27 @@ describe('API (e2e)', () => {
 
     it('GET returns an empty snapshot before any answers', async () => {
       const res = await asDev(request(app.getHttpServer()).get('/me/seller-snapshot')).expect(200);
-      expect(res.body).toMatchObject({ categories: [], stage: null, dealRule: null, completedAt: null });
+      expect(res.body).toMatchObject({
+        isReseller: null,
+        status: 'not_started',
+        categories: [],
+        stage: null,
+        dealRule: null,
+        completedAt: null,
+      });
+    });
+
+    it('refuses profile answers (409) before "Are you a reseller?" is answered yes', async () => {
+      const res = await asDev(request(app.getHttpServer()).patch('/me/seller-snapshot'))
+        .send({ categories: ['tools'] })
+        .expect(409);
+      expect(res.body).toMatchObject({ code: 'CONFLICT' });
     });
 
     it('PATCH saves answers one at a time and completes after the fifth', async () => {
       const server = app.getHttpServer();
+      const gate = await asDev(request(server).patch('/me/seller-snapshot')).send({ isReseller: true }).expect(200);
+      expect(gate.body.status).toBe('in_progress');
       await asDev(request(server).patch('/me/seller-snapshot')).send({ categories: ['phones_tablets'] }).expect(200);
       await asDev(request(server).patch('/me/seller-snapshot')).send({ stage: 'side_income' }).expect(200);
       await asDev(request(server).patch('/me/seller-snapshot'))
@@ -133,6 +149,7 @@ describe('API (e2e)', () => {
         .send({ improvementGoal: 'stop_checking_marketplaces' })
         .expect(200);
       expect(res.body).toMatchObject({
+        status: 'complete',
         categories: ['phones_tablets'],
         stage: 'side_income',
         sources: ['facebook_marketplace', 'ebay'],
@@ -191,6 +208,15 @@ describe('API (e2e)', () => {
         .expect(200);
       expect(res.body).not.toHaveProperty('location');
       expect(res.body).not.toHaveProperty('radiusKm');
+    });
+
+    it('answering "no" -> not_reseller (coming soon); answers kept and restored on "yes"', async () => {
+      const server = app.getHttpServer();
+      const no = await asDev(request(server).patch('/me/seller-snapshot')).send({ isReseller: false }).expect(200);
+      expect(no.body.status).toBe('not_reseller');
+      await asDev(request(server).patch('/me/seller-snapshot')).send({ stage: 'side_income' }).expect(409);
+      const yes = await asDev(request(server).patch('/me/seller-snapshot')).send({ isReseller: true }).expect(200);
+      expect(yes.body).toMatchObject({ status: 'complete', stage: 'full_time' });
     });
   });
 
