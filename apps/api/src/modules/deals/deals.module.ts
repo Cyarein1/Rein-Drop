@@ -17,5 +17,6 @@ import { DealsService } from './deals.service.js';
   imports: [MatchingModule, OutcomesModule],
   controllers: [DealsController],
   providers: [DealsService],
+  exports: [DealsService],
 })
 export class DealsModule {}

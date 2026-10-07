@@ -1,0 +1,86 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+}
+
+.heading {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.lead {
+  font-size: var(--rd-font-size-md);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.muted {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-regular);
+}
+
+.list,
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.huntRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+}
+
+.huntRow + .huntRow,
+.recentRow + .recentRow {
+  padding-top: var(--rd-space-3);
+  border-top: 1px solid var(--rd-neutral-border);
+}
+
+.huntName {
+  color: var(--rd-text);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.monitoring {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  font-size: var(--rd-font-size-sm);
+}
+
+.monitoring[data-tone="fresh"] {
+  padding-left: var(--rd-space-2);
+  border-left: 3px solid var(--rd-tone-fresh-accent);
+}
+
+.recentRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--rd-space-1) var(--rd-space-3);
+}
+
+.recentRow a {
+  color: var(--rd-text);
+}
+
+.recentLabel {
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-07, after step 29 (Build Prompt 26)._
+_Last updated: 2026-10-07, after step 30 (Build Prompt 27)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -38,6 +38,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D21 | Notification defaults (push on / email off for alerts; weekly insight + marketing opt-in) | Step 27 | Decision 0006 table |
 | D22 | Quiet hours, per-Hunt caps / digests, and whether a later "exceptional" score should alert again | Step 27 | None; one alert per deal, never upgraded |
 | D23 | Expo / EAS account for a development build (needed to receive real pushes) | Step 28 | Expo Go + simulated development tokens |
+| D24 | Home "current period" for realized profit: rolling 30 days, calendar month, or user-chosen? | Step 30 | Rolling 30 days |
+| D25 | Home recommendation thresholds (3 failed checks, 24h with no deals, 20 to review with no alerts) | Step 30 | As listed |
 | D20 | Ignore reasons: free text, or a fixed list of choices? | Step 25 | Optional free text (200 chars) |
 
 ## 2. Not built yet (by area)
@@ -98,7 +100,6 @@ These block or shape work; the code uses placeholders until you decide.
 - Bought -> Inventory -> Sold backend with realized P/L, expected vs actual - prompt 28.
 - Inventory and sale screens - prompt 29.
 - Analytics backend and screens (missed potential kept apart from P/L) - prompts 30-31.
-- Home dashboard with real data (profit / bought / sold counts) - step 5; prompt 27.
 
 ### Platform and API
 - OpenAPI spec (Tech Architecture locks "REST + OpenAPI") - docs review.
@@ -120,7 +121,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
   (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27), push permission
-  prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29). Only typecheck / lint / bundle builds have been run.
+  prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29), Home (step 30). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -138,7 +139,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-27 Home dashboard - 28 Bought / Inventory / Sold
+28 Bought / Inventory / Sold
 backend - 29 Inventory and sale UI - 30 Analytics backend - 31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
@@ -172,4 +173,5 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Expo push: PushProvider, device tokens, permission after first live Hunt | Step 27 | Step 28 |
 | Stale "monitoring engine isn't built yet" note on the live screens | Step 17 | Step 28 |
 | Hunt detail / edit / pause / archive / restore screens | Steps 15, 17 | Step 29 |
+| Home dashboard with real data, in Blueprint priority order | Step 5 | Step 30 |
 | Worker could overwrite a user's decision made while a search was running | Step 25 (found) | Step 25 |

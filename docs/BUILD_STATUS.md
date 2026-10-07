@@ -1,11 +1,55 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 29)_
+_Last updated: 2026-10-07 (step 30)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 30 - Home in priority order (Build Prompt 27)
+
+**What was added**
+
+- Contracts `home.ts` (replaces the unused `home-summary.ts`): `GET /me/home` = attention
+  (unread alerts, deals to review, top 3 open deals in feed order) -> hunts (live / paused /
+  drafts, up to 5 live hunts with activity) -> realized profit (last 30 days, per currency:
+  spent, revenue, realized profit, sold; bought, holding; hasSales) -> recent (alerts, purchases,
+  sales; newest 5) -> one recommendation (code, kind setup / issue / suggestion, copy, target).
+- API `HomeModule` (composition, no tables): reuses DealsService (now exported), hunt activity,
+  Seller Snapshot, alerts, outcomes and push devices. Pure, unit-tested rules:
+  `profitSnapshot` (sale - purchase - recorded costs, sales in the period only, currencies never
+  mixed, estimates / missed potential never counted) and `homeRecommendation` (first that
+  applies: finish setup -> first hunt -> start a draft -> resume paused -> marketplace failing 3+
+  checks -> live 24h+ with no deals: loosen -> 20+ to review and no alerts: tighten -> no phone
+  registered: enable push; else none). Thresholds are proposed defaults.
+- client-core `home-view.ts`: attention / hunts lines, realized profit view (honest captions
+  before the first sale or in a quiet period; profit / loss tone), recent items, web paths for
+  recommendation targets.
+- Web and mobile Home: the five sections in order; a brand-new account sees only the welcome
+  step (approved wave mascot); "nothing needs you" says what Rein Drop is doing instead; first
+  scan uses the normal loading UI (no approved "working" art); no "thinking" art for the
+  recommendation; Recent hidden until there is something. Placeholder notice removed.
+- `DealCard` takes a heading level (h3 under Home's section headings).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 52, api unit incl. 6 Home rule
+  tests).
+- `pnpm --filter api test:int` incl. 6 new Home tests on real Postgres (every section from real
+  rows; profit 450 000 - 300 000 - 20 000 repair - 30 000 fee = 100 000; a sale 80 days old
+  ignored; brand-new account shows no invented numbers).
+- Browser e2e (Edge 390x844): 8/8 on the user's real data (ps4 watching, nothing needs you,
+  honest profit caption, enable-push recommendation) and 10/10 with temporary deals, alerts and a
+  purchase + sale (order, top 3 + See all, inbox count, realized profit in green, recent
+  newest-first). Temporary data removed; the user's account back to "ps4" only.
+- Mobile: typecheck, lint, Expo export - not run on a device.
+
+**Not done / TODO**
+
+- Sales can't be recorded yet (Build Prompt 28), so realized profit stays empty in real use.
+- "Current period" is a rolling 30 days (user time zone unknown) - D24.
+- Plan / usage status on Home only when relevant: not shown yet (no trigger defined).
 
 ### Step 29 - Hunts management: list by state, detail, edit, pause / resume / archive (Build Prompt 26)
 
@@ -1424,7 +1468,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-26 (our steps 1-29 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-27 (our steps 1-30 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1441,6 +1485,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 27 in document order: Home dashboard (opportunities needing attention, active Hunts
-and status, realized profit snapshot, recent outcomes, one recommendation / setup issue).
+Build Prompt 28 in document order: Bought -> Inventory -> Sold backend (purchase costs, holding
+state, Mark Sold, realized P/L, expected vs actual; missed potential never a loss).
 (Await the next prompt.)

@@ -10,3 +10,4 @@ export * from './deal-view.js';
 export * from './notification-view.js';
 export * from './push-view.js';
 export * from './hunt-view.js';
+export * from './home-view.js';

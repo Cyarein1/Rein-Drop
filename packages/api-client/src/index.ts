@@ -19,7 +19,7 @@ import {
   dealDetailSchema,
   dealPageSchema,
   healthResponseSchema,
-  homeSummarySchema,
+  homeSchema,
   huntActivityListSchema,
   huntActivitySchema,
   huntEventListSchema,
@@ -55,7 +55,7 @@ import {
   type DealDetail,
   type DealSummary,
   type HealthResponse,
-  type HomeSummary,
+  type Home,
   type Hunt,
   type HuntAction,
   type HuntActivity,
@@ -121,8 +121,8 @@ export interface ApiClient {
   updateSellerSnapshot(input: UpdateSellerSnapshotRequest): Promise<SellerSnapshot>;
   /** Save all five onboarding answers at once (every question required). */
   saveSellerSnapshot(input: SaveSellerSnapshotRequestInput): Promise<SellerSnapshot>;
-  /** Counts for the returning-user home. */
-  getHomeSummary(): Promise<HomeSummary>;
+  /** Home: attention, active Hunts, realized profit, recent activity, one recommendation. */
+  getHome(): Promise<Home>;
 
   /** Newest first; archived hunts only when `status: 'ARCHIVED'` is requested. */
   listHunts(query?: ListHuntsQueryInput): Promise<Page<Hunt>>;
@@ -234,8 +234,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: validateInput(saveSellerSnapshotRequestSchema, input, 'body'),
         response: sellerSnapshotSchema,
       }),
-    getHomeSummary: () =>
-      send(http, { method: 'GET', path: '/me/home-summary', response: homeSummarySchema }),
+    getHome: () => send(http, { method: 'GET', path: '/me/home', response: homeSchema }),
 
     listHunts: async (query = {}) =>
       send(http, {

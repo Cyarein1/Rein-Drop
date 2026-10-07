@@ -8,7 +8,8 @@ import styles from "./deals.module.css";
  * status. The title link stretches over the card, so the whole card opens the deal with a single
  * tab stop. Exceptional deals get the soft-yellow branded treatment (no mascot artwork exists).
  */
-export function DealCard({ view }: { view: DealCardView }) {
+export function DealCard({ view, headingLevel = 2 }: { view: DealCardView; /** 3 when the card sits under a section heading (e.g. on Home). */ headingLevel?: 2 | 3 }) {
+  const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
     <article className={[styles.card, view.exceptional && styles.exceptional].filter(Boolean).join(" ")}>
       <div className={styles.badges}>
@@ -17,11 +18,11 @@ export function DealCard({ view }: { view: DealCardView }) {
         <Badge tone={view.status.tone}>{view.status.label}</Badge>
       </div>
 
-      <h2 className={styles.cardTitle}>
+      <Heading className={styles.cardTitle}>
         <Link href={`/deals/${view.id}`} className={styles.stretched} aria-label={view.accessibleSummary}>
           {view.title}
         </Link>
-      </h2>
+      </Heading>
       <p className={styles.meta}>
         {view.source} · {view.freshness} · {view.huntName}
       </p>
