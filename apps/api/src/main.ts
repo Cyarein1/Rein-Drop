@@ -15,7 +15,7 @@ async function bootstrap() {
   await app.listen(config.port);
 
   Logger.log(
-    `NODE_ENV=${config.nodeEnv} DATABASE_URL=${redactUrl(config.databaseUrl)}`,
+    `NODE_ENV=${config.nodeEnv} AUTH_PROVIDER=${config.authProvider} DATABASE_URL=${redactUrl(config.databaseUrl)}`,
     'Config',
   );
   Logger.log(`API listening on http://localhost:${config.port}`, 'Bootstrap');

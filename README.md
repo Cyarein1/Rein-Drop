@@ -87,6 +87,7 @@ Invalid environment configuration for api:
 |---|---|---|---|
 | `NODE_ENV` | api, worker | `development` | `development` \| `test` \| `production` |
 | `PORT` | api | `4000` | |
+| `AUTH_PROVIDER` | api, web | `dev` outside production | `dev` is development-only and refused in production; required in production (managed provider TBD) |
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
@@ -183,6 +184,31 @@ variants follow the Mobile UI Screenbook v1.0, section 10.
   naming and how to add one. UI never references files directly: it picks a mascot token
   (`welcome`, `confirmed`, `working`, ...) and `apps/*/src/brand/assets.ts` maps tokens to
   files. Tokens without an approved asset render nothing.
+
+## Authentication (development-only for now)
+
+The managed auth provider is **not chosen yet**. Everything goes through a provider boundary so
+it can be swapped in without touching features:
+
+- **API** (`apps/api/src/auth`): `AuthProvider` interface -> `AuthService` -> global `AuthGuard`.
+  Every endpoint requires auth unless marked `@Public()` (only `/health`, `/ready`). Handlers get
+  the caller via `@CurrentUser()`. Users are linked to providers by `User.authProvider` +
+  `User.authSubject`.
+- **Web** (`apps/web/src/auth`): `verifySession()` (Data Access Layer) in every protected page via
+  `<Protected>`, plus an optimistic `src/proxy.ts` redirect. Signed-out -> `/sign-in`.
+- **Mobile** (`apps/mobile/src/auth`): `SessionProvider` (loads `GET /me`) + `SessionGate` on the
+  tabs and Create Hunt; Settings stays reachable when signed out.
+
+**Development provider (`AUTH_PROVIDER=dev`, the default outside production):**
+
+- Signs you in automatically as the seeded user **dev@reindrop.local** - run `pnpm db:seed` once.
+  There are no passwords; clients send `x-dev-auth-subject: local-dev-user`, which only names the
+  seeded user.
+- The API accepts it only from this machine or the private network (phones on your Wi-Fi yes,
+  internet no).
+- **Cannot run in production:** the API refuses to start with `NODE_ENV=production` and
+  `AUTH_PROVIDER=dev` (or with no provider); production web/mobile builds refuse the dev
+  provider. Until a managed provider is added, production deliberately has no way to sign in.
 
 ## API conventions (apps/api)
 

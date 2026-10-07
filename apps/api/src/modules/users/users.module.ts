@@ -1,13 +1,17 @@
 import { Module } from '@nestjs/common';
+import { MeController } from './me.controller.js';
 
 /**
  * Users - Account records.
  *
  * Owns: User
- * TODO(auth): identity comes from the managed auth provider (TBD); local dev auth abstraction first.
+ * Identity comes from the AuthService boundary (src/auth); this module never
+ * knows which AuthProvider is active.
  *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * Endpoints: GET /me. Other modules must use this module's exported providers
+ * rather than querying its tables directly.
  */
-@Module({})
+@Module({
+  controllers: [MeController],
+})
 export class UsersModule {}

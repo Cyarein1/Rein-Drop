@@ -2,10 +2,13 @@ import { Controller, Get, HttpStatus, Inject, Logger, Res } from '@nestjs/common
 import type { HealthResponse, ReadinessResponse } from '@rein-drop/contracts';
 import { PrismaClient } from '@rein-drop/db';
 import type { Response } from 'express';
+import { Public } from '../auth/decorators.js';
 import { PRISMA } from '../database/database.module.js';
 
 const DB_CHECK_TIMEOUT_MS = 2000;
 
+/** Health probes are public: they must work without credentials (load balancers, uptime checks). */
+@Public()
 @Controller()
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

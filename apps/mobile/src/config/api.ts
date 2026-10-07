@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { ApiError, createApiClient, type ApiClient } from '@rein-drop/api-client';
+import { authSetup } from '@/auth/provider';
 import { resolveApiBaseUrl, type ResolvedApiBaseUrl } from './api-base-url';
 
 /**
@@ -15,12 +16,17 @@ export const apiBaseUrl: ResolvedApiBaseUrl = resolveApiBaseUrl({
 
 let client: ApiClient | null = null;
 
-/** Shared API client. Throws ApiError with an actionable message when no URL is configured. */
+/**
+ * Shared API client, sending credentials from the active auth provider on every
+ * request. Throws ApiError with an actionable message when no URL is configured.
+ */
 export function getApiClient(): ApiClient {
   if (!apiBaseUrl.url) {
     throw new ApiError(`API base URL is not configured: ${apiBaseUrl.detail}`);
   }
-  // TODO(auth): pass getHeaders once the auth provider is chosen.
-  client ??= createApiClient({ baseUrl: apiBaseUrl.url });
+  client ??= createApiClient({
+    baseUrl: apiBaseUrl.url,
+    getHeaders: () => (authSetup.ok ? authSetup.provider.getApiHeaders() : {}),
+  });
   return client;
 }

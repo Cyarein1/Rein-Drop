@@ -342,6 +342,9 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: ^20
@@ -480,6 +483,9 @@ importers:
       '@rein-drop/config':
         specifier: workspace:*
         version: link:../config
+      '@rein-drop/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@rein-drop/marketplace-core':
         specifier: workspace:*
         version: link:../marketplace-core

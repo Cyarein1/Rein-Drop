@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { SessionProvider } from '@/auth/SessionProvider';
 import { headerOptions } from '@/navigation/options';
 import { interFonts, setInterLoaded } from '@/ui';
 
@@ -30,7 +31,7 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <>
+    <SessionProvider>
       <Stack screenOptions={headerOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
@@ -38,6 +39,6 @@ export default function RootLayout() {
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>
       <StatusBar style="dark" />
-    </>
+    </SessionProvider>
   );
 }

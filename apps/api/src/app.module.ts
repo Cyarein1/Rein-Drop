@@ -1,5 +1,6 @@
 import { DynamicModule, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { AuthModule } from './auth/auth.module.js';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter.js';
 import { RequestLoggingMiddleware } from './common/logging/request-logging.middleware.js';
 import { ZodValidationPipe } from './common/validation/zod-validation.pipe.js';
@@ -15,7 +16,8 @@ export class AppModule implements NestModule {
     return {
       module: AppModule,
       global: true,
-      imports: [DatabaseModule, ...DOMAIN_MODULES],
+      // AuthModule registers the global AuthGuard: every route is protected unless @Public().
+      imports: [DatabaseModule, AuthModule, ...DOMAIN_MODULES],
       controllers: [HealthController],
       providers: [
         { provide: API_CONFIG, useValue: config },

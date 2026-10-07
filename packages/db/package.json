@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@rein-drop/config": "workspace:*",
+    "@rein-drop/contracts": "workspace:*",
     "@rein-drop/marketplace-core": "workspace:*",
     "@types/node": "^24.19.1",
     "oxlint": "^1.87.0",

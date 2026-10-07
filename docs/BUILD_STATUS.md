@@ -4,6 +4,55 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 10 - Auth boundary + DEVELOPMENT-ONLY auth
+
+**What was added**
+
+- Contracts: `AUTH_PROVIDER_IDS` (`['dev']` only - managed provider not chosen),
+  `DEV_AUTH_HEADER` (`x-dev-auth-subject`), `DEV_AUTH_SUBJECT`, `DEV_AUTH_USER_EMAIL`.
+- Database: migration `..._auth_identity` adds `User.authProvider` + `User.authSubject`
+  (unique pair) - how any provider maps its identity to a Rein Drop user. Created with
+  `prisma migrate diff` + `migrate deploy` (migrate dev cannot confirm the unique-index prompt
+  non-interactively). Seed creates `dev@reindrop.local` (+ SellerProfile) outside production only.
+- API (`apps/api/src/auth`): `AuthProvider` interface, `AuthService`, global `AuthGuard`
+  (APP_GUARD; protected by default), `@Public()`, `@CurrentUser()`. `DevAuthProvider`: no
+  passwords (header names the seeded user), loopback/private-network clients only (403 otherwise),
+  401 for missing/unknown subject ("run pnpm db:seed"), 503 when the DB is down. `/health` and
+  `/ready` are `@Public()`. First protected endpoint: `GET /me` (users module).
+- Production prevention (layered): API config requires `AUTH_PROVIDER` in production and rejects
+  `dev` (startup exits 1); `DevAuthProvider` constructor throws under production; web provider
+  refuses `dev` when `NODE_ENV=production`; mobile dev provider only exists when `__DEV__`.
+- Web: `src/auth` boundary (`WebAuthProvider`, dev provider, `verifySession()` DAL with React
+  `cache`, `getServerApiClient()`), `<Protected>` on every app page (Suspense + request-time
+  check, per the Next 16 auth + Cache Components guides), optimistic `src/proxy.ts`, placeholder
+  `/sign-in` explaining why sign-in is unavailable, `(app)/error.tsx` with retry, shell account
+  area streamed behind Suspense. `server-only` added. Web-local `.prettierrc` (double quotes).
+- Mobile: `src/auth` boundary (`MobileAuthProvider`, dev provider), `SessionProvider` (GET /me),
+  `SessionGate` (loading / not signed in / can't reach API, with Try again + Open Settings) on the
+  tabs and the Create Hunt modal; `getApiClient()` sends the provider's headers; Settings shows
+  session state.
+- Old placeholder sessions (web + mobile) removed.
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: api 51 (+auth/config)
+  + e2e 12 (public routes, 401 without/unknown subject, 200 as seeded user, 404 when
+  authenticated), contracts 13, api-client 9, web 6, mobile 7, design-tokens 11, worker 3.
+- Live: API with `NODE_ENV=production AUTH_PROVIDER=dev` refuses to start (exit 1).
+  Running API: `/ready` 200 without credentials; `/me` 401 without, 200 with the dev subject from
+  localhost and from the LAN IP. Web dev server: `/home` and `/settings` show the seeded user from
+  `GET /me`. Web production build: `/home`, `/settings` -> 307 `/sign-in`, which explains the
+  reason for both "AUTH_PROVIDER unset" and "AUTH_PROVIDER=dev".
+- **Not verified live:** the web error page when the API is down (the user's API was running and
+  was not stopped), and the mobile app on a device.
+
+**Known limitations**
+
+- `pnpm --filter web start` (production mode) cannot sign in - intended until a managed provider
+  exists. Use `pnpm --filter web dev` locally.
+- No sign-out (nothing to sign out of in development).
+
+
 ### Step 9 - Expo app shell (native navigation) + device-friendly API URL
 
 **What was added**
@@ -428,6 +477,6 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: local dev auth abstraction (so `/me` and per-user data can work), then the first real
-flow: Seller Snapshot onboarding (API endpoints + 5-step web screens), then Hunt endpoints.
+Likely: the first real flow - Seller Snapshot onboarding (`GET/PATCH /me/seller-snapshot`
+endpoints using `@CurrentUser()`, plus the 5-step screens on web and mobile), then Hunt endpoints.
 (Await the next prompt.)

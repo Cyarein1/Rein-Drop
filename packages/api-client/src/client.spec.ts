@@ -41,7 +41,8 @@ describe('createApiClient', () => {
     expect(url).toBe('http://api.test/hunts');
     expect(init?.method).toBe('POST');
     expect(JSON.parse(String(init?.body))).toEqual({ name: 'Levis', query: 'levis 501', marketplaces: ['ebay'] });
-    expect((init?.headers as Record<string, string>)['x-test']).toBe('1');
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    expect(headers['x-test']).toBe('1');
   });
 
   it('fails client-side validation without calling the API', async () => {

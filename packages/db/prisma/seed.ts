@@ -3,8 +3,11 @@
  * - Marketplaces: the launch marketplaces (all environments).
  * - Development plans: only outside production. No prices or entitlements -
  *   both are pending product/billing decisions.
+ * - Development user: only outside production. Identified by the API's
+ *   DEVELOPMENT-ONLY DevAuthProvider (no password exists for it).
  */
 import type { MarketplaceId } from '@rein-drop/marketplace-core';
+import { DEV_AUTH_SUBJECT, DEV_AUTH_USER_EMAIL } from '@rein-drop/contracts';
 import { LOCAL_DATABASE_URL, loadDotEnvFile } from '@rein-drop/env';
 import { createPrismaClient } from '../src/index.js';
 
@@ -45,6 +48,18 @@ async function main() {
       });
     }
     console.log(`Seeded ${DEVELOPMENT_PLANS.length} development plans`);
+
+    const devUser = await prisma.user.upsert({
+      where: { email: DEV_AUTH_USER_EMAIL },
+      create: { email: DEV_AUTH_USER_EMAIL, authProvider: 'dev', authSubject: DEV_AUTH_SUBJECT },
+      update: { authProvider: 'dev', authSubject: DEV_AUTH_SUBJECT },
+    });
+    await prisma.sellerProfile.upsert({
+      where: { userId: devUser.id },
+      create: { userId: devUser.id },
+      update: {},
+    });
+    console.log(`Seeded development user ${DEV_AUTH_USER_EMAIL} (dev auth subject "${DEV_AUTH_SUBJECT}")`);
   } finally {
     await prisma.$disconnect();
   }

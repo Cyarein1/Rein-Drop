@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { SessionGate } from '@/auth/SessionGate';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
 import { Button, Card, font, Screen } from '@/ui';
 
@@ -16,8 +17,16 @@ const STEPS = [
   'Review in plain English',
 ];
 
-/** Presented as a native modal from the central Create tab button. */
+/** Presented as a native modal from the central Create tab button. Protected. */
 export default function CreateHuntScreen() {
+  return (
+    <SessionGate>
+      <CreateHunt />
+    </SessionGate>
+  );
+}
+
+function CreateHunt() {
   const router = useRouter();
   return (
     <Screen description="Tell Rein Drop what to watch for.">

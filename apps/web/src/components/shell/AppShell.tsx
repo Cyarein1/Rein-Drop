@@ -1,27 +1,18 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import type { Session } from "@/auth/session";
+import { Suspense, type ReactNode } from "react";
 import { Wordmark } from "@/brand/Wordmark";
-import { Badge } from "@/components/ui";
+import { AccountSummary } from "./AccountSummary";
 import { BottomNav, CreateHuntButton, SidebarNav, TopBarSettingsLink } from "./ShellNav";
 import styles from "./AppShell.module.css";
-
-export interface AppShellProps {
-  session: Session;
-  children: ReactNode;
-}
 
 /**
  * Authenticated web shell.
  * - >= 768px: left sidebar (wordmark, Create Hunt, destinations) + top bar (account).
  * - <  768px: top bar (wordmark, Settings) + fixed bottom navigation.
- * Responsive switching is CSS-only; only one navigation is rendered visibly (and in
- * the accessibility tree) at a time.
+ * The shell itself is static; the session-dependent account area streams in behind
+ * Suspense, and each page verifies the session itself (see `Protected`).
  */
-export function AppShell({ session, children }: AppShellProps) {
-  const { email } = session.user;
-  const name = session.user.displayName ?? email;
-
+export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
       <a href="#main-content" className={styles.skipLink}>
@@ -43,11 +34,9 @@ export function AppShell({ session, children }: AppShellProps) {
           </Link>
           <div className={styles.topBarEnd}>
             <div className={`${styles.account} ${styles.desktopOnly}`}>
-              {session.isPlaceholder && <Badge tone="info">Placeholder session</Badge>}
-              <span className={styles.avatar} aria-hidden="true">
-                {name.charAt(0).toUpperCase()}
-              </span>
-              <span className={styles.accountEmail}>{email}</span>
+              <Suspense fallback={<span className={styles.avatar} aria-hidden="true" />}>
+                <AccountSummary />
+              </Suspense>
             </div>
             <div className={styles.mobileOnly}>
               <TopBarSettingsLink />

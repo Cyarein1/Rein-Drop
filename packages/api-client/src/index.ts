@@ -37,6 +37,7 @@ import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from 
 
 export { ApiError } from './errors.js';
 export type * from '@rein-drop/contracts';
+export { AUTH_PROVIDER_IDS, DEV_AUTH_HEADER, DEV_AUTH_SUBJECT } from '@rein-drop/contracts';
 
 export interface ApiClientOptions {
   /** e.g. http://localhost:4000 - no trailing path. */

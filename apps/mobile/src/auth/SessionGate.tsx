@@ -1,0 +1,69 @@
+import type { ReactNode } from 'react';
+import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { apiBaseUrl } from '@/config/api';
+import { Button, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { useSessionState } from './SessionProvider';
+
+/**
+ * Protects the app's tabs: children render only with an authenticated session.
+ * Signed-out and error states always offer a next action (Retry / Settings).
+ */
+export function SessionGate({ children }: { children: ReactNode }) {
+  const { state, refresh } = useSessionState();
+  const router = useRouter();
+
+  if (state.status === 'authenticated') return <>{children}</>;
+  if (state.status === 'loading') {
+    return (
+      <View style={styles.center}>
+        <LoadingState label="Signing you in…" />
+      </View>
+    );
+  }
+
+  const actions = (
+    <View style={styles.actions}>
+      <Button onPress={refresh}>Try again</Button>
+      <Button variant="secondary" onPress={() => router.push('/settings')}>
+        Open Settings
+      </Button>
+    </View>
+  );
+
+  if (state.status === 'unauthenticated') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Screen>
+          <SystemBanner tone="warning" title="You're not signed in" message={state.reason} />
+          {__DEV__ && (
+            <Text style={[styles.help, font('regular')]}>
+              Development sign-in is automatic. Make sure the API is running and the development user exists
+              (pnpm db:seed).
+            </Text>
+          )}
+          {actions}
+        </Screen>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <Screen>
+        <SystemBanner tone="error" title="Can't reach Rein Drop" message={state.message} />
+        <Text style={[styles.help, font('regular')]}>API: {apiBaseUrl.url ?? 'not configured'}</Text>
+        {actions}
+      </Screen>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: roles.background },
+  center: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+  help: { color: roles.textMuted, fontSize: fontSize.sm },
+});

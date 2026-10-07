@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, Page } from "@/components/ui";
 import { PlaceholderNotice } from "../../placeholder-notice";
 
@@ -18,20 +19,22 @@ const STEPS = [
 
 export default function CreateHuntPage() {
   return (
-    <Page title="Create Hunt" description="Tell Rein Drop what to watch for." width="narrow">
-      <PlaceholderNotice>
-        The assisted Hunt builder is not built yet. It will follow these steps.
-      </PlaceholderNotice>
-      <Card title="What you will set up">
-        <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 8 }}>
-          {STEPS.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </Card>
-      <ButtonLink href="/hunts" variant="secondary">
-        Back to Hunts
-      </ButtonLink>
-    </Page>
+    <Protected>
+      <Page title="Create Hunt" description="Tell Rein Drop what to watch for." width="narrow">
+        <PlaceholderNotice>
+          The assisted Hunt builder is not built yet. It will follow these steps.
+        </PlaceholderNotice>
+        <Card title="What you will set up">
+          <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 8 }}>
+            {STEPS.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </Card>
+        <ButtonLink href="/hunts" variant="secondary">
+          Back to Hunts
+        </ButtonLink>
+      </Page>
+    </Protected>
   );
 }

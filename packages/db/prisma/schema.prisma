@@ -106,13 +106,16 @@ enum SubscriptionStatus {
 // Accounts
 // ---------------------------------------------------------------------------
 
-/// TODO(auth): link to the managed auth provider's subject id once the provider is chosen.
 model User {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  email       String   @unique
-  displayName String?
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  id           String   @id @default(uuid(7)) @db.Uuid
+  email        String   @unique
+  displayName  String?
+  /// Which AuthProvider identifies this user ("dev" locally; the managed provider is TBD).
+  authProvider String?
+  /// The provider's stable id for the user (e.g. an OIDC `sub`). Unique per provider.
+  authSubject  String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   sellerProfile  SellerProfile?
   hunts          Hunt[]
@@ -123,6 +126,8 @@ model User {
   costs          Cost[]
   subscriptions  Subscription[]
   usageEvents    UsageEvent[]
+
+  @@unique([authProvider, authSubject])
 }
 
 /// Reseller-specific profile, 1:1 with User. Holds the Seller Snapshot - the five

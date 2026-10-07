@@ -13,6 +13,7 @@ export * from './common.js';
 export * from './errors.js';
 export * from './health.js';
 export * from './account.js';
+export * from './auth.js';
 export * from './seller-snapshot.js';
 export * from './home-summary.js';
 export * from './hunts.js';

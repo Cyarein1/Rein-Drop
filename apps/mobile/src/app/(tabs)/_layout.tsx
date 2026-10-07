@@ -1,14 +1,24 @@
 import { Tabs, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { fontSize, radius, roles, size } from '@rein-drop/design-tokens';
+import { SessionGate } from '@/auth/SessionGate';
 import { headerOptions, NavIcon, SettingsHeaderButton } from '@/navigation/options';
 import { font } from '@/ui';
 
 /**
  * Bottom navigation: Home - Hunts - central Create - Deals - Analytics
  * (Mobile UI Screenbook, section 1). Settings is in the header of every tab.
+ * All tabs are protected: they render only with an authenticated session.
  */
 export default function TabsLayout() {
+  return (
+    <SessionGate>
+      <AppTabs />
+    </SessionGate>
+  );
+}
+
+function AppTabs() {
   return (
     <Tabs
       screenOptions={{

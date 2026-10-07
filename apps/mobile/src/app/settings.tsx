@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
-import { useSession } from '@/auth/session';
+import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
@@ -19,8 +19,9 @@ const SOURCE_LABEL = {
   none: 'Not configured',
 } as const;
 
+/** Not gated: reachable when signed out so the API address and session state can be inspected. */
 export default function SettingsScreen() {
-  const session = useSession();
+  const { state: sessionState, refresh } = useSessionState();
   const router = useRouter();
   const [check, setCheck] = useState<Check>({ state: 'idle' });
 
@@ -44,14 +45,41 @@ export default function SettingsScreen() {
     <Screen>
       <PlaceholderNotice>Settings sections are listed but not editable yet.</PlaceholderNotice>
 
-      <Card title="Account" action={session.isPlaceholder ? <Badge tone="info">Placeholder session</Badge> : undefined}>
-        <Text style={[styles.body, font('medium')]}>{session.user.email}</Text>
-        <Text style={[styles.muted, font('regular')]}>
-          Sign-in is not implemented yet - everyone is signed in as this local development user.
-        </Text>
-        <Button variant="secondary" disabled>
-          Sign out
-        </Button>
+      <Card
+        title="Account"
+        action={
+          sessionState.status === 'authenticated' && sessionState.session.isDevelopment ? (
+            <Badge tone="info">Development sign-in</Badge>
+          ) : undefined
+        }
+      >
+        {sessionState.status === 'loading' && <LoadingState label="Checking your session…" />}
+        {sessionState.status === 'authenticated' && (
+          <>
+            <Text style={[styles.body, font('medium')]}>{sessionState.session.user.email}</Text>
+            {sessionState.session.isDevelopment && (
+              <Text style={[styles.muted, font('regular')]}>
+                Signed in automatically as the seeded local user (development only).
+              </Text>
+            )}
+            {/* TODO(auth): sign-out comes with the managed provider. */}
+            <Button variant="secondary" disabled>
+              Sign out
+            </Button>
+          </>
+        )}
+        {(sessionState.status === 'unauthenticated' || sessionState.status === 'error') && (
+          <>
+            <SystemBanner
+              tone={sessionState.status === 'error' ? 'error' : 'warning'}
+              title="Not signed in"
+              message={sessionState.status === 'error' ? sessionState.message : sessionState.reason}
+            />
+            <Button variant="secondary" onPress={refresh}>
+              Try again
+            </Button>
+          </>
+        )}
       </Card>
 
       <Card title="Seller Snapshot">
