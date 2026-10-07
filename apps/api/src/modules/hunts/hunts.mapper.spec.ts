@@ -35,6 +35,12 @@ const link = (key: string, isEnabled = true) => ({
   isEnabled,
   createdAt: T,
   updatedAt: T,
+  nextPollAt: null,
+  lastPolledAt: null,
+  lastPollStatus: null,
+  lastPollErrorCode: null,
+  lastPollError: null,
+  consecutiveFailures: 0,
   marketplace: { key },
 });
 

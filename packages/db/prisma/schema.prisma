@@ -112,6 +112,26 @@ enum CostCategory {
   OTHER
 }
 
+/// Outcome of the last marketplace search for a hunt.
+enum PollStatus {
+  SUCCEEDED
+  FAILED
+}
+
+enum SearchRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+/// Local job queue states (see the Job model).
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  DEAD
+}
+
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
@@ -215,6 +235,40 @@ model Marketplace {
   rawListings      RawListing[]
   listings         Listing[]
   sales            Sale[]
+  searchRuns       SearchRun[]
+}
+
+/// One executed marketplace search, serving one or more hunts with compatible criteria.
+/// Keyed by the queue job, so a retried job updates the same run.
+model SearchRun {
+  id                  String          @id @default(uuid(7)) @db.Uuid
+  /// Queue job / message id that ran it (idempotency key).
+  jobId               String          @unique
+  marketplaceId       String          @db.Uuid
+  provider            String
+  /// Stable key of the merged criteria (hunts sharing it were grouped).
+  groupKey            String
+  /// Merged MarketplaceSearchCriteria actually sent.
+  criteria            Json
+  huntIds             String[]        @db.Uuid
+  status              SearchRunStatus @default(RUNNING)
+  attempts            Int             @default(0)
+  pagesFetched        Int             @default(0)
+  resultCount         Int             @default(0)
+  newListingCount     Int             @default(0)
+  updatedListingCount Int             @default(0)
+  /// Raw records that FAILED or were SKIPPED during normalization.
+  unreadableCount     Int             @default(0)
+  errorCode           String?
+  errorMessage        String?
+  startedAt           DateTime        @default(now()) @db.Timestamptz(3)
+  finishedAt          DateTime?       @db.Timestamptz(3)
+
+  marketplace Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+  rawListings RawListing[]
+
+  @@index([marketplaceId, startedAt])
+  @@index([status])
 }
 
 /// Verbatim record fetched from a marketplace adapter. Append-only snapshots:
@@ -222,6 +276,10 @@ model Marketplace {
 model RawListing {
   id            String           @id @default(uuid(7)) @db.Uuid
   marketplaceId String           @db.Uuid
+  /// Adapter / data provider that fetched it (e.g. "dev"). Only that provider can read `payload`.
+  provider      String
+  /// The search run that fetched it (null for records from other sources, e.g. refreshes).
+  searchRunId   String?          @db.Uuid
   /// The marketplace's own identifier for the listing.
   externalId    String
   /// Unmodified source payload.
@@ -236,7 +294,10 @@ model RawListing {
 
   marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
   listing     Listing?    @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  searchRun   SearchRun?  @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
 
+  /// A retried search run must not store the same snapshot twice.
+  @@unique([searchRunId, marketplaceId, externalId])
   @@index([marketplaceId, externalId])
   @@index([status])
   @@index([listingId])
@@ -356,11 +417,24 @@ model HuntMarketplace {
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 
+  // Polling metadata (written by the worker).
+  /// When the scheduler should next search this marketplace for the hunt. Null = as soon as possible.
+  nextPollAt          DateTime?   @db.Timestamptz(3)
+  /// Last search that finished (successfully or not).
+  lastPolledAt        DateTime?   @db.Timestamptz(3)
+  lastPollStatus      PollStatus?
+  /// MarketplaceError code of the last failure (e.g. RATE_LIMITED).
+  lastPollErrorCode   String?
+  lastPollError       String?
+  /// Failed search attempts since the last success.
+  consecutiveFailures Int         @default(0)
+
   hunt        Hunt        @relation(fields: [huntId], references: [id], onDelete: Cascade)
   marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
 
   @@id([huntId, marketplaceId])
   @@index([marketplaceId])
+  @@index([isEnabled, nextPollAt])
 }
 
 /// A listing that matched a hunt. Separate from Listing (shared across users)
@@ -599,4 +673,36 @@ model UsageEvent {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, key, occurredAt])
+}
+
+// ---------------------------------------------------------------------------
+// Background jobs
+// ---------------------------------------------------------------------------
+
+/// Backing table of the LOCAL job queue (PostgresJobQueue in apps/worker). Replaceable by Azure
+/// Storage Queue / Service Bus behind the same JobQueue interface - nothing else reads this table.
+model Job {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  queue       String
+  type        String
+  payload     Json
+  /// Enqueueing the same key twice on a queue is a no-op (idempotent producers).
+  dedupeKey   String?
+  status      JobStatus @default(QUEUED)
+  /// Deliveries so far (incremented when leased, like a message dequeue count).
+  attempts    Int       @default(0)
+  maxAttempts Int
+  /// Not delivered before this time (scheduling and retry backoff).
+  runAt       DateTime  @default(now()) @db.Timestamptz(3)
+  /// Current lease: only the holder of this token may complete / retry the job.
+  lockToken   String?   @db.Uuid
+  /// Lease expiry; a RUNNING job past it is delivered again (worker crashed).
+  lockedUntil DateTime? @db.Timestamptz(3)
+  lastError   String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+
+  @@unique([queue, dedupeKey])
+  @@index([queue, status, runAt])
 }

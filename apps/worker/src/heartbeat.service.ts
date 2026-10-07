@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { WORKER_CONFIG, type WorkerConfig } from './config/worker-config.js';
 
-/** Keeps the worker process alive and logs that it is healthy. No jobs yet. */
+/** Logs periodically that the worker process is alive (the pipeline logs its own activity). */
 @Injectable()
 export class HeartbeatService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(HeartbeatService.name);
@@ -16,7 +16,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnApplicationSh
   constructor(@Inject(WORKER_CONFIG) private readonly config: WorkerConfig) {}
 
   onApplicationBootstrap() {
-    this.logger.log(`Idle - heartbeat every ${this.config.heartbeatMs}ms`);
+    this.logger.log(`Heartbeat every ${this.config.heartbeatMs}ms`);
     this.timer = setInterval(() => this.logger.log('Heartbeat'), this.config.heartbeatMs);
   }
 

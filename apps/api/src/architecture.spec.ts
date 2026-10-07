@@ -8,7 +8,12 @@ const workerSrc = join(apiSrc, '..', '..', 'worker', 'src');
 /** Only this file may choose concrete marketplace adapters. */
 const ADAPTER_WIRING = join('modules', 'marketplaces', 'marketplace-registry.provider.ts');
 /** Wiring files allowed to import `/adapters` (config validates the dev scenario names). */
-const ADAPTER_IMPORT_ALLOWED = new Set([ADAPTER_WIRING, join('config', 'api-config.ts')]);
+const ADAPTER_IMPORT_ALLOWED = new Set([
+  ADAPTER_WIRING,
+  join('config', 'api-config.ts'),
+  join('worker', 'pipeline', 'marketplace-registry.ts'),
+  join('worker', 'config', 'worker-config.ts'),
+]);
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
@@ -33,7 +38,7 @@ describe('marketplace boundary', () => {
     expect(files.some((x) => x.rel === ADAPTER_WIRING)).toBe(true);
   });
 
-  it('only the Marketplaces registry provider (and config) import concrete adapters', () => {
+  it('only the registry wiring (and config) import concrete adapters', () => {
     const offenders = files
       .filter(({ rel }) => !ADAPTER_IMPORT_ALLOWED.has(rel))
       .filter(({ f }) => importsOf(f).some((i) => i === '@rein-drop/marketplace-core/adapters'))

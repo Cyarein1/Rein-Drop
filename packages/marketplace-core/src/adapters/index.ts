@@ -17,3 +17,4 @@ export { DevFacebookDataProvider, type DevFacebookDataProviderOptions } from './
 export { DEV_HOST, DEV_SCENARIOS, isDevScenario, type DevScenario, type DevSourceOptions } from './dev/dev-source.js';
 export { DEV_CASES, DEV_PRODUCTS, type DevCase, type DevProduct } from './dev/catalogue.js';
 export { guardedSearch } from './guard.js';
+export { createMarketplaceRegistry, type MarketplaceRegistryOptions } from './registry-factory.js';

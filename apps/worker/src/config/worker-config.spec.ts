@@ -7,6 +7,16 @@ describe('loadWorkerConfig', () => {
       nodeEnv: 'development',
       databaseUrl: LOCAL_DATABASE_URL,
       heartbeatMs: 60_000,
+      pipeline: {
+        pollIntervalMs: 15 * 60_000,
+        schedulerIntervalMs: 30_000,
+        runnerIntervalMs: 2_000,
+        jobsPerTick: 5,
+        leaseMs: 120_000,
+        maxAttempts: 5,
+        searchMaxPages: 1,
+      },
+      devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
   });
 
@@ -16,7 +26,39 @@ describe('loadWorkerConfig', () => {
     );
   });
 
-  it('requires DATABASE_URL in production', () => {
-    expect(() => loadWorkerConfig({ NODE_ENV: 'production' })).toThrow(EnvValidationError);
+  it('requires DATABASE_URL and an explicit poll interval in production', () => {
+    try {
+      loadWorkerConfig({ NODE_ENV: 'production' });
+      throw new Error('expected EnvValidationError');
+    } catch (err) {
+      expect(err).toBeInstanceOf(EnvValidationError);
+      expect((err as EnvValidationError).problems).toEqual([
+        'DATABASE_URL: is required when NODE_ENV=production',
+        'HUNT_POLL_INTERVAL_MINUTES: is required when NODE_ENV=production',
+      ]);
+    }
+  });
+
+  it('parses pipeline settings and dev scenarios', () => {
+    const config = loadWorkerConfig({
+      HUNT_POLL_INTERVAL_MINUTES: '2',
+      WORKER_SEARCH_MAX_PAGES: '3',
+      EBAY_DEV_SCENARIO: 'rate_limited',
+    });
+    expect(config.pipeline.pollIntervalMs).toBe(120_000);
+    expect(config.pipeline.searchMaxPages).toBe(3);
+    expect(config.devMarketplaceScenarios).toEqual({ ebay: 'rate_limited', facebook: 'normal' });
+    expect(() => loadWorkerConfig({ WORKER_SEARCH_MAX_PAGES: '50' })).toThrow(/WORKER_SEARCH_MAX_PAGES/);
+  });
+
+  it('refuses development marketplace scenarios in production', () => {
+    expect(() =>
+      loadWorkerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://u:p@db/app',
+        HUNT_POLL_INTERVAL_MINUTES: '15',
+        FACEBOOK_DEV_SCENARIO: 'empty',
+      }),
+    ).toThrow('FACEBOOK_DEV_SCENARIO: development-only, not allowed when NODE_ENV=production');
   });
 });

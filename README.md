@@ -90,7 +90,9 @@ Invalid environment configuration for api:
 | `PORT` | api | `4000` | |
 | `AUTH_PROVIDER` | api, web | `dev` outside production | `dev` is development-only and refused in production; required in production (managed provider TBD) |
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
-| `EBAY_DEV_SCENARIO`, `FACEBOOK_DEV_SCENARIO` | api | `normal` | Development marketplace sources only: `normal` \| `empty` \| `degraded` \| `rate_limited` \| `unavailable` \| `not_configured` \| `invalid_response` \| `malformed_payloads`. Refused in production. |
+| `HUNT_POLL_INTERVAL_MINUTES` | worker | `15` (development only) | How often each LIVE hunt is searched per marketplace. Required in production (cost model TBD). |
+| `WORKER_SCHEDULER_INTERVAL_MS`, `WORKER_RUNNER_INTERVAL_MS`, `WORKER_JOBS_PER_TICK`, `WORKER_JOB_LEASE_MS`, `WORKER_JOB_MAX_ATTEMPTS`, `WORKER_SEARCH_MAX_PAGES` | worker | `30000`, `2000`, `5`, `120000`, `5`, `1` | Pipeline tuning - see `apps/worker/.env.example` |
+| `EBAY_DEV_SCENARIO`, `FACEBOOK_DEV_SCENARIO` | api, worker | `normal` | Development marketplace sources only: `normal` \| `empty` \| `degraded` \| `rate_limited` \| `unavailable` \| `not_configured` \| `invalid_response` \| `malformed_payloads`. Refused in production. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |

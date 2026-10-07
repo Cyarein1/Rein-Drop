@@ -4,6 +4,58 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 20 - Scheduler / worker pipeline (local, no Azure / Redis)
+
+**What was added** (decision record: `docs/decisions/0004-local-job-queue.md`)
+
+- Database (migration `20261007103658_worker_pipeline`): `Job` (local queue: dedupe key unique
+  per queue, status, attempts / maxAttempts, runAt, lease token + expiry, lastError);
+  `SearchRun` (one per executed search, keyed by job id: provider, group key, merged criteria,
+  hunt ids, attempts, pages, result / new / updated / unreadable counts, error code, timings);
+  `RawListing.provider` (existing rows backfilled `unknown`) and `RawListing.searchRunId`
+  (unique with marketplace + externalId); `HuntMarketplace` polling metadata (`nextPollAt`,
+  `lastPolledAt`, `lastPollStatus`, `lastPollErrorCode`, `lastPollError`,
+  `consecutiveFailures`).
+- Queue abstraction (`apps/worker/src/queue`): `JobQueue` interface (Storage Queue / Service Bus
+  mapping documented), `PostgresJobQueue` (`FOR UPDATE SKIP LOCKED`), `InMemoryJobQueue`, shared
+  contract suite, `JobRunner` (exponential backoff 30s..15m, honours a source's `retryAfter`,
+  dead-letters after max attempts / permanent errors / unknown types, detects lost leases).
+- Scheduler: claims due rows (LIVE hunt, enabled marketplace, `nextPollAt` null or past) in one
+  `UPDATE ... SKIP LOCKED` that moves `nextPollAt` forward; groups hunts that one search can serve
+  (same marketplace + normalized query + location + radius; conditions/max price merged, widest
+  wins); dedupe key = group + exact hunts + polling window; releases the claim if enqueue fails.
+- `marketplace.search` handler: skips hunts no longer LIVE; searches via the registry; stores raw
+  records (duplicates from retries ignored); normalizes PENDING ones (one transaction each; Listing
+  created or refreshed, never moved back in time); FAILED/SKIPPED raws kept with the reason;
+  records SearchRun, per-hunt polling metadata and a `hunt_poll` UsageEvent per hunt (idempotency
+  key per run + hunt). Retryable MarketplaceErrors -> retry; others -> dead-letter; both recorded.
+- Shared `createMarketplaceRegistry()` in marketplace-core/adapters (API + worker); worker config
+  for poll interval (dev default 15 min, required in production), ticks, lease, attempts, pages and
+  dev scenarios. `.env.example`, README updated.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 45/45. worker unit 27 (planning/grouping/dedupe
+  windows, runner retry/backoff/dead-letter/lease loss, queue contract in memory, config); api 85,
+  e2e 36, integration 9.
+- `pnpm --filter worker test:int` - 16 on real Postgres: queue contract + 4 concurrent consumers
+  never share a job; full pipeline (3 due rows -> 2 grouped jobs; second scheduler tick claims
+  nothing; raw + normalized listings, runs, polling metadata, 3 usage events; redelivered jobs
+  change nothing; next window refreshes listings without duplicates; rate limit -> FAILED metadata
+  + retry after retryAfter -> recovery resets the failure streak; NOT_CONFIGURED dead-letters;
+  malformed payloads stored as FAILED raws; paused-before-run hunts skipped). Test data removed.
+- Live: built worker with a 1-minute poll interval and a temporary LIVE hunt: 2 jobs scheduled
+  and run, 14 listings stored, both polls SUCCEEDED, 2 usage events. Process stopped, data removed.
+
+**Not done**
+
+- Hunt matching (HuntMatch), deal analysis and alerts - next pipeline stages.
+- Editing a LIVE hunt doesn't reset `nextPollAt` (new criteria apply from the next poll).
+- `TODO(worker)`: job retention, lease renewal; real poll interval per plan / priority
+  (TODO(product)).
+- Development listings age from each worker start (adapter epoch), so restarting the worker
+  shifts their `listedAt`.
+
 ### Step 19 - Deterministic development marketplace sources
 
 **What was added** (`packages/marketplace-core/src/adapters/dev/`; replaces step 18's generic mocks)
@@ -858,7 +910,6 @@ pnpm --filter mobile start
 
 - `TODO(marketplace)`: real EbayAdapter + real FacebookDataProvider (source TBD); normalized
   condition scale on Listing.
-- `TODO(db)`: `provider` column on RawListing.
 - Turbo runs `@rein-drop/db` build and typecheck in parallel and both run `prisma generate`;
   on Windows this occasionally fails one of them. A re-run passes.
 - `TODO(ai)`: AIProvider interface + deterministic MockAIProvider; Foundry models per task TBD.
@@ -872,8 +923,9 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: ingestion in the worker (search LIVE Hunts through the registry, store RawListings,
-normalize into Listings), or Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
+Likely: Hunt matching (apply each hunt's full criteria + exclusions to new Listings, create
+HuntMatches), then deal analysis via the AIProvider mock; or Hunt detail / edit / pause / archive /
+restore screens (so a user blocked by the
 live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
 Seller Snapshot questions) on web and mobile.
 (Await the next prompt.)
