@@ -96,6 +96,19 @@ describe('price and condition cases', () => {
     });
   });
 
+  it('eBay: states its shipping as a buyer cost (free shipping is a known zero); unreadable metadata gives none', async () => {
+    const adapter = make('ebay') as DevEbayAdapter;
+    const all = await listings(adapter);
+    const costs = all.map((l) => adapter.buyerCosts(l));
+    expect(costs.every((c) => c.length === 1 && c[0]!.kind === 'shipping' && c[0]!.amount.currency === 'USD')).toBe(true);
+    expect(costs.some((c) => c[0]!.label === 'Free shipping' && c[0]!.amount.amountMinor === 0)).toBe(true);
+    expect(costs.some((c) => c[0]!.label === 'Shipping' && c[0]!.amount.amountMinor > 0)).toBe(true);
+    expect(adapter.buyerCosts({ price: null, sourceMetadata: null })).toEqual([]);
+    expect(adapter.buyerCosts({ price: null, sourceMetadata: { shippingMinor: '12', shippingCurrency: 'USD' } })).toEqual([]);
+    // Facebook delivery charges aren't stated by the source.
+    expect(make('facebook').buyerCosts).toBeUndefined();
+  });
+
   it('Facebook: "message me" listings have no price; distance and delivery are in source metadata', async () => {
     const all = await listings(make('facebook'));
     const noPrice = all.find((l) => caseOf(l) === 'no-price')!;

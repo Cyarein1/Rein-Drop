@@ -519,16 +519,40 @@ model DealAnalysis {
   /// CandidateAnalysisResult from @rein-drop/ai-core (product, risk, explanation); validated + grounded.
   result       Json?
   errorMessage String?
+
+  // Deterministic scoring (@rein-drop/scoring) combined with `result`.
+  /// @rein-drop/scoring SCORING_VERSION that produced the fields below.
+  scoringVersion Int?
+  /// DealEconomics: asking price, known costs, max price / target checks and - only with real
+  /// comparable sales - an ESTIMATED upside. Never realized profit (that comes from Sale + Cost).
+  economics      Json?
+  /// "exceptional" | "strong" | "moderate" | "weak" (@rein-drop/scoring DEAL_STRENGTHS). Text, not a
+  /// DB enum: the tiers are a pending product decision. Null when the AI analysis failed.
+  strength       String?
+  /// "high" | "medium" | "low": how sure Rein Drop is about this assessment. Null when it failed.
+  confidence     String?
+  /// 0-100 ranking score; bands never overlap across strengths. Excludes freshness.
+  score          Int?
+  /// Strength / confidence reasons (DealAssessment) and every alert rule outcome (AlertEligibility).
+  scoring        Json?
+  /// Whether the match was eligible for an alert when this analysis was made.
+  alertEligible  Boolean            @default(false)
+  /// "deal" | "exceptional" when eligible.
+  alertKind      String?
+
   createdAt    DateTime           @default(now()) @db.Timestamptz(3)
   completedAt  DateTime?          @db.Timestamptz(3)
 
   listing   Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
   huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
 
+  /// One analysis per match per distinct input: a retried / repeated job updates it in place.
+  @@unique([huntMatchId, inputHash])
   @@index([listingId, createdAt])
   @@index([huntMatchId])
   @@index([inputHash])
   @@index([status])
+  @@index([alertEligible, createdAt])
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { JobRunner } from '../queue/job-runner.js';
+import { ANALYSIS_RUNNER } from './deal-analysis.handler.js';
 import { HuntScheduler } from './hunt-scheduler.js';
 
 /**
@@ -19,6 +20,7 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
     @Inject(WORKER_CONFIG) private readonly config: WorkerConfig,
     private readonly scheduler: HuntScheduler,
     private readonly runner: JobRunner,
+    @Inject(ANALYSIS_RUNNER) private readonly analysisRunner: JobRunner,
   ) {}
 
   onApplicationBootstrap() {
@@ -34,6 +36,10 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
       this.loop('runner', runnerIntervalMs, async () => {
         const r = await this.runner.runOnce();
         if (r.received > 0) this.logger.log(`Ran ${r.received} job(s): ${JSON.stringify(r.outcomes)}`);
+      }),
+      this.loop('analysis', runnerIntervalMs, async () => {
+        const r = await this.analysisRunner.runOnce();
+        if (r.received > 0) this.logger.log(`Analysed ${r.received} match(es): ${JSON.stringify(r.outcomes)}`);
       }),
     ];
   }

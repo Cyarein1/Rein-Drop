@@ -45,5 +45,5 @@ export {
   type SearchOptions,
 } from './search.js';
 export { normalizeRawListing, rawListingProblems, type NormalizeResult, type RawListingRecord } from './raw-listing.js';
-export type { MarketplaceAdapter } from './adapter.js';
+export type { BuyerCost, MarketplaceAdapter } from './adapter.js';
 export { MarketplaceRegistry } from './registry.js';

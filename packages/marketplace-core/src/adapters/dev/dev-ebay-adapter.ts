@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import type { MarketplaceAdapter } from '../../adapter.js';
+import type { BuyerCost, MarketplaceAdapter } from '../../adapter.js';
 import type { MarketplaceCapabilities } from '../../capabilities.js';
 import type { SourceHealth } from '../../health.js';
+import type { NormalizedListing } from '../../listing.js';
 import type { NormalizeResult, RawListingRecord } from '../../raw-listing.js';
 import type { MarketplaceSearchCriteria, MarketplaceSearchResult, SearchOptions } from '../../search.js';
 import { abortedError, guardedSearch } from '../guard.js';
@@ -118,6 +119,19 @@ export class DevEbayAdapter implements MarketplaceAdapter {
     return this.toRaw(this.payload(listing, ctx.location, now), now);
   }
 
+  /** Shipping to the buyer, from the metadata `normalize` wrote. Free shipping is a known zero. */
+  buyerCosts(listing: Pick<NormalizedListing, 'price' | 'sourceMetadata'>): BuyerCost[] {
+    const meta = listing.sourceMetadata;
+    if (!meta) return [];
+    if (meta.freeShipping === true && listing.price) {
+      return [{ kind: 'shipping', label: 'Free shipping', amount: { amountMinor: 0, currency: listing.price.currency } }];
+    }
+    const { shippingMinor, shippingCurrency } = meta;
+    if (typeof shippingMinor !== 'number' || !Number.isInteger(shippingMinor) || shippingMinor < 0) return [];
+    if (typeof shippingCurrency !== 'string' || !/^[A-Z]{3}$/.test(shippingCurrency)) return [];
+    return [{ kind: 'shipping', label: 'Shipping', amount: { amountMinor: shippingMinor, currency: shippingCurrency } }];
+  }
+
   normalize(raw: RawListingRecord): NormalizeResult {
     if (raw.marketplace !== this.marketplace) return { status: 'FAILED', reason: `Not an eBay record (${raw.marketplace})` };
     if (raw.provider !== this.provider) {
@@ -148,6 +162,7 @@ export class DevEbayAdapter implements MarketplaceAdapter {
           auctionEndsAt: p.auctionEndsAt,
           freeShipping: p.shipping.free,
           shippingMinor: p.shipping.value === null ? null : decimalToMinor(p.shipping.value, p.shipping.currency),
+          shippingCurrency: p.shipping.currency,
           sellerFeedbackPercent: p.seller.feedbackPercent,
           sellerFeedbackCount: p.seller.feedbackCount,
           returnsAccepted: p.returnsAccepted,

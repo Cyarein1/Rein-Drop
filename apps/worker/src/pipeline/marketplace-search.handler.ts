@@ -10,7 +10,8 @@ import {
   type RawListingRecord,
 } from '@rein-drop/marketplace-core';
 import { dedupeKeyFor } from '@rein-drop/matching';
-import type { Clock, LeasedJob } from '../queue/job-queue.js';
+import type { Clock, JobQueue, LeasedJob } from '../queue/job-queue.js';
+import { ANALYSIS_JOB_TYPE, type AnalysisJobPayload } from './deal-analysis.handler.js';
 import { PermanentJobError, RetryableJobError, type JobHandler } from '../queue/job-runner.js';
 import { MatchStage, type MatchStageSummary } from './match-stage.js';
 import { SEARCH_JOB_TYPE, type SearchJobPayload } from './search-plan.js';
@@ -21,6 +22,8 @@ export const HUNT_POLL_USAGE_KEY = 'hunt_poll';
 export interface MarketplaceSearchHandlerOptions {
   /** Pages fetched per search (newest listings come first). */
   maxPages: number;
+  /** Where to enqueue deal analysis for the open matches a run confirms. Omit to skip analysis. */
+  analysis?: { queue: JobQueue; queueName: string; maxAttempts: number };
 }
 
 /**
@@ -84,11 +87,12 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
       update: { attempts: { increment: 1 }, status: 'RUNNING', errorCode: null, errorMessage: null, finishedAt: null },
     });
 
+    let openMatchIds: string[];
     try {
       const pages = await this.fetch(adapter, payload, run.id, marketplace.id);
       await this.normalizePending(adapter, run.id);
       const location = payload.criteria.location;
-      const matches = await this.matchStage.run({
+      const { summary: matches, openMatchIds: open } = await this.matchStage.run({
         runId: run.id,
         huntIds,
         marketplace: payload.marketplace,
@@ -99,6 +103,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
           (location.radiusKm === null || adapter.capabilities.radius),
       });
       await this.finishRun(run.id, pages, huntIds, targets, marketplace.id, payload.marketplace, matches);
+      openMatchIds = open;
     } catch (err) {
       await this.prisma.searchRun.update({
         where: { id: run.id },
@@ -115,6 +120,24 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
         throw new PermanentJobError(`${err.code}: ${err.message}`);
       }
       throw err; // database / unexpected errors: let the runner retry with backoff
+    }
+
+    // Outside the try: a queue error is not a marketplace failure. If it throws, the job retries;
+    // the search is idempotent and the dedupe key stops double analysis jobs.
+    await this.enqueueAnalysis(run.id, openMatchIds);
+  }
+
+  private async enqueueAnalysis(runId: string, matchIds: string[]): Promise<void> {
+    const analysis = this.options.analysis;
+    if (!analysis) return;
+    for (const huntMatchId of matchIds) {
+      await analysis.queue.enqueue<AnalysisJobPayload>({
+        queue: analysis.queueName,
+        type: ANALYSIS_JOB_TYPE,
+        payload: { huntMatchId },
+        dedupeKey: `${ANALYSIS_JOB_TYPE}:${huntMatchId}:${runId}`,
+        maxAttempts: analysis.maxAttempts,
+      });
     }
   }
 

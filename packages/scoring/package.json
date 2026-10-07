@@ -1,0 +1,35 @@
+{
+  "name": "@rein-drop/scoring",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Deterministic deal economics, strength / confidence classification and alert eligibility (no AI, no I/O)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json",
+    "lint": "oxlint src",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rein-drop/ai-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@rein-drop/config": "workspace:*",
+    "oxlint": "^1.87.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

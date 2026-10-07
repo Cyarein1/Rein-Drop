@@ -19,6 +19,13 @@ export interface MatchStageSummary {
   rejectionSummary: Record<string, number>;
 }
 
+export interface MatchStageResult {
+  /** Counts stored on the SearchRun. */
+  summary: MatchStageSummary;
+  /** Open (NEW / SEEN) matches this run confirmed - the candidates for deal analysis. */
+  openMatchIds: string[];
+}
+
 const OPEN: ReadonlySet<HuntMatch['status']> = new Set(['NEW', 'SEEN']);
 const ACTIVE_LISTING: ReadonlySet<Listing['status']> = new Set(['ACTIVE', 'UNKNOWN']);
 
@@ -38,7 +45,7 @@ export class MatchStage {
     private readonly clock: Clock = () => new Date(),
   ) {}
 
-  async run(input: MatchStageInput): Promise<MatchStageSummary> {
+  async run(input: MatchStageInput): Promise<MatchStageResult> {
     const listingIds = [
       ...new Set(
         (
@@ -61,6 +68,7 @@ export class MatchStage {
     ]);
     const existingByPair = new Map(existing.map((m) => [`${m.huntId}:${m.listingId}`, m]));
     const summary: MatchStageSummary = { matchedCount: 0, newMatchCount: 0, rejectedCount: 0, duplicateCount: 0, rejectionSummary: {} };
+    const openMatchIds: string[] = [];
     const now = this.clock();
 
     for (const hunt of hunts) {
@@ -92,17 +100,21 @@ export class MatchStage {
         if (result.matched) {
           summary.matchedCount += 1;
           if (!current) {
-            await this.prisma.huntMatch.upsert({
+            const created = await this.prisma.huntMatch.upsert({
               where: { huntId_listingId: { huntId: hunt.id, listingId: listing.id } },
               create: { huntId: hunt.id, listingId: listing.id, status: 'NEW', firstSearchRunId: input.runId, matchedAt: now, ...evaluation },
               update: evaluation,
+              select: { id: true, status: true },
             });
+            if (OPEN.has(created.status)) openMatchIds.push(created.id);
           } else {
             const revived = current.status === 'EXPIRED';
             await this.prisma.huntMatch.update({
               where: { id: current.id },
               data: { ...evaluation, ...(revived ? { status: 'NEW', statusReason: 'matches_again' } : {}) },
             });
+            // DISMISSED stays the user's decision: never re-analysed.
+            if (revived || OPEN.has(current.status)) openMatchIds.push(current.id);
           }
           continue;
         }
@@ -121,7 +133,7 @@ export class MatchStage {
       }
     }
     summary.newMatchCount = await this.prisma.huntMatch.count({ where: { firstSearchRunId: input.runId } });
-    return summary;
+    return { summary, openMatchIds };
   }
 
   /**

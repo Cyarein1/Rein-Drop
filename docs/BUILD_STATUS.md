@@ -1,8 +1,65 @@
 # Build Status
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-07 (step 24)_
+
+Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
+collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 24 - Deal scoring pipeline + alert eligibility (Build Prompt 21)
+
+**What was added** (rules and rationale: `docs/decisions/0005-deal-scoring.md`)
+
+- New `packages/scoring` (`@rein-drop/scoring`, pure, depends on ai-core types only):
+  - `computeEconomics`: asking price + costs the listing states, max-price check (asking, and
+    asking + known costs, with headroom), resale estimate and **estimated upside** (low / typical /
+    high, `basis: 'estimate'`, margin) ONLY from comparable sales (>= 5), profit / margin target
+    met / not met / unverified, and the costs never included yet (selling + payment fees, shipping to
+    your buyer, repairs). No "profit" anywhere: realized P/L only comes from recorded sales.
+  - `scoreCandidate`: strength (exceptional / strong / moderate / weak) and confidence
+    (high / medium / low) from the economics + the AI's product and risk output, every rule as a
+    reason (blocks / caps / supports / note); 0-100 ranking score in non-overlapping bands.
+  - `evaluateAlertEligibility`: completed analysis, hunt LIVE, match NEW, listing ACTIVE, not a
+    duplicate, strength >= strong, confidence >= medium, posted <= 48h ago; kind deal / exceptional.
+  - `DEFAULT_SCORING_POLICY` + `SCORING_VERSION`: every threshold in one place, marked as proposed
+    defaults (Blueprint section 22 leaves Strong vs Exceptional open).
+- marketplace-core: optional `MarketplaceAdapter.buyerCosts()` (the adapter reads its own
+  `sourceMetadata`); the dev eBay adapter states shipping (free = known zero) and now also records
+  `shippingCurrency`. Facebook states none.
+- DB migration `20261007171603_deal_scoring`: DealAnalysis `scoringVersion`, `economics`,
+  `strength`, `confidence`, `score`, `scoring` (reasons + alert rule outcomes), `alertEligible`,
+  `alertKind`; unique (huntMatchId, inputHash); index (alertEligible, createdAt). Strength /
+  confidence are text, not DB enums (pending product decision).
+- Worker: MatchStage returns the open matches it confirmed; the search handler enqueues one
+  `deal.analyze` job per open match on the new `deal-analysis` queue (dedupe per match + run);
+  `DealAnalysisHandler` re-checks the match (skips dismissed / expired / duplicate / paused), runs the
+  AIProvider, scores, and upserts one DealAnalysis per (match, input hash) - unchanged inputs cost
+  no AI call; the input uses "now" at day granularity. Retryable AI failures retry the job; the last
+  attempt is stored FAILED (economics kept, never eligible). A second runner loop drives the
+  analysis queue. New config `AI_PROVIDER` (mock default; required in production, mock refused).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (scoring 18 new tests incl. two end to end
+  through the MockAIProvider; marketplace-core 137; worker unit 28).
+- `pnpm --filter worker test:int`: 25/25 - 6 new against the real database: one analysis job per
+  open match; one COMPLETED, scored DealAnalysis each (no resale source -> nothing estimated, never
+  exceptional / high confidence; eBay shipping included as a known cost); only some matches are
+  eligible, each with explained blocked rules; for-parts listings weak; a hunt with no max price or
+  target never eligible; redelivered jobs and later searches of unchanged listings add nothing; AI
+  outage retries, then FAILED, then replaced in place when it recovers; dismissed matches never analysed.
+- `pnpm --filter api test:e2e` 36/36, `pnpm --filter api test:int` 9/9.
+
+**Not done / TODO**
+
+- Creating alerts (once per match, channels, preferences, per-hunt caps): Build Prompt 24.
+- Deals API / screens exposing strength, confidence, economics: Build Prompts 22-23.
+- `TODO(data)`: comparable-sales source; auctions score on their current bid.
+- `TODO(product)`: confirm thresholds, margin definition (upside / resale price), 48h window.
+- `TODO(ai)`: `analysisInputKey` is computed with `promptVersion: null` (versions are only known
+  after a call), so a prompt change alone doesn't trigger re-analysis.
+- An unchanged open match is re-analysed once per day (new "now"); cheap on the mock, to watch on Foundry.
 
 ### Step 23 - Seller Snapshot onboarding UI (Build Prompt 11, previously skipped)
 
@@ -1080,8 +1137,8 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-10 and 12-20 (our steps 1-22 include extra fix / reseller-gate / locale
-  steps, so our numbers run ahead of the prompt numbers).
+- Build Prompts done: 01-21 (our steps 1-24 include extra fix / reseller-gate / locale steps, so
+  our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
   (the zod contracts could generate it).
@@ -1097,9 +1154,6 @@ used (owner decision).
 
 ## Next step
 
-Likely: run deal analysis in the worker for new matches (mock provider, inputHash to skip
-unchanged ones), listing refresh (expire sold matches), then the Deals API + screens showing
-matches, reasons and analyses; or Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
-live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
-Seller Snapshot questions) on web and mobile.
+Build Prompt 22 in document order: Deals API and ranked feed (strength / freshness ordering,
+filters, detail, Save / Ignore / Bought), using the DealAnalysis scoring from step 24.
 (Await the next prompt.)

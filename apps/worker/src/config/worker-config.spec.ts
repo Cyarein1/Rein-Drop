@@ -16,6 +16,7 @@ describe('loadWorkerConfig', () => {
         maxAttempts: 5,
         searchMaxPages: 1,
       },
+      ai: { provider: 'mock' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
   });
@@ -35,6 +36,7 @@ describe('loadWorkerConfig', () => {
       expect((err as EnvValidationError).problems).toEqual([
         'DATABASE_URL: is required when NODE_ENV=production',
         'HUNT_POLL_INTERVAL_MINUTES: is required when NODE_ENV=production',
+        'AI_PROVIDER: is required when NODE_ENV=production',
       ]);
     }
   });
@@ -57,8 +59,17 @@ describe('loadWorkerConfig', () => {
         NODE_ENV: 'production',
         DATABASE_URL: 'postgresql://u:p@db/app',
         HUNT_POLL_INTERVAL_MINUTES: '15',
+        AI_PROVIDER: 'foundry',
         FACEBOOK_DEV_SCENARIO: 'empty',
       }),
     ).toThrow('FACEBOOK_DEV_SCENARIO: development-only, not allowed when NODE_ENV=production');
+  });
+
+  it('uses the mock AI provider locally and refuses it in production', () => {
+    expect(loadWorkerConfig({ AI_PROVIDER: 'foundry' }).ai).toEqual({ provider: 'foundry' });
+    expect(() => loadWorkerConfig({ AI_PROVIDER: 'openai' })).toThrow(/AI_PROVIDER: must be one of: mock, foundry/);
+    expect(() =>
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock' }),
+    ).toThrow('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
   });
 });

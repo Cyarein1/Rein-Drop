@@ -1,6 +1,7 @@
 import type { MarketplaceCapabilities } from './capabilities.js';
 import type { SourceHealth } from './health.js';
 import type { MarketplaceId } from './ids.js';
+import type { Money, NormalizedListing } from './listing.js';
 import type { NormalizeResult, RawListingRecord } from './raw-listing.js';
 import type { MarketplaceSearchCriteria, MarketplaceSearchResult, SearchOptions } from './search.js';
 
@@ -30,4 +31,17 @@ export interface MarketplaceAdapter {
   fetchListing?(externalId: string, options?: SearchOptions): Promise<RawListingRecord | null>;
   /** Raw record -> normalized Listing. Use `normalizeRawListing()` rather than calling this directly. */
   normalize(raw: RawListingRecord): NormalizeResult;
+  /**
+   * Costs of buying this listing that its source states (e.g. a shipping charge), read from the
+   * `sourceMetadata` this adapter wrote - domain code never reads that itself. Pure, never throws;
+   * [] when nothing is known. Absent = the source never states buyer costs.
+   */
+  buyerCosts?(listing: Pick<NormalizedListing, 'price' | 'sourceMetadata'>): BuyerCost[];
+}
+
+/** A cost of buying a listing, as stated by the listing (in addition to its price). */
+export interface BuyerCost {
+  kind: 'shipping';
+  label: string;
+  amount: Money;
 }

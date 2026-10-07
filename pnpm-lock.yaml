@@ -391,6 +391,9 @@ importers:
       '@nestjs/core':
         specifier: ^12.1.2
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@12.1.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@rein-drop/ai-core':
+        specifier: workspace:*
+        version: link:../../packages/ai-core
       '@rein-drop/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -403,6 +406,9 @@ importers:
       '@rein-drop/matching':
         specifier: workspace:*
         version: link:../../packages/matching
+      '@rein-drop/scoring':
+        specifier: workspace:*
+        version: link:../../packages/scoring
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -622,6 +628,25 @@ importers:
       '@rein-drop/marketplace-core':
         specifier: workspace:*
         version: link:../marketplace-core
+    devDependencies:
+      '@rein-drop/config':
+        specifier: workspace:*
+        version: link:../config
+      oxlint:
+        specifier: ^1.87.0
+        version: 1.87.0
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.19.1)(@vitest/coverage-v8@4.1.11)(vite@8.3.2(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/scoring:
+    dependencies:
+      '@rein-drop/ai-core':
+        specifier: workspace:*
+        version: link:../ai-core
     devDependencies:
       '@rein-drop/config':
         specifier: workspace:*

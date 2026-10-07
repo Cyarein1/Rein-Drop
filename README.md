@@ -32,6 +32,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | `packages/marketplace-core` | `@rein-drop/marketplace-core` | Marketplace adapter boundary (eBay, Facebook Marketplace) |
 | `packages/matching` | `@rein-drop/matching` | Deterministic hunt matching + listing deduplication (pure, no AI) |
 | `packages/ai-core` | `@rein-drop/ai-core` | `AIProvider` boundary: structured, validated, grounded outputs (deterministic mock locally, Microsoft Foundry later) |
+| `packages/scoring` | `@rein-drop/scoring` | Deal economics (deterministic), strength / confidence classification and alert eligibility (pure) |
 | `packages/design-tokens` | `@rein-drop/design-tokens` | Colors, tones, typography, spacing, component variant types, mascot tokens |
 | `packages/brand-assets` | `@rein-drop/brand-assets` | Approved logo / app icon / mascot image files (no code) |
 | `packages/config` | `@rein-drop/config` | Shared tsconfig base |

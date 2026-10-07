@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, type AIProviderId } from '@rein-drop/ai-core';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
 import { DEV_SCENARIOS, type DevScenario } from '@rein-drop/marketplace-core/adapters';
 import {
@@ -33,6 +34,8 @@ const workerEnvSchema = z.object({
   WORKER_SEARCH_MAX_PAGES: intSchema({ min: 1, max: 10, default: 1 }),
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
+  /** Which AIProvider analyses matched listings. `mock` is deterministic and local-only. */
+  AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
 });
 
 /** Validated, typed worker configuration. Inject with `@Inject(WORKER_CONFIG)`. */
@@ -49,6 +52,8 @@ export interface WorkerConfig {
     readonly maxAttempts: number;
     readonly searchMaxPages: number;
   };
+  /** AIProvider for deal analysis (@rein-drop/ai-core). */
+  readonly ai: { readonly provider: AIProviderId };
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
 }
@@ -60,12 +65,14 @@ export function loadWorkerConfig(
   env: Record<string, string | undefined> = process.env,
 ): WorkerConfig {
   const parsed = parseEnv('worker', workerEnvSchema, env, {
-    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES'],
+    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER'],
   });
   if (parsed.NODE_ENV === 'production') {
     const problems = (['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const)
       .filter((key) => parsed[key] !== undefined)
       .map((key) => `${key}: development-only, not allowed when NODE_ENV=production`);
+    // The mock produces believable but meaningless analyses: never in front of real users.
+    if (parsed.AI_PROVIDER === 'mock') problems.push('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
     if (problems.length > 0) throw new EnvValidationError('worker', problems);
   }
   return Object.freeze({
@@ -81,6 +88,7 @@ export function loadWorkerConfig(
       maxAttempts: parsed.WORKER_JOB_MAX_ATTEMPTS,
       searchMaxPages: parsed.WORKER_SEARCH_MAX_PAGES,
     }),
+    ai: Object.freeze({ provider: parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER }),
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
