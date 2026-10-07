@@ -12,7 +12,8 @@ export type {
   FacebookProviderRecord,
   FacebookSearchRequest,
 } from './facebook/facebook-data-provider.js';
-export { MockMarketplaceAdapter, type MockMarketplaceAdapterOptions } from './mock/mock-marketplace-adapter.js';
-export { MockFacebookDataProvider, type MockFacebookDataProviderOptions } from './mock/mock-facebook-data-provider.js';
-export { MOCK_HOST } from './mock/mock-catalogue.js';
+export { DevEbayAdapter } from './dev/dev-ebay-adapter.js';
+export { DevFacebookDataProvider, type DevFacebookDataProviderOptions } from './dev/dev-facebook-data-provider.js';
+export { DEV_HOST, DEV_SCENARIOS, isDevScenario, type DevScenario, type DevSourceOptions } from './dev/dev-source.js';
+export { DEV_CASES, DEV_PRODUCTS, type DevCase, type DevProduct } from './dev/catalogue.js';
 export { guardedSearch } from './guard.js';

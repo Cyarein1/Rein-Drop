@@ -1,4 +1,4 @@
-import { EnvValidationError, LOCAL_DATABASE_URL } from '@rein-drop/env';
+﻿import { EnvValidationError, LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { loadApiConfig } from './api-config.js';
 
 function problemsFor(env: Record<string, string | undefined>): string[] {
@@ -18,6 +18,7 @@ describe('loadApiConfig', () => {
       port: 4000,
       databaseUrl: LOCAL_DATABASE_URL,
       authProvider: 'dev',
+      devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
   });
 
@@ -55,7 +56,30 @@ describe('loadApiConfig', () => {
       port: 8080,
       databaseUrl: 'postgresql://u:p@db.example:5432/app',
       authProvider: 'dev',
+      devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
+  });
+
+  it('selects development marketplace scenarios', () => {
+    expect(loadApiConfig({ EBAY_DEV_SCENARIO: 'rate_limited', FACEBOOK_DEV_SCENARIO: 'degraded' }).devMarketplaceScenarios).toEqual({
+      ebay: 'rate_limited',
+      facebook: 'degraded',
+    });
+    expect(problemsFor({ EBAY_DEV_SCENARIO: 'chaos' })[0]).toMatch(/^EBAY_DEV_SCENARIO: must be one of: normal, empty/);
+  });
+
+  it('refuses development marketplace scenarios in production', () => {
+    expect(
+      problemsFor({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://u:p@db/app',
+        AUTH_PROVIDER: 'dev',
+        FACEBOOK_DEV_SCENARIO: 'normal',
+      }),
+    ).toEqual([
+      'AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production',
+      'FACEBOOK_DEV_SCENARIO: development-only, not allowed when NODE_ENV=production',
+    ]);
   });
 
   it('rejects an invalid PORT with the received value', () => {

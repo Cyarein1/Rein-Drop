@@ -90,6 +90,7 @@ Invalid environment configuration for api:
 | `PORT` | api | `4000` | |
 | `AUTH_PROVIDER` | api, web | `dev` outside production | `dev` is development-only and refused in production; required in production (managed provider TBD) |
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
+| `EBAY_DEV_SCENARIO`, `FACEBOOK_DEV_SCENARIO` | api | `normal` | Development marketplace sources only: `normal` \| `empty` \| `degraded` \| `rate_limited` \| `unavailable` \| `not_configured` \| `invalid_response` \| `malformed_payloads`. Refused in production. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |

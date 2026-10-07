@@ -1,9 +1,10 @@
 import type { MarketplaceSearchCriteria } from '../search.js';
 import { describeMarketplaceAdapterContract } from '../testing/index.js';
-import { FacebookAdapter, MockFacebookDataProvider, MockMarketplaceAdapter } from './index.js';
+import { DevEbayAdapter, DevFacebookDataProvider, FacebookAdapter } from './index.js';
 
+/** "iphone" matches three seeded products, so results span several pages at limit 10. */
 const criteria: MarketplaceSearchCriteria = {
-  query: 'Nintendo Switch OLED',
+  query: 'iphone',
   location: { text: 'Cape Town', radiusKm: 40 },
   conditions: [],
   maxPrice: null,
@@ -11,27 +12,33 @@ const criteria: MarketplaceSearchCriteria = {
   cursor: null,
 };
 
-describeMarketplaceAdapterContract('mock eBay', {
-  create: () => new MockMarketplaceAdapter({ marketplace: 'ebay' }),
+describeMarketplaceAdapterContract('dev eBay', {
+  create: () => new DevEbayAdapter(),
   criteria,
 });
 
-describeMarketplaceAdapterContract('Facebook via mock provider', {
-  create: () => new FacebookAdapter(new MockFacebookDataProvider()),
+describeMarketplaceAdapterContract('dev eBay - ZAR, used only, max price', {
+  create: () => new DevEbayAdapter({ currency: 'ZAR' }),
+  criteria: { ...criteria, query: 'Nintendo Switch OLED', conditions: ['used'], maxPrice: { amountMinor: 450_000, currency: 'ZAR' } },
+});
+
+describeMarketplaceAdapterContract('dev eBay - degraded scenario', {
+  create: () => new DevEbayAdapter({ scenario: 'degraded' }),
   criteria,
 });
 
-// A second provider with different capabilities: the adapter contract must still hold.
-describeMarketplaceAdapterContract('Facebook via alternate provider (no refresh, no radius)', {
+describeMarketplaceAdapterContract('Facebook via dev provider', {
+  create: () => new FacebookAdapter(new DevFacebookDataProvider()),
+  criteria,
+});
+
+describeMarketplaceAdapterContract('Facebook via alternate dev provider (no refresh, no radius)', {
   create: () =>
-    new FacebookAdapter(
-      new MockFacebookDataProvider({ id: 'mock-alt', capabilities: { fetchListing: false, radius: false, maxPageSize: 12 } }),
-    ),
+    new FacebookAdapter(new DevFacebookDataProvider({ id: 'dev-alt', capabilities: { fetchListing: false, radius: false, maxPageSize: 12 } })),
   criteria,
 });
 
-// Filters applied by the source must not break the contract either.
-describeMarketplaceAdapterContract('mock eBay with filters', {
-  create: () => new MockMarketplaceAdapter({ marketplace: 'ebay', currency: 'ZAR' }),
-  criteria: { ...criteria, conditions: ['used'], maxPrice: { amountMinor: 450_000, currency: 'ZAR' } },
+describeMarketplaceAdapterContract('Facebook via dev provider - degraded scenario', {
+  create: () => new FacebookAdapter(new DevFacebookDataProvider({ scenario: 'degraded' })),
+  criteria: { ...criteria, query: 'samsung galaxy' },
 });

@@ -1,5 +1,7 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { AUTH_PROVIDER_IDS, type AuthProviderId } from '@rein-drop/contracts';
+// Config is wiring (like the registry provider): it may name development marketplace scenarios.
+import { DEV_SCENARIOS, type DevScenario } from '@rein-drop/marketplace-core/adapters';
 import {
   databaseUrlSchema,
   EnvValidationError,
@@ -10,6 +12,10 @@ import {
   type NodeEnv,
 } from '@rein-drop/env';
 
+const devScenarioSchema = z
+  .enum(DEV_SCENARIOS, { error: `must be one of: ${DEV_SCENARIOS.join(', ')}` })
+  .optional();
+
 const apiEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema,
   PORT: portSchema(4000),
@@ -17,6 +23,8 @@ const apiEnvSchema = z.object({
   AUTH_PROVIDER: z
     .enum(AUTH_PROVIDER_IDS, { error: `must be one of: ${AUTH_PROVIDER_IDS.join(', ')}` })
     .optional(),
+  EBAY_DEV_SCENARIO: devScenarioSchema,
+  FACEBOOK_DEV_SCENARIO: devScenarioSchema,
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -27,6 +35,8 @@ export interface ApiConfig {
   readonly databaseUrl: string;
   /** Which AuthProvider implementation authenticates requests. */
   readonly authProvider: AuthProviderId;
+  /** Behaviour of the development marketplace sources (ignored by real adapters). */
+  readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -39,12 +49,18 @@ export function loadApiConfig(
     requiredInProduction: ['DATABASE_URL', 'AUTH_PROVIDER'],
   });
 
-  // DEVELOPMENT-ONLY auth must never run in production. No managed provider exists
-  // yet (TBD), so production cannot start until one is added - by design.
-  if (parsed.NODE_ENV === 'production' && parsed.AUTH_PROVIDER === 'dev') {
-    throw new EnvValidationError('api', [
-      'AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production',
-    ]);
+  if (parsed.NODE_ENV === 'production') {
+    const problems: string[] = [];
+    // DEVELOPMENT-ONLY auth must never run in production. No managed provider exists
+    // yet (TBD), so production cannot start until one is added - by design.
+    if (parsed.AUTH_PROVIDER === 'dev') {
+      problems.push('AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production');
+    }
+    // Development marketplace scenarios are meaningless in production: refuse rather than ignore.
+    for (const key of ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const) {
+      if (parsed[key] !== undefined) problems.push(`${key}: development-only, not allowed when NODE_ENV=production`);
+    }
+    if (problems.length > 0) throw new EnvValidationError('api', problems);
   }
 
   return Object.freeze({
@@ -53,5 +69,9 @@ export function loadApiConfig(
     databaseUrl: resolveDatabaseUrl(parsed),
     // Safe default outside production only (production requires an explicit value above).
     authProvider: parsed.AUTH_PROVIDER ?? 'dev',
+    devMarketplaceScenarios: Object.freeze({
+      ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
+      facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
+    }),
   });
 }

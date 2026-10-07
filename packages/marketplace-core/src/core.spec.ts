@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import type { MarketplaceAdapter } from './adapter.js';
-import { MockMarketplaceAdapter } from './adapters/index.js';
+import { DevEbayAdapter } from './adapters/index.js';
 import type { MarketplaceCapabilities } from './capabilities.js';
 import { MarketplaceError } from './errors.js';
 import { normalizeRawListing, rawListingProblems, type RawListingRecord } from './raw-listing.js';
@@ -142,7 +142,7 @@ describe('MarketplaceRegistry', () => {
   const now = new Date('2026-10-07T00:00:00Z');
 
   it('returns the configured adapter and NOT_CONFIGURED otherwise', () => {
-    const ebay = new MockMarketplaceAdapter({ marketplace: 'ebay' });
+    const ebay = new DevEbayAdapter();
     const registry = new MarketplaceRegistry([ebay]);
     expect(registry.get('ebay')).toBe(ebay);
     expect(registry.has('facebook')).toBe(false);
@@ -155,36 +155,17 @@ describe('MarketplaceRegistry', () => {
   });
 
   it('refuses two adapters for one marketplace', () => {
-    const one = new MockMarketplaceAdapter({ marketplace: 'ebay' });
-    expect(() => new MarketplaceRegistry([one, new MockMarketplaceAdapter({ marketplace: 'ebay' })])).toThrow(/Two adapters/);
+    const one = new DevEbayAdapter();
+    expect(() => new MarketplaceRegistry([one, new DevEbayAdapter()])).toThrow(/Two adapters/);
   });
 
   it('reports health for every launch marketplace without rejecting', async () => {
-    const broken = new MockMarketplaceAdapter({ marketplace: 'ebay' });
+    const broken = new DevEbayAdapter();
     broken.health = () => Promise.reject(new Error('dns'));
     const health = await new MarketplaceRegistry([broken], () => now).health();
     expect(health).toEqual([
-      { marketplace: 'ebay', provider: 'mock', status: 'down', message: 'Health check failed: dns', checkedAt: now, retryAfter: null },
+      { marketplace: 'ebay', provider: 'dev', status: 'down', message: 'Health check failed: dns', checkedAt: now, retryAfter: null },
       { marketplace: 'facebook', provider: 'none', status: 'not_configured', message: 'No adapter configured', checkedAt: now, retryAfter: null },
     ]);
-  });
-});
-
-describe('mock sources', () => {
-  it('are deterministic per query and support empty and failing states', async () => {
-    const a = await new MockMarketplaceAdapter({ marketplace: 'ebay' }).search(criteria);
-    const b = await new MockMarketplaceAdapter({ marketplace: 'ebay' }).search(criteria);
-    expect(a.listings.map((r) => r.payload)).toEqual(b.listings.map((r) => r.payload));
-
-    const empty = await new MockMarketplaceAdapter({ marketplace: 'ebay', totalResults: 0 }).search(criteria);
-    expect(empty).toEqual({ listings: [], nextCursor: null });
-
-    const failing = new MockMarketplaceAdapter({ marketplace: 'ebay', failSearchWith: 'UNAVAILABLE' });
-    await expect(failing.search(criteria)).rejects.toMatchObject({ code: 'UNAVAILABLE', retryable: true });
-  });
-
-  it('rejects a cursor it did not issue', async () => {
-    const adapter = new MockMarketplaceAdapter({ marketplace: 'ebay' });
-    await expect(adapter.search({ ...criteria, cursor: 'garbage' })).rejects.toMatchObject({ code: 'UNSUPPORTED_CRITERIA' });
   });
 });

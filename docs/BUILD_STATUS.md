@@ -4,6 +4,52 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 19 - Deterministic development marketplace sources
+
+**What was added** (`packages/marketplace-core/src/adapters/dev/`; replaces step 18's generic mocks)
+
+- Seeded catalogue: 15 products - phones (iPhone 12/13/14 Pro, Galaxy S23/A54, Pixel 7), iPad,
+  consoles (Switch OLED, PS5, Xbox Series X), audio (AirPods Pro 2, Sony XM4), MacBook Air M1,
+  GoPro, DJI drone - each in up to 9 listing cases: deal, just-listed hot deal, fair, overpriced,
+  new sealed, refurbished, for parts, auction (eBay) / no price "message me" (Facebook), stale.
+  Prices are SYNTHETIC (rough typical value x case factor x small jitter, rounded the way people
+  type them; rough per-currency multipliers for USD/EUR/GBP/CAD/AUD/NZD/ZAR, others fall back to
+  USD). Labelled as development-only, not market data.
+- `DevEbayAdapter` implements `MarketplaceAdapter`; `DevFacebookDataProvider` implements
+  `FacebookDataProvider` and runs through the real `FacebookAdapter`. Each has its own invented
+  development payload format (eBay: decimal price strings, auction/bids, shipping, seller
+  feedback, returns; Facebook: whole-unit asks, condition labels, distance, delivery, seller
+  joined year). Neither imitates a real API format.
+- Freshness: listings are aged from an epoch (adapter start) and sell / end / get removed as the
+  clock moves; search returns active listings newest first; `fetchListing` shows the new status
+  (SOLD, ENDED for auctions, REMOVED for withdrawn Facebook listings).
+- Pagination: keyset cursors - no repeats or skips when a listing sells between pages.
+- Source metadata on every normalized listing (`synthetic: true` plus the fields above).
+- Scenarios (`DEV_SCENARIOS`): normal, empty, degraded (short first page, health degraded),
+  rate_limited (RATE_LIMITED + retryAfter), unavailable, not_configured, invalid_response
+  (adapter rejects with INVALID_RESPONSE), malformed_payloads (every 4th record FAILS
+  normalization).
+- API: `EBAY_DEV_SCENARIO` / `FACEBOOK_DEV_SCENARIO` (validated; refused in production) select
+  the scenario; registry uses the dev sources outside production. `.env.example` and README
+  updated. Config may import `/adapters` (boundary test allowlist), nothing else may.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 45/45. marketplace-core 136 tests: the adapter
+  contract suite on dev eBay (plain, ZAR + filters, degraded) and Facebook (dev provider,
+  alternate provider with other capabilities, degraded); every seeded listing on both
+  marketplaces normalizes; price/condition cases; ZAR rounding and currency fallback; filters
+  and radius; determinism; freshness transitions; keyset paging across a sale; all 8 scenarios
+  on both marketplaces. api 85 (+config scenario tests, +registry scenario test), e2e 36,
+  integration 9.
+- Live: built API exits with a clear message for `EBAY_DEV_SCENARIO=chaos`; starts with
+  `FACEBOOK_DEV_SCENARIO=rate_limited`.
+
+**Not done**
+
+- Nothing calls the sources yet (ingestion worker is next). No HTTP endpoint exposes them.
+- Listings are not written to the database (no RawListing `provider` column yet - TODO(db)).
+
 ### Step 18 - Marketplace adapter boundary (marketplace-core)
 
 **What was added**
