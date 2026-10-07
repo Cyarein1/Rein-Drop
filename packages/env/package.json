@@ -1,0 +1,34 @@
+{
+  "name": "@rein-drop/env",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Server-side environment validation helpers shared by api and worker (Node only)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "@rein-drop/config": "workspace:*",
+    "@types/node": "^24.19.1",
+    "oxlint": "^1.87.0",
+    "typescript": "~6.0.3"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

@@ -8,7 +8,13 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "infra:up": "docker compose up -d --wait postgres",
+    "infra:down": "docker compose down",
+    "infra:status": "docker compose ps",
+    "infra:logs": "docker compose logs -f postgres",
+    "infra:psql": "docker compose exec postgres psql",
+    "infra:reset": "docker compose down --volumes"
   },
   "packageManager": "pnpm@12.9.1",
   "engines": {

@@ -3,13 +3,14 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
+import { loadApiConfig } from './../src/config/api-config.js';
 
 describe('API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule.forRoot(loadApiConfig({}))],
     }).compile();
 
     app = moduleFixture.createNestApplication();

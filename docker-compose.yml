@@ -1,0 +1,35 @@
+# Local development infrastructure. PostgreSQL only - nothing else belongs here
+# unless a later step explicitly adds it.
+#
+# Values come from the root .env file if present (see .env.example); every
+# value has a local-dev default so `pnpm infra:up` works without any setup.
+# These credentials are for a local, loopback-only database - never reuse them.
+
+name: rein-drop
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reindrop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reindrop}
+      POSTGRES_DB: ${POSTGRES_DB:-reindrop}
+      # Let `psql` / `pg_isready` inside the container default to the same user/db.
+      PGUSER: ${POSTGRES_USER:-reindrop}
+      PGDATABASE: ${POSTGRES_DB:-reindrop}
+    ports:
+      # Bound to loopback only: reachable from this machine, not the LAN.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18+ images keep data under /var/lib/postgresql/<major>/.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:

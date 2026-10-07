@@ -4,6 +4,47 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 2 - Local infrastructure + typed environment config
+
+**What was added**
+
+- `docker-compose.yml`: PostgreSQL only (`postgres:18-alpine`), bound to `127.0.0.1`, named
+  volume `rein-drop_postgres-data`, `pg_isready` healthcheck. Credentials/port overridable via
+  root `.env` (`.env.example`); defaults `reindrop`/`reindrop`/`reindrop` on port 5432.
+- Root scripts: `infra:up` (waits for healthy), `infra:down`, `infra:status`, `infra:logs`,
+  `infra:psql`, `infra:reset` (deletes data).
+- `packages/env` (`@rein-drop/env`): shared server-side helpers - `NODE_ENV` and `DATABASE_URL`
+  schemas, integer/port parsing, `parseEnv` (reports every problem at once, never echoes
+  `DATABASE_URL`), `EnvValidationError`, `.env` loading, URL redaction. Local default
+  `DATABASE_URL` lives here once, matching docker-compose.
+- api: `src/config/api-config.ts` (zod schema -> frozen typed `ApiConfig`, injected via
+  `API_CONFIG`). `AppModule.forRoot(config)`. Validated before Nest starts; invalid env exits 1.
+- worker: same pattern (`WorkerConfig`, `WORKER_CONFIG`, `WorkerModule.forRoot(config)`);
+  heartbeat interval now comes from validated config. Vitest added to worker.
+- Env vars: `NODE_ENV` (default development), `PORT` (api, default 4000), `DATABASE_URL`
+  (defaults to local Docker DB outside production; required in production),
+  `WORKER_HEARTBEAT_MS` (default 60000, >= 1000). `.env.example` files updated.
+- Health-friendly: api/worker boot and `/health` responds with no `.env` and no DB running -
+  nothing connects to the DB yet.
+- README: Windows/PowerShell setup, port table, env table, troubleshooting.
+
+**What works (verified)**
+
+- `pnpm build` 10/10, `pnpm typecheck` 14/14, `pnpm lint` 14/14.
+- `pnpm test`: api 9 tests (config + health), worker 3 tests (config); api e2e passes.
+- `pnpm infra:up` -> container healthy, PostgreSQL 18.6, data in the mounted volume;
+  `infra:psql` connects as `reindrop`. **Verified on host port 5433** (see known issues).
+- Invalid env -> process exits 1 listing all problems; valid env -> api serves `/health` and logs
+  `DATABASE_URL` with the password redacted; worker boots and heartbeats.
+
+**Commands**
+
+```powershell
+pnpm infra:up; pnpm infra:status; pnpm infra:psql; pnpm infra:down
+pnpm --filter api dev; pnpm --filter worker dev
+pnpm build; pnpm typecheck; pnpm lint; pnpm test
+```
+
 ### Step 1 - Monorepo initialization
 
 pnpm workspaces + Turborepo with 4 apps and 6 packages. No business features.
@@ -15,6 +56,7 @@ pnpm workspaces + Turborepo with 4 apps and 6 packages. No business features.
 - `pnpm typecheck` - 12/12 tasks pass.
 - `pnpm lint` - 12/12 tasks pass (oxlint for api/worker/packages, ESLint for web/mobile).
 - `pnpm test` - api unit test passes; `pnpm --filter api test:e2e` passes.
+  _(Step 1 snapshot - see Step 2 for current numbers.)_
 - Runtime check: `pnpm --filter api dev` serves `GET /health`; `pnpm --filter web start` renders
   "API reachable" via `@rein-drop/api-client`; `pnpm --filter worker start` boots and logs heartbeats.
 - Mobile: JS bundles for android + ios build via Metro with workspace packages. **Not yet run on a
@@ -56,6 +98,12 @@ pnpm --filter mobile start
 
 ## Known issues
 
+- **Port 5432 conflict on the dev machine:** a native Windows PostgreSQL 18 service
+  (`postgresql-x64-18`, automatic start) already listens on 5432, so `pnpm infra:up` fails there
+  until the user either stops that service or sets `POSTGRES_PORT=5433` (+ matching
+  `DATABASE_URL`). See README troubleshooting. Decision pending with the user.
+- The database is not connected by any app yet - `DATABASE_URL` is validated only.
+
 - `pnpm-workspace.yaml` has a `minimumReleaseAgeExclude` list that pnpm wrote itself during
   install: pnpm 12's supply-chain guard blocks very new releases, and the scaffolders picked
   versions published within the last day. The list can be removed once those versions age past the
@@ -68,7 +116,6 @@ pnpm --filter mobile start
   compatible yet).
 - No CORS policy on the API yet (`TODO(api)` in `apps/api/src/main.ts`): web calls the API
   server-side, and native mobile is not subject to CORS.
-- PostgreSQL / Prisma / docker-compose not added yet (not part of this step).
 - Git: repo initialized (branch `master`), nothing committed yet.
 
 ## TODOs carried forward
@@ -80,5 +127,6 @@ pnpm --filter mobile start
 
 ## Next step
 
-Database foundation: `docker-compose.yml` with PostgreSQL on :5432, Prisma in the monorepo,
-API connection + health check that includes DB status. (Await the next prompt.)
+Resolve the port 5432 conflict (stop native service vs. Docker on 5433), then the database
+layer: Prisma in the monorepo, API/worker connection using the validated `DATABASE_URL`, and a
+health check that reports DB status. (Await the next prompt.)
