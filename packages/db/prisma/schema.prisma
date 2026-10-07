@@ -503,9 +503,20 @@ model DealAnalysis {
   status       DealAnalysisStatus @default(PENDING)
   /// AIProvider id that produced it, e.g. "mock" | "foundry" (see @rein-drop/ai-core).
   provider     String
-  /// Provider model/deployment name, when applicable.
+  /// Provider model/deployment name(s), comma-separated when tasks used different models.
   model        String?
-  /// TODO(ai): structured output schema is defined with the AIProvider interface.
+  /// Model version(s) as reported by the provider.
+  modelVersion String?
+  /// Task prompt / rule-set versions, e.g. "product-extraction@1,condition-risk@1,deal-explanation@1".
+  promptVersion String?
+  /// @rein-drop/ai-core AI_SCHEMA_VERSION of `result`.
+  schemaVersion Int?
+  /// Per-task metadata: latency, token usage, provider request ids.
+  providerMetadata Json?
+  /// Hash of the analysis input + versions (ai-core analysisInputKey), to skip unchanged re-analysis.
+  inputHash    String?
+  durationMs   Int?
+  /// CandidateAnalysisResult from @rein-drop/ai-core (product, risk, explanation); validated + grounded.
   result       Json?
   errorMessage String?
   createdAt    DateTime           @default(now()) @db.Timestamptz(3)
@@ -516,6 +527,7 @@ model DealAnalysis {
 
   @@index([listingId, createdAt])
   @@index([huntMatchId])
+  @@index([inputHash])
   @@index([status])
 }
 

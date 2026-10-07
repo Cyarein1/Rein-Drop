@@ -31,7 +31,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | `packages/client-core` | `@rein-drop/client-core` | Shared web + mobile client logic (form models, defaults, formatting) - no UI |
 | `packages/marketplace-core` | `@rein-drop/marketplace-core` | Marketplace adapter boundary (eBay, Facebook Marketplace) |
 | `packages/matching` | `@rein-drop/matching` | Deterministic hunt matching + listing deduplication (pure, no AI) |
-| `packages/ai-core` | `@rein-drop/ai-core` | `AIProvider` boundary (mock locally, Microsoft Foundry later) |
+| `packages/ai-core` | `@rein-drop/ai-core` | `AIProvider` boundary: structured, validated, grounded outputs (deterministic mock locally, Microsoft Foundry later) |
 | `packages/design-tokens` | `@rein-drop/design-tokens` | Colors, tones, typography, spacing, component variant types, mascot tokens |
 | `packages/brand-assets` | `@rein-drop/brand-assets` | Approved logo / app icon / mascot image files (no code) |
 | `packages/config` | `@rein-drop/config` | Shared tsconfig base |

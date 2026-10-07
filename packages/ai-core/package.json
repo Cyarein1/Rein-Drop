@@ -2,7 +2,7 @@
   "name": "@rein-drop/ai-core",
   "version": "0.0.0",
   "private": true,
-  "description": "AIProvider interface and provider implementations",
+  "description": "AIProvider interface, structured validated outputs and provider implementations",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,13 +18,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json",
     "lint": "oxlint src",
-    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rein-drop/matching": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@rein-drop/config": "workspace:*",
+    "@rein-drop/marketplace-core": "workspace:*",
     "oxlint": "^1.87.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
   }
 }

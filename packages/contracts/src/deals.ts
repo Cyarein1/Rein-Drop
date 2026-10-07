@@ -45,8 +45,8 @@ export const dealDetailSchema = dealSummarySchema.extend({
   analysis: dealAnalysisSummarySchema
     .extend({
       /**
-       * TODO(ai): structured analysis output is defined together with the
-       * AIProvider interface. Until then it is opaque and must not be relied on.
+       * Stored shape: CandidateAnalysisResult from @rein-drop/ai-core (product, risk, explanation).
+       * TODO(ai): expose a client-facing schema when the Deals API serves analyses; opaque until then.
        */
       result: z.unknown().nullable(),
     })

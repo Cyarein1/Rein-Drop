@@ -4,6 +4,59 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 22 - AIProvider (structured, validated, grounded) + deterministic MockAIProvider
+
+**What was added** (`packages/ai-core`, now depends on zod + `@rein-drop/matching`)
+
+- `AIProvider` with three structured tasks:
+  - `extractProduct` -> category, brand, model, attributes (storage, memory, edition,
+    connectivity...), normalized name, query fit (matches / conflicts / unclear), confidence.
+  - `assessConditionRisk` -> condition category, risk factors (damage, not working, locked,
+    sold as is, missing accessories, vague description, no photos, no price, stale) with
+    severity, overall risk level, questions to ask the seller, seller status.
+  - `explainDeal` -> headline, summary, positives / concerns (each citing a match check, risk
+    factor, product field or listing fact), valuation, next step (review / ask_seller / skip),
+    questions for the seller.
+  Inputs carry only what the source returned (photos as a count) plus explicit
+  `EvidenceAvailability` (seller + comparables: `not_available`).
+- Validation (`withValidation`, applied by `createAIProvider` / `createMockAIProvider`): zod
+  schemas per task + grounding - every quote must appear verbatim in the cited listing field,
+  every fact value must equal the listing's canonical value, the normalized name may only use
+  extracted words, explanations may only cite checks that passed (positives) / didn't
+  (concerns) and risks that were assessed. Seller assessment and valuation schemas only allow
+  "not available" / "unavailable", so no provider can invent seller or comparable facts.
+  Errors: INVALID_OUTPUT, UNGROUNDED_OUTPUT (not retryable), UNAVAILABLE / RATE_LIMITED
+  (retryable), NOT_CONFIGURED.
+- `MockAIProvider`: deterministic rules (brand / model patterns incl. aliases such as
+  PS5 = PlayStation 5, risk phrases, category-aware seller questions); metadata
+  `mock` / `mock-rules` / `1.0.0`, prompt versions per task, schema version 1.
+- `analyzeCandidate()` -> a record mapping 1:1 onto DealAnalysis (status, result, provider,
+  model, modelVersion, promptVersion, schemaVersion, providerMetadata per task, durationMs;
+  failures become FAILED records with `retryable`). `analysisInputKey()` for `inputHash`.
+  `createAIProvider('foundry')` -> NOT_CONFIGURED (TODO).
+- Database (migration `..._deal_analysis_metadata`): DealAnalysis `modelVersion`,
+  `promptVersion`, `schemaVersion`, `providerMetadata`, `inputHash` (indexed), `durationMs`.
+- Turbo: `packages/db/turbo.json` and `apps/web/turbo.json` make `typecheck` wait for the
+  package's own `build` (fixes the recurring parallel-regeneration failures).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test --force` (uncached): 50/50. ai-core 20 tests:
+  extraction (incl. title-over-description, aliases, nothing invented when nothing found),
+  risks (quotes, listing facts, unknowns), explanations and next steps, analysis record +
+  metadata, stable input key, every seeded dev listing analysed without a validation failure,
+  and the validator rejecting invented quotes, extra name words, wrong facts, seller history,
+  estimated valuations, unsupported citations; unexpected errors -> retryable UNAVAILABLE.
+  api e2e 36 + integration 9, worker integration 19.
+- Real database round-trip: an analysis record inserted into DealAnalysis with every new field
+  and read back (then deleted).
+
+**Not done**
+
+- Nothing runs analyses yet (worker stage after matching is next), and the Deals API doesn't
+  expose them (contract still opaque).
+- Mock text is English only; Foundry provider not built.
+
 ### Step 21 - Listing deduplication + deterministic Hunt matching (no AI)
 
 **What was added**
@@ -967,9 +1020,11 @@ pnpm --filter mobile start
 
 - `TODO(marketplace)`: real EbayAdapter + real FacebookDataProvider (source TBD); normalized
   condition scale on Listing.
-- Turbo runs `@rein-drop/db` build and typecheck in parallel and both run `prisma generate`;
-  on Windows this occasionally fails one of them. A re-run passes.
-- `TODO(ai)`: AIProvider interface + deterministic MockAIProvider; Foundry models per task TBD.
+- ~~Turbo ran build and typecheck of `@rein-drop/db` / `web` in parallel (both regenerate
+  `prisma` / `.next/types`), occasionally failing on Windows~~ **Fixed in step 22** with package
+  `turbo.json` files: their `typecheck` now depends on their own `build`.
+- `TODO(ai)`: Foundry provider (models per task, credentials TBD); seller facts and comparable
+  sales as analysis evidence (schemas currently only allow "not available").
 - `TODO(worker)`: job runner / scheduler abstraction; queue choice TBD.
 - `TODO(brand)`: font size scale, spacing and neutral greys are engineering defaults - confirm in
   the high-fidelity design pass.
@@ -980,9 +1035,9 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: listing refresh (re-check matched listings with `fetchListing`, expire sold ones), Deals
-API + screens showing matches with their reasons, then deal analysis via the AIProvider mock; or
-Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
+Likely: run deal analysis in the worker for new matches (mock provider, inputHash to skip
+unchanged ones), listing refresh (expire sold matches), then the Deals API + screens showing
+matches, reasons and analyses; or Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
 live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
 Seller Snapshot questions) on web and mobile.
 (Await the next prompt.)
