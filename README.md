@@ -130,9 +130,13 @@ pnpm --filter web dev       # http://localhost:3000 (app) - /dev for system stat
 pnpm --filter mobile start  # scan the QR code with Expo Go
 ```
 
-Physical phone: set `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to your computer's LAN IP
-(find it with `ipconfig`, "IPv4 Address"), e.g. `http://192.168.1.50:4000`, and allow Node.js
-through Windows Firewall on private networks when prompted.
+**Mobile API address - no setup needed in development.** The app uses the address of the computer
+running the Expo dev server (Expo's `hostUri`), so a physical phone on the same Wi-Fi reaches the
+API at `http://<your-PC-LAN-IP>:4000` automatically; emulators work the same way. Check it in the
+app: Settings (gear, top right) > Developer > **Check connection**. Requirements: phone and PC on
+the same network, Windows network profile **Private**, Node.js allowed through Windows Firewall on
+private networks. Override with `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` (required for
+`expo start --tunnel` and non-development builds) - see `apps/mobile/.env.example`.
 
 ## Shared contracts and API client
 
@@ -168,7 +172,8 @@ variants follow the Mobile UI Screenbook v1.0, section 10.
   - web: `apps/web/src/components/ui` (CSS Modules) - gallery at http://localhost:3000/dev/ui.
     App shell (sidebar / bottom nav) in `apps/web/src/components/shell`; destinations are defined
     once in `shell/nav.ts`. Authenticated routes live in `src/app/(app)/`.
-  - mobile: `apps/mobile/src/ui` (StyleSheet) - shown on the app's development home screen
+  - mobile: `apps/mobile/src/ui` (StyleSheet) - gallery at Settings > Developer > UI primitives.
+    Navigation uses Expo Router (`apps/mobile/src/app`): native tabs + stack, Create Hunt modal.
   - `Button`, `TextInput`, `Card`, `Badge`, `Metric`, `EmptyState`, `SystemBanner`,
     `Page` (web) / `Screen` (mobile), `LoadingState`.
 - **Accessibility rules baked into tokens** (enforced by tests): primary buttons use navy text on

@@ -4,6 +4,46 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 9 - Expo app shell (native navigation) + device-friendly API URL
+
+**What was added**
+
+- Expo Router (SDK 57, versions via `expo install`; structure checked against the official SDK 57
+  tabs template). Entry `expo-router/entry`, routes in `apps/mobile/src/app/`, scheme
+  `reindrop`, `@/*` -> `src/*` alias. Old `App.tsx`/`index.ts` removed.
+  - Root native **Stack**: `(tabs)`, `settings` (push), `hunts/new` (**modal**), `dev` (gallery).
+  - Native **bottom tabs**: Home, Hunts, central **Create** (custom orange button that opens the
+    Create Hunt modal over the current tab; not a destination), Deals, Analytics. **Settings** =
+    gear button in every tab's native header (Screenbook section 1).
+  - Platform-native icons via `expo-symbols` (SF Symbols on iOS, Material Symbols on Android).
+  - Styled from design tokens (white canvas, navy active tint, muted inactive, Inter labels and
+    header titles). Splash held until fonts load; system-font fallback if Inter fails.
+  - Placeholder screens mirror web (PlaceholderNotice, empty states with next actions; welcome
+    mascot on Home only). Placeholder session mirrors web (`src/auth/session.ts`).
+  - `Screen` no longer adds safe-area padding (native header/tab bar own insets) and no longer
+    renders a title (native header does).
+- API base URL (`src/config/api-base-url.ts`, pure + 7 tests; `src/config/api.ts` runtime):
+  1. `EXPO_PUBLIC_API_BASE_URL` if set; 2. in development, the Metro dev server host from Expo's
+  `hostUri` + `EXPO_PUBLIC_API_PORT` (default 4000) - a physical phone gets the PC's LAN IP
+  automatically; tunnel hosts rejected with an explanation; 3. otherwise "not configured".
+  Settings > Developer shows the URL, its source, and a "Check connection" (health + ready) button.
+- Vitest added to mobile.
+
+**What works (verified)**
+
+- mobile typecheck, lint, 7 tests, iOS + Android bundles; `expo-doctor` 21/21 checks passed.
+  Full repo: typecheck 17/17, lint 17/17, all test suites pass.
+- `expo start --lan`: manifest requested via the LAN IP reports `hostUri` `192.168.0.200:8091`
+  -> app resolves `http://192.168.0.200:4000`; the API answered `/health` on that LAN address.
+  Network profile is Private and Node.js is allowed through Windows Firewall.
+- **Not yet run on a physical device or emulator** - needs the user with Expo Go.
+
+**Known limitations**
+
+- Splash and app icon still use Expo's default images (brand icon awaits store approval).
+- Bottom-tab active state uses the platform tint (navy); no orange indicator bar as on web.
+
+
 ### Step 8 - Seller Snapshot corrected to the App Flow Blueprint definition
 
 **What changed**
@@ -76,7 +116,7 @@ _Last updated: 2026-10-07_
 
 - Mobile web has no "More"/drawer: Settings is reachable via the top-bar icon only (matches the
   Screenbook's 5-slot bottom nav).
-- The native mobile app (Expo) does not have this navigation yet.
+- ~~The native mobile app (Expo) does not have this navigation yet.~~ Done in step 9.
 
 
 ### Step 6 - Design tokens, brand assets, web + mobile UI primitives
