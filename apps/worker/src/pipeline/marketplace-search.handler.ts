@@ -9,8 +9,10 @@ import {
   type NormalizedListing,
   type RawListingRecord,
 } from '@rein-drop/marketplace-core';
+import { dedupeKeyFor } from '@rein-drop/matching';
 import type { Clock, LeasedJob } from '../queue/job-queue.js';
 import { PermanentJobError, RetryableJobError, type JobHandler } from '../queue/job-runner.js';
+import { MatchStage, type MatchStageSummary } from './match-stage.js';
 import { SEARCH_JOB_TYPE, type SearchJobPayload } from './search-plan.js';
 
 /** UsageEvent key for one marketplace search performed for one hunt (cost tracking). */
@@ -23,7 +25,8 @@ export interface MarketplaceSearchHandlerOptions {
 
 /**
  * Runs one grouped marketplace search: fetch -> store RawListings -> normalize into Listings ->
- * record SearchRun, per-hunt polling metadata and usage.
+ * deduplicate + match against each hunt (MatchStage) -> record SearchRun, per-hunt polling
+ * metadata and usage.
  *
  * Idempotent / retry-safe: the SearchRun is keyed by the job id; raw records are unique per
  * (run, marketplace, externalId); only PENDING raw records are normalized; Listing writes never
@@ -32,13 +35,16 @@ export interface MarketplaceSearchHandlerOptions {
 export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
   readonly type = SEARCH_JOB_TYPE;
   private readonly logger = new Logger(MarketplaceSearchHandler.name);
+  private readonly matchStage: MatchStage;
 
   constructor(
     private readonly prisma: PrismaClient,
     private readonly registry: MarketplaceRegistry,
     private readonly options: MarketplaceSearchHandlerOptions,
     private readonly clock: Clock = () => new Date(),
-  ) {}
+  ) {
+    this.matchStage = new MatchStage(prisma, clock);
+  }
 
   async handle(job: LeasedJob<SearchJobPayload>): Promise<void> {
     const { payload } = job;
@@ -81,7 +87,18 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     try {
       const pages = await this.fetch(adapter, payload, run.id, marketplace.id);
       await this.normalizePending(adapter, run.id);
-      await this.finishRun(run.id, pages, huntIds, targets, marketplace.id, payload.marketplace);
+      const location = payload.criteria.location;
+      const matches = await this.matchStage.run({
+        runId: run.id,
+        huntIds,
+        marketplace: payload.marketplace,
+        // Grouped hunts share location + radius, so the search applied them to every hunt in it.
+        locationEnforcedBySource:
+          location !== null &&
+          adapter.capabilities.location !== 'unsupported' &&
+          (location.radiusKm === null || adapter.capabilities.radius),
+      });
+      await this.finishRun(run.id, pages, huntIds, targets, marketplace.id, payload.marketplace, matches);
     } catch (err) {
       await this.prisma.searchRun.update({
         where: { id: run.id },
@@ -173,13 +190,14 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     targets: { huntId: string; hunt: { userId: string } }[],
     marketplaceId: string,
     marketplaceKey: string,
+    matches: MatchStageSummary,
   ): Promise<void> {
     const now = this.clock();
     const resultCount = await this.prisma.rawListing.count({ where: { searchRunId: runId } });
     await this.prisma.$transaction([
       this.prisma.searchRun.update({
         where: { id: runId },
-        data: { status: 'SUCCEEDED', pagesFetched: pages, resultCount, finishedAt: now },
+        data: { status: 'SUCCEEDED', pagesFetched: pages, resultCount, finishedAt: now, ...matches },
       }),
       this.prisma.huntMarketplace.updateMany({
         where: { huntId: { in: huntIds }, marketplaceId },
@@ -234,6 +252,7 @@ async function upsertListing(
     status: listing.status,
     listedAt: listing.listedAt,
     sourceMetadata: listing.sourceMetadata === null ? Prisma.DbNull : (listing.sourceMetadata as Prisma.InputJsonValue),
+    dedupeKey: dedupeKeyFor(listing),
   };
   const key = { marketplaceId_externalId: { marketplaceId, externalId: listing.externalId } };
   const existing = await tx.listing.findUnique({ where: key, select: { id: true } });

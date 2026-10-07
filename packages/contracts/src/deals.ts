@@ -8,8 +8,11 @@ import { listingDetailSchema, listingSummarySchema } from './listings.js';
  * `id` is the HuntMatch id.
  */
 
-/** Mirrors the HuntMatchStatus database enum (checked by a test in apps/api). */
-export const DEAL_MATCH_STATUSES = ['NEW', 'SEEN', 'DISMISSED'] as const;
+/**
+ * Mirrors the HuntMatchStatus database enum (checked by a test in apps/api).
+ * EXPIRED = the system found the listing no longer matches (sold, price raised, duplicate).
+ */
+export const DEAL_MATCH_STATUSES = ['NEW', 'SEEN', 'DISMISSED', 'EXPIRED'] as const;
 export const dealMatchStatusSchema = z.enum(DEAL_MATCH_STATUSES);
 export type DealMatchStatus = z.infer<typeof dealMatchStatusSchema>;
 

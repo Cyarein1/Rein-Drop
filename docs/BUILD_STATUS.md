@@ -4,6 +4,63 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 21 - Listing deduplication + deterministic Hunt matching (no AI)
+
+**What was added**
+
+- `@rein-drop/matching` (new pure package, used by the worker; the API can reuse it):
+  - `evaluateMatch(hunt, listing, context)` runs every check and records outcome
+    (pass / fail / unverified / not_applicable) + code + plain detail: availability, marketplace,
+    relevance (significant query words; anything with a digit is a model code that must be in the
+    title - "13" exactly, "xm4" inside "1000xm4"; <=3 words all required, longer queries 75%;
+    description counts at half weight), accessory guard ("case for ...", "compatible with",
+    "box only"), condition (free text classified; "Used - like new" = used; for-parts only for
+    any-condition hunts), geography (`enforced_by_source` when the search applied location +
+    radius, else `not_checked` - no geocoding yet, never rejects), max price (no price / other
+    currency = unverified, never rejects), exclusions (whole phrases in title + description),
+    economics inputs (acquisition price + target; `awaiting_valuation`, never judged without a
+    resale estimate). `MATCHER_VERSION` stored per match. Unicode/accent-insensitive text.
+  - `dedupeKeyFor`: same significant title words + exact price/currency + same location;
+    without a location only within one marketplace; none for unpriced or < 3-word titles.
+    `canonicalOf`: first-seen active listing.
+- Database (migration `..._matching_dedupe`): Listing `dedupeKey`, `duplicateOfId`; HuntMatch
+  `reasons`, `relevanceScore`, `economics`, `matcherVersion`, `lastEvaluatedAt`, `statusReason`,
+  `firstSearchRunId`; HuntMatchStatus `EXPIRED`; SearchRun `matchedCount`, `newMatchCount`,
+  `rejectedCount`, `duplicateCount`, `rejectionSummary`. Contracts: `EXPIRED` match status.
+- Worker `MatchStage` (after normalization, inside the search job): recomputes touched duplicate
+  groups; evaluates each (hunt, listing) with the hunt's own criteria (grouped searches used the
+  widest filters); upserts HuntMatch. Status rules: new match -> NEW; stops matching -> NEW/SEEN
+  become EXPIRED with the failed checks as reason (`duplicate` for duplicates); matches again ->
+  NEW (`matches_again`); DISMISSED never changed (reasons refreshed). Idempotent per (hunt,
+  listing); run counts are absolute.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 49/49 (matching 28: text, conditions, every check,
+  model codes, accessories, dedupe safety; worker 27; api 85; contracts 35); api e2e 36,
+  integration 9.
+- `pnpm --filter worker test:int` - 19 on real Postgres, incl.: per-hunt filters after grouped
+  searches (B "used only" gets no for-parts, A does), reasons persisted, geography codes per
+  source; a cross-posted copy becomes a duplicate and its match EXPIRES, then revives when the
+  original sells; a new exclusion expires open matches but not a DISMISSED one; removing it
+  revives them. Test data removed.
+- Live: built worker + temporary hunt (Galaxy S23, used, $400 max, ignore "for parts", profit
+  target) -> 6 matches, for-parts rejected (condition + exclusions), economics
+  `awaiting_valuation`. Data removed. (The dev sources produced one synthetic cross-marketplace
+  duplicate - identical title/price/location - which the heuristic merged as designed.)
+
+**Not done / known limits**
+
+- `TODO(worker)`: listings that sell or drop out of search results are not re-checked, so their
+  matches stay NEW until a refresh job (via `fetchListing`) exists. The same applies when a hunt
+  narrows a filter the source applies (e.g. lower max price): those listings aren't returned,
+  so they aren't re-evaluated.
+- Editing a hunt doesn't re-evaluate existing matches immediately (next poll does, for listings
+  still returned).
+- Relevance is lexical: "PS5" won't match "PlayStation 5" (AI / synonyms later). Stopwords are
+  English only (`TODO(i18n)`).
+- Matches aren't exposed through the API / UI yet (Deals screens).
+
 ### Step 20 - Scheduler / worker pipeline (local, no Azure / Redis)
 
 **What was added** (decision record: `docs/decisions/0004-local-job-queue.md`)
@@ -923,9 +980,9 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: Hunt matching (apply each hunt's full criteria + exclusions to new Listings, create
-HuntMatches), then deal analysis via the AIProvider mock; or Hunt detail / edit / pause / archive /
-restore screens (so a user blocked by the
+Likely: listing refresh (re-check matched listings with `fetchListing`, expire sold ones), Deals
+API + screens showing matches with their reasons, then deal analysis via the AIProvider mock; or
+Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
 live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
 Seller Snapshot questions) on web and mobile.
 (Await the next prompt.)

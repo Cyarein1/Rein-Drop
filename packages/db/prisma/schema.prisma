@@ -70,10 +70,13 @@ enum ListingStatus {
 }
 
 /// User-facing state of a match between a hunt and a listing.
+/// EXPIRED: set by the system when the listing stops matching (sold, price raised, duplicate);
+/// it returns to NEW if the listing matches again. DISMISSED is the user's and never changed.
 enum HuntMatchStatus {
   NEW
   SEEN
   DISMISSED
+  EXPIRED
 }
 
 enum DealAnalysisStatus {
@@ -259,6 +262,17 @@ model SearchRun {
   updatedListingCount Int             @default(0)
   /// Raw records that FAILED or were SKIPPED during normalization.
   unreadableCount     Int             @default(0)
+  // Matching outcome for this run's listings across the hunts it served (latest attempt).
+  /// (hunt, listing) pairs that match.
+  matchedCount        Int             @default(0)
+  /// Matches this run created (first time seen for that hunt).
+  newMatchCount       Int             @default(0)
+  /// (hunt, listing) pairs rejected by a deterministic check.
+  rejectedCount       Int             @default(0)
+  /// Listings skipped because they duplicate another listing.
+  duplicateCount      Int             @default(0)
+  /// Rejections per failed check, e.g. { "price": 3, "relevance": 1 }.
+  rejectionSummary    Json?
   errorCode           String?
   errorMessage        String?
   startedAt           DateTime        @default(now()) @db.Timestamptz(3)
@@ -266,6 +280,7 @@ model SearchRun {
 
   marketplace Marketplace  @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
   rawListings RawListing[]
+  huntMatches HuntMatch[]
 
   @@index([marketplaceId, startedAt])
   @@index([status])
@@ -327,9 +342,15 @@ model Listing {
   lastSeenAt     DateTime      @default(now()) @db.Timestamptz(3)
   /// Marketplace-specific extras retained after normalization (never queried as columns).
   sourceMetadata Json?
+  /// Conservative content fingerprint (@rein-drop/matching dedupeKeyFor); null = never deduplicated.
+  dedupeKey      String?
+  /// Set when this listing is a duplicate of another (the canonical one is matched instead).
+  duplicateOfId  String?       @db.Uuid
   createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
 
+  duplicateOf    Listing?        @relation("ListingDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates     Listing[]       @relation("ListingDuplicates")
   marketplace    Marketplace     @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
   rawListings    RawListing[]
   huntMatches    HuntMatch[]
@@ -340,6 +361,8 @@ model Listing {
   @@unique([marketplaceId, externalId])
   @@index([status])
   @@index([lastSeenAt])
+  @@index([dedupeKey])
+  @@index([duplicateOfId])
 }
 
 // ---------------------------------------------------------------------------
@@ -444,11 +467,25 @@ model HuntMatch {
   huntId    String          @db.Uuid
   listingId String          @db.Uuid
   status    HuntMatchStatus @default(NEW)
+  /// Why the status was last changed by the system (e.g. "not_available", "duplicate").
+  statusReason     String?
+  /// Every deterministic check with outcome + code (@rein-drop/matching MatchCheck[]).
+  reasons          Json     @default("[]")
+  /// 0-100 query coverage from the deterministic matcher.
+  relevanceScore   Int?
+  /// Inputs for the valuation stage: acquisition price, hunt target, (later) resale estimate.
+  economics        Json?
+  /// @rein-drop/matching MATCHER_VERSION that produced `reasons`.
+  matcherVersion   Int      @default(1)
+  lastEvaluatedAt  DateTime @default(now()) @db.Timestamptz(3)
+  /// The search run that first produced this match.
+  firstSearchRunId String?  @db.Uuid
   matchedAt DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt DateTime        @updatedAt @db.Timestamptz(3)
 
-  hunt         Hunt           @relation(fields: [huntId], references: [id], onDelete: Cascade)
-  listing      Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  hunt           Hunt           @relation(fields: [huntId], references: [id], onDelete: Cascade)
+  listing        Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  firstSearchRun SearchRun?     @relation(fields: [firstSearchRunId], references: [id], onDelete: SetNull)
   dealAnalyses DealAnalysis[]
   alerts       Alert[]
   savedDeals   SavedDeal[]

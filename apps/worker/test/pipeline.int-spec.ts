@@ -96,6 +96,7 @@ describe('worker pipeline (integration, real database)', () => {
       await prisma.rawListing.deleteMany({ where: { searchRunId: { in: runIds } } });
       await prisma.searchRun.deleteMany({ where: { id: { in: runIds } } });
       // Only listings nothing else references (they are shared across users in general).
+      await prisma.listing.deleteMany({ where: { externalId: { startsWith: 'int-test-crosspost-' } } });
       await prisma.listing.deleteMany({ where: { id: { in: listingIds }, rawListings: { none: {} } } });
       await prisma.job.deleteMany({ where: { queue: QUEUE } });
       await prisma.user.delete({ where: { id: userId } }); // cascades hunts, hunt marketplaces, usage
@@ -146,6 +147,44 @@ describe('worker pipeline (integration, real database)', () => {
     }
     expect(await usage()).toBe(3); // one per hunt per marketplace search
     expect(await prisma.job.count({ where: { queue: QUEUE, status: 'SUCCEEDED' } })).toBe(2);
+  });
+
+  it('matches listings to each hunt with its own criteria and persists the reasons', async () => {
+    const matchesOf = (huntId: string) =>
+      prisma.huntMatch.findMany({ where: { huntId }, include: { listing: true }, orderBy: { listing: { externalId: 'asc' } } });
+    const a = await matchesOf(huntA);
+    const b = await matchesOf(huntB);
+    expect(a.length).toBeGreaterThan(0);
+    expect(b.length).toBeGreaterThan(0);
+
+    for (const m of [...a, ...b]) {
+      expect(m).toMatchObject({ status: 'NEW', matcherVersion: 1, statusReason: null });
+      expect(m.listing.title.toLowerCase()).toContain('iphone 13');
+      expect(m.relevanceScore).toBe(100);
+      const reasons = m.reasons as { check: string; outcome: string }[];
+      expect(reasons.map((r) => r.check)).toEqual(['availability', 'marketplace', 'relevance', 'accessory', 'condition', 'geography', 'price', 'exclusions', 'economics']);
+      expect(reasons.some((r) => r.outcome === 'fail')).toBe(false);
+    }
+    // Per-hunt max price (A: R4 500, B: R5 000) even though the grouped search used the widest.
+    expect(a.every((m) => m.listing.priceMinor === null || m.listing.priceMinor <= 450_000)).toBe(true);
+    expect(b.every((m) => m.listing.priceMinor === null || m.listing.priceMinor <= 500_000)).toBe(true);
+    // A accepts any condition (for-parts included); B wants used only.
+    expect(a.some((m) => m.listing.externalId.endsWith('-for-parts'))).toBe(true);
+    expect(b.some((m) => m.listing.externalId.endsWith('-for-parts'))).toBe(false);
+    // Geography: Facebook applied location + radius; the eBay dev source can't do radius.
+    const geo = (m: (typeof a)[number]) => (m.reasons as { check: string; code: string }[]).find((r) => r.check === 'geography')!.code;
+    expect(new Set(a.filter((m) => m.listing.marketplaceId === market.facebook).map(geo))).toEqual(new Set(['enforced_by_source']));
+    expect(new Set(a.filter((m) => m.listing.marketplaceId === market.ebay).map(geo))).toEqual(new Set(['not_checked']));
+
+    const runs = await prisma.searchRun.findMany({ where: { huntIds: { has: huntA } } });
+    for (const run of runs) {
+      expect(run.matchedCount).toBe(await prisma.huntMatch.count({ where: { firstSearchRunId: run.id } }));
+      expect(run.newMatchCount).toBe(run.matchedCount);
+    }
+    // eBay applied the max price itself; on Facebook the grouped search was wider than hunt A / B.
+    const fbRun = runs.find((r) => r.marketplaceId === market.facebook)!;
+    expect(fbRun.rejectedCount).toBeGreaterThan(0);
+    expect(fbRun.rejectionSummary).toMatchObject({ price: expect.any(Number), condition: expect.any(Number) });
   });
 
   it('is idempotent when a finished job is delivered again', async () => {
@@ -221,6 +260,83 @@ describe('worker pipeline (integration, real database)', () => {
     const failed = await prisma.rawListing.findMany({ where: { searchRunId: run.id, status: 'FAILED' } });
     expect(failed).toHaveLength(run.unreadableCount);
     expect(failed[0]!.statusReason).toMatch(/development format/);
+  });
+
+  it('treats a cross-posted copy of a listing as a duplicate and expires its match', async () => {
+    const match = await prisma.huntMatch.findFirstOrThrow({
+      // "deal" stays up for hours of test time (fast-selling listings drop out of search results).
+      where: { huntId: huntA, status: 'NEW', listing: { marketplaceId: market.facebook, externalId: { endsWith: '-deal' } } },
+      include: { listing: true },
+    });
+    const l = match.listing;
+    // The same item, same price and place, seen earlier on eBay under another id.
+    const original = await prisma.listing.create({
+      data: {
+        marketplaceId: market.ebay,
+        externalId: `int-test-crosspost-${randomUUID().slice(0, 8)}`,
+        url: 'https://dev-listings.reindrop.invalid/int-test',
+        title: l.title.split(' ').reverse().join(' '),
+        priceMinor: l.priceMinor,
+        currency: l.currency,
+        locationText: `  ${l.locationText!.toUpperCase()} `,
+        imageUrls: [],
+        status: 'ACTIVE',
+        firstSeenAt: new Date(l.firstSeenAt.getTime() - 60_000),
+        dedupeKey: l.dedupeKey,
+      },
+    });
+    expect(l.dedupeKey).not.toBeNull();
+
+    advance(INTERVAL);
+    const { scheduler, runner } = pipeline();
+    await scheduler.scheduleDue();
+    await runner.runOnce();
+
+    expect((await prisma.listing.findUniqueOrThrow({ where: { id: l.id } })).duplicateOfId).toBe(original.id);
+    expect(await prisma.huntMatch.findUniqueOrThrow({ where: { id: match.id } })).toMatchObject({ status: 'EXPIRED', statusReason: 'duplicate' });
+    expect((await runsFor(huntA)).filter((r) => r.marketplaceId === market.facebook).at(-1)!.duplicateCount).toBeGreaterThan(0);
+
+    // The original sells: the copy becomes the canonical listing again and is matched again.
+    await prisma.listing.update({ where: { id: original.id }, data: { status: 'SOLD' } });
+    advance(INTERVAL);
+    await scheduler.scheduleDue();
+    await runner.runOnce();
+    expect((await prisma.listing.findUniqueOrThrow({ where: { id: l.id } })).duplicateOfId).toBeNull();
+    expect(await prisma.huntMatch.findUniqueOrThrow({ where: { id: match.id } })).toMatchObject({ status: 'NEW', statusReason: 'matches_again' });
+    await prisma.listing.delete({ where: { id: original.id } });
+  });
+
+  it('expires matches that stop matching, never touches dismissed ones, and revives them', async () => {
+    // Listings that stay up during the test (fast sellers drop out of search results - TODO(worker): refresh).
+    const open = await prisma.huntMatch.findMany({
+      where: { huntId: huntA, status: 'NEW', listing: { NOT: [{ externalId: { endsWith: '-just-listed-hot' } }, { externalId: { endsWith: '-auction' } }] } },
+    });
+    expect(open.length).toBeGreaterThan(1);
+    const [dismissed, ...rest] = open;
+    await prisma.huntMatch.update({ where: { id: dismissed!.id }, data: { status: 'DISMISSED' } });
+
+    // The user starts ignoring a word every listing mentions (exclusions are not pushed to sources,
+    // so the same listings come back and are re-evaluated).
+    await prisma.hunt.update({ where: { id: huntA }, data: { exclusions: ['apple'] } });
+    advance(INTERVAL);
+    const { scheduler, runner } = pipeline();
+    await scheduler.scheduleDue();
+    await runner.runOnce();
+    for (const m of rest) {
+      expect(await prisma.huntMatch.findUniqueOrThrow({ where: { id: m.id } })).toMatchObject({ status: 'EXPIRED', statusReason: 'exclusions' });
+    }
+    const stillDismissed = await prisma.huntMatch.findUniqueOrThrow({ where: { id: dismissed!.id } });
+    expect(stillDismissed.status).toBe('DISMISSED');
+    expect((stillDismissed.reasons as { check: string; outcome: string }[]).find((r) => r.check === 'exclusions')!.outcome).toBe('fail');
+
+    await prisma.hunt.update({ where: { id: huntA }, data: { exclusions: [] } });
+    advance(INTERVAL);
+    await scheduler.scheduleDue();
+    await runner.runOnce();
+    for (const m of rest) {
+      expect(await prisma.huntMatch.findUniqueOrThrow({ where: { id: m.id } })).toMatchObject({ status: 'NEW', statusReason: 'matches_again' });
+    }
+    expect((await prisma.huntMatch.findUniqueOrThrow({ where: { id: dismissed!.id } })).status).toBe('DISMISSED');
   });
 
   it('skips a planned search when its hunts were paused before it ran', async () => {
