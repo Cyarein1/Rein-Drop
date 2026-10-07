@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LISTING_CONDITIONS } from '@rein-drop/marketplace-core';
 import {
   idSchema,
   isoDateTimeSchema,
@@ -26,8 +27,11 @@ export const HUNT_PRIORITIES = ['NORMAL'] as const;
 export const huntPrioritySchema = z.enum(HUNT_PRIORITIES);
 export type HuntPriority = z.infer<typeof huntPrioritySchema>;
 
-/** Listing condition filter. An empty list means "any condition". */
-export const HUNT_CONDITIONS = ['new', 'used', 'refurbished'] as const;
+/**
+ * Listing condition filter. An empty list means "any condition". Same values as the marketplace
+ * search conditions, so Hunt criteria pass straight to adapters.
+ */
+export const HUNT_CONDITIONS = LISTING_CONDITIONS;
 export const huntConditionSchema = z.enum(HUNT_CONDITIONS);
 export type HuntCondition = z.infer<typeof huntConditionSchema>;
 

@@ -1,8 +1,12 @@
 import { z } from 'zod';
+import { LISTING_STATUSES } from '@rein-drop/marketplace-core';
 import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema } from './common.js';
 
-/** Mirrors the ListingStatus database enum (checked by a test in apps/api). */
-export const LISTING_STATUSES = ['ACTIVE', 'SOLD', 'ENDED', 'REMOVED', 'UNKNOWN'] as const;
+/**
+ * Defined once in @rein-drop/marketplace-core (the normalized Listing contract); mirrors the
+ * ListingStatus database enum (checked by a test in apps/api).
+ */
+export { LISTING_STATUSES };
 export const listingStatusSchema = z.enum(LISTING_STATUSES);
 export type ListingStatus = z.infer<typeof listingStatusSchema>;
 

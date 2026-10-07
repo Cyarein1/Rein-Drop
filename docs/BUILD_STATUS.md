@@ -4,6 +4,61 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 18 - Marketplace adapter boundary (marketplace-core)
+
+**What was added**
+
+- `@rein-drop/marketplace-core` (main entry - what domain code may use):
+  - `MarketplaceAdapter` interface (identity, capabilities, `health`, `search`, optional
+    `fetchListing`, `normalize`) with its rules written on the interface.
+  - `MarketplaceCapabilities` (location required/optional/unsupported, radius, price filter,
+    condition filter, single-listing refresh, max page size). Filters are pushdown hints;
+    `applicableCriteria()` drops unsupported ones and reports them so Hunt matching re-checks.
+    Only a required location is a hard rule (`criteriaProblems()`).
+  - `MarketplaceSearchCriteria` / `MarketplaceSearchResult` (raw records + opaque cursor).
+  - `SourceHealth` (healthy / degraded / down / not_configured, retryAfter).
+  - `MarketplaceError` with codes UNSUPPORTED_CRITERIA, NOT_CONFIGURED, RATE_LIMITED,
+    UNAVAILABLE, INVALID_RESPONSE, ABORTED and a `retryable` flag.
+  - `RawListingRecord` (marketplace, provider, externalId, JSON payload, fetchedAt) and
+    `normalizeRawListing()` - never throws; results NORMALIZED / FAILED / SKIPPED mirror the
+    RawListingStatus enum; output is validated against `normalizedListingSchema` (zod, mirrors
+    the Listing table) and must keep marketplace + externalId.
+  - `MarketplaceRegistry` (one adapter per marketplace, NOT_CONFIGURED when missing, health of
+    every launch marketplace without rejecting).
+  - `LISTING_STATUSES` / `LISTING_CONDITIONS` now defined here; contracts re-uses them.
+- `@rein-drop/marketplace-core/adapters` (wiring only): `FacebookAdapter` over a
+  `FacebookDataProvider` sub-interface (provider owns its payload format; the adapter enforces
+  location-required, stamps the provider id, wraps errors and health, and SKIPs raw records
+  written by a different provider). `MockMarketplaceAdapter` (used for eBay) and
+  `MockFacebookDataProvider`: deterministic, no network, `.invalid` URLs, options for empty
+  results, degraded health and simulated failures.
+- `@rein-drop/marketplace-core/testing`: `describeMarketplaceAdapterContract()` - 14 checks every
+  adapter must pass (identity, capability sanity, health, valid/unique/within-limit raw records,
+  every record normalizes, purity, FAILED not throw on bad payloads, foreign records refused,
+  cursor paging without repeats, limit / blank query / required location rejected, ABORTED,
+  fetchListing).
+- API: `MarketplacesModule` provides and exports `MarketplaceRegistry`; mock sources outside
+  production, nothing in production (all `not_configured`). `src/architecture.spec.ts` fails if
+  any API/worker file other than `marketplace-registry.provider.ts` imports concrete adapters,
+  or application code imports the test kit.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 45/45 tasks. marketplace-core 78 tests (contract
+  suite run against mock eBay, mock eBay with filters, Facebook via the mock provider and via an
+  alternate provider with different capabilities; FacebookAdapter swap / errors / health;
+  criteria, normalization, registry). api 82 (+registry provider, +boundary guard), e2e 36,
+  integration 9.
+- Mutation checks: an adapter with three planted faults failed exactly those 3 contract tests; a
+  planted adapter import in the Hunts module failed the boundary test. Both removed.
+
+**Not done**
+
+- `TODO(marketplace)`: real `EbayAdapter` and a real `FacebookDataProvider` (sources, credentials
+  and terms not decided). No network code exists.
+- `TODO(db)`: RawListing has no `provider` column yet - needed when ingestion stores records.
+- Nothing calls the registry yet (ingestion/matching worker is a later step).
+
 ### Step 17 - Plan gate + DEVELOPMENT-ONLY fake billing
 
 **What was added**
@@ -755,7 +810,11 @@ pnpm --filter mobile start
 
 ## TODOs carried forward
 
-- `TODO(marketplace)`: normalized Listing model + MarketplaceProvider interface; Facebook data provider TBD.
+- `TODO(marketplace)`: real EbayAdapter + real FacebookDataProvider (source TBD); normalized
+  condition scale on Listing.
+- `TODO(db)`: `provider` column on RawListing.
+- Turbo runs `@rein-drop/db` build and typecheck in parallel and both run `prisma generate`;
+  on Windows this occasionally fails one of them. A re-run passes.
 - `TODO(ai)`: AIProvider interface + deterministic MockAIProvider; Foundry models per task TBD.
 - `TODO(worker)`: job runner / scheduler abstraction; queue choice TBD.
 - `TODO(brand)`: font size scale, spacing and neutral greys are engineering defaults - confirm in
@@ -767,7 +826,8 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
+Likely: ingestion in the worker (search LIVE Hunts through the registry, store RawListings,
+normalize into Listings), or Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
 live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
 Seller Snapshot questions) on web and mobile.
 (Await the next prompt.)

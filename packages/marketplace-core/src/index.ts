@@ -1,18 +1,49 @@
 /**
- * Marketplace boundary. Domain code depends on this package, never on a
- * specific marketplace SDK or API.
+ * Marketplace boundary. Domain code depends on this entry point - the adapter interface, the
+ * normalized Listing contract, search / health / error types and the registry - never on a
+ * marketplace SDK, API or payload.
  *
- * TODO(marketplace): define the normalized Listing model and the
- * MarketplaceProvider/adapter interface. Fields are intentionally not
- * defined yet - they must come from a product decision, not be invented.
- * TODO(marketplace): FacebookDataProvider implementation source is TBD.
+ * Other entry points:
+ * - `@rein-drop/marketplace-core/adapters`: concrete adapters (FacebookAdapter + its
+ *   FacebookDataProvider interface, local mock sources). Only the Marketplaces module wires them.
+ * - `@rein-drop/marketplace-core/testing`: the adapter contract test suite.
+ *
+ * TODO(marketplace): real eBay adapter and a real FacebookDataProvider - sources and credentials
+ * are not decided yet.
  */
 
-/** Launch marketplaces, per the project contract. */
-export const MARKETPLACE_IDS = ['ebay', 'facebook'] as const;
-
-export type MarketplaceId = (typeof MARKETPLACE_IDS)[number];
-
-export function isMarketplaceId(value: unknown): value is MarketplaceId {
-  return typeof value === 'string' && (MARKETPLACE_IDS as readonly string[]).includes(value);
-}
+export { MARKETPLACE_IDS, isMarketplaceId, type MarketplaceId } from './ids.js';
+export { isJsonValue, jsonValueSchema, type JsonValue } from './json.js';
+export {
+  LISTING_CONDITIONS,
+  LISTING_STATUSES,
+  currencyCodeSchema,
+  listingMoneySchema,
+  normalizedListingSchema,
+  type ListingCondition,
+  type ListingStatus,
+  type Money,
+  type NormalizedListing,
+} from './listing.js';
+export { LOCATION_MODES, capabilityProblems, type MarketplaceCapabilities } from './capabilities.js';
+export { SOURCE_HEALTH_STATUSES, type SourceHealth, type SourceHealthStatus } from './health.js';
+export {
+  MARKETPLACE_ERROR_CODES,
+  MarketplaceError,
+  isMarketplaceError,
+  type MarketplaceErrorCode,
+  type MarketplaceErrorOptions,
+} from './errors.js';
+export {
+  applicableCriteria,
+  criteriaProblems,
+  type CancellationSignal,
+  type IgnoredFilter,
+  type MarketplaceSearchCriteria,
+  type MarketplaceSearchResult,
+  type SearchLocation,
+  type SearchOptions,
+} from './search.js';
+export { normalizeRawListing, rawListingProblems, type NormalizeResult, type RawListingRecord } from './raw-listing.js';
+export type { MarketplaceAdapter } from './adapter.js';
+export { MarketplaceRegistry } from './registry.js';
