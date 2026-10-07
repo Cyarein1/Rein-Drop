@@ -1,24 +1,217 @@
 import { z } from 'zod';
-import { isoDateTimeSchema } from './common.js';
-
-const count = z.number().int().min(0);
+import { isoDateTimeSchema, moneySchema } from './common.js';
 
 /**
- * `GET /me/snapshot` - the seller's at-a-glance dashboard numbers.
+ * Seller Snapshot - the five progressive onboarding questions
+ * (App Flow Blueprint v1.0, section 4). One question per screen; answers are
+ * saved as the user goes so onboarding can resume, and they pre-fill the first
+ * Hunt (marketplaces, deal criteria) and personalize the product.
  *
- * Only counts derivable from existing tables. TODO(product): profit / revenue /
- * sell-through metrics once their definitions are agreed (they depend on how
- * costs are allocated).
+ * Option keys are stable identifiers; labels are the Blueprint's wording.
+ * NOTE: question 4's exact wording/options are an open decision (Blueprint
+ * section 22) - change the lists here, not in the apps.
+ */
+
+export const SELLER_SNAPSHOT_QUESTION_COUNT = 5;
+export const OTHER_TEXT_MAX_LENGTH = 60;
+
+// Q1 - What do you usually hunt for? (multi-select)
+export const HUNT_CATEGORIES = [
+  'phones_tablets',
+  'computers',
+  'gaming',
+  'cameras',
+  'sneakers_fashion',
+  'collectibles',
+  'tools',
+  'auto_parts',
+  'other',
+] as const;
+export type HuntCategory = (typeof HUNT_CATEGORIES)[number];
+
+// Q2 - Which best describes your reselling right now? (single)
+export const RESELLER_STAGES = [
+  'getting_started',
+  'side_income',
+  'regular_reseller',
+  'full_time',
+  'team_store',
+] as const;
+export type ResellerStage = (typeof RESELLER_STAGES)[number];
+
+// Q3 - Where do you usually source inventory? (multi-select)
+export const SOURCING_CHANNELS = [
+  'facebook_marketplace',
+  'ebay',
+  'local_classifieds',
+  'thrift_retail',
+  'auctions',
+  'other',
+] as const;
+export type SourcingChannel = (typeof SOURCING_CHANNELS)[number];
+
+// Q4 - What makes a deal worth moving on for you? (single + optional target)
+export const DEAL_CRITERIA = [
+  'min_profit',
+  'min_margin',
+  'max_buy_price',
+  'fast_resale',
+  'case_by_case',
+] as const;
+export type DealCriterion = (typeof DEAL_CRITERIA)[number];
+
+// Q5 - What would you most like Rein Drop to improve? (single)
+export const IMPROVEMENT_GOALS = [
+  'find_deals_faster',
+  'stop_checking_marketplaces',
+  'find_better_margins',
+  'miss_fewer_listings',
+  'know_what_to_buy',
+  'track_profit',
+] as const;
+export type ImprovementGoal = (typeof IMPROVEMENT_GOALS)[number];
+
+/** Question and option wording, shared by web and mobile. */
+export const SELLER_SNAPSHOT_COPY = {
+  categories: {
+    question: 'What do you usually hunt for?',
+    options: {
+      phones_tablets: 'Phones & tablets',
+      computers: 'Computers',
+      gaming: 'Gaming',
+      cameras: 'Cameras',
+      sneakers_fashion: 'Sneakers/fashion',
+      collectibles: 'Collectibles',
+      tools: 'Tools',
+      auto_parts: 'Auto parts',
+      other: 'Other',
+    } satisfies Record<HuntCategory, string>,
+  },
+  stage: {
+    question: 'Which best describes your reselling right now?',
+    options: {
+      getting_started: 'Getting started',
+      side_income: 'Side income',
+      regular_reseller: 'Regular reseller',
+      full_time: 'Full-time / high volume',
+      team_store: 'Team / store',
+    } satisfies Record<ResellerStage, string>,
+  },
+  sources: {
+    question: 'Where do you usually source inventory?',
+    options: {
+      facebook_marketplace: 'Facebook Marketplace',
+      ebay: 'eBay',
+      local_classifieds: 'Local pickup / classifieds',
+      thrift_retail: 'Thrift/retail',
+      auctions: 'Auctions',
+      other: 'Other',
+    } satisfies Record<SourcingChannel, string>,
+  },
+  dealRule: {
+    question: 'What makes a deal worth moving on for you?',
+    options: {
+      min_profit: 'Minimum $ profit',
+      min_margin: 'Minimum % margin',
+      max_buy_price: 'Buy below a max price',
+      fast_resale: 'Fast resale/velocity',
+      case_by_case: 'I decide case by case',
+    } satisfies Record<DealCriterion, string>,
+  },
+  improvementGoal: {
+    question: 'What would you most like Rein Drop to improve?',
+    options: {
+      find_deals_faster: 'Find deals faster',
+      stop_checking_marketplaces: 'Stop checking marketplaces',
+      find_better_margins: 'Find better margins',
+      miss_fewer_listings: 'Miss fewer listings',
+      know_what_to_buy: 'Know what to buy',
+      track_profit: 'Track what actually makes me money',
+    } satisfies Record<ImprovementGoal, string>,
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
+
+const uniqueList = <T extends z.ZodType>(item: T, message: string) =>
+  z
+    .array(item)
+    .min(1, message)
+    .refine((list) => new Set(list).size === list.length, 'Options must not repeat');
+
+const otherText = z.string().trim().min(1).max(OTHER_TEXT_MAX_LENGTH);
+
+const positiveMoney = moneySchema.refine((m) => m.amountMinor > 0, 'Amount must be greater than 0');
+
+/** Q4 answer. The optional target only exists where it makes sense for the criterion. */
+export const dealRuleSchema = z.discriminatedUnion('criterion', [
+  z.object({ criterion: z.literal('min_profit'), target: positiveMoney.nullable() }),
+  z.object({
+    criterion: z.literal('min_margin'),
+    /** Whole percent, e.g. 25 = 25% margin. */
+    targetPercent: z.number().int().min(1).max(100).nullable(),
+  }),
+  z.object({ criterion: z.literal('max_buy_price'), target: positiveMoney.nullable() }),
+  z.object({ criterion: z.literal('fast_resale') }),
+  z.object({ criterion: z.literal('case_by_case') }),
+]);
+export type DealRule = z.infer<typeof dealRuleSchema>;
+
+const answerFields = {
+  categories: uniqueList(z.enum(HUNT_CATEGORIES), 'Choose at least one category'),
+  /** Free text when "other" is selected. */
+  categoriesOther: otherText.nullable(),
+  stage: z.enum(RESELLER_STAGES),
+  sources: uniqueList(z.enum(SOURCING_CHANNELS), 'Choose at least one place'),
+  sourcesOther: otherText.nullable(),
+  dealRule: dealRuleSchema,
+  improvementGoal: z.enum(IMPROVEMENT_GOALS),
+};
+
+/**
+ * `PATCH /me/seller-snapshot` body - save one or more answers as the user
+ * progresses. "Other" text is only accepted when "other" is selected.
+ */
+export const updateSellerSnapshotRequestSchema = z
+  .object(answerFields)
+  .partial()
+  .refine((body) => Object.values(body).some((v) => v !== undefined), 'Provide at least one answer')
+  .refine(
+    (body) => !body.categoriesOther || body.categories?.includes('other'),
+    { message: 'Only allowed when "Other" is selected', path: ['categoriesOther'] },
+  )
+  .refine(
+    (body) => !body.sourcesOther || body.sources?.includes('other'),
+    { message: 'Only allowed when "Other" is selected', path: ['sourcesOther'] },
+  );
+export type UpdateSellerSnapshotRequest = z.infer<typeof updateSellerSnapshotRequestSchema>;
+
+/**
+ * `GET`/`PATCH /me/seller-snapshot` response. Unanswered questions are null/empty.
+ * `completedAt` is set by the server once all five questions are answered.
  */
 export const sellerSnapshotSchema = z.object({
-  /** Hunts with status ACTIVE. */
-  activeHunts: count,
-  /** Hunt matches with status NEW across the seller's hunts. */
-  newMatches: count,
-  /** Saved deals. */
-  savedDeals: count,
-  /** Inventory items with status IN_STOCK or LISTED. */
-  inventoryOnHand: count,
-  generatedAt: isoDateTimeSchema,
+  categories: z.array(z.enum(HUNT_CATEGORIES)),
+  categoriesOther: z.string().nullable(),
+  stage: z.enum(RESELLER_STAGES).nullable(),
+  sources: z.array(z.enum(SOURCING_CHANNELS)),
+  sourcesOther: z.string().nullable(),
+  dealRule: dealRuleSchema.nullable(),
+  improvementGoal: z.enum(IMPROVEMENT_GOALS).nullable(),
+  completedAt: isoDateTimeSchema.nullable(),
+  updatedAt: isoDateTimeSchema.nullable(),
 });
 export type SellerSnapshot = z.infer<typeof sellerSnapshotSchema>;
+
+/** How many of the five questions have an answer - drives "2 of 5" progress on every platform. */
+export function answeredQuestionCount(snapshot: SellerSnapshot): number {
+  return [
+    snapshot.categories.length > 0,
+    snapshot.stage !== null,
+    snapshot.sources.length > 0,
+    snapshot.dealRule !== null,
+    snapshot.improvementGoal !== null,
+  ].filter(Boolean).length;
+}

@@ -146,7 +146,8 @@ through Windows Firewall on private networks when prompted.
   (`?limit=&cursor=` -> `{ items, nextCursor }`); status enums use the same upper-case values
   as the database (a test in `apps/api` fails if they drift).
 - **API client:** `createApiClient({ baseUrl })` from `@rein-drop/api-client`. Methods:
-  `getHealth`, `getReadiness`, `getMe`, `getSellerSnapshot`, `listHunts`, `getHunt`,
+  `getHealth`, `getReadiness`, `getMe`, `getSellerSnapshot`, `updateSellerSnapshot`,
+  `getHomeSummary`, `listHunts`, `getHunt`,
   `createHunt`, `updateHunt`, `listDeals`, `getDeal`. It validates request bodies before
   sending (same `VALIDATION_FAILED` + `details` format as the server, so forms can show the
   errors directly), validates responses against the contract, and throws only `ApiError`.

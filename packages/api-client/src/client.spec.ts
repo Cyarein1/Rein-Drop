@@ -84,6 +84,31 @@ describe('createApiClient', () => {
     await expect(client(fetch).getHunt(ID)).rejects.toThrow(/does not match the contract/);
   });
 
+  it('PATCHes a validated Seller Snapshot answer to /me/seller-snapshot', async () => {
+    const snapshot = {
+      categories: [],
+      categoriesOther: null,
+      stage: 'side_income',
+      sources: [],
+      sourcesOther: null,
+      dealRule: null,
+      improvementGoal: null,
+      completedAt: null,
+      updatedAt: NOW,
+    };
+    const fetch = fakeFetch(200, snapshot);
+    await expect(client(fetch).updateSellerSnapshot({ stage: 'side_income' })).resolves.toEqual(snapshot);
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe('http://api.test/me/seller-snapshot');
+    expect(init?.method).toBe('PATCH');
+
+    const err = await client(fetch)
+      .updateSellerSnapshot({ categories: ['gaming'], categoriesOther: 'Vinyl' })
+      .catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('treats 503 from /ready as a normal readiness response', async () => {
     const fetch = fakeFetch(503, { status: 'not_ready', checks: { database: 'down' }, timestamp: NOW });
     await expect(client(fetch).getReadiness()).resolves.toMatchObject({ status: 'not_ready' });

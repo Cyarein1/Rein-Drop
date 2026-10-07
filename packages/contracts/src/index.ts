@@ -14,6 +14,7 @@ export * from './errors.js';
 export * from './health.js';
 export * from './account.js';
 export * from './seller-snapshot.js';
+export * from './home-summary.js';
 export * from './hunts.js';
 export * from './listings.js';
 export * from './deals.js';

@@ -4,6 +4,39 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 8 - Seller Snapshot corrected to the App Flow Blueprint definition
+
+**What changed**
+
+- Contracts:
+  - Step 5's dashboard counts renamed **`HomeSummary`** (`GET /me/home-summary`; returning-user
+    home, Blueprint section 8). Same fields as before.
+  - New **`SellerSnapshot`** = the five progressive onboarding answers (Blueprint section 4):
+    Q1 `categories` (multi, + `categoriesOther`), Q2 `stage`, Q3 `sources` (multi, +
+    `sourcesOther`), Q4 `dealRule` (criterion + optional target: money for min profit / max buy
+    price, whole percent for min margin, none otherwise), Q5 `improvementGoal`. `completedAt`
+    is set by the server when all five are answered.
+  - `PATCH /me/seller-snapshot` saves any subset of answers (resumable onboarding); "Other" text
+    only accepted when Other is selected; multi-selects need >= 1 unique option.
+  - Shared option keys, Blueprint wording (`SELLER_SNAPSHOT_COPY`) and
+    `answeredQuestionCount()` for "n of 5" progress - web and mobile use these, nothing duplicated.
+- Database: migration `20261007024615_seller_snapshot` adds Seller Snapshot columns to
+  `SellerProfile` (additive, nullable / empty-array defaults). Answer columns are text, not DB
+  enums: option lists are product copy and Q4 is an open decision (Blueprint section 22).
+- api-client: `getSellerSnapshot()` (now `/me/seller-snapshot`), new `updateSellerSnapshot()`,
+  new `getHomeSummary()`.
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: contracts 13 (+7 Seller
+  Snapshot), api-client 9, api 25 + e2e 8, web 6, design-tokens 11, worker 3.
+- Migration applied to the local Docker DB; `pnpm db:status` up to date (2 migrations).
+
+**Not done (by design)**
+
+- No API endpoints or onboarding screens yet - next steps.
+
+
 ### Step 7 - Authenticated web shell (placeholder auth)
 
 **What was added**
@@ -86,13 +119,10 @@ variants), Mascot Branding Kit (wash colours), and the production asset files.
 - **Not yet viewed on a device/emulator or in a browser by a human** - layout/visual polish needs
   your eyes (`pnpm --filter web dev` -> /dev/ui, `pnpm --filter mobile start`).
 
-**Divergence to resolve (from App Flow Blueprint)**
+**Divergence found (from App Flow Blueprint)** - _resolved in step 8._
 
-- The Blueprint defines **Seller Snapshot = the 5-question onboarding profile** (categories,
-  reseller stage, sources, deal criteria + optional target, improvement goal). Step 5's
-  `SellerSnapshot` contract (`GET /me/snapshot`, dashboard counts) does not match. Proposed fix:
-  rename the step-5 contract to a home/dashboard summary and model the real Seller Snapshot
-  (answers stored on SellerProfile) - awaiting the user's go-ahead.
+- The Blueprint defines Seller Snapshot as the 5-question onboarding profile; step 5 had used
+  the name for dashboard counts.
 
 
 ### Step 5 - Shared contracts (zod) + typed API client
@@ -105,7 +135,8 @@ variants), Mascot Branding Kit (wash colours), and the production asset files.
     (from marketplace-core), cursor pagination (`limit` 1-100, default 20; `{ items, nextCursor }`).
   - `account`: `AccountIdentity` (`GET /me`) - **placeholder** until the auth provider is chosen
     (userId, email, displayName only).
-  - `seller-snapshot`: `SellerSnapshot` (`GET /me/snapshot`) - dashboard counts derivable from
+  - _(Superseded in step 8: renamed `HomeSummary`, `GET /me/home-summary`.)_
+    `seller-snapshot`: `SellerSnapshot` (`GET /me/snapshot`) - dashboard counts derivable from
     existing tables (activeHunts, newMatches, savedDeals, inventoryOnHand = IN_STOCK + LISTED).
     Decided with the user: dashboard summary; profit/revenue metrics TODO.
   - `hunts`: create (name, query, marketplaces; trimmed, length-limited, unique marketplaces),
@@ -357,5 +388,6 @@ pnpm --filter mobile start
 
 ## Next step
 
-Fix the Seller Snapshot divergence (above). Then likely: local dev auth abstraction (so `/me` and per-user data can work), then implement the Hunt endpoints
-against these contracts. (Await the next prompt.)
+Likely: local dev auth abstraction (so `/me` and per-user data can work), then the first real
+flow: Seller Snapshot onboarding (API endpoints + 5-step web screens), then Hunt endpoints.
+(Await the next prompt.)

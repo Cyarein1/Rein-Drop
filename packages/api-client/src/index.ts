@@ -9,6 +9,7 @@ import {
   dealDetailSchema,
   dealPageSchema,
   healthResponseSchema,
+  homeSummarySchema,
   huntPageSchema,
   huntSchema,
   listDealsQuerySchema,
@@ -16,11 +17,13 @@ import {
   readinessResponseSchema,
   sellerSnapshotSchema,
   updateHuntRequestSchema,
+  updateSellerSnapshotRequestSchema,
   type AccountIdentity,
   type CreateHuntRequest,
   type DealDetail,
   type DealSummary,
   type HealthResponse,
+  type HomeSummary,
   type Hunt,
   type ListDealsQueryInput,
   type ListHuntsQueryInput,
@@ -28,6 +31,7 @@ import {
   type ReadinessResponse,
   type SellerSnapshot,
   type UpdateHuntRequest,
+  type UpdateSellerSnapshotRequest,
 } from '@rein-drop/contracts';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
@@ -56,7 +60,12 @@ export interface ApiClient {
 
   /** Current account (placeholder until auth is chosen). */
   getMe(): Promise<AccountIdentity>;
+  /** The five onboarding answers (unanswered = null/empty). */
   getSellerSnapshot(): Promise<SellerSnapshot>;
+  /** Save one or more onboarding answers; returns the updated snapshot. */
+  updateSellerSnapshot(input: UpdateSellerSnapshotRequest): Promise<SellerSnapshot>;
+  /** Counts for the returning-user home. */
+  getHomeSummary(): Promise<HomeSummary>;
 
   listHunts(query?: ListHuntsQueryInput): Promise<Page<Hunt>>;
   getHunt(id: string): Promise<Hunt>;
@@ -93,7 +102,16 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
     getMe: () => send(http, { method: 'GET', path: '/me', response: accountIdentitySchema }),
     getSellerSnapshot: () =>
-      send(http, { method: 'GET', path: '/me/snapshot', response: sellerSnapshotSchema }),
+      send(http, { method: 'GET', path: '/me/seller-snapshot', response: sellerSnapshotSchema }),
+    updateSellerSnapshot: async (input) =>
+      send(http, {
+        method: 'PATCH',
+        path: '/me/seller-snapshot',
+        body: validateInput(updateSellerSnapshotRequestSchema, input, 'body'),
+        response: sellerSnapshotSchema,
+      }),
+    getHomeSummary: () =>
+      send(http, { method: 'GET', path: '/me/home-summary', response: homeSummarySchema }),
 
     listHunts: async (query = {}) =>
       send(http, {

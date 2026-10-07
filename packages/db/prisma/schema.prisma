@@ -125,14 +125,37 @@ model User {
   usageEvents    UsageEvent[]
 }
 
-/// Reseller-specific profile, 1:1 with User.
-/// TODO(product): sourcing preferences (location, categories, budgets) are not specified yet.
+/// Reseller-specific profile, 1:1 with User. Holds the Seller Snapshot - the five
+/// onboarding answers (App Flow Blueprint section 4; contract in @rein-drop/contracts).
+/// Answer columns are plain text (not DB enums): the option lists are product copy that
+/// may still change (Blueprint section 22), and contracts validate them.
+/// TODO(product): location / budget preferences are not specified yet.
 model SellerProfile {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  userId      String   @unique @db.Uuid
+  id          String  @id @default(uuid(7)) @db.Uuid
+  userId      String  @unique @db.Uuid
   displayName String?
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  // Q1 - What do you usually hunt for?
+  huntCategories          String[]  @default([])
+  huntCategoriesOther     String?
+  // Q2 - Which best describes your reselling right now?
+  resellerStage           String?
+  // Q3 - Where do you usually source inventory?
+  sourcingChannels        String[]  @default([])
+  sourcingChannelsOther   String?
+  // Q4 - What makes a deal worth moving on for you? Target meaning depends on the criterion:
+  // min_profit / max_buy_price -> amount + currency; min_margin -> whole percent.
+  dealCriterion           String?
+  dealTargetAmountMinor   Int?
+  dealTargetCurrency      String?   @db.Char(3)
+  dealTargetMarginPercent Int?
+  // Q5 - What would you most like Rein Drop to improve?
+  improvementGoal         String?
+  /// Set when all five questions have been answered.
+  snapshotCompletedAt     DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

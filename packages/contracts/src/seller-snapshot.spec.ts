@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+import {
+  answeredQuestionCount,
+  DEAL_CRITERIA,
+  HUNT_CATEGORIES,
+  IMPROVEMENT_GOALS,
+  RESELLER_STAGES,
+  SELLER_SNAPSHOT_COPY,
+  SELLER_SNAPSHOT_QUESTION_COUNT,
+  sellerSnapshotSchema,
+  SOURCING_CHANNELS,
+  updateSellerSnapshotRequestSchema,
+  type SellerSnapshot,
+} from './index.js';
+
+const EMPTY: SellerSnapshot = {
+  categories: [],
+  categoriesOther: null,
+  stage: null,
+  sources: [],
+  sourcesOther: null,
+  dealRule: null,
+  improvementGoal: null,
+  completedAt: null,
+  updatedAt: null,
+};
+
+const problems = (input: unknown) =>
+  updateSellerSnapshotRequestSchema.safeParse(input).error?.issues.map((i) => i.path.join('.')) ?? [];
+
+describe('Seller Snapshot questions', () => {
+  it('has the five Blueprint questions with copy for every option', () => {
+    expect(SELLER_SNAPSHOT_QUESTION_COUNT).toBe(5);
+    expect(Object.keys(SELLER_SNAPSHOT_COPY)).toHaveLength(5);
+    const pairs = [
+      [HUNT_CATEGORIES, SELLER_SNAPSHOT_COPY.categories.options],
+      [RESELLER_STAGES, SELLER_SNAPSHOT_COPY.stage.options],
+      [SOURCING_CHANNELS, SELLER_SNAPSHOT_COPY.sources.options],
+      [DEAL_CRITERIA, SELLER_SNAPSHOT_COPY.dealRule.options],
+      [IMPROVEMENT_GOALS, SELLER_SNAPSHOT_COPY.improvementGoal.options],
+    ] as const;
+    for (const [keys, labels] of pairs) expect(Object.keys(labels)).toEqual([...keys]);
+  });
+});
+
+describe('updateSellerSnapshotRequestSchema', () => {
+  it('accepts saving a single answer (progressive onboarding)', () => {
+    expect(updateSellerSnapshotRequestSchema.parse({ stage: 'side_income' })).toEqual({ stage: 'side_income' });
+  });
+
+  it('requires at least one answer and at least one option per multi-select', () => {
+    expect(updateSellerSnapshotRequestSchema.safeParse({}).success).toBe(false);
+    expect(problems({ categories: [] })).toEqual(['categories']);
+    expect(problems({ sources: ['ebay', 'ebay'] })).toEqual(['sources']);
+  });
+
+  it('rejects unknown options', () => {
+    expect(problems({ categories: ['jewelry'] })).toEqual(['categories.0']);
+    expect(problems({ improvementGoal: 'get_rich' })).toEqual(['improvementGoal']);
+  });
+
+  it('only accepts "Other" text when Other is selected', () => {
+    expect(problems({ categories: ['gaming'], categoriesOther: 'Vinyl' })).toEqual(['categoriesOther']);
+    expect(problems({ categories: ['other'], categoriesOther: ' Vinyl ' })).toEqual([]);
+    expect(problems({ sources: ['ebay'], sourcesOther: 'Garage sales' })).toEqual(['sourcesOther']);
+  });
+
+  it('validates the deal rule target for its criterion', () => {
+    const ok = (dealRule: unknown) => updateSellerSnapshotRequestSchema.safeParse({ dealRule }).success;
+    expect(ok({ criterion: 'min_profit', target: { amountMinor: 15000, currency: 'USD' } })).toBe(true);
+    expect(ok({ criterion: 'min_profit', target: null })).toBe(true);
+    expect(ok({ criterion: 'min_profit', target: { amountMinor: 0, currency: 'USD' } })).toBe(false);
+    expect(ok({ criterion: 'min_margin', targetPercent: 25 })).toBe(true);
+    expect(ok({ criterion: 'min_margin', targetPercent: 250 })).toBe(false);
+    expect(ok({ criterion: 'case_by_case' })).toBe(true);
+    expect(ok({ criterion: 'gut_feeling' })).toBe(false);
+  });
+});
+
+describe('answeredQuestionCount', () => {
+  it('counts answered questions for "n of 5" progress', () => {
+    expect(answeredQuestionCount(EMPTY)).toBe(0);
+    const partial = { ...EMPTY, categories: ['phones_tablets'], stage: 'side_income' } as SellerSnapshot;
+    expect(answeredQuestionCount(partial)).toBe(2);
+    const full: SellerSnapshot = {
+      ...partial,
+      sources: ['facebook_marketplace', 'ebay'],
+      dealRule: { criterion: 'min_profit', target: { amountMinor: 15000, currency: 'USD' } },
+      improvementGoal: 'stop_checking_marketplaces',
+      completedAt: '2026-10-07T02:00:00.000Z',
+      updatedAt: '2026-10-07T02:00:00.000Z',
+    };
+    expect(sellerSnapshotSchema.safeParse(full).success).toBe(true);
+    expect(answeredQuestionCount(full)).toBe(5);
+  });
+});
