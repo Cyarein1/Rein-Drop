@@ -9,7 +9,7 @@ type StatusResult =
 /** Server component: checks apps/api liveness (/health) and readiness (/ready) per request. */
 export async function ApiStatus() {
   await connection();
-  const baseUrl = process.env.API_BASE_URL ?? "";
+  const baseUrl = apiBaseUrl();
   const result = await checkApi(baseUrl);
 
   if (!result.ok) {
@@ -50,6 +50,13 @@ export async function ApiStatus() {
       <p style={{ fontSize: 14, color: "var(--rd-text-muted)" }}>Checked {result.timestamp}</p>
     </div>
   );
+}
+
+/** Local API by default outside production, so no .env file is needed for development. */
+function apiBaseUrl(): string {
+  const configured = process.env.API_BASE_URL?.trim();
+  if (configured) return configured;
+  return process.env.NODE_ENV === "production" ? "" : "http://localhost:4000";
 }
 
 async function checkApi(baseUrl: string): Promise<StatusResult> {
