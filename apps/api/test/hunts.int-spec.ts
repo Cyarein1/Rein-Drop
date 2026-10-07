@@ -109,8 +109,36 @@ describe('Hunts (integration, real database)', () => {
     expect(await prisma.hunt.count({ where: { id } })).toBe(1);
   });
 
+  it('restores archived hunts: was live -> PAUSED (resume to go live), was draft -> DRAFT', async () => {
+    const server = app.getHttpServer();
+    const live = await as(request(server).post('/hunts')).send({ query: 'canon r6', marketplaces: ['ebay'] }).expect(201);
+    await as(request(server).post(`/hunts/${live.body.id}/activate`)).expect(200);
+    await as(request(server).post(`/hunts/${live.body.id}/archive`)).expect(200);
+    const restored = await as(request(server).post(`/hunts/${live.body.id}/restore`)).expect(200);
+    expect(restored.body).toMatchObject({ id: live.body.id, status: 'PAUSED', archivedAt: null });
+    await as(request(server).post(`/hunts/${live.body.id}/restore`)).expect(409); // not archived any more
+    expect((await as(request(server).post(`/hunts/${live.body.id}/resume`)).expect(200)).body.status).toBe('LIVE');
+    const events = await as(request(server).get(`/hunts/${live.body.id}/events`)).expect(200);
+    expect(events.body.items.map((e: { type: string }) => e.type)).toEqual([
+      'CREATED',
+      'ACTIVATED',
+      'ARCHIVED',
+      'RESTORED',
+      'RESUMED',
+    ]);
+
+    const draft = await as(request(server).post('/hunts')).send({ query: 'sony a7 iii', marketplaces: ['ebay'] }).expect(201);
+    await as(request(server).post(`/hunts/${draft.body.id}/archive`)).expect(200);
+    const restoredDraft = await as(request(server).post(`/hunts/${draft.body.id}/restore`)).expect(200);
+    expect(restoredDraft.body.status).toBe('DRAFT');
+  });
+
   it('paginates newest first with a cursor', async () => {
     const server = app.getHttpServer();
+    // Archive everything from earlier tests so the default list holds only these three.
+    for (const hunt of await prisma.hunt.findMany({ where: { userId, status: { not: 'ARCHIVED' } } })) {
+      await as(request(server).post(`/hunts/${hunt.id}/archive`)).expect(200);
+    }
     for (const q of ['ps5 slim', 'xbox series x', 'steam deck']) {
       await as(request(server).post('/hunts')).send({ query: q, marketplaces: ['ebay'] }).expect(201);
     }
@@ -120,6 +148,37 @@ describe('Hunts (integration, real database)', () => {
     const second = await as(request(server).get(`/hunts?limit=2&cursor=${first.body.nextCursor}`)).expect(200);
     expect(second.body.items.map((h: { query: string }) => h.query)).toEqual(['ps5 slim']);
     expect(second.body.nextCursor).toBeNull();
+  });
+
+  it('locale: detection fills an empty locale only; the user choice wins', async () => {
+    const server = app.getHttpServer();
+    expect((await as(request(server).get('/me/locale')).expect(200)).body).toEqual({ locale: null });
+
+    const detected = await as(request(server).put('/me/locale'))
+      .send({ countryCode: 'ZA', language: 'zu', source: 'detected' })
+      .expect(200);
+    expect(detected.body.locale).toEqual({
+      countryCode: 'ZA',
+      currency: 'ZAR',
+      distanceUnit: 'km',
+      language: 'zu',
+      source: 'detected',
+    });
+
+    // A later detection (e.g. travelling) does not change an existing locale.
+    const again = await as(request(server).put('/me/locale')).send({ countryCode: 'US', source: 'detected' }).expect(200);
+    expect(again.body.locale.countryCode).toBe('ZA');
+
+    // The user's own choice applies, with defaults from the new country.
+    const chosen = await as(request(server).put('/me/locale')).send({ countryCode: 'US', source: 'user' }).expect(200);
+    expect(chosen.body.locale).toEqual({
+      countryCode: 'US',
+      currency: 'USD',
+      distanceUnit: 'mi',
+      language: 'zu',
+      source: 'user',
+    });
+    await as(request(server).put('/me/locale')).send({ countryCode: 'XX' }).expect(400);
   });
 
   it("does not expose another user's hunts", async () => {

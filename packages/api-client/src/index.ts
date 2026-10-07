@@ -11,6 +11,8 @@ import {
   healthResponseSchema,
   homeSummarySchema,
   huntEventListSchema,
+  updateUserLocaleRequestSchema,
+  userLocaleResponseSchema,
   huntPageSchema,
   huntSchema,
   listDealsQuerySchema,
@@ -37,12 +39,22 @@ import {
   type SellerSnapshot,
   type UpdateHuntRequest,
   type UpdateSellerSnapshotRequest,
+  type UpdateUserLocaleRequestInput,
+  type UserLocale,
 } from '@rein-drop/contracts';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
 export { ApiError } from './errors.js';
 export type * from '@rein-drop/contracts';
-export { AUTH_PROVIDER_IDS, DEV_AUTH_HEADER, DEV_AUTH_SUBJECT } from '@rein-drop/contracts';
+export {
+  AUTH_PROVIDER_IDS,
+  DEV_AUTH_HEADER,
+  DEV_AUTH_SUBJECT,
+  detectedLocaleRequest,
+  kmToUnit,
+  uiLanguage,
+  unitToKm,
+} from '@rein-drop/contracts';
 
 export interface ApiClientOptions {
   /** e.g. http://localhost:4000 - no trailing path. */
@@ -64,8 +76,11 @@ export interface ApiClient {
   /** Readiness. Resolves for both ready (200) and not ready (503). */
   getReadiness(): Promise<ReadinessResponse>;
 
-  /** Current account (placeholder until auth is chosen). */
+  /** Current account (placeholder until auth is chosen), including locale preferences. */
   getMe(): Promise<AccountIdentity>;
+  getLocale(): Promise<UserLocale | null>;
+  /** Set the locale, or report a detected one (`source: 'detected'` never overwrites). */
+  updateLocale(input: UpdateUserLocaleRequestInput): Promise<UserLocale | null>;
   /** The five onboarding answers (unanswered = null/empty). */
   getSellerSnapshot(): Promise<SellerSnapshot>;
   /** Save one or more onboarding answers; returns the updated snapshot. */
@@ -116,6 +131,17 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
 
     getMe: () => send(http, { method: 'GET', path: '/me', response: accountIdentitySchema }),
+    getLocale: async () =>
+      (await send(http, { method: 'GET', path: '/me/locale', response: userLocaleResponseSchema })).locale,
+    updateLocale: async (input) =>
+      (
+        await send(http, {
+          method: 'PUT',
+          path: '/me/locale',
+          body: validateInput(updateUserLocaleRequestSchema, input, 'body'),
+          response: userLocaleResponseSchema,
+        })
+      ).locale,
     getSellerSnapshot: () =>
       send(http, { method: 'GET', path: '/me/seller-snapshot', response: sellerSnapshotSchema }),
     updateSellerSnapshot: async (input) =>

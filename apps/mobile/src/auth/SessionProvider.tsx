@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { ApiError } from '@rein-drop/api-client';
+import { getLocales } from 'expo-localization';
+import { ApiError, detectedLocaleRequest, type AccountIdentity } from '@rein-drop/api-client';
 import { getApiClient } from '@/config/api';
 import { authSetup } from './provider';
 import type { Session } from './types';
@@ -34,6 +35,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     Promise.resolve()
       .then(() => getApiClient().getMe())
+      .then(withDetectedLocale)
       .then(
         (user) => {
           if (!cancelled) {
@@ -63,6 +65,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return <SessionContext.Provider value={{ state, refresh }}>{children}</SessionContext.Provider>;
+}
+
+/**
+ * First sign-in: report the device locale (e.g. "en-ZA") so currency, distance unit and
+ * language default to where the user is. Only while the stored locale is empty; the API
+ * never lets detection overwrite an existing locale. Best effort - never blocks sign-in.
+ */
+async function withDetectedLocale(user: AccountIdentity): Promise<AccountIdentity> {
+  if (user.locale) return user;
+  const request = detectedLocaleRequest(getLocales()[0]?.languageTag);
+  if (!request) return user;
+  try {
+    const locale = await getApiClient().updateLocale(request);
+    return { ...user, locale };
+  } catch {
+    return user;
+  }
 }
 
 export function useSessionState(): SessionContextValue {

@@ -221,11 +221,19 @@ export const huntPageSchema = pageSchema(huntSchema);
 // Lifecycle + history
 // ---------------------------------------------------------------------------
 
-export const HUNT_ACTIONS = ['activate', 'pause', 'resume', 'archive'] as const;
+export const HUNT_ACTIONS = ['activate', 'pause', 'resume', 'archive', 'restore'] as const;
 export type HuntAction = (typeof HUNT_ACTIONS)[number];
 
 /** Mirrors the HuntEventType database enum. */
-export const HUNT_EVENT_TYPES = ['CREATED', 'EDITED', 'ACTIVATED', 'PAUSED', 'RESUMED', 'ARCHIVED'] as const;
+export const HUNT_EVENT_TYPES = [
+  'CREATED',
+  'EDITED',
+  'ACTIVATED',
+  'PAUSED',
+  'RESUMED',
+  'ARCHIVED',
+  'RESTORED',
+] as const;
 export const huntEventTypeSchema = z.enum(HUNT_EVENT_TYPES);
 export type HuntEventType = z.infer<typeof huntEventTypeSchema>;
 
@@ -257,10 +265,23 @@ export function huntLiveReadinessProblems(hunt: Pick<Hunt, 'marketplaces' | 'loc
   return problems;
 }
 
-/** Valid lifecycle moves: action -> statuses it may start from, and the resulting status. */
+/**
+ * Valid lifecycle moves: action -> statuses it may start from, and the resulting status.
+ * `restore`'s target depends on the status before archiving - see `restoredStatus`.
+ */
 export const HUNT_TRANSITIONS: Record<HuntAction, { from: readonly HuntStatus[]; to: HuntStatus }> = {
   activate: { from: ['DRAFT'], to: 'LIVE' },
   pause: { from: ['LIVE'], to: 'PAUSED' },
   resume: { from: ['PAUSED'], to: 'LIVE' },
   archive: { from: ['DRAFT', 'LIVE', 'PAUSED'], to: 'ARCHIVED' },
+  restore: { from: ['ARCHIVED'], to: 'PAUSED' },
 };
+
+/**
+ * Where a restored hunt lands. Never straight back to LIVE: going live again must pass
+ * the go-live checks (and the plan gate, later) via `resume`. A hunt that was never
+ * activated returns to DRAFT.
+ */
+export function restoredStatus(statusBeforeArchive: HuntStatus | null): HuntStatus {
+  return statusBeforeArchive === 'DRAFT' ? 'DRAFT' : 'PAUSED';
+}

@@ -3,6 +3,7 @@ import {
   createHuntRequestSchema,
   HUNT_TRANSITIONS,
   huntLiveReadinessProblems,
+  restoredStatus,
   updateHuntRequestSchema,
 } from './index.js';
 
@@ -94,6 +95,14 @@ describe('lifecycle', () => {
     expect(HUNT_TRANSITIONS.activate).toEqual({ from: ['DRAFT'], to: 'LIVE' });
     expect(HUNT_TRANSITIONS.resume).toEqual({ from: ['PAUSED'], to: 'LIVE' });
     expect(HUNT_TRANSITIONS.archive.from).not.toContain('ARCHIVED');
+    expect(HUNT_TRANSITIONS.restore.from).toEqual(['ARCHIVED']);
+  });
+
+  it('restores to DRAFT or PAUSED, never straight to LIVE', () => {
+    expect(restoredStatus('DRAFT')).toBe('DRAFT');
+    expect(restoredStatus('LIVE')).toBe('PAUSED');
+    expect(restoredStatus('PAUSED')).toBe('PAUSED');
+    expect(restoredStatus(null)).toBe('PAUSED');
   });
 
   it('requires a location to go live on local marketplaces', () => {

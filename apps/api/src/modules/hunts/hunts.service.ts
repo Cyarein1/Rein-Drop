@@ -3,6 +3,7 @@ import {
   createHuntRequestSchema,
   HUNT_TRANSITIONS,
   huntLiveReadinessProblems,
+  restoredStatus,
   type ApiErrorDetail,
   type CreateHuntRequest,
   type Hunt,
@@ -36,6 +37,7 @@ const ACTION_EVENT: Record<HuntAction, HuntEventType> = {
   pause: 'PAUSED',
   resume: 'RESUMED',
   archive: 'ARCHIVED',
+  restore: 'RESTORED',
 };
 
 /**
@@ -130,9 +132,13 @@ export class HuntsService {
     });
   }
 
-  /** Lifecycle move (activate / pause / resume / archive). Invalid moves -> 409. */
+  /**
+   * Lifecycle move (activate / pause / resume / archive / restore). Invalid moves -> 409.
+   * Restore returns an archived hunt to DRAFT (never activated) or PAUSED - never straight
+   * to LIVE, so going live again passes the go-live checks via `resume`.
+   */
   async transition(userId: string, huntId: string, action: HuntAction): Promise<Hunt> {
-    const { from, to } = HUNT_TRANSITIONS[action];
+    const { from } = HUNT_TRANSITIONS[action];
     return this.prisma.$transaction(async (tx) => {
       const row = await this.findOwned(tx, userId, huntId);
       if (!from.includes(row.status)) {
@@ -142,9 +148,11 @@ export class HuntsService {
           HttpStatus.CONFLICT,
         );
       }
+      const to = action === 'restore' ? await this.statusBeforeArchive(tx, row.id) : HUNT_TRANSITIONS[action].to;
       if (to === 'LIVE') {
-        // TODO(plan-gate): check plan entitlements (active hunts, marketplaces) here
-        // before going live (App Flow Blueprint sections 6 and 14).
+        // TODO(plan-gate): check plan entitlements (active hunts, marketplaces, Hot Hunts)
+        // here before going live (App Flow Blueprint sections 6 and 14). Deferred until the
+        // plan limits are decided - they depend on infrastructure cost calculations.
         this.assertLiveReady(criteriaOf(toHunt(row)), 'This hunt is not ready to go live');
       }
 
@@ -157,6 +165,8 @@ export class HuntsService {
           ...(action === 'activate' && !row.activatedAt ? { activatedAt: now } : {}),
           ...(action === 'pause' ? { pausedAt: now } : {}),
           ...(action === 'archive' ? { archivedAt: now } : {}),
+          // When it was archived stays in the event history.
+          ...(action === 'restore' ? { archivedAt: null } : {}),
         },
       });
       if (count === 0) {
@@ -177,6 +187,16 @@ export class HuntsService {
   }
 
   // -------------------------------------------------------------------------
+
+  /** Status a restored hunt returns to, from its most recent ARCHIVED event. */
+  private async statusBeforeArchive(tx: Tx, huntId: string) {
+    const archived = await tx.huntEvent.findFirst({
+      where: { huntId, type: 'ARCHIVED' },
+      orderBy: { createdAt: 'desc' },
+      select: { fromStatus: true },
+    });
+    return restoredStatus(archived?.fromStatus ?? null);
+  }
 
   /** Another user's hunt is indistinguishable from a missing one (404). */
   private async findOwned(db: Tx | PrismaClient, userId: string, huntId: string): Promise<HuntRow> {

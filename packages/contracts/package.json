@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@rein-drop/marketplace-core": "workspace:*",
+    "country-to-currency": "^3.0.1",
     "zod": "^4.6.5"
   }
 }

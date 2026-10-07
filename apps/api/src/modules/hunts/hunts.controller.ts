@@ -78,4 +78,11 @@ export class HuntsController {
   archive(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<Hunt> {
     return this.hunts.transition(user.userId, params.id, 'archive');
   }
+
+  /** Restore an archived hunt to DRAFT or PAUSED (never straight to LIVE). */
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  restore(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<Hunt> {
+    return this.hunts.transition(user.userId, params.id, 'restore');
+  }
 }

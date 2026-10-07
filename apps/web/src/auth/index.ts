@@ -1,8 +1,9 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { createApiClient, type ApiClient } from "@rein-drop/api-client";
+import { createApiClient, detectedLocaleRequest, type ApiClient } from "@rein-drop/api-client";
 import { apiBaseUrl, getAuthSetup } from "./provider";
 import type { Session } from "./types";
 
@@ -23,8 +24,33 @@ export const verifySession = cache(async (): Promise<Session> => {
 
   const result = await setup.provider.getSession();
   if (result.status === "unauthenticated") redirect("/sign-in");
-  return result.session;
+
+  const session = result.session;
+  if (!session.user.locale) {
+    const locale = await reportDetectedLocale(setup.provider.getApiHeaders());
+    if (locale) return { ...session, user: { ...session.user, locale } };
+  }
+  return session;
 });
+
+/**
+ * First sign-in: report the browser locale (Accept-Language, e.g. "en-ZA,en;q=0.9") so
+ * currency, distance unit and language default to where the user is. Only runs while the
+ * stored locale is empty; the API never lets detection overwrite an existing locale.
+ * Best effort - a failure must never break the page.
+ */
+async function reportDetectedLocale(headersPromise: Promise<Record<string, string>>) {
+  const firstTag = (await headers()).get("accept-language")?.split(",")[0]?.split(";")[0]?.trim();
+  const request = detectedLocaleRequest(firstTag);
+  if (!request) return null;
+  try {
+    const authHeaders = await headersPromise;
+    const api = createApiClient({ baseUrl: apiBaseUrl(), getHeaders: () => authHeaders });
+    return await api.updateLocale(request);
+  } catch {
+    return null;
+  }
+}
 
 /** API client acting as the current user. Verifies the session first. */
 export const getServerApiClient = cache(async (): Promise<ApiClient> => {

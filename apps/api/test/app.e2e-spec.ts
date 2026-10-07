@@ -38,8 +38,14 @@ const DEV_USER = { id: '01990000-0000-7000-8000-000000000001', email: 'dev@reind
 const sellerProfiles = createFakeSellerProfilePrisma();
 const fakePrisma = {
   user: {
-    findUnique: async ({ where }: { where: { authProvider_authSubject: { authSubject: string } } }) =>
-      where.authProvider_authSubject.authSubject === DEV_AUTH_SUBJECT ? DEV_USER : null,
+    findUnique: async ({
+      where,
+    }: {
+      where: { id?: string; authProvider_authSubject?: { authSubject: string } };
+    }) => {
+      if (where.id) return where.id === DEV_USER.id ? { countryCode: null, currency: null } : null; // locale lookup
+      return where.authProvider_authSubject?.authSubject === DEV_AUTH_SUBJECT ? DEV_USER : null;
+    },
   },
   sellerProfile: sellerProfiles.sellerProfile,
   $transaction: async <T>(fn: (tx: unknown) => Promise<T>) => fn(fakePrisma),
@@ -98,7 +104,7 @@ describe('API (e2e)', () => {
 
     it('GET /me as the seeded dev user -> 200 AccountIdentity', async () => {
       const res = await request(app.getHttpServer()).get('/me').set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT).expect(200);
-      expect(res.body).toEqual({ userId: DEV_USER.id, email: DEV_USER.email, displayName: null });
+      expect(res.body).toEqual({ userId: DEV_USER.id, email: DEV_USER.email, displayName: null, locale: null });
     });
 
     it('unknown routes are still 404 (not 401) once authenticated', async () => {

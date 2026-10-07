@@ -49,6 +49,7 @@ enum HuntEventType {
   PAUSED
   RESUMED
   ARCHIVED
+  RESTORED
 }
 
 /// Processing state of a raw source record.
@@ -131,6 +132,17 @@ model User {
   authProvider String?
   /// The provider's stable id for the user (e.g. an OIDC `sub`). Unique per provider.
   authSubject  String?
+  /// Region drives display defaults (currency, distance unit). Detected from the device /
+  /// browser locale at first sign-in, overridable by the user. Storage stays canonical.
+  countryCode  String?  @db.Char(2)
+  currency     String?  @db.Char(3)
+  /// "km" | "mi" (contract values).
+  distanceUnit String?
+  /// Preferred language (BCP 47 primary subtag, e.g. "en", "af", "zu"). The UI falls back to
+  /// a supported language when this one is not translated yet.
+  language     String?
+  /// "detected" | "user" - a detected region never overwrites the user's own choice.
+  regionSource String?
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 

@@ -1,17 +1,21 @@
 import { Module } from '@nestjs/common';
+import { LocaleController } from './locale.controller.js';
+import { LocaleService } from './locale.service.js';
 import { MeController } from './me.controller.js';
 
 /**
- * Users - Account records.
+ * Users - Account records and the user's locale preferences.
  *
  * Owns: User
  * Identity comes from the AuthService boundary (src/auth); this module never
  * knows which AuthProvider is active.
  *
- * Endpoints: GET /me. Other modules must use this module's exported providers
- * rather than querying its tables directly.
+ * Endpoints: GET /me, GET/PUT /me/locale. Other modules use the exported
+ * LocaleService (e.g. default currency for new hunts) rather than the table.
  */
 @Module({
-  controllers: [MeController],
+  controllers: [MeController, LocaleController],
+  providers: [LocaleService],
+  exports: [LocaleService],
 })
 export class UsersModule {}

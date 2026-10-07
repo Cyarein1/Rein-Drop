@@ -4,6 +4,48 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 14 - Locale preferences, restore archived hunts, geocoding decision
+
+**Decisions (product owner, 2026-10-07)** - recorded in `docs/decisions/`:
+
+- 0001: geocoding/maps provider = **Azure Maps** (free 5,000 search transactions/month,
+  autocomplete billed 1 per 10 requests, fits the Azure target); fallback Geoapify. Not
+  implemented yet - check Azure's terms on storing results first.
+- 0002: **currency, distance unit and language follow the user's locale** (device / browser),
+  storage stays canonical (minor units + currency, km).
+- Archived hunts **can be restored**.
+- Plan limits at go-live stay `TODO(plan-gate)` until the cost calculations are done.
+
+**What changed**
+
+- Contracts: `locale.ts` (country -> currency/unit defaults via `country-to-currency`, locale-tag
+  parsing, km/mi conversion, `SUPPORTED_LANGUAGES = ['en']` + `uiLanguage()` fallback, `UserLocale`
+  + `PUT /me/locale` request, `detectedLocaleRequest()`); `AccountIdentity.locale`; hunts gain the
+  `restore` action, `RESTORED` event and `restoredStatus()`.
+- Database: migrations `..._region_and_restore` (User locale columns, `HuntEventType.RESTORED`)
+  and `..._user_language`.
+- API: `GET/PUT /me/locale` (detection fills an empty locale only; user choice wins); `GET /me`
+  includes `locale`; `POST /hunts/:id/restore` -> DRAFT (never activated) or PAUSED, never straight
+  to LIVE, clears `archivedAt` (archive time stays in history).
+- Web: `verifySession()` reports the browser locale (Accept-Language) once while it is empty.
+  Mobile: `SessionProvider` reports the device locale (`expo-localization`) once. Both best effort.
+- api-client: `getLocale`, `updateLocale`; `transitionHunt(id, 'restore')`.
+- **Migration ordering fix:** two hand-made migration folders (step 10 `auth_identity`, step 13
+  `hunt_lifecycle`) were named with local time (UTC+2) and sorted after later UTC-named
+  migrations, which broke replay on a fresh database. Renamed to their UTC times
+  (`20261007030200_auth_identity`, `20261007033819_hunt_lifecycle`) and updated the local
+  `_prisma_migrations` rows; `migrate dev`'s shadow replay now passes. Anyone who already applied
+  them under the old names must update those two rows the same way.
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: contracts 31, api 72 +
+  e2e 36 + integration 5 (real Postgres: restore paths + events, locale detection/override rules),
+  api-client 10, others unchanged.
+- Live: web request with `Accept-Language: zu-ZA` stored ZA / ZAR / km / zu (detected) for the
+  dev user; reset afterwards so the real browser's locale is detected next.
+
+
 ### Step 13 - Hunt CRUD + lifecycle
 
 **What was added**
@@ -50,10 +92,11 @@ _Last updated: 2026-10-07_
   contracts 24, api-client 10. Integration cleanup verified (0 leftover rows). The running API
   serves `GET /hunts`.
 
-**Open decisions**
+**Open decisions** _(updated in step 14)_
 
-- Location for local marketplaces is free text (no geocoding provider yet); radius stored in km.
-- Archived hunts cannot be restored (not requested).
+- Location for local marketplaces is free text until Azure Maps geocoding is implemented
+  (decision 0001); radius stored in km and displayed in the user's unit (decision 0002).
+- ~~Archived hunts cannot be restored~~ - restore added in step 14.
 
 
 ### Step 12 - "Are you a reseller?" gate before the Seller Snapshot
