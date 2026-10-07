@@ -18,7 +18,9 @@ import {
   sellerSnapshotSchema,
   updateHuntRequestSchema,
   updateSellerSnapshotRequestSchema,
+  saveSellerSnapshotRequestSchema,
   type AccountIdentity,
+  type SaveSellerSnapshotRequestInput,
   type CreateHuntRequest,
   type DealDetail,
   type DealSummary,
@@ -65,6 +67,8 @@ export interface ApiClient {
   getSellerSnapshot(): Promise<SellerSnapshot>;
   /** Save one or more onboarding answers; returns the updated snapshot. */
   updateSellerSnapshot(input: UpdateSellerSnapshotRequest): Promise<SellerSnapshot>;
+  /** Save all five onboarding answers at once (every question required). */
+  saveSellerSnapshot(input: SaveSellerSnapshotRequestInput): Promise<SellerSnapshot>;
   /** Counts for the returning-user home. */
   getHomeSummary(): Promise<HomeSummary>;
 
@@ -109,6 +113,13 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         method: 'PATCH',
         path: '/me/seller-snapshot',
         body: validateInput(updateSellerSnapshotRequestSchema, input, 'body'),
+        response: sellerSnapshotSchema,
+      }),
+    saveSellerSnapshot: async (input) =>
+      send(http, {
+        method: 'PUT',
+        path: '/me/seller-snapshot',
+        body: validateInput(saveSellerSnapshotRequestSchema, input, 'body'),
         response: sellerSnapshotSchema,
       }),
     getHomeSummary: () =>

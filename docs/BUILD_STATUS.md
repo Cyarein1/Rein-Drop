@@ -4,6 +4,37 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 11 - Seller Snapshot persistence + API
+
+**What was added**
+
+- API (`apps/api/src/modules/seller-profile/`), current user only (`@CurrentUser()`):
+  - `GET /me/seller-snapshot` - answers so far; empty snapshot if no profile (no write).
+  - `PATCH /me/seller-snapshot` - save any subset of the five answers (progressive onboarding);
+    creates the profile on first save.
+  - `PUT /me/seller-snapshot` - save all five at once (all required; "Other" text optional).
+  - Rules: deal rule rewrites all deal columns (non-applicable targets null); deselecting
+    "Other" clears its text; `completedAt` stamped in a transaction when all five are first
+    answered and kept on later edits; stored values that are no longer valid options are read
+    as unanswered (Q4 options are an open decision).
+  - Mapper (`seller-snapshot.mapper.ts`) is pure; service uses an interactive transaction.
+- Contracts: `saveSellerSnapshotRequestSchema` (PUT); shared "Other" text rule for PATCH and PUT.
+  No geography in the profile - location/radius stay with Hunts (asserted by a test; unknown body
+  fields such as `location` are stripped).
+- api-client: `saveSellerSnapshot()` (PUT); `PUT` method support.
+- `createZodDto` now stores the schema under a plain `zodSchema` static (a symbol key broke
+  declaration emit with TS4020 once DTOs were declared in feature modules).
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: api 62 (+mapper 7,
+  +service 4), api e2e 24 (+12 Seller Snapshot: 401, empty GET, progressive PATCH to completion,
+  PUT, six 400 validation cases, incomplete PUT, location stripped), contracts 16, others unchanged.
+- Live against the running API + Docker Postgres: GET empty -> 4 PATCHes -> `completedAt` set on
+  the fifth answer; invalid margin target -> 400; DB columns verified with psql. The dev user's
+  answers were reset to empty afterwards so onboarding starts fresh.
+
+
 ### Step 10 - Auth boundary + DEVELOPMENT-ONLY auth
 
 **What was added**
@@ -477,6 +508,7 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: the first real flow - Seller Snapshot onboarding (`GET/PATCH /me/seller-snapshot`
-endpoints using `@CurrentUser()`, plus the 5-step screens on web and mobile), then Hunt endpoints.
+Likely: Seller Snapshot onboarding screens (one question per screen, "n of 5" progress,
+personalized summary - Blueprint section 4) on web and mobile using the new endpoints; then Hunt
+endpoints + the assisted first-Hunt flow (pre-filled from the snapshot).
 (Await the next prompt.)

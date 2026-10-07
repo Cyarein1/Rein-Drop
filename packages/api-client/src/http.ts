@@ -11,7 +11,7 @@ export interface HttpOptions {
 }
 
 export interface RequestSpec<T> {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   /** Validates the response body; drift between client and API fails loudly. */
   response: z.ZodType<T>;

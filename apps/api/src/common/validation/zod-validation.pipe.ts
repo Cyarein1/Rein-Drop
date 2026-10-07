@@ -3,7 +3,6 @@ import type { ApiErrorDetail } from '@rein-drop/contracts';
 import { z } from 'zod';
 import { ValidationFailedException } from '../errors/app.exception.js';
 
-const ZOD_SCHEMA = Symbol('zodSchema');
 
 /**
  * Creates a DTO class backed by a zod schema. Use it as the parameter type of
@@ -16,14 +15,15 @@ const ZOD_SCHEMA = Symbol('zodSchema');
  */
 export function createZodDto<S extends z.ZodType>(schema: S) {
   class ZodDto {
-    static readonly [ZOD_SCHEMA] = schema;
+    // Plain string key (not a symbol) so DTO class types can be named in emitted .d.ts files.
+    static readonly zodSchema = schema;
   }
-  return ZodDto as unknown as { new (): z.output<S>; readonly [ZOD_SCHEMA]: S };
+  return ZodDto as unknown as { new (): z.output<S>; readonly zodSchema: S };
 }
 
 function schemaOf(metatype: unknown): z.ZodType | undefined {
   if (typeof metatype !== 'function') return undefined;
-  const schema = (metatype as { [ZOD_SCHEMA]?: unknown })[ZOD_SCHEMA];
+  const schema = (metatype as { zodSchema?: unknown }).zodSchema;
   return schema instanceof z.ZodType ? schema : undefined;
 }
 

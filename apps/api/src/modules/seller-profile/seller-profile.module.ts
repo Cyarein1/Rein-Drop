@@ -1,13 +1,21 @@
 import { Module } from '@nestjs/common';
+import { SellerSnapshotController } from './seller-snapshot.controller.js';
+import { SellerSnapshotService } from './seller-snapshot.service.js';
 
 /**
- * SellerProfile - Reseller profile and sourcing preferences.
+ * SellerProfile - Reseller profile and the Seller Snapshot (the five onboarding
+ * answers, App Flow Blueprint section 4).
  *
  * Owns: SellerProfile
- * TODO(product): preference fields are not specified yet.
+ * Endpoints: GET / PATCH / PUT /me/seller-snapshot (current user only).
+ * No geography here: exact location belongs to each Hunt.
  *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * Other modules (e.g. Hunts pre-filling marketplaces / deal criteria) use the
+ * exported SellerSnapshotService, never the table directly.
  */
-@Module({})
+@Module({
+  controllers: [SellerSnapshotController],
+  providers: [SellerSnapshotService],
+  exports: [SellerSnapshotService],
+})
 export class SellerProfileModule {}

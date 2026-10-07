@@ -152,6 +152,7 @@ private networks. Override with `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env`
   as the database (a test in `apps/api` fails if they drift).
 - **API client:** `createApiClient({ baseUrl })` from `@rein-drop/api-client`. Methods:
   `getHealth`, `getReadiness`, `getMe`, `getSellerSnapshot`, `updateSellerSnapshot`,
+  `saveSellerSnapshot`,
   `getHomeSummary`, `listHunts`, `getHunt`,
   `createHunt`, `updateHunt`, `listDeals`, `getDeal`. It validates request bodies before
   sending (same `VALIDATION_FAILED` + `details` format as the server, so forms can show the

@@ -5,6 +5,7 @@ import {
   HUNT_CATEGORIES,
   IMPROVEMENT_GOALS,
   RESELLER_STAGES,
+  saveSellerSnapshotRequestSchema,
   SELLER_SNAPSHOT_COPY,
   SELLER_SNAPSHOT_QUESTION_COUNT,
   sellerSnapshotSchema,
@@ -74,6 +75,36 @@ describe('updateSellerSnapshotRequestSchema', () => {
     expect(ok({ criterion: 'min_margin', targetPercent: 250 })).toBe(false);
     expect(ok({ criterion: 'case_by_case' })).toBe(true);
     expect(ok({ criterion: 'gut_feeling' })).toBe(false);
+  });
+});
+
+describe('saveSellerSnapshotRequestSchema', () => {
+  const full = {
+    categories: ['phones_tablets'],
+    stage: 'side_income',
+    sources: ['facebook_marketplace', 'ebay'],
+    dealRule: { criterion: 'min_margin', targetPercent: 30 },
+    improvementGoal: 'find_deals_faster',
+  };
+
+  it('requires all five answers and defaults "Other" text to null', () => {
+    expect(saveSellerSnapshotRequestSchema.parse(full)).toEqual({ ...full, categoriesOther: null, sourcesOther: null });
+    const { improvementGoal: _omitted, ...missingOne } = full;
+    const issues = saveSellerSnapshotRequestSchema.safeParse(missingOne).error?.issues ?? [];
+    expect(issues.map((i) => i.path.join('.'))).toEqual(['improvementGoal']);
+  });
+
+  it('applies the same "Other" rule as PATCH', () => {
+    const result = saveSellerSnapshotRequestSchema.safeParse({ ...full, sourcesOther: 'Garage sales' });
+    expect(result.error?.issues.map((i) => i.path.join('.'))).toEqual(['sourcesOther']);
+  });
+
+  it('has no geography fields (location belongs to Hunts)', () => {
+    const keys = [
+      ...Object.keys(saveSellerSnapshotRequestSchema.parse(full)),
+      ...Object.keys(sellerSnapshotSchema.shape),
+    ];
+    expect(keys.filter((k) => /location|radius|lat|lng|lon|city|postal|zip|address|geo/i.test(k))).toEqual([]);
   });
 });
 

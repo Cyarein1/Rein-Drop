@@ -170,27 +170,56 @@ const answerFields = {
   improvementGoal: z.enum(IMPROVEMENT_GOALS),
 };
 
+/** "Other" free text is only accepted together with the "other" option it describes. */
+function otherTextRules(
+  body: {
+    categories?: readonly string[] | undefined;
+    categoriesOther?: string | null | undefined;
+    sources?: readonly string[] | undefined;
+    sourcesOther?: string | null | undefined;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  const message = 'Only allowed when "Other" is selected';
+  if (body.categoriesOther && !body.categories?.includes('other')) {
+    ctx.addIssue({ code: 'custom', message, path: ['categoriesOther'] });
+  }
+  if (body.sourcesOther && !body.sources?.includes('other')) {
+    ctx.addIssue({ code: 'custom', message, path: ['sourcesOther'] });
+  }
+}
+
 /**
  * `PATCH /me/seller-snapshot` body - save one or more answers as the user
- * progresses. "Other" text is only accepted when "other" is selected.
+ * progresses (one question per screen). Omitted questions keep their answer.
  */
 export const updateSellerSnapshotRequestSchema = z
   .object(answerFields)
   .partial()
   .refine((body) => Object.values(body).some((v) => v !== undefined), 'Provide at least one answer')
-  .refine(
-    (body) => !body.categoriesOther || body.categories?.includes('other'),
-    { message: 'Only allowed when "Other" is selected', path: ['categoriesOther'] },
-  )
-  .refine(
-    (body) => !body.sourcesOther || body.sources?.includes('other'),
-    { message: 'Only allowed when "Other" is selected', path: ['sourcesOther'] },
-  );
+  .superRefine(otherTextRules);
 export type UpdateSellerSnapshotRequest = z.infer<typeof updateSellerSnapshotRequestSchema>;
 
 /**
- * `GET`/`PATCH /me/seller-snapshot` response. Unanswered questions are null/empty.
+ * `PUT /me/seller-snapshot` body - save all five answers at once (e.g. editing
+ * from Settings). Every question is required; "Other" text stays optional.
+ */
+export const saveSellerSnapshotRequestSchema = z
+  .object({
+    ...answerFields,
+    categoriesOther: answerFields.categoriesOther.default(null),
+    sourcesOther: answerFields.sourcesOther.default(null),
+  })
+  .superRefine(otherTextRules);
+export type SaveSellerSnapshotRequest = z.infer<typeof saveSellerSnapshotRequestSchema>;
+export type SaveSellerSnapshotRequestInput = z.input<typeof saveSellerSnapshotRequestSchema>;
+
+/**
+ * `GET`/`PATCH`/`PUT /me/seller-snapshot` response. Unanswered questions are null/empty.
  * `completedAt` is set by the server once all five questions are answered.
+ *
+ * Deliberately contains no geography: exact location/radius belongs to each Hunt
+ * (App Flow Blueprint section 5), not to the seller profile.
  */
 export const sellerSnapshotSchema = z.object({
   categories: z.array(z.enum(HUNT_CATEGORIES)),

@@ -9,6 +9,7 @@ import { Public } from './../src/auth/decorators.js';
 import { createZodDto } from './../src/common/validation/zod-validation.pipe.js';
 import { loadApiConfig } from './../src/config/api-config.js';
 import { PRISMA } from './../src/database/database.module.js';
+import { createFakeSellerProfilePrisma } from './../src/modules/seller-profile/fake-prisma.js';
 
 // Test-only routes to exercise global validation and error handling end to end.
 class EchoDto extends createZodDto(z.object({ name: z.string().min(1) })) {}
@@ -32,12 +33,16 @@ class TestModule {}
 
 const DEV_USER = { id: '01990000-0000-7000-8000-000000000001', email: 'dev@reindrop.local', displayName: null };
 
-// Fake Prisma: the seeded dev user exists; the database health query fails (DB "down").
+// Fake Prisma: the seeded dev user exists, seller profiles live in memory, and the
+// database health query fails (DB "down") so /ready is exercised as not ready.
+const sellerProfiles = createFakeSellerProfilePrisma();
 const fakePrisma = {
   user: {
     findUnique: async ({ where }: { where: { authProvider_authSubject: { authSubject: string } } }) =>
       where.authProvider_authSubject.authSubject === DEV_AUTH_SUBJECT ? DEV_USER : null,
   },
+  sellerProfile: sellerProfiles.sellerProfile,
+  $transaction: async <T>(fn: (tx: unknown) => Promise<T>) => fn(fakePrisma),
   $queryRaw: () => Promise.reject(new Error('ECONNREFUSED')),
   $disconnect: async () => undefined,
 };
@@ -98,6 +103,94 @@ describe('API (e2e)', () => {
 
     it('unknown routes are still 404 (not 401) once authenticated', async () => {
       await request(app.getHttpServer()).get('/nope').set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT).expect(404);
+    });
+  });
+
+  describe('Seller Snapshot (/me/seller-snapshot)', () => {
+    const asDev = (req: request.Test) => req.set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT);
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer()).get('/me/seller-snapshot').expect(401);
+      await request(app.getHttpServer()).patch('/me/seller-snapshot').send({ stage: 'side_income' }).expect(401);
+    });
+
+    it('GET returns an empty snapshot before any answers', async () => {
+      const res = await asDev(request(app.getHttpServer()).get('/me/seller-snapshot')).expect(200);
+      expect(res.body).toMatchObject({ categories: [], stage: null, dealRule: null, completedAt: null });
+    });
+
+    it('PATCH saves answers one at a time and completes after the fifth', async () => {
+      const server = app.getHttpServer();
+      await asDev(request(server).patch('/me/seller-snapshot')).send({ categories: ['phones_tablets'] }).expect(200);
+      await asDev(request(server).patch('/me/seller-snapshot')).send({ stage: 'side_income' }).expect(200);
+      await asDev(request(server).patch('/me/seller-snapshot'))
+        .send({ sources: ['facebook_marketplace', 'ebay'] })
+        .expect(200);
+      await asDev(request(server).patch('/me/seller-snapshot'))
+        .send({ dealRule: { criterion: 'min_profit', target: { amountMinor: 15000, currency: 'USD' } } })
+        .expect(200);
+      const res = await asDev(request(server).patch('/me/seller-snapshot'))
+        .send({ improvementGoal: 'stop_checking_marketplaces' })
+        .expect(200);
+      expect(res.body).toMatchObject({
+        categories: ['phones_tablets'],
+        stage: 'side_income',
+        sources: ['facebook_marketplace', 'ebay'],
+        dealRule: { criterion: 'min_profit', target: { amountMinor: 15000, currency: 'USD' } },
+        improvementGoal: 'stop_checking_marketplaces',
+      });
+      expect(typeof res.body.completedAt).toBe('string');
+
+      const get = await asDev(request(server).get('/me/seller-snapshot')).expect(200);
+      expect(get.body).toEqual(res.body);
+    });
+
+    it('PUT replaces all five answers; switching the deal rule drops the old target', async () => {
+      const res = await asDev(request(app.getHttpServer()).put('/me/seller-snapshot'))
+        .send({
+          categories: ['gaming', 'other'],
+          categoriesOther: 'Retro handhelds',
+          stage: 'regular_reseller',
+          sources: ['ebay'],
+          dealRule: { criterion: 'case_by_case' },
+          improvementGoal: 'know_what_to_buy',
+        })
+        .expect(200);
+      expect(res.body).toMatchObject({
+        categories: ['gaming', 'other'],
+        categoriesOther: 'Retro handhelds',
+        dealRule: { criterion: 'case_by_case' },
+      });
+    });
+
+    it.each([
+      ['an unknown option', { stage: 'billionaire' }, 'body.stage'],
+      ['an empty multi-select', { categories: [] }, 'body.categories'],
+      ['an out-of-range target', { dealRule: { criterion: 'min_margin', targetPercent: 0 } }, 'body.dealRule.targetPercent'],
+      ['a zero money target', { dealRule: { criterion: 'max_buy_price', target: { amountMinor: 0, currency: 'USD' } } }, 'body.dealRule.target'],
+      ['"Other" text without Other', { sources: ['ebay'], sourcesOther: 'Garage sales' }, 'body.sourcesOther'],
+      ['an empty body', {}, 'body'],
+    ])('PATCH rejects %s with 400 VALIDATION_FAILED', async (_label, body, path) => {
+      const res = await asDev(request(app.getHttpServer()).patch('/me/seller-snapshot')).send(body).expect(400);
+      expect(res.body.code).toBe('VALIDATION_FAILED');
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
+    });
+
+    it('PUT rejects an incomplete snapshot', async () => {
+      const res = await asDev(request(app.getHttpServer()).put('/me/seller-snapshot'))
+        .send({ categories: ['tools'] })
+        .expect(400);
+      expect(res.body.details.map((d: { path: string }) => d.path)).toEqual(
+        expect.arrayContaining(['body.stage', 'body.sources', 'body.dealRule', 'body.improvementGoal']),
+      );
+    });
+
+    it('ignores unknown fields such as location (geography belongs to Hunts)', async () => {
+      const res = await asDev(request(app.getHttpServer()).patch('/me/seller-snapshot'))
+        .send({ stage: 'full_time', location: 'Cape Town', radiusKm: 50 })
+        .expect(200);
+      expect(res.body).not.toHaveProperty('location');
+      expect(res.body).not.toHaveProperty('radiusKm');
     });
   });
 
