@@ -184,6 +184,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^12.0.1
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.1.2)(supports-color@8.1.1)
+      '@rein-drop/ai-core':
+        specifier: workspace:*
+        version: link:../../packages/ai-core
       '@rein-drop/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -193,6 +196,9 @@ importers:
       '@rein-drop/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@rein-drop/scoring':
+        specifier: workspace:*
+        version: link:../../packages/scoring
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2

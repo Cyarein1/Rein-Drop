@@ -26,7 +26,8 @@ export interface MatchStageResult {
   openMatchIds: string[];
 }
 
-const OPEN: ReadonlySet<HuntMatch['status']> = new Set(['NEW', 'SEEN']);
+const OPEN_STATUSES: HuntMatch['status'][] = ['NEW', 'SEEN'];
+const OPEN: ReadonlySet<HuntMatch['status']> = new Set(OPEN_STATUSES);
 const ACTIVE_LISTING: ReadonlySet<Listing['status']> = new Set(['ACTIVE', 'UNKNOWN']);
 
 /**
@@ -37,7 +38,8 @@ const ACTIVE_LISTING: ReadonlySet<Listing['status']> = new Set(['ACTIVE', 'UNKNO
  * run counts are absolute for the latest attempt. Status rules:
  * - matches -> NEW on first match; an EXPIRED match that matches again returns to NEW;
  * - stops matching (sold, price raised, duplicate ...) -> NEW/SEEN become EXPIRED with a reason;
- * - DISMISSED is the user's decision: only its reasons are refreshed.
+ * - DISMISSED (Ignore) and BOUGHT are the user's decisions: only their reasons are refreshed, and
+ *   every status change is conditional, so a decision made meanwhile is never overwritten.
  */
 export class MatchStage {
   constructor(
@@ -78,10 +80,7 @@ export class MatchStage {
         if (listing.duplicateOfId) {
           summary.duplicateCount += 1;
           if (current && OPEN.has(current.status)) {
-            await this.prisma.huntMatch.update({
-              where: { id: current.id },
-              data: { status: 'EXPIRED', statusReason: 'duplicate', lastEvaluatedAt: now },
-            });
+            await this.setStatusIf(current.id, OPEN_STATUSES, { status: 'EXPIRED', statusReason: 'duplicate', lastEvaluatedAt: now });
           }
           continue;
         }
@@ -108,12 +107,9 @@ export class MatchStage {
             });
             if (OPEN.has(created.status)) openMatchIds.push(created.id);
           } else {
-            const revived = current.status === 'EXPIRED';
-            await this.prisma.huntMatch.update({
-              where: { id: current.id },
-              data: { ...evaluation, ...(revived ? { status: 'NEW', statusReason: 'matches_again' } : {}) },
-            });
-            // DISMISSED stays the user's decision: never re-analysed.
+            await this.prisma.huntMatch.update({ where: { id: current.id }, data: evaluation });
+            const revived = current.status === 'EXPIRED' && (await this.setStatusIf(current.id, ['EXPIRED'], { status: 'NEW', statusReason: 'matches_again' }));
+            // DISMISSED / BOUGHT stay the user's decisions: never re-analysed.
             if (revived || OPEN.has(current.status)) openMatchIds.push(current.id);
           }
           continue;
@@ -122,18 +118,24 @@ export class MatchStage {
         summary.rejectedCount += 1;
         for (const check of result.failed) summary.rejectionSummary[check] = (summary.rejectionSummary[check] ?? 0) + 1;
         if (current) {
-          await this.prisma.huntMatch.update({
-            where: { id: current.id },
-            data: {
-              ...evaluation,
-              ...(OPEN.has(current.status) ? { status: 'EXPIRED', statusReason: result.failed.join(',') } : {}),
-            },
-          });
+          await this.prisma.huntMatch.update({ where: { id: current.id }, data: evaluation });
+          if (OPEN.has(current.status)) {
+            await this.setStatusIf(current.id, OPEN_STATUSES, { status: 'EXPIRED', statusReason: result.failed.join(',') });
+          }
         }
       }
     }
     summary.newMatchCount = await this.prisma.huntMatch.count({ where: { firstSearchRunId: input.runId } });
     return { summary, openMatchIds };
+  }
+
+  /**
+   * Status change only if the match is still in one of `from`: the user may have ignored or
+   * bought it since it was read (Deals API), and their decision always wins.
+   */
+  private async setStatusIf(id: string, from: HuntMatch['status'][], data: Prisma.HuntMatchUpdateManyMutationInput): Promise<boolean> {
+    const { count } = await this.prisma.huntMatch.updateMany({ where: { id, status: { in: from } }, data });
+    return count === 1;
   }
 
   /**

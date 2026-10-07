@@ -32,6 +32,7 @@ export {
   type ResaleEstimate,
   type TargetCheck,
 } from './economics.js';
+export { FEED_RANKING, feedRank } from './feed.js';
 export { scoreCandidate, type DealAssessment, type ScoreInput, type ScoreReason } from './classify.js';
 export {
   ALERT_RULES,

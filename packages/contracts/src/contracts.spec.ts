@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { dealDetailSchema, listHuntsQuerySchema, moneySchema } from './index.js';
+import {
+  dealDetailSchema,
+  ignoreDealRequestSchema,
+  listDealsQuerySchema,
+  listHuntsQuerySchema,
+  markDealBoughtRequestSchema,
+  moneySchema,
+} from './index.js';
 
 const ID = '01990000-0000-7000-8000-000000000001';
 const NOW = '2026-10-07T01:56:03.275Z';
@@ -20,31 +27,74 @@ describe('money', () => {
   });
 });
 
-describe('deal detail', () => {
-  it('accepts a deal with listing detail and no analysis yet', () => {
-    const deal = {
-      id: ID,
-      hunt: { id: ID, name: 'Levis' },
-      matchStatus: 'NEW',
-      matchedAt: NOW,
-      isSaved: false,
-      listing: {
-        id: ID,
-        marketplace: 'facebook',
-        url: 'https://example.com/item/1',
-        title: 'Levis 501',
-        price: { amountMinor: 2500, currency: 'USD' },
-        conditionText: null,
-        locationText: null,
-        imageUrl: null,
-        status: 'ACTIVE',
-        listedAt: null,
-        lastSeenAt: NOW,
-        description: null,
-        imageUrls: [],
-      },
-      analysis: null,
-    };
-    expect(dealDetailSchema.safeParse(deal).success).toBe(true);
+describe('deals', () => {
+  const listing = {
+    id: ID,
+    marketplace: 'facebook',
+    url: 'https://example.com/item/1',
+    title: 'Levis 501',
+    price: { amountMinor: 2500, currency: 'USD' },
+    conditionText: null,
+    locationText: null,
+    imageUrl: null,
+    status: 'ACTIVE',
+    listedAt: null,
+    lastSeenAt: NOW,
+    description: null,
+    imageUrls: [],
+  };
+  const pending = {
+    id: ID,
+    hunt: { id: ID, name: 'Levis' },
+    status: 'new',
+    matchStatus: 'NEW',
+    isSaved: false,
+    matchedAt: NOW,
+    listing,
+    price: { asking: listing.price, knownCosts: null, knownTotal: listing.price },
+    freshness: { postedAt: null, discoveredAt: NOW, ageMinutes: 5, basis: 'discovered' },
+    source: { marketplace: 'facebook', listingStatus: 'ACTIVE', available: true, lastSeenAt: NOW, lastCheckedAt: NOW, lastCheck: 'ok' },
+    assessment: { status: 'pending', strength: null, confidence: null, score: null, alertEligible: false, analyzedAt: null },
+    estimate: {
+      resale: { status: 'unavailable', reason: 'no_source', detail: 'No resale price source is connected yet' },
+      upside: { status: 'unavailable', reason: 'no_resale_estimate', detail: 'No resale price source is connected yet' },
+    },
+    reason: null,
+    rank: 49,
+    why: null,
+    product: null,
+    risk: null,
+    strengthReasons: [],
+    confidenceReasons: [],
+    economics: null,
+    matchChecks: [],
+    alert: null,
+    decision: { seenAt: null, savedAt: null, ignoredAt: null, ignoreReason: null, boughtAt: null, inventoryItemId: null },
+  };
+
+  it('accepts a deal that has not been analysed yet', () => {
+    expect(dealDetailSchema.safeParse(pending).success).toBe(true);
+  });
+
+  it('an estimated upside must be labelled as an estimate', () => {
+    const estimated = { status: 'estimated', low: listing.price, typical: listing.price, high: listing.price, typicalMarginPercent: 10, excludes: [] };
+    const deal = (upside: object) => ({ ...pending, estimate: { ...pending.estimate, upside } });
+    expect(dealDetailSchema.safeParse(deal({ ...estimated, basis: 'estimate' })).success).toBe(true);
+    expect(dealDetailSchema.safeParse(deal({ ...estimated, basis: 'realized' })).success).toBe(false);
+  });
+
+  it('feed query defaults to open deals and validates filters', () => {
+    expect(listDealsQuerySchema.parse({})).toEqual({ limit: 20, status: 'open' });
+    expect(listDealsQuerySchema.parse({ status: 'saved', marketplace: 'ebay', huntId: ID })).toMatchObject({ status: 'saved', marketplace: 'ebay' });
+    expect(listDealsQuerySchema.safeParse({ status: 'NEW' }).success).toBe(false);
+    expect(listDealsQuerySchema.safeParse({ marketplace: 'gumtree' }).success).toBe(false);
+  });
+
+  it('action bodies: optional ignore reason, positive bought price', () => {
+    expect(ignoreDealRequestSchema.parse({})).toEqual({});
+    expect(ignoreDealRequestSchema.parse({ reason: '  too far  ' })).toEqual({ reason: 'too far' });
+    expect(ignoreDealRequestSchema.safeParse({ reason: 'x'.repeat(201) }).success).toBe(false);
+    expect(markDealBoughtRequestSchema.safeParse({ price: { amountMinor: 0, currency: 'ZAR' } }).success).toBe(false);
+    expect(markDealBoughtRequestSchema.safeParse({ price: { amountMinor: 350_000, currency: 'ZAR' }, purchasedAt: NOW }).success).toBe(true);
   });
 });

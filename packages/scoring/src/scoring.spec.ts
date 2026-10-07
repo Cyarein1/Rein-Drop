@@ -10,6 +10,7 @@ import {
 import { evaluateAlertEligibility, type AlertEligibilityInput } from './alerts.js';
 import { scoreCandidate, type DealAssessment } from './classify.js';
 import { COSTS_NOT_INCLUDED, computeEconomics, type ComparableSales, type EconomicsInput } from './economics.js';
+import { feedRank } from './feed.js';
 import { DEFAULT_SCORING_POLICY } from './policy.js';
 
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
@@ -228,6 +229,21 @@ describe('evaluateAlertEligibility', () => {
     const result = evaluateAlertEligibility(input({ listedAt: '2026-10-01T10:00:00.000Z' }));
     expect(result).toMatchObject({ eligible: false, kind: null });
     expect(result.rules.find((r) => r.rule === 'fresh_listing')?.detail).toBe('Posted 144h ago (alerts need 48h or less)');
+  });
+});
+
+describe('feedRank', () => {
+  it('orders by strength band first, freshness second', () => {
+    const strongOld = feedRank(65, 500);
+    const moderateBrandNew = feedRank(50, 0);
+    expect(moderateBrandNew).toBeLessThan(strongOld); // 64 < 65: freshness never jumps a band
+    expect(feedRank(70, 0)).toBeGreaterThan(feedRank(70, 24));
+    expect(feedRank(70, 24)).toBeGreaterThan(feedRank(70, 48));
+    expect(feedRank(70, 72)).toBe(70);
+    expect(feedRank(70, -5)).toBe(84); // posted "in the future" (clock skew) is just fresh
+    expect(feedRank(null, 0)).toBe(49); // unscored = bottom of moderate
+    expect(feedRank(65, 36)).toBe(72);
+    expect(feedRank(65, 1)).toBe(78.8056);
   });
 });
 

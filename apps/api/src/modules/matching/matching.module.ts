@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
+import { MatchingService } from './matching.service.js';
 
 /**
  * Matching - Decides which listings match which hunts and tracks match status.
  *
  * Owns: HuntMatch
- * TODO(product): matching rules.
- *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * The matching rules live in @rein-drop/matching and run in the worker. This module owns the
+ * user's decisions on a match (seen, ignore, bought) through MatchingService.
  */
-@Module({})
+@Module({
+  providers: [MatchingService],
+  exports: [MatchingService],
+})
 export class MatchingModule {}

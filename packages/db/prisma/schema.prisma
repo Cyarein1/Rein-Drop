@@ -71,12 +71,14 @@ enum ListingStatus {
 
 /// User-facing state of a match between a hunt and a listing.
 /// EXPIRED: set by the system when the listing stops matching (sold, price raised, duplicate);
-/// it returns to NEW if the listing matches again. DISMISSED is the user's and never changed.
+/// it returns to NEW if the listing matches again. DISMISSED ("Ignore") and BOUGHT are the
+/// user's decisions and the system never changes them.
 enum HuntMatchStatus {
   NEW
   SEEN
   DISMISSED
   EXPIRED
+  BOUGHT
 }
 
 enum DealAnalysisStatus {
@@ -463,32 +465,43 @@ model HuntMarketplace {
 /// A listing that matched a hunt. Separate from Listing (shared across users)
 /// and RawListing (source data).
 model HuntMatch {
-  id        String          @id @default(uuid(7)) @db.Uuid
-  huntId    String          @db.Uuid
-  listingId String          @db.Uuid
-  status    HuntMatchStatus @default(NEW)
+  id               String          @id @default(uuid(7)) @db.Uuid
+  huntId           String          @db.Uuid
+  listingId        String          @db.Uuid
+  status           HuntMatchStatus @default(NEW)
   /// Why the status was last changed by the system (e.g. "not_available", "duplicate").
   statusReason     String?
   /// Every deterministic check with outcome + code (@rein-drop/matching MatchCheck[]).
-  reasons          Json     @default("[]")
+  reasons          Json            @default("[]")
   /// 0-100 query coverage from the deterministic matcher.
   relevanceScore   Int?
   /// Inputs for the valuation stage: acquisition price, hunt target, (later) resale estimate.
   economics        Json?
   /// @rein-drop/matching MATCHER_VERSION that produced `reasons`.
-  matcherVersion   Int      @default(1)
-  lastEvaluatedAt  DateTime @default(now()) @db.Timestamptz(3)
+  matcherVersion   Int             @default(1)
+  lastEvaluatedAt  DateTime        @default(now()) @db.Timestamptz(3)
   /// The search run that first produced this match.
-  firstSearchRunId String?  @db.Uuid
-  matchedAt DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime        @updatedAt @db.Timestamptz(3)
+  firstSearchRunId String?         @db.Uuid
+  matchedAt        DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @db.Timestamptz(3)
+
+  // The user's decisions on the deal (Deals API).
+  /// First time the user opened it (NEW -> SEEN).
+  seenAt        DateTime? @db.Timestamptz(3)
+  /// When the user chose Ignore (status DISMISSED); cleared if they undo it.
+  dismissedAt   DateTime? @db.Timestamptz(3)
+  /// Optional free-text reason given with Ignore.
+  dismissReason String?
+  /// When the user marked it Bought (status BOUGHT; the purchase is the InventoryItem).
+  boughtAt      DateTime? @db.Timestamptz(3)
 
   hunt           Hunt           @relation(fields: [huntId], references: [id], onDelete: Cascade)
   listing        Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
   firstSearchRun SearchRun?     @relation(fields: [firstSearchRunId], references: [id], onDelete: SetNull)
-  dealAnalyses DealAnalysis[]
-  alerts       Alert[]
-  savedDeals   SavedDeal[]
+  dealAnalyses   DealAnalysis[]
+  alerts         Alert[]
+  savedDeals     SavedDeal[]
+  inventoryItem  InventoryItem?
 
   @@unique([huntId, listingId])
   @@index([huntId, status])
@@ -497,28 +510,28 @@ model HuntMatch {
 
 /// AI evaluation of a listing, optionally in the context of a hunt match.
 model DealAnalysis {
-  id           String             @id @default(uuid(7)) @db.Uuid
-  listingId    String             @db.Uuid
-  huntMatchId  String?            @db.Uuid
-  status       DealAnalysisStatus @default(PENDING)
+  id               String             @id @default(uuid(7)) @db.Uuid
+  listingId        String             @db.Uuid
+  huntMatchId      String?            @db.Uuid
+  status           DealAnalysisStatus @default(PENDING)
   /// AIProvider id that produced it, e.g. "mock" | "foundry" (see @rein-drop/ai-core).
-  provider     String
+  provider         String
   /// Provider model/deployment name(s), comma-separated when tasks used different models.
-  model        String?
+  model            String?
   /// Model version(s) as reported by the provider.
-  modelVersion String?
+  modelVersion     String?
   /// Task prompt / rule-set versions, e.g. "product-extraction@1,condition-risk@1,deal-explanation@1".
-  promptVersion String?
+  promptVersion    String?
   /// @rein-drop/ai-core AI_SCHEMA_VERSION of `result`.
-  schemaVersion Int?
+  schemaVersion    Int?
   /// Per-task metadata: latency, token usage, provider request ids.
   providerMetadata Json?
   /// Hash of the analysis input + versions (ai-core analysisInputKey), to skip unchanged re-analysis.
-  inputHash    String?
-  durationMs   Int?
+  inputHash        String?
+  durationMs       Int?
   /// CandidateAnalysisResult from @rein-drop/ai-core (product, risk, explanation); validated + grounded.
-  result       Json?
-  errorMessage String?
+  result           Json?
+  errorMessage     String?
 
   // Deterministic scoring (@rein-drop/scoring) combined with `result`.
   /// @rein-drop/scoring SCORING_VERSION that produced the fields below.
@@ -536,12 +549,12 @@ model DealAnalysis {
   /// Strength / confidence reasons (DealAssessment) and every alert rule outcome (AlertEligibility).
   scoring        Json?
   /// Whether the match was eligible for an alert when this analysis was made.
-  alertEligible  Boolean            @default(false)
+  alertEligible  Boolean @default(false)
   /// "deal" | "exceptional" when eligible.
   alertKind      String?
 
-  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
-  completedAt  DateTime?          @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
 
   listing   Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
   huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
@@ -607,6 +620,8 @@ model InventoryItem {
   userId             String          @db.Uuid
   /// Source listing it was bought from, if sourced through Rein Drop.
   listingId          String?         @db.Uuid
+  /// The deal (hunt match) marked Bought that created it - at most one item per deal.
+  huntMatchId        String?         @unique @db.Uuid
   title              String
   status             InventoryStatus @default(IN_STOCK)
   purchasePriceMinor Int
@@ -616,10 +631,11 @@ model InventoryItem {
   createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  sale    Sale?
-  costs   Cost[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing?   @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  sale      Sale?
+  costs     Cost[]
 
   @@index([userId, status])
 }

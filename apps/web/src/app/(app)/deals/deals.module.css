@@ -1,0 +1,278 @@
+/* ---------- Feed ---------- */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--rd-space-2);
+  overflow-x: auto;
+  padding-bottom: var(--rd-space-1);
+}
+
+.tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  text-decoration: none;
+  font-size: var(--rd-font-size-md);
+}
+
+.tab[aria-current="page"] {
+  border: 2px solid var(--rd-text);
+  background: var(--rd-tone-info-bg);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-3);
+}
+
+.select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+  font-size: var(--rd-font-size-sm);
+  flex: 1 1 12rem;
+}
+
+.select select {
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-3);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  font: inherit;
+  font-size: var(--rd-font-size-md);
+}
+
+.more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rd-space-2);
+}
+
+/* ---------- Card ---------- */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+}
+
+.card:has(.stretched:focus-visible) {
+  outline: 3px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
+.card:hover {
+  border-color: var(--rd-text-muted);
+}
+
+/* Exceptional: the rare, stronger treatment - Drop Yellow accent, no artwork. */
+.exceptional {
+  border: 2px solid var(--rd-tone-fresh-accent);
+  background: var(--rd-tone-fresh-bg);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.cardTitle {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-semibold);
+  line-height: 1.3;
+}
+
+.stretched {
+  color: var(--rd-text);
+  text-decoration: none;
+}
+
+.stretched:focus-visible {
+  outline: none;
+}
+
+.stretched::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.meta,
+.small,
+.muted {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--rd-space-3);
+  margin: var(--rd-space-1) 0 0;
+}
+
+.figures dt {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.figures dd {
+  margin: 0;
+}
+
+.figure {
+  font-size: var(--rd-font-size-md);
+  font-weight: var(--rd-font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.estimated {
+  padding: 0 var(--rd-space-2);
+  border: 1px dashed var(--rd-text-muted);
+  border-radius: var(--rd-radius-full);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.reason {
+  font-size: var(--rd-font-size-md);
+}
+
+.sourceNote {
+  padding-left: var(--rd-space-2);
+  border-left: 3px solid var(--rd-tone-loss-accent);
+  font-size: var(--rd-font-size-sm);
+}
+
+@media (max-width: 420px) {
+  .figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Detail ---------- */
+
+.back {
+  align-self: flex-start;
+  color: var(--rd-text);
+  font-size: var(--rd-font-size-sm);
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.heroTitle {
+  font-size: var(--rd-font-size-2xl);
+  font-weight: var(--rd-font-weight-bold);
+  line-height: 1.2;
+}
+
+.exceptionalBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-3);
+  padding: var(--rd-space-4);
+  border: 2px solid var(--rd-tone-fresh-accent);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-tone-fresh-bg);
+}
+
+.exceptionalBanner strong {
+  display: block;
+  font-size: var(--rd-font-size-lg);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+  padding: var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+}
+
+.row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--rd-space-2);
+}
+
+.bullets {
+  margin: 0;
+  padding-left: var(--rd-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+}
+
+.description {
+  white-space: pre-line;
+}

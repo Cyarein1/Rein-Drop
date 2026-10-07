@@ -258,6 +258,38 @@ describe('API (e2e)', () => {
     });
   });
 
+  describe('Deals (HTTP layer; behaviour is covered by test/deals.int-spec.ts)', () => {
+    const asDev = (req: request.Test) => req.set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT);
+    const DEAL = '01990000-0000-7000-8000-000000000001';
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer()).get('/deals').expect(401);
+      await request(app.getHttpServer()).get(`/deals/${DEAL}`).expect(401);
+      await request(app.getHttpServer()).post(`/deals/${DEAL}/bought`).send({}).expect(401);
+    });
+
+    it.each([
+      ['an unknown status filter', '/deals?status=NEW', 'query.status'],
+      ['an unknown marketplace', '/deals?marketplace=gumtree', 'query.marketplace'],
+      ['a malformed hunt id', '/deals?huntId=abc', 'query.huntId'],
+      ['a tampered cursor', '/deals?cursor=bm90LWEtY3Vyc29y', 'query.cursor'],
+      ['a malformed deal id', '/deals/not-a-uuid', 'param.id'],
+    ])('GET rejects %s with 400', async (_label, url, path) => {
+      const res = await asDev(request(app.getHttpServer()).get(url)).expect(400);
+      expect(res.body.code).toBe('VALIDATION_FAILED');
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
+    });
+
+    it.each([
+      ['ignore', { reason: 'x'.repeat(201) }, 'body.reason'],
+      ['bought', { price: { amountMinor: 0, currency: 'ZAR' } }, 'body.price.amountMinor'],
+      ['bought', { purchasedAt: 'yesterday' }, 'body.purchasedAt'],
+    ])('POST %s rejects an invalid body with 400', async (action, body, path) => {
+      const res = await asDev(request(app.getHttpServer()).post(`/deals/${DEAL}/${action}`)).send(body).expect(400);
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
+    });
+  });
+
   describe('errors and validation', () => {
     it('unknown route -> 404 in the standard error shape', async () => {
       const res = await request(app.getHttpServer()).get('/nope?token=abc').expect(404);

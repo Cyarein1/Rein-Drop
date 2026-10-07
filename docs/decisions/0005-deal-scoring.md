@@ -58,6 +58,12 @@ the AI input (with "now" at day granularity), costs, comparables, scoring versio
 unchanged listing costs no AI call. Retryable AI failures retry the job; the last attempt is stored
 as FAILED (economics kept, no strength, never eligible).
 
+**Feed ranking** (added in step 25, `FEED_RANKING` / `feedRank`, mirrored by the Deals API SQL):
+rank = score + up to 14 freshness points fading linearly over 72h (age from the posting time, else
+from discovery). The bonus is smaller than the 15-point gap between strength bands, so freshness
+reorders deals within a band and never lifts one above a stronger band. Unanalysed deals rank as
+score 35 (bottom of moderate).
+
 ## Consequences
 
 - With today's data, a hunt alerts only when it has a max price: "strong" means within your max,

@@ -20,8 +20,10 @@ import {
   userLocaleResponseSchema,
   huntPageSchema,
   huntSchema,
+  ignoreDealRequestSchema,
   listDealsQuerySchema,
   listHuntsQuerySchema,
+  markDealBoughtRequestSchema,
   readinessResponseSchema,
   sellerSnapshotSchema,
   updateHuntRequestSchema,
@@ -37,7 +39,9 @@ import {
   type Hunt,
   type HuntAction,
   type HuntEvent,
+  type IgnoreDealRequest,
   type ListDealsQueryInput,
+  type MarkDealBoughtRequest,
   type ListHuntsQueryInput,
   type Page,
   type ReadinessResponse,
@@ -123,8 +127,18 @@ export interface ApiClient {
    */
   confirmDevBilling(planCode: string): Promise<SubscriptionSummary>;
 
+  /** Ranked feed (strength, then freshness). Default status filter: `open`. */
   listDeals(query?: ListDealsQueryInput): Promise<Page<DealSummary>>;
   getDeal(id: string): Promise<DealDetail>;
+  /** The user opened the deal (NEW -> SEEN). */
+  markDealSeen(id: string): Promise<DealDetail>;
+  saveDeal(id: string): Promise<DealDetail>;
+  unsaveDeal(id: string): Promise<DealDetail>;
+  /** "Not for me", with an optional reason. */
+  ignoreDeal(id: string, input?: IgnoreDealRequest): Promise<DealDetail>;
+  unignoreDeal(id: string): Promise<DealDetail>;
+  /** Records the purchase (price defaults to the asking price). Idempotent. */
+  markDealBought(id: string, input?: MarkDealBoughtRequest): Promise<DealDetail>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -231,5 +245,23 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         response: dealPageSchema,
       }),
     getDeal: (id) => send(http, { method: 'GET', path: `/deals/${pathId(id)}`, response: dealDetailSchema }),
+    markDealSeen: (id) => send(http, { method: 'POST', path: `/deals/${pathId(id)}/seen`, response: dealDetailSchema }),
+    saveDeal: (id) => send(http, { method: 'POST', path: `/deals/${pathId(id)}/save`, response: dealDetailSchema }),
+    unsaveDeal: (id) => send(http, { method: 'DELETE', path: `/deals/${pathId(id)}/save`, response: dealDetailSchema }),
+    ignoreDeal: async (id, input = {}) =>
+      send(http, {
+        method: 'POST',
+        path: `/deals/${pathId(id)}/ignore`,
+        body: validateInput(ignoreDealRequestSchema, input, 'body'),
+        response: dealDetailSchema,
+      }),
+    unignoreDeal: (id) => send(http, { method: 'DELETE', path: `/deals/${pathId(id)}/ignore`, response: dealDetailSchema }),
+    markDealBought: async (id, input = {}) =>
+      send(http, {
+        method: 'POST',
+        path: `/deals/${pathId(id)}/bought`,
+        body: validateInput(markDealBoughtRequestSchema, input, 'body'),
+        response: dealDetailSchema,
+      }),
   };
 }

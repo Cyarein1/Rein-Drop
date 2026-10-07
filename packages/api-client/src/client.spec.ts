@@ -111,6 +111,37 @@ describe('createApiClient', () => {
     expect(fetch.mock.calls[0]![1]?.method).toBe('POST');
   });
 
+  it('deals: feed query defaults to open; actions hit /deals/:id/<action> with validated bodies', async () => {
+    const feed = fakeFetch(200, { items: [], nextCursor: null });
+    await client(feed).listDeals({ marketplace: 'ebay' });
+    expect(feed.mock.calls[0]![0]).toBe('http://api.test/deals?limit=20&marketplace=ebay&status=open');
+
+    // Response validation fails on the empty body, which is fine: we only check the request here.
+    const calls: [string, string, unknown][] = [];
+    const fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(url), init?.method ?? 'GET', init?.body ? JSON.parse(String(init.body)) : undefined]);
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    const c = createApiClient({ baseUrl: 'http://api.test', fetch: fetch as unknown as typeof globalThis.fetch });
+    await Promise.allSettled([
+      c.markDealSeen(ID),
+      c.saveDeal(ID),
+      c.unsaveDeal(ID),
+      c.ignoreDeal(ID, { reason: ' too far ' }),
+      c.unignoreDeal(ID),
+      c.markDealBought(ID, { price: { amountMinor: 350_000, currency: 'ZAR' } }),
+    ]);
+    expect(calls).toEqual([
+      [`http://api.test/deals/${ID}/seen`, 'POST', undefined],
+      [`http://api.test/deals/${ID}/save`, 'POST', undefined],
+      [`http://api.test/deals/${ID}/save`, 'DELETE', undefined],
+      [`http://api.test/deals/${ID}/ignore`, 'POST', { reason: 'too far' }],
+      [`http://api.test/deals/${ID}/ignore`, 'DELETE', undefined],
+      [`http://api.test/deals/${ID}/bought`, 'POST', { price: { amountMinor: 350_000, currency: 'ZAR' } }],
+    ]);
+    await expect(c.markDealBought(ID, { price: { amountMinor: 0, currency: 'ZAR' } })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('serializes list queries with defaults', async () => {
     const fetch = fakeFetch(200, { items: [HUNT], nextCursor: null });
     const page = await client(fetch).listHunts({ status: 'LIVE' });

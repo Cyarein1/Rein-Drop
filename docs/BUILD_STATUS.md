@@ -1,11 +1,114 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 24)_
+_Last updated: 2026-10-07 (step 26)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 26 - Deals feed + Deal Detail on web and mobile (Build Prompt 23)
+
+**What was added**
+
+- `client-core/deal-view.ts` (shared by web + mobile): card / detail view models - status,
+  strength, confidence and "Just dropped" labels with tones, price + known costs, freshness text
+  ("Posted 3 h ago" / "Found ..."), upside (value + range + excluded costs, `estimated` only for a
+  real estimate, otherwise the reason, e.g. "No resale price data yet"), source notes ("Sold on
+  eBay", "Couldn't check Facebook Marketplace on the last try"), price breakdown, max-price /
+  target notes, match checks, alert outcome in words, decisions, which actions apply, and the
+  Bought / Ignore form rules (price starts at the asking price; required when there is none).
+- Web `/deals`: status tabs (To review, Saved, Bought, Ignored, Unavailable, All) as links, Hunt
+  and Source selects (URL-driven), ranked cards (one stretched link per card with an accessible
+  summary), "Show more" via a server action, per-filter empty states, error banner with retry.
+- Web `/deals/[id]` (new): exceptional banner, badges, View on <marketplace> (new tab, announced),
+  Bought (inline price form), Save / Remove from Saved, Ignore (optional reason) / Undo ignore,
+  "Why Rein Drop flagged it" (next step, headline, summary, in its favour, concerns), Price
+  (breakdown, max price note, estimated upside metric, what's not included), Risk and condition
+  (level, factors with severity, seller note, questions to ask), From the listing, and a "How Rein
+  Drop scored it" disclosure (strength / confidence reasons, Hunt checks, alert outcome). Opening
+  a new deal marks it seen. Unknown / foreign ids -> 404.
+- Mobile: Deals tab (status / source / Hunt chips, ranked cards, Show more, reload on focus) and
+  `deals/[id]` screen with the same content and actions (`Linking.openURL` for View source).
+- Exceptional deals: the `exceptionalDeal` mascot token has no approved asset, so cards and the
+  detail use a Drop Yellow border + wash and an "Exceptional" badge / banner - no artwork. If an
+  approved asset is ever mapped to the token, the detail banner shows it automatically.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 36, +9 deal view tests).
+- Browser e2e (Edge, 390x844, running web + API) with temporary deals for the dev user (a PAUSED
+  hunt so the worker never touched it; real mock-AI analyses and scoring), 28/28: ranking
+  (exceptional, then strong), exceptional styling without images, estimated vs "Not estimated",
+  source / freshness / price / confidence / status on cards, pending card, one link per card,
+  Unavailable tab with "Sold on ...", source filter + select, empty state with Clear filters,
+  detail sections, View source in a new tab, risk factors + seller questions, Save, Ignore with a
+  reason, Undo ignore, Bought prefilled and edited, Bought without a price asks for one, Bought /
+  open tabs updated, 404. All temporary data removed afterwards (feed empty again).
+- Mobile: typecheck, lint, Expo export build - **not run on a device**.
+
+**Not done / TODO**
+
+- Listing images (dev image URLs are fake hosts; real hosts need allowlisting).
+- The AI explanation doesn't see comparables yet, so with an estimate it can still say "profit is
+  estimated in a later step" (only reachable with seeded comparables today) - `TODO(ai)`.
+- The dev user has no locale, so amounts show as "ZAR 3,800.00" (the `en` fallback).
+
+### Step 25 - Deals API: ranked feed, filters, detail, Seen / Save / Ignore / Bought (Build Prompt 22)
+
+**What was added**
+
+- Contracts (`deals.ts` rewritten; no client used the old shape): one user-facing `DealStatus`
+  (bought > ignored > unavailable > saved > new > seen), feed filter `status` (default `open` =
+  new + seen + saved, still available), `huntId`, `marketplace`. Every deal carries `price`
+  (asking, known costs, known total), `freshness` (posted / discovered, age, basis), `source`
+  (listing status, available, last seen, last marketplace check ok / failed), `assessment`
+  (pending / completed / failed, strength, confidence, score, alert eligibility), `estimate`
+  (resale + upside, `estimated` only with comparable sales and labelled `basis: 'estimate'`,
+  otherwise the reason), `reason` (grounded AI headline) and `rank`. Detail adds the explanation,
+  product, risk + seller questions, strength / confidence reasons, economics, match checks, alert
+  rules and the user's decisions (seen / saved / ignored + reason / bought + inventory item).
+  Strength / confidence lists mirror `@rein-drop/scoring` (test).
+- Ranking (`FEED_RANKING` / `feedRank` in `@rein-drop/scoring`, mirrored by the SQL): stored
+  strength-banded score + a freshness bonus of up to 14 fading over 72h, so freshness reorders
+  within a strength band but never lifts a deal over a stronger band; unanalysed deals rank at the
+  bottom of "moderate". Keyset paging over (rank, id); the cursor pins "now", so pages don't shift.
+- API `DealsModule`: `GET /deals`, `GET /deals/:id`, `POST /deals/:id/seen`, `POST|DELETE
+  /deals/:id/save`, `POST|DELETE /deals/:id/ignore` (optional reason), `POST /deals/:id/bought`
+  (price defaults to the asking price and is required when there is none; purchase time defaults
+  to now, not in the future). All idempotent, all return the deal; another user's deal is 404.
+  Ignore removes it from Saved; saving an ignored deal un-ignores it; a bought deal can't be saved
+  or ignored (409). Bought creates exactly one InventoryItem (concurrent taps included).
+  New `MatchingService` (user decisions on HuntMatch, all conditional updates) and
+  `OutcomesService` (purchase record) own those writes.
+- DB migration `20261007173440_deal_actions`: HuntMatchStatus `BOUGHT`; HuntMatch `seenAt`,
+  `dismissedAt`, `dismissReason`, `boughtAt`; InventoryItem `huntMatchId` (unique).
+- Worker MatchStage: every status change is now conditional, so a match the user ignored or
+  bought meanwhile is never overwritten (BOUGHT, like DISMISSED, is never expired or re-analysed).
+- api-client: `listDeals` (new filters), `markDealSeen`, `saveDeal`, `unsaveDeal`, `ignoreDeal`,
+  `unignoreDeal`, `markDealBought`.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (contracts 38, api-client 12, scoring 19,
+  api unit incl. 6 mapper tests that validate real mock-AI + scoring output against the contract).
+- `pnpm --filter api test:e2e` 45/45 (+9: auth, bad filters, tampered cursor, bad ids / bodies).
+- `pnpm --filter api test:int` 16/16 (+7 on real Postgres): exact ranking (a brand-new moderate
+  deal stays below a 60h-old strong one; SQL rank = feedRank), card fields, 3-page cursor walk
+  equals the full list, hunt / marketplace / status filters, archived hunts and other users
+  excluded, detail + 404s, seen / save / unsave / ignore with reason / un-ignore / save
+  un-ignores, bought at asking price once (two concurrent retries create nothing), 409s after
+  bought, price required without an asking price, future purchase time rejected.
+- `pnpm --filter worker test:int` 25/25 after the MatchStage change.
+- Live: the running API serves `GET /deals` (200; the dev user has no matches yet).
+
+**Not done / TODO**
+
+- Deals feed + Deal Detail screens (web + mobile): Build Prompt 23.
+- Editing / undoing a purchase, purchase costs, Mark Sold: Build Prompt 28.
+- "Suppress similar noise" after Ignore (Blueprint section 10) - reasons are stored, not used yet.
+- Saved deals aren't refreshed specially ("update if meaningful source changes are detected").
+- Feed ranking window / bonus are proposed defaults (decision 0005 / D8).
 
 ### Step 24 - Deal scoring pipeline + alert eligibility (Build Prompt 21)
 
@@ -1137,7 +1240,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-21 (our steps 1-24 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-23 (our steps 1-26 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1154,6 +1257,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 22 in document order: Deals API and ranked feed (strength / freshness ordering,
-filters, detail, Save / Ignore / Bought), using the DealAnalysis scoring from step 24.
+Build Prompt 24 in document order: notification preferences, Alert + NotificationDelivery, one
+alert per eligible DealAnalysis, and a local notification simulator / in-app inbox.
 (Await the next prompt.)

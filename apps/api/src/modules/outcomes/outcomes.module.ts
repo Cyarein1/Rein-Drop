@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
+import { OutcomesService } from './outcomes.service.js';
 
 /**
  * Outcomes - Reselling ledger: purchases (inventory), sales and costs.
  *
  * Owns: InventoryItem, Sale, Cost
- *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * OutcomesService records the purchase when a deal is marked Bought. Inventory, sales, costs and
+ * realized P/L endpoints come with Build Prompt 28.
  */
-@Module({})
+@Module({
+  providers: [OutcomesService],
+  exports: [OutcomesService],
+})
 export class OutcomesModule {}
