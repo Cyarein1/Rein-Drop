@@ -67,6 +67,18 @@ collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 - Quiet hours, per-Hunt caps / digests; strong -> exceptional upgrade doesn't alert again.
 - Expo push (Build Prompt 25); email provider TBD.
 
+**Fix after step 27 - worker integration tests vs a running worker**
+
+- Symptom: `pnpm --filter worker test:int` failed once (pipeline spec: no `condition` rejections)
+  while the user's worker was running.
+- Cause: test hunts were created with `nextPollAt = null` ("due now" for any scheduler), so the
+  real worker claimed them mid-test, wrote a search run after the test's cleanup, and left
+  future-dated dev listings that changed the next run's results. (The 2036 test clock only
+  protected later polls.)
+- Fix: every worker integration spec creates its hunts due at the test clock
+  (`nextPollAt: epoch`), so a real-time worker never claims them. Leftovers removed (1 orphan
+  search run, 9 raw records, 9 listings). Verified: 31/31 twice in a row, no leftovers.
+
 ### Step 26 - Deals feed + Deal Detail on web and mobile (Build Prompt 23)
 
 **What was added**

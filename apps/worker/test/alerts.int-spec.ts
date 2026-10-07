@@ -94,7 +94,8 @@ describe('alerts and notification deliveries (integration, real database)', () =
           maxPriceMinor: 1_500_000,
           priceCurrency: 'ZAR',
           targetProfitMinor: 100_000,
-          marketplaces: { create: [{ marketplaceId: market.ebay }, { marketplaceId: market.facebook }] },
+          // Due at the test clock only: a real worker running alongside never claims these hunts.
+          marketplaces: { create: [{ marketplaceId: market.ebay, nextPollAt: epoch }, { marketplaceId: market.facebook, nextPollAt: epoch }] },
         },
       });
       hunts.push(hunt.id);

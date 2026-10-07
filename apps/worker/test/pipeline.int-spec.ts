@@ -4,8 +4,8 @@
  * after `pnpm infra:up`, `pnpm db:migrate` and `pnpm db:seed`.
  *
  * Isolation from a worker you may have running: the test owns a throwaway user, its own queue
- * name, scopes the scheduler to that user, and runs its clock ten years ahead so its hunts are
- * never due for a real-time worker. Everything it creates is deleted afterwards.
+ * name, scopes the scheduler to that user, and runs its clock ten years ahead - its hunts are
+ * created due at that time (nextPollAt), so they are never due for a real-time worker. Everything it creates is deleted afterwards.
  */
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
@@ -76,7 +76,8 @@ describe('worker pipeline (integration, real database)', () => {
             conditions: data.conditions ?? [],
             maxPriceMinor: data.maxPriceMinor ?? 450_000,
             priceCurrency: 'ZAR',
-            marketplaces: { create: data.markets.map((k) => ({ marketplaceId: market[k] })) },
+            // Due at the test clock (2036): a real worker running alongside never claims these hunts.
+            marketplaces: { create: data.markets.map((k) => ({ marketplaceId: market[k], nextPollAt: epoch })) },
           },
         })
       ).id;
@@ -118,7 +119,7 @@ describe('worker pipeline (integration, real database)', () => {
       criteria: { query: 'iPhone 13', location: { text: 'Cape Town', radiusKm: 40 }, conditions: [], maxPrice: { amountMinor: 500_000, currency: 'ZAR' } },
     });
     expect((await pollState(huntA, 'facebook')).nextPollAt).toEqual(new Date(t + INTERVAL));
-    expect((await pollState(paused, 'ebay')).nextPollAt).toBeNull(); // paused hunts are never claimed
+    expect((await pollState(paused, 'ebay')).nextPollAt).toEqual(epoch); // paused hunts are never claimed
   });
 
   it('runs the searches: raw listings, normalized listings, search runs, polling metadata and usage', async () => {

@@ -80,7 +80,8 @@ describe('deal analysis pipeline (integration, real database)', () => {
             radiusKm: 40,
             priceCurrency: 'ZAR',
             ...data,
-            marketplaces: { create: [{ marketplaceId: market.ebay }, { marketplaceId: market.facebook }] },
+            // Due at the test clock only: a real worker running alongside never claims these hunts.
+            marketplaces: { create: [{ marketplaceId: market.ebay, nextPollAt: epoch }, { marketplaceId: market.facebook, nextPollAt: epoch }] },
           },
         })
       ).id;
