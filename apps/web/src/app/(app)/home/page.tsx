@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Metric, Page } from "@/components/ui";
+import { OnboardingRedirect } from "@/app/onboarding/OnboardingRedirect";
 import { PlaceholderNotice } from "../placeholder-notice";
 
 export const metadata: Metadata = { title: "Home" };
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Home" };
 export default function HomePage() {
   return (
     <Protected>
+      <OnboardingRedirect />
       <Page title="Home" description="Is Rein Drop working, and is anything worth your attention?">
         <PlaceholderNotice>
           Real data arrives once Hunts, deals and outcomes are implemented. Sections follow the App

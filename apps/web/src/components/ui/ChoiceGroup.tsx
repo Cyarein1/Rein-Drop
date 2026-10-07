@@ -13,6 +13,8 @@ interface BaseProps<T extends string> {
   options: readonly ChoiceOption<T>[];
   hint?: string;
   error?: string;
+  /** Keep the legend for screen readers but hide it visually (when a heading already asks it). */
+  hideLegend?: boolean;
 }
 
 export type ChoiceGroupProps<T extends string> = BaseProps<T> &
@@ -26,7 +28,7 @@ export type ChoiceGroupProps<T extends string> = BaseProps<T> &
  * so keyboard and screen-reader behaviour come from the platform.
  */
 export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
-  const { legend, options, hint, error } = props;
+  const { legend, options, hint, error, hideLegend } = props;
   const name = useId();
   const hintId = hint ? `${name}-hint` : undefined;
   const errorId = error ? `${name}-error` : undefined;
@@ -46,7 +48,7 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
       aria-describedby={[hintId, errorId].filter(Boolean).join(" ") || undefined}
       aria-invalid={error ? true : undefined}
     >
-      <legend className={styles.legend}>{legend}</legend>
+      <legend className={hideLegend ? styles.legendHidden : styles.legend}>{legend}</legend>
       {hint && (
         <p id={hintId} className={styles.hint}>
           {hint}

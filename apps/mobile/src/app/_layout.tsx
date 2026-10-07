@@ -35,6 +35,7 @@ export default function RootLayout() {
       <Stack screenOptions={headerOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="onboarding" options={{ title: 'Set up Rein Drop', presentation: 'modal' }} />
         <Stack.Screen name="hunts/new" options={{ title: 'Create Hunt', presentation: 'modal' }} />
         <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />

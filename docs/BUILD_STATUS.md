@@ -4,6 +4,47 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 23 - Seller Snapshot onboarding UI (Build Prompt 11, previously skipped)
+
+**What was added**
+
+- `client-core/seller-snapshot-flow.ts` (shared by web + mobile): step order (reseller gate ->
+  5 questions -> summary; "no" -> coming soon), `resumeStep` (first unanswered question),
+  answer draft, per-step validation building the PATCH body (incl. "Other" text and the optional
+  Q4 target: money in the user's locale currency, or a whole percent), Q4 labels with the locale
+  currency symbol instead of a hard-coded "$", `snapshotSummary` (echo sentence + "Rein Drop will
+  prioritize..." listing only what the answers really drive: Hunt ideas, default marketplaces, deal
+  threshold), `snapshotAnswerRows` for Settings. Re-exports the snapshot copy constants.
+- Web `/onboarding` (outside the app shell, protected; added to the proxy matcher): one question
+  per screen, "n of 5" progress bar, large choice chips (question asked once - the group legend is
+  visually hidden but announced), Back / Next (disabled until answered), each answer saved before
+  moving on, focus moved to the new heading, errors shown inline without losing answers. Wave
+  mascot on the gate, thumbs-up on the summary (approved assets only). Summary -> "Create my first
+  Hunt". `?edit=1` re-opens the questions with saved answers.
+- Web Home redirects to `/onboarding` while it is not started / in progress (never for
+  "not a reseller", never blocking if the API fails). Settings shows the five answers with
+  Edit / Finish / Set up / Change-my-answer actions.
+- Mobile `onboarding` modal screen with the same flow (header shows "n of 5", accessibility
+  announcements and progressbar role); Home opens it once per app launch and otherwise shows a
+  "Finish setting up" banner; Settings shows the answers with the same actions.
+- `ChoiceGroup` (web + mobile): optional `hideLegend`.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 50/50 (client-core 27 incl. 10 new flow tests).
+- Browser e2e (Edge, 390x844, running web + API), 20/20: Home -> /onboarding redirect; no app nav;
+  mascots; gate "no" -> coming soon -> change answer; questions with progress and hidden legend;
+  Next disabled until answered; Back keeps answers; refresh resumes at question 3; Q4 invalid
+  target rejected, valid target saved; summary sentence and priorities; Create Hunt prefilled from
+  the answers; Home no longer redirects; Settings lists answers; Edit re-opens at question 1. The
+  dev user's original answers were backed up and restored afterwards.
+- Mobile: typecheck, lint and the Expo export build pass; not yet tried on a device.
+
+**Not done**
+
+- Welcome / create-account screens (frames 01-02) come with managed auth (prompt 38).
+- Non-reseller experience is still "coming soon" (product decision pending).
+
 ### Step 22 - AIProvider (structured, validated, grounded) + deterministic MockAIProvider
 
 **What was added** (`packages/ai-core`, now depends on zod + `@rein-drop/matching`)
@@ -1030,8 +1071,29 @@ pnpm --filter mobile start
   the high-fidelity design pass.
 - `TODO(assets)`: export optimized @1x/@2x/@3x mascot PNGs for mobile (originals are 1-2 MB);
   wire `app-icon-mascot.png` into `app.json` once approved for stores; SVG wordmarks if available.
-- Product docs (App Flow Blueprint, Mobile UI Screenbook, Technical Architecture, Build Prompts,
-  Product Blueprint) are still only in `Downloads/` - consider copying them to `docs/product/`.
+- Product docs are still only on the developer machine (`Downloads/ReinDrop/`, Product Blueprint
+  v0.1 in `Downloads/`) - consider copying them to `docs/product/`.
+
+## Alignment with the product documents (reviewed 2026-10-07)
+
+All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Architecture, Build
+Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
+used (owner decision).
+
+- Build Prompts done: 01-10 and 12-20 (our steps 1-22 include extra fix / reseller-gate / locale
+  steps, so our numbers run ahead of the prompt numbers).
+- ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
+- **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
+  (the zod contracts could generate it).
+- Required by the App Flow and not yet built (scheduled in later prompts): listing removed/sold ->
+  match "unavailable" (needs the refresh job noted in step 21), welcome + email/password account
+  screens (with managed auth, prompt 38), payment step (fake now), downgrade never deletes Hunts,
+  marketplace economics/latency/cost per request (prompt 36), AI cost metadata and golden datasets.
+- Confirmed in line: stack and boundaries, two launch marketplaces behind adapters with a
+  replaceable Facebook provider, scheduler/queue/worker model, deterministic filters before AI,
+  grounded AI outputs, server-side entitlements with placeholder plans, palette incl. soft
+  orange / soft yellow / sky wash / loss red, Inter, wordmark-only logo, semantic mascot tokens with
+  only approved assets.
 
 ## Next step
 

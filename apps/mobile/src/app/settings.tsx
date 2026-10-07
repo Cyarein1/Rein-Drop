@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import type { SellerSnapshot, UserLocale } from '@rein-drop/api-client';
+import { huntFormContext, snapshotAnswerRows } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
@@ -43,7 +45,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <PlaceholderNotice>Settings sections are listed but not editable yet.</PlaceholderNotice>
+      <PlaceholderNotice>Most settings sections are listed but not editable yet.</PlaceholderNotice>
 
       <Card
         title="Account"
@@ -82,9 +84,13 @@ export default function SettingsScreen() {
         )}
       </Card>
 
-      <Card title="Seller Snapshot">
-        <Text style={[styles.muted, font('regular')]}>Your five onboarding answers will appear here.</Text>
-      </Card>
+      {sessionState.status === 'authenticated' ? (
+        <SellerSnapshotCard locale={sessionState.session.user.locale} />
+      ) : (
+        <Card title="Seller Snapshot">
+          <Text style={[styles.muted, font('regular')]}>Sign in to see your onboarding answers.</Text>
+        </Card>
+      )}
 
       <Card title="Plan & billing">
         <Text style={[styles.muted, font('regular')]}>Plans and pricing are not decided yet.</Text>
@@ -136,7 +142,85 @@ export default function SettingsScreen() {
   );
 }
 
+/** The five onboarding answers, editable (Screenbook frame 30). Reloads when Settings regains focus. */
+function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
+  const router = useRouter();
+  const [state, setState] = useState<{ status: 'loading' } | { status: 'error' } | { status: 'ready'; snapshot: SellerSnapshot }>({
+    status: 'loading',
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.resolve()
+        .then(() => getApiClient().getSellerSnapshot())
+        .then(
+          (snapshot) => !cancelled && setState({ status: 'ready', snapshot }),
+          () => !cancelled && setState({ status: 'error' }),
+        );
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  if (state.status === 'loading') {
+    return (
+      <Card title="Seller Snapshot">
+        <LoadingState label="Loading your answers…" />
+      </Card>
+    );
+  }
+  if (state.status === 'error') {
+    return (
+      <Card title="Seller Snapshot">
+        <SystemBanner tone="error" title="Couldn't load your answers" message="Leave and reopen Settings to try again." />
+      </Card>
+    );
+  }
+  const { snapshot } = state;
+  if (snapshot.status === 'not_started' || snapshot.status === 'not_reseller') {
+    return (
+      <Card title="Seller Snapshot">
+        <Text style={[styles.muted, font('regular')]}>
+          {snapshot.status === 'not_started'
+            ? 'Five quick questions set Rein Drop up around how you source.'
+            : "You told us you're not reselling right now - that experience is coming soon."}
+        </Text>
+        <Button
+          variant="secondary"
+          onPress={() => router.push(snapshot.status === 'not_started' ? '/onboarding' : { pathname: '/onboarding', params: { edit: '1' } })}
+        >
+          {snapshot.status === 'not_started' ? 'Set up now' : 'Change my answer'}
+        </Button>
+      </Card>
+    );
+  }
+
+  const inProgress = snapshot.status === 'in_progress';
+  return (
+    <Card title="Seller Snapshot" action={inProgress ? <Badge tone="fresh">Not finished</Badge> : undefined}>
+      {snapshotAnswerRows(snapshot, huntFormContext(locale)).map((row) => (
+        <View key={row.question} style={styles.answer}>
+          <Text style={[styles.muted, font('regular')]}>{row.question}</Text>
+          <Text style={[styles.body, font('semibold')]}>{row.answer}</Text>
+        </View>
+      ))}
+      <Text style={[styles.muted, font('regular')]}>
+        These answers set the defaults for new Hunts. Changing them never changes existing Hunts.
+      </Text>
+      <Button
+        variant="secondary"
+        onPress={() => router.push(inProgress ? '/onboarding' : { pathname: '/onboarding', params: { edit: '1' } })}
+      >
+        {inProgress ? 'Finish setting up' : 'Edit answers'}
+      </Button>
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  answer: { gap: 2 },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] },
   label: { color: roles.text, fontSize: fontSize.md },
   body: { color: roles.text, fontSize: fontSize.md },

@@ -17,5 +17,12 @@ export function proxy(request: NextRequest) {
 
 /** Application routes only - public pages (/sign-in, /dev), assets and images are excluded. */
 export const config = {
-  matcher: ["/home/:path*", "/hunts/:path*", "/deals/:path*", "/analytics/:path*", "/settings/:path*"],
+  matcher: [
+    "/home/:path*",
+    "/onboarding/:path*",
+    "/hunts/:path*",
+    "/deals/:path*",
+    "/analytics/:path*",
+    "/settings/:path*",
+  ],
 };

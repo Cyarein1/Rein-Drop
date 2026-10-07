@@ -12,6 +12,8 @@ interface BaseProps<T extends string> {
   options: readonly ChoiceOption<T>[];
   hint?: string;
   error?: string;
+  /** Keep the legend as the group's accessibility label but don't show it (a heading already asks it). */
+  hideLegend?: boolean;
 }
 
 export type ChoiceGroupProps<T extends string> = BaseProps<T> &
@@ -22,7 +24,7 @@ export type ChoiceGroupProps<T extends string> = BaseProps<T> &
 
 /** Chips with checkbox (multiple) or radio (single) semantics for screen readers. */
 export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
-  const { legend, options, hint, error } = props;
+  const { legend, options, hint, error, hideLegend } = props;
   const isChecked = (v: T) => (props.multiple ? props.value.includes(v) : props.value === v);
   const toggle = (v: T) => {
     if (props.multiple) {
@@ -34,7 +36,7 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
 
   return (
     <View style={styles.group} accessibilityRole={props.multiple ? undefined : 'radiogroup'} accessibilityLabel={legend}>
-      <Text style={[styles.legend, font('semibold')]}>{legend}</Text>
+      {!hideLegend && <Text style={[styles.legend, font('semibold')]}>{legend}</Text>}
       {hint && <Text style={[styles.hint, font('regular')]}>{hint}</Text>}
       <View style={styles.options}>
         {options.map((option) => {

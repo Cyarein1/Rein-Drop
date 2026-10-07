@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { verifySession } from "@/auth";
+import { huntFormContext, snapshotAnswerRows } from "@rein-drop/client-core";
+import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import { Badge, Button, Card, Page } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { PlaceholderNotice } from "../placeholder-notice";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -11,15 +12,11 @@ export default function SettingsPage() {
   return (
     <Protected>
       <Page title="Settings" width="narrow">
-        <PlaceholderNotice>Settings sections are listed but not editable yet.</PlaceholderNotice>
+        <PlaceholderNotice>Most settings sections are listed but not editable yet.</PlaceholderNotice>
 
         <AccountCard />
 
-        <Card title="Seller Snapshot">
-          <p style={{ color: "var(--rd-text-muted)" }}>
-            Your five onboarding answers will appear here.
-          </p>
-        </Card>
+        <SellerSnapshotCard />
 
         <Card title="Plan & billing">
           <p style={{ color: "var(--rd-text-muted)" }}>Plans and pricing are not decided yet.</p>
@@ -43,6 +40,68 @@ export default function SettingsPage() {
         </Card>
       </Page>
     </Protected>
+  );
+}
+
+/** The five onboarding answers, editable (Screenbook frame 30). */
+async function SellerSnapshotCard() {
+  const [session, api] = await Promise.all([verifySession(), getServerApiClient()]);
+  const snapshot = await api.getSellerSnapshot().catch(() => null);
+  const muted = { color: "var(--rd-text-muted)" };
+
+  if (!snapshot) {
+    return (
+      <Card title="Seller Snapshot">
+        <SystemBanner tone="error" title="Couldn't load your answers" message="Refresh the page to try again." />
+      </Card>
+    );
+  }
+  if (snapshot.status === "not_started") {
+    return (
+      <Card title="Seller Snapshot">
+        <p style={muted}>Five quick questions set Rein Drop up around how you source.</p>
+        <div>
+          <ButtonLink href="/onboarding">Set up now</ButtonLink>
+        </div>
+      </Card>
+    );
+  }
+  if (snapshot.status === "not_reseller") {
+    return (
+      <Card title="Seller Snapshot">
+        <p style={muted}>You told us you&apos;re not reselling right now - that experience is coming soon.</p>
+        <div>
+          <ButtonLink href="/onboarding?edit=1" variant="secondary">
+            Change my answer
+          </ButtonLink>
+        </div>
+      </Card>
+    );
+  }
+
+  const rows = snapshotAnswerRows(snapshot, huntFormContext(session.user.locale));
+  return (
+    <Card
+      title="Seller Snapshot"
+      action={snapshot.status === "in_progress" ? <Badge tone="fresh">Not finished</Badge> : undefined}
+    >
+      <dl style={{ margin: 0, display: "grid", gap: 12 }}>
+        {rows.map((row) => (
+          <div key={row.question}>
+            <dt style={{ ...muted, fontSize: 14 }}>{row.question}</dt>
+            <dd style={{ margin: 0, fontWeight: 600 }}>{row.answer}</dd>
+          </div>
+        ))}
+      </dl>
+      <p style={{ ...muted, fontSize: 14 }}>
+        These answers set the defaults for new Hunts. Changing them never changes existing Hunts.
+      </p>
+      <div>
+        <ButtonLink href={snapshot.status === "in_progress" ? "/onboarding" : "/onboarding?edit=1"} variant="secondary">
+          {snapshot.status === "in_progress" ? "Finish setting up" : "Edit answers"}
+        </ButtonLink>
+      </div>
+    </Card>
   );
 }
 
