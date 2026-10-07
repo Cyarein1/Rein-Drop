@@ -289,3 +289,46 @@ export const HUNT_TRANSITIONS: Record<HuntAction, { from: readonly HuntStatus[];
 export function restoredStatus(statusBeforeArchive: HuntStatus | null): HuntStatus {
   return statusBeforeArchive === 'DRAFT' ? 'DRAFT' : 'PAUSED';
 }
+
+/** Name given to a hunt created without one (and kept in step with its query while unchanged). */
+export function defaultHuntName(query: string): string {
+  return query.length <= 100 ? query : `${query.slice(0, 99).trimEnd()}…`;
+}
+
+// ---------------------------------------------------------------------------
+// Activity: monitoring state + simple performance counts
+// ---------------------------------------------------------------------------
+
+export const huntMarketplaceActivitySchema = z.object({
+  marketplace: marketplaceKeySchema,
+  /** Last finished search of this marketplace for the hunt (null = never checked). */
+  lastCheckedAt: isoDateTimeSchema.nullable(),
+  lastCheck: z.enum(['ok', 'failed']).nullable(),
+  /** Failed checks in a row since the last success. */
+  failingChecks: z.number().int().nonnegative(),
+  /** When the next check is due (null = as soon as possible, while live). */
+  nextCheckAt: isoDateTimeSchema.nullable(),
+});
+
+/** `GET /hunts/:id/activity` (one) and `GET /hunts/activity` (all of the user's hunts). */
+export const huntActivitySchema = z.object({
+  huntId: idSchema,
+  /** Live, and at least one of its marketplaces hasn't been checked yet: the first scan is running. */
+  scanning: z.boolean(),
+  /** Most recent check across marketplaces. */
+  lastCheckedAt: isoDateTimeSchema.nullable(),
+  marketplaces: z.array(huntMarketplaceActivitySchema),
+  counts: z.object({
+    /** Listings this hunt matched (excluding ones that stopped matching). */
+    deals: z.number().int().nonnegative(),
+    /** Still available and not decided (new, seen or saved). */
+    toReview: z.number().int().nonnegative(),
+    /** Not opened yet. */
+    new: z.number().int().nonnegative(),
+    alerts: z.number().int().nonnegative(),
+    saved: z.number().int().nonnegative(),
+    bought: z.number().int().nonnegative(),
+  }),
+});
+export type HuntActivity = z.infer<typeof huntActivitySchema>;
+export const huntActivityListSchema = z.object({ items: z.array(huntActivitySchema) });

@@ -39,6 +39,8 @@ export default function RootLayout() {
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         <Stack.Screen name="onboarding" options={{ title: 'Set up Rein Drop', presentation: 'modal' }} />
         <Stack.Screen name="hunts/new" options={{ title: 'Create Hunt', presentation: 'modal' }} />
+        <Stack.Screen name="hunts/[id]/index" options={{ title: 'Hunt' }} />
+        <Stack.Screen name="hunts/[id]/edit" options={{ title: 'Edit Hunt' }} />
         <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
         <Stack.Screen name="deals/[id]" options={{ title: 'Deal' }} />
         <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />

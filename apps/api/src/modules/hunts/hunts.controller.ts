@@ -6,6 +6,7 @@ import {
   updateHuntRequestSchema,
   type ActivationCheck,
   type Hunt,
+  type HuntActivity,
   type HuntEvent,
   type Page,
 } from '@rein-drop/contracts';
@@ -39,6 +40,12 @@ export class HuntsController {
     return this.hunts.create(user.userId, body);
   }
 
+  /** Monitoring state + performance counts for all your hunts (declared before :id). */
+  @Get('activity')
+  async activityAll(@CurrentUser() user: Principal): Promise<{ items: HuntActivity[] }> {
+    return { items: await this.hunts.activityAll(user.userId) };
+  }
+
   @Get(':id')
   get(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<Hunt> {
     return this.hunts.get(user.userId, params.id);
@@ -54,6 +61,12 @@ export class HuntsController {
   @Get(':id/activation-check')
   activationCheck(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<ActivationCheck> {
     return this.hunts.activationCheck(user.userId, params.id);
+  }
+
+  /** Last checked per marketplace, first-scan state and simple performance counts. */
+  @Get(':id/activity')
+  activity(@CurrentUser() user: Principal, @Param() params: HuntIdParams): Promise<HuntActivity> {
+    return this.hunts.activity(user.userId, params.id);
   }
 
   @Get(':id/events')

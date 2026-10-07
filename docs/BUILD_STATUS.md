@@ -1,11 +1,62 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 28)_
+_Last updated: 2026-10-07 (step 29)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 29 - Hunts management: list by state, detail, edit, pause / resume / archive (Build Prompt 26)
+
+**What was added**
+
+- Contracts: `HuntActivity` (scanning flag, last checked overall and per marketplace with
+  ok / failed, failing streak, next check; counts: deals, to review, new, alerts, saved, bought);
+  `defaultHuntName` moved here (API + clients share the naming rule).
+- API: `GET /hunts/activity` (all of the user's hunts, two queries in total) and
+  `GET /hunts/:id/activity` (404 for another user's hunt). "Scanning" = LIVE and at least one
+  enabled marketplace never checked.
+- client-core `hunt-view.ts`: status labels (LIVE shown as "Active"), list tabs (All / Active /
+  Paused / Draft / Archived; All hides archived), monitoring line ("Watching · last checked 5 min
+  ago", "Checking eBay and Facebook Marketplace for the first time…", failing sources), counts
+  line, per-marketplace rows, criteria (same sentence as the Create review), actions per state
+  (Draft: Start watching / Edit / Archive; Active: Pause / Edit / Archive; Paused: Resume / Edit /
+  Archive; Archived: Restore only), confirmation copy, history labels, `huntFormValues` +
+  `editContext` (the hunt's own currency) + `buildUpdateHuntRequest` (a default name follows the
+  query, a custom one is kept).
+- Web: `/hunts` with status tabs and cards (state, marketplaces, monitoring line, counts, Start
+  watching for drafts); new `/hunts/[id]` detail (first-scan state, actions with confirmation
+  for Pause / Archive, Performance metrics + "Open deals" filtered to the hunt, Monitoring per
+  marketplace, criteria, Priority: Normal, history; refreshes itself every 10 s while scanning;
+  shows the hunt an action returned at once); `/hunts/[id]/edit` reuses the Create flow in edit
+  mode (Review changes -> Save changes -> back to the detail with "Changes saved"); archived
+  hunts can't be edited.
+- Mobile: Hunts tab with state chips and the same cards; `hunts/[id]` detail (native confirm for
+  Pause / Archive, auto-refresh while scanning) and `hunts/[id]/edit`; the create form moved to
+  `src/components/HuntFormFlow.tsx` with an edit mode.
+- First scan: no approved "working" mascot exists (token null), so a spinner + text; the
+  approved asset would show automatically once mapped. No Hot Hunt purchase flow.
+- Plan gate: the "Pause another hunt" link now opens the Active tab.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 49, +7 hunt view tests).
+- `pnpm --filter api test:int` 24/24 (+3: scanning until every marketplace is checked, per-
+  marketplace last check / failures / next check, counts, all-hunts call, cross-user 404),
+  `pnpm --filter api test:e2e` 52/52.
+- Browser e2e (Edge 390x844, temporary hunts due only in 2036 so the running worker never polled
+  them; the user's own "ps4" hunt untouched), 21/21: tabs, cards, first-scan state without
+  artwork, monitoring rows, counts, criteria + Priority Normal, history, Open deals filter,
+  Resume blocked by the plan with the reason shown, Pause with confirmation, edit filled from the
+  hunt and saved (same hunt, history "Edited"), archive with confirmation -> Restore only ->
+  restore to Draft, archived edit refused. Temporary data removed.
+- Mobile: typecheck, lint, Expo export - not run on a device.
+
+**Not done / TODO**
+
+- Hot Hunt (paid priority) purchase flow - deliberately not built.
+- Counts are all-time; per-period performance comes with analytics (Build Prompts 30-31).
 
 ### Step 28 - Expo push notifications with a development device token flow (Build Prompt 25)
 
@@ -1373,7 +1424,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-25 (our steps 1-28 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-26 (our steps 1-29 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1390,6 +1441,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 26 in document order: Hunts management screens (detail, edit, pause / resume,
-archive / restore).
+Build Prompt 27 in document order: Home dashboard (opportunities needing attention, active Hunts
+and status, realized profit snapshot, recent outcomes, one recommendation / setup issue).
 (Await the next prompt.)

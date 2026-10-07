@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-07, after step 28 (Build Prompt 25)._
+_Last updated: 2026-10-07, after step 29 (Build Prompt 26)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -53,8 +53,8 @@ These block or shape work; the code uses placeholders until you decide.
 - Non-reseller experience (D4) - step 12.
 
 ### Hunts
-- Hunt detail / edit / pause / archive / restore screens (API exists; list cards aren't links) -
-  steps 15, 17; prompt 26.
+- Hot Hunt (paid priority) purchase flow - deliberately not built yet (prompt 26); priority shows as Normal - step 29.
+- Per-period Hunt performance (counts are all-time today) - step 29; prompts 30-31.
 - Editing a hunt doesn't re-evaluate existing matches immediately, and a LIVE edit doesn't reset
   the next poll - steps 20, 21.
 - Geocoding with Azure Maps (decision 0001): location is free text; distance is never verified
@@ -120,7 +120,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
   (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27), push permission
-  prompt + tap-to-open + real Expo push (step 28). Only typecheck / lint / bundle builds have been run.
+  prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -138,7 +138,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-26 Hunts management screens - 27 Home dashboard - 28 Bought / Inventory / Sold
+27 Home dashboard - 28 Bought / Inventory / Sold
 backend - 29 Inventory and sale UI - 30 Analytics backend - 31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
@@ -171,4 +171,5 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Alerts: preferences, one alert per eligible deal, deliveries, simulator, inbox | Step 24 | Step 27 |
 | Expo push: PushProvider, device tokens, permission after first live Hunt | Step 27 | Step 28 |
 | Stale "monitoring engine isn't built yet" note on the live screens | Step 17 | Step 28 |
+| Hunt detail / edit / pause / archive / restore screens | Steps 15, 17 | Step 29 |
 | Worker could overwrite a user's decision made while a search was running | Step 25 (found) | Step 25 |

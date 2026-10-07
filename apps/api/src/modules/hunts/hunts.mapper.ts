@@ -103,10 +103,8 @@ export function toHuntColumns(c: HuntCriteria) {
   } satisfies Partial<Prisma.HuntUncheckedCreateInput>;
 }
 
-/** Default name: the query, shortened to the name length limit. */
-export function defaultHuntName(query: string): string {
-  return query.length <= 100 ? query : `${query.slice(0, 99).trimEnd()}…`;
-}
+/** Default name: the query, shortened to the name length limit. Shared with the clients. */
+export { defaultHuntName } from '@rein-drop/contracts';
 
 /** Field-level differences between two criteria sets (for EDITED events). */
 export function diffCriteria(before: HuntCriteria, after: HuntCriteria): Record<string, { before: unknown; after: unknown }> {

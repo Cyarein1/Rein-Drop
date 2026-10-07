@@ -200,7 +200,7 @@ function BlockReasons({ block }: { block: ActivationBlock }) {
               {r.resolutions.includes("pause_another_hunt") && (
                 <>
                   {" "}
-                  <a href="/hunts">{RESOLUTION_LABEL.pause_another_hunt}</a>
+                  <Link href="/hunts?status=LIVE">{RESOLUTION_LABEL.pause_another_hunt}</Link>
                 </>
               )}
             </li>

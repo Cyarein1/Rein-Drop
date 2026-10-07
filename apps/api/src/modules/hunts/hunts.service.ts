@@ -7,6 +7,7 @@ import {
   type ActivationCheck,
   type CreateHuntRequest,
   type Hunt,
+  type HuntActivity,
   type HuntAction,
   type HuntEvent,
   type HuntEventType,
@@ -23,6 +24,7 @@ import {
 } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
 import { PlansService } from '../plans/plans.service.js';
+import { loadHuntActivity } from './hunt-activity.js';
 import {
   criteriaOf,
   defaultHuntName,
@@ -243,6 +245,17 @@ export class HuntsService {
       select: { fromStatus: true },
     });
     return restoredStatus(archived?.fromStatus ?? null);
+  }
+
+  /** Monitoring state + counts for all of the user's hunts. */
+  activityAll(userId: string): Promise<HuntActivity[]> {
+    return loadHuntActivity(this.prisma, userId);
+  }
+
+  async activity(userId: string, huntId: string): Promise<HuntActivity> {
+    await this.findOwned(this.prisma, userId, huntId);
+    const [activity] = await loadHuntActivity(this.prisma, userId, [huntId]);
+    return activity!;
   }
 
   /** Another user's hunt is indistinguishable from a missing one (404). */

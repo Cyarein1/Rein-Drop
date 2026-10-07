@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { CreateHuntRequest, HuntCondition, MarketplaceKey } from "@rein-drop/api-client";
+import type { CreateHuntRequest, Hunt, HuntCondition, MarketplaceKey, UpdateHuntRequest } from "@rein-drop/api-client";
 import {
   buildCreateHuntRequest,
+  buildUpdateHuntRequest,
   huntReview,
   needsLocation,
   type HuntFormContext,
@@ -23,6 +24,7 @@ import {
   SystemBanner,
   TextInput,
 } from "@/components/ui";
+import { updateHuntAction } from "../[id]/actions";
 import { saveHuntDraft } from "./actions";
 import styles from "./CreateHuntFlow.module.css";
 
@@ -50,17 +52,21 @@ export interface CreateHuntFlowProps {
   context: HuntFormContext;
   prefilled: PrefillNote[];
   queryPlaceholder: string;
+  /** Edit an existing hunt instead of creating one: same form and review, saved with PATCH. */
+  editing?: Hunt;
 }
 
 /**
  * Create Hunt -> Review -> Save as draft (App Flow Blueprint section 5). Monitoring is not
- * started: "Start watching" arrives with plan selection.
+ * started: "Start watching" arrives with plan selection. With , the same form edits a
+ * hunt (same id, recorded in its history) and the review saves the changes.
  */
-export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceholder }: CreateHuntFlowProps) {
+export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceholder, editing }: CreateHuntFlowProps) {
   const router = useRouter();
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<HuntFormErrors>({});
   const [request, setRequest] = useState<CreateHuntRequest | null>(null);
+  const [update, setUpdate] = useState<UpdateHuntRequest | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
@@ -73,14 +79,19 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
     [note(field) && `${note(field)} - change it anytime`, text].filter(Boolean).join(". ") || undefined;
 
   const goToReview = () => {
-    const result = buildCreateHuntRequest(values, context);
+    const result = editing ? buildUpdateHuntRequest(editing, values, context) : buildCreateHuntRequest(values, context);
     if (!result.ok) {
       setErrors(result.errors);
       // Move focus to the first problem so keyboard and screen-reader users land on it.
       requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
       return;
     }
-    setRequest(result.request);
+    if ("review" in result) {
+      setRequest(result.review);
+      setUpdate(result.request);
+    } else {
+      setRequest(result.request);
+    }
     setSaveError(null);
     window.scrollTo({ top: 0 });
   };
@@ -101,6 +112,56 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
       setSaveError(result.message);
     });
   };
+
+  /** Edit mode: saves the changes, then back to the hunt. */
+  const saveChanges = () => {
+    if (!editing || !update) return;
+    startSaving(async () => {
+      const result = await updateHuntAction(editing.id, update);
+      if (result.ok) {
+        router.push(`/hunts/${editing.id}?saved=1`);
+        return;
+      }
+      if (Object.keys(result.errors).length > 0) {
+        setErrors(result.errors);
+        setRequest(null);
+      }
+      setSaveError(result.message);
+    });
+  };
+
+  if (request && editing) {
+    const review = huntReview(request, context);
+    return (
+      <Page title="Review changes" description="This updates the same Hunt - its deals and history stay." width="narrow">
+        <Card>
+          <p className={styles.sentence}>{review.sentence}</p>
+        </Card>
+        <Card title="Details">
+          <dl className={styles.review}>
+            {review.items.map((item) => (
+              <div key={item.label} className={styles.reviewRow}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+        {review.warnings.map((w) => (
+          <SystemBanner key={w} tone="warning" title={editing.status === "LIVE" ? "This Hunt can't keep watching like this" : "Before this Hunt can start watching"} message={w} />
+        ))}
+        {saveError && <SystemBanner tone="error" title="Not saved" message={saveError} />}
+        <div className={styles.actions}>
+          <Button onClick={saveChanges} loading={saving} fullWidth>
+            Save changes
+          </Button>
+          <Button variant="text" onClick={() => setRequest(null)} disabled={saving} fullWidth>
+            Back to editing
+          </Button>
+        </div>
+      </Page>
+    );
+  }
 
   if (request) {
     const review = huntReview(request, context);
@@ -149,7 +210,11 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
   };
 
   return (
-    <Page title="Create Hunt" description="Tell Rein Drop what to watch for." width="narrow">
+    <Page
+      title={editing ? "Edit Hunt" : "Create Hunt"}
+      description={editing ? "Changes apply from the next check. Deals found so far stay." : "Tell Rein Drop what to watch for."}
+      width="narrow"
+    >
       {errors.form && <SystemBanner tone="error" title="Please check the form" message={errors.form} />}
       {saveError && !errors.form && <SystemBanner tone="error" title="Not saved" message={saveError} />}
 
@@ -263,7 +328,7 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
         </Disclosure>
 
         <Button type="submit" fullWidth>
-          Review Hunt
+          {editing ? "Review changes" : "Review Hunt"}
         </Button>
       </form>
     </Page>

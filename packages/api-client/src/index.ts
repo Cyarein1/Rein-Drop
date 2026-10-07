@@ -20,6 +20,8 @@ import {
   dealPageSchema,
   healthResponseSchema,
   homeSummarySchema,
+  huntActivityListSchema,
+  huntActivitySchema,
   huntEventListSchema,
   activationCheckSchema,
   devBillingConfirmRequestSchema,
@@ -56,6 +58,7 @@ import {
   type HomeSummary,
   type Hunt,
   type HuntAction,
+  type HuntActivity,
   type HuntEvent,
   type IgnoreDealRequest,
   type ListDealsQueryInput,
@@ -134,6 +137,10 @@ export interface ApiClient {
   listHuntEvents(id: string): Promise<HuntEvent[]>;
   /** Could this hunt go live now (plan limits + readiness)? */
   checkHuntActivation(id: string): Promise<ActivationCheck>;
+  /** Last checked per marketplace, first-scan state and simple performance counts. */
+  getHuntActivity(id: string): Promise<HuntActivity>;
+  /** The same for all of your hunts (one call for the list). */
+  listHuntActivity(): Promise<HuntActivity[]>;
 
   /** Plans for the plan gate (prices TBD; limits are placeholders while `limitsFinal` is false). */
   listPlans(): Promise<Plan[]>;
@@ -258,6 +265,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       (await send(http, { method: 'GET', path: `/hunts/${pathId(id)}/events`, response: huntEventListSchema })).items,
     checkHuntActivation: (id) =>
       send(http, { method: 'GET', path: `/hunts/${pathId(id)}/activation-check`, response: activationCheckSchema }),
+    getHuntActivity: (id) => send(http, { method: 'GET', path: `/hunts/${pathId(id)}/activity`, response: huntActivitySchema }),
+    listHuntActivity: async () => (await send(http, { method: 'GET', path: '/hunts/activity', response: huntActivityListSchema })).items,
     listPlans: async () => (await send(http, { method: 'GET', path: '/plans', response: planListSchema })).items,
     getEntitlements: () =>
       send(http, { method: 'GET', path: '/me/entitlements', response: entitlementEvaluationSchema }),

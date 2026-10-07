@@ -1,28 +1,21 @@
 import type { Metadata } from "next";
-import type { Hunt, HuntStatus } from "@rein-drop/api-client";
+import Link from "next/link";
+import type { Hunt, HuntActivity } from "@rein-drop/api-client";
+import {
+  countsLine,
+  HUNT_FILTERS,
+  HUNT_STATUS_LABEL,
+  joinList,
+  MARKETPLACE_LABEL,
+  monitoringLine,
+  type HuntListFilter,
+} from "@rein-drop/client-core";
 import { getServerApiClient } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import {
-  Badge,
-  ButtonLink,
-  Card,
-  EmptyState,
-  Page,
-  SystemBanner,
-  type BadgeProps,
-} from "@/components/ui";
+import { Badge, ButtonLink, Card, EmptyState, Page, Spinner, SystemBanner } from "@/components/ui";
 import styles from "./hunts.module.css";
 
 export const metadata: Metadata = { title: "Hunts" };
-
-const STATUS: Record<HuntStatus, { label: string; tone: BadgeProps["tone"] }> = {
-  DRAFT: { label: "Draft", tone: "neutral" },
-  LIVE: { label: "Live", tone: "action" },
-  PAUSED: { label: "Paused", tone: "info" },
-  ARCHIVED: { label: "Archived", tone: "neutral" },
-};
-
-const MARKETPLACE: Record<string, string> = { ebay: "eBay", facebook: "Facebook Marketplace" };
 
 export default function HuntsPage({ searchParams }: PageProps<"/hunts">) {
   return (
@@ -39,10 +32,46 @@ export default function HuntsPage({ searchParams }: PageProps<"/hunts">) {
 }
 
 async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["searchParams"] }) {
+  const params = await searchParams;
+  const requested = typeof params.status === "string" ? params.status : "all";
+  const filter: HuntListFilter = HUNT_FILTERS.find((f) => f.value === requested)?.value ?? "all";
   const api = await getServerApiClient();
-  const [{ items }, params] = await Promise.all([api.listHunts({ limit: 50 }), searchParams]);
-  const created =
-    typeof params.created === "string" ? items.find((h) => h.id === params.created) : undefined;
+  const result = await Promise.all([
+    api.listHunts({ limit: 100, ...(filter === "all" ? {} : { status: filter }) }),
+    api.listHuntActivity(),
+  ]).catch(() => null);
+
+  const tabs = (
+    <nav aria-label="Hunt status" className={styles.tabs}>
+      {HUNT_FILTERS.map((f) => (
+        <Link
+          key={f.value}
+          href={f.value === "all" ? "/hunts" : `/hunts?status=${f.value}`}
+          className={styles.tab}
+          aria-current={filter === f.value ? "page" : undefined}
+        >
+          {f.label}
+        </Link>
+      ))}
+    </nav>
+  );
+
+  if (!result) {
+    return (
+      <>
+        {tabs}
+        <SystemBanner
+          tone="error"
+          title="Couldn't load your Hunts"
+          message="Rein Drop couldn't reach its server. Try again in a moment."
+          action={<ButtonLink href="/hunts" variant="secondary">Try again</ButtonLink>}
+        />
+      </>
+    );
+  }
+  const [{ items }, activities] = result;
+  const activityOf = new Map(activities.map((a) => [a.huntId, a]));
+  const created = typeof params.created === "string" ? items.find((h) => h.id === params.created) : undefined;
 
   return (
     <>
@@ -53,19 +82,16 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
           message={`"${created.name}" is ready. Choose Start watching when you want monitoring to begin.`}
         />
       )}
+      {tabs}
       {items.length === 0 ? (
         <Card>
-          <EmptyState
-            title="No Hunts yet"
-            description="A Hunt is a saved search Rein Drop keeps checking on eBay and Facebook Marketplace."
-            action={<ButtonLink href="/hunts/new">Create your first Hunt</ButtonLink>}
-          />
+          <EmptyHunts filter={filter} />
         </Card>
       ) : (
         <ul className={styles.list}>
           {items.map((hunt) => (
             <li key={hunt.id}>
-              <HuntCard hunt={hunt} />
+              <HuntCard hunt={hunt} activity={activityOf.get(hunt.id) ?? null} />
             </li>
           ))}
         </ul>
@@ -74,21 +100,55 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
   );
 }
 
-function HuntCard({ hunt }: { hunt: Hunt }) {
-  const status = STATUS[hunt.status];
+function EmptyHunts({ filter }: { filter: HuntListFilter }) {
+  if (filter === "all") {
+    return (
+      <EmptyState
+        title="No Hunts yet"
+        description="A Hunt is a saved search Rein Drop keeps checking on eBay and Facebook Marketplace."
+        action={<ButtonLink href="/hunts/new">Create your first Hunt</ButtonLink>}
+      />
+    );
+  }
+  const copy: Record<Exclude<HuntListFilter, "all">, string> = {
+    LIVE: "No active Hunts. Start watching a draft, or resume a paused Hunt.",
+    PAUSED: "No paused Hunts.",
+    DRAFT: "No drafts.",
+    ARCHIVED: "Nothing archived. Archived Hunts stop watching and can be restored.",
+  };
+  return <EmptyState title={`No ${HUNT_FILTERS.find((f) => f.value === filter)!.label.toLowerCase()} Hunts`} description={copy[filter]} />;
+}
+
+function HuntCard({ hunt, activity }: { hunt: Hunt; activity: HuntActivity | null }) {
+  const status = HUNT_STATUS_LABEL[hunt.status];
+  const monitoring = monitoringLine(hunt, activity);
+  const counts = countsLine(activity);
   return (
-    <Card title={hunt.name} action={<Badge tone={status.tone}>{status.label}</Badge>}>
+    <article className={styles.card}>
+      <div className={styles.cardHead}>
+        <h2 className={styles.cardTitle}>
+          <Link href={`/hunts/${hunt.id}`} className={styles.stretched}>
+            {hunt.name}
+          </Link>
+        </h2>
+        <Badge tone={status.tone}>{status.label}</Badge>
+      </div>
       <p className={styles.meta}>
-        {hunt.marketplaces.map((m) => MARKETPLACE[m] ?? m).join(" · ")}
+        {joinList(hunt.marketplaces.map((m) => MARKETPLACE_LABEL[m]))}
         {hunt.location ? ` · ${hunt.location.text}` : ""}
       </p>
+      <p className={styles.monitoring} data-tone={monitoring.tone}>
+        {monitoring.scanning && <Spinner size="sm" />}
+        {monitoring.text}
+      </p>
+      {counts && <p className={styles.counts}>{counts}</p>}
       {hunt.status === "DRAFT" && (
-        <div>
+        <div className={styles.cardAction}>
           <ButtonLink href={`/hunts/${hunt.id}/start`} variant="secondary">
             Start watching
           </ButtonLink>
         </div>
       )}
-    </Card>
+    </article>
   );
 }
