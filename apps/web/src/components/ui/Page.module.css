@@ -1,6 +1,12 @@
 .page {
   margin: 0 auto;
-  padding: var(--rd-space-8) var(--rd-space-4) var(--rd-space-12);
+  padding: var(--rd-space-6) var(--rd-space-4) var(--rd-space-12);
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding: var(--rd-space-8) var(--rd-space-6) var(--rd-space-12);
+  }
 }
 
 .default {
@@ -27,7 +33,7 @@
 }
 
 .title {
-  font-size: var(--rd-font-size-3xl);
+  font-size: var(--rd-font-size-2xl);
   font-weight: var(--rd-font-weight-extrabold);
 }
 

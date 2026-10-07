@@ -4,6 +4,48 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 7 - Authenticated web shell (placeholder auth)
+
+**What was added**
+
+- Placeholder auth: `apps/web/src/auth/session.ts` - `getSession()` always returns a fixed local
+  user (`dev@reindrop.local`, typed with the shared `AccountIdentity` contract,
+  `isPlaceholder: true`). The UI shows a "Placeholder session" badge; Sign out is disabled.
+  `TODO(auth)`: real session + redirect signed-out users to sign-in.
+- Routes: `(app)` route group with the shell layout - `/home`, `/hunts`, `/hunts/new`
+  (Create Hunt), `/deals`, `/analytics`, `/settings`, each with intentional placeholder content
+  marked by a "Placeholder screen" banner and empty states that always offer a next action.
+  `/` redirects to `/home`. Developer pages moved out of the shell: `/dev` (system status, was
+  `/`) and `/dev/ui`.
+- Shell (`apps/web/src/components/shell/`), one nav config (`nav.ts`) for every layout:
+  - >= 768px: left sidebar (wordmark, persistent orange **Create Hunt**, Home, Hunts, Deals,
+    Analytics, Settings) + top bar (placeholder-session badge, avatar, email).
+  - < 768px: top bar (wordmark + Settings) + fixed bottom nav: Home, Hunts, central **+ Create**,
+    Deals, Analytics (Mobile UI Screenbook sections 1 and 11). Safe-area insets respected.
+  - Active state: `aria-current="page"`; sidebar = Sky Wash + navy + orange marker; bottom nav =
+    orange bar + bold label; Create = navy focus-style ring. `/hunts/new` activates Create, not Hunts.
+  - Accessibility: skip link, single `<main id="main-content">`, labelled `nav` landmarks (only one
+    visible/in the a11y tree at a time), text labels on every icon, 48px targets, focus-visible
+    outlines, per-page `<title>` (`%s · Rein Drop`) for route announcements.
+- UI: `ButtonLink` primitive; `Page` no longer renders `<main>` (layouts own the landmark).
+- Icons: `lucide-react` (generic UI icons). Vitest added to web.
+
+**What works (verified)**
+
+- web build (10 routes), typecheck, lint; `pnpm typecheck`/`pnpm lint` 17/17; tests: web 6
+  (active-route logic, every destination reachable on both layouts), plus existing suites.
+- Served build: `/` -> 307 `/home`; every destination 200 with one `<main>`, one `<h1>`, skip
+  link, correct title, and `aria-current` on exactly the matching links.
+- Screenshots (headless Edge): desktop 1280px and phone 390px (via iframe - headless windows
+  have a minimum width) show the correct layout and active states.
+
+**Known limitations**
+
+- Mobile web has no "More"/drawer: Settings is reachable via the top-bar icon only (matches the
+  Screenbook's 5-slot bottom nav).
+- The native mobile app (Expo) does not have this navigation yet.
+
+
 ### Step 6 - Design tokens, brand assets, web + mobile UI primitives
 
 **Inputs:** Brand Identity v2.1, App Flow Blueprint v1.0 (shared by the user), plus from the

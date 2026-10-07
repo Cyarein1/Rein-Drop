@@ -11,10 +11,13 @@ export interface PageProps {
   children: ReactNode;
 }
 
-/** Page container: the web counterpart of the mobile `Screen`. */
+/**
+ * Page content container: the web counterpart of the mobile `Screen`.
+ * Renders no landmark - the surrounding layout owns the single <main>.
+ */
 export function Page({ title, description, actions, width = "default", children }: PageProps) {
   return (
-    <main className={[styles.page, styles[width]].join(" ")}>
+    <div className={[styles.page, styles[width]].join(" ")}>
       {(title || actions) && (
         <header className={styles.header}>
           <div className={styles.heading}>
@@ -25,6 +28,6 @@ export function Page({ title, description, actions, width = "default", children 
         </header>
       )}
       <div className={styles.content}>{children}</div>
-    </main>
+    </div>
   );
 }

@@ -24,6 +24,10 @@
   width: 100%;
 }
 
+.link {
+  text-decoration: none;
+}
+
 /* Navy text on orange: white would be 2.84:1 (fails AA). */
 .primary {
   background: var(--rd-action);

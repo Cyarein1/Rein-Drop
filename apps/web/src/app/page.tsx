@@ -1,22 +1,7 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { Wordmark } from "@/brand/Wordmark";
-import { Card, LoadingState, Page } from "@/components/ui";
-import { ApiStatus } from "./api-status";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return (
-    <Page width="narrow">
-      <Wordmark height={56} priority />
-      <p>Local development scaffold</p>
-      <Card title="System status">
-        <Suspense fallback={<LoadingState label="Checking API…" />}>
-          <ApiStatus />
-        </Suspense>
-      </Card>
-      <p>
-        <Link href="/dev/ui">UI primitives gallery</Link>
-      </p>
-    </Page>
-  );
+// TODO(auth): signed-out visitors go to the welcome/sign-in flow (App Flow Blueprint, section 3)
+// once auth exists. With the placeholder session everyone is signed in.
+export default function Root() {
+  redirect("/home");
 }

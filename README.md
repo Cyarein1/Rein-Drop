@@ -126,7 +126,7 @@ Changing the schema: edit `packages/db/prisma/schema.prisma`, then
 ```powershell
 pnpm --filter api dev       # http://localhost:4000/health and /ready
 pnpm --filter worker dev    # logs a heartbeat
-pnpm --filter web dev       # http://localhost:3000 - shows API reachability
+pnpm --filter web dev       # http://localhost:3000 (app) - /dev for system status, /dev/ui for components
 pnpm --filter mobile start  # scan the QR code with Expo Go
 ```
 
@@ -164,7 +164,9 @@ variants follow the Mobile UI Screenbook v1.0, section 10.
   (`neutral`, `info`, `action`, `fresh`, `profit`, `loss`), Inter typography, spacing/radius,
   component variant types and mascot tokens. Web gets them as `--rd-*` CSS variables.
 - **UI primitives are implemented per platform** (only tokens/types are shared):
-  - web: `apps/web/src/components/ui` (CSS Modules) - gallery at http://localhost:3000/dev/ui
+  - web: `apps/web/src/components/ui` (CSS Modules) - gallery at http://localhost:3000/dev/ui.
+    App shell (sidebar / bottom nav) in `apps/web/src/components/shell`; destinations are defined
+    once in `shell/nav.ts`. Authenticated routes live in `src/app/(app)/`.
   - mobile: `apps/mobile/src/ui` (StyleSheet) - shown on the app's development home screen
   - `Button`, `TextInput`, `Card`, `Badge`, `Metric`, `EmptyState`, `SystemBanner`,
     `Page` (web) / `Screen` (mobile), `LoadingState`.

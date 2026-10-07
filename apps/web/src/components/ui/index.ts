@@ -2,6 +2,7 @@
 // only tokens and prop types are shared, via @rein-drop/design-tokens.
 export { Badge, type BadgeProps } from "./Badge";
 export { Button, type ButtonProps } from "./Button";
+export { ButtonLink, type ButtonLinkProps } from "./ButtonLink";
 export { Card, type CardProps } from "./Card";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { LoadingState, Spinner, type LoadingStateProps } from "./LoadingState";
