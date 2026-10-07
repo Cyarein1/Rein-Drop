@@ -44,6 +44,15 @@ _Last updated: 2026-10-07_
 
 - `TODO(billing)`: real checkout (Stripe / App Store / Play) not integrated; prices TBD.
 - Mobile plan gate typechecks/lints/exports but has not been run on a device or simulator.
+
+**Fix after step 17 - Expo Go "status 500"**
+
+- Cause: Metro could not resolve `@expo/metro-runtime` (imported first by the expo-router entry).
+  It and `@expo/log-box` are required peers of expo-router that `apps/mobile` never declared, and
+  pnpm's strict layout does not link undeclared peers. Added both via `expo install` (SDK 57
+  versions). Verified: a fresh Metro serves the Android and iOS dev bundles (HTTP 200); mobile
+  build/typecheck/lint/test pass; `expo install --check` is clean.
+- An already running Metro keeps the old module map - restart it with `--clear`.
 - Monitoring engine not built: a LIVE hunt is not actually checked yet (the live screen says so).
 - No Hunt detail screen yet for pause / archive / restore from the UI.
 

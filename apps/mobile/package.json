@@ -4,6 +4,8 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo/log-box": "^57.0.4",
+    "@expo/metro-runtime": "~57.0.16",
     "@rein-drop/api-client": "workspace:*",
     "@rein-drop/brand-assets": "workspace:*",
     "@rein-drop/client-core": "workspace:*",
