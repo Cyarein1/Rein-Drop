@@ -1,14 +1,22 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { Wordmark } from "@/brand/Wordmark";
+import { Card, LoadingState, Page } from "@/components/ui";
 import { ApiStatus } from "./api-status";
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "64px 16px" }}>
-      <h1 style={{ margin: 0, fontSize: 40 }}>Rein Drop</h1>
+    <Page width="narrow">
+      <Wordmark height={56} priority />
       <p>Local development scaffold</p>
-      <Suspense fallback={<p>Checking API…</p>}>
-        <ApiStatus />
-      </Suspense>
-    </main>
+      <Card title="System status">
+        <Suspense fallback={<LoadingState label="Checking API…" />}>
+          <ApiStatus />
+        </Suspense>
+      </Card>
+      <p>
+        <Link href="/dev/ui">UI primitives gallery</Link>
+      </p>
+    </Page>
   );
 }

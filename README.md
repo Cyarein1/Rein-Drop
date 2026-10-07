@@ -30,7 +30,8 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | `packages/env` | `@rein-drop/env` | Server-side env validation helpers (api + worker) |
 | `packages/marketplace-core` | `@rein-drop/marketplace-core` | Marketplace adapter boundary (eBay, Facebook Marketplace) |
 | `packages/ai-core` | `@rein-drop/ai-core` | `AIProvider` boundary (mock locally, Microsoft Foundry later) |
-| `packages/design-tokens` | `@rein-drop/design-tokens` | Brand colors |
+| `packages/design-tokens` | `@rein-drop/design-tokens` | Colors, tones, typography, spacing, component variant types, mascot tokens |
+| `packages/brand-assets` | `@rein-drop/brand-assets` | Approved logo / app icon / mascot image files (no code) |
 | `packages/config` | `@rein-drop/config` | Shared tsconfig base |
 
 Shared packages are ESM and compile to `dist/`. Turborepo builds them before any app that
@@ -151,6 +152,29 @@ through Windows Firewall on private networks when prompted.
   errors directly), validates responses against the contract, and throws only `ApiError`.
 - In the API, use the same schemas for input validation:
   `class CreateHuntDto extends createZodDto(createHuntRequestSchema) {}`.
+
+## Design system
+
+Sources of truth (in `docs/brand/`): Brand Identity v2.1, Mascot Usage Guide v1.0. Component
+variants follow the Mobile UI Screenbook v1.0, section 10.
+
+- **Tokens** (`@rein-drop/design-tokens`) are shared by web and mobile: palette (Canvas White,
+  Rein Navy `#12233F`, Rein Orange `#FF6B35`, Drop Yellow `#FFC928`, Profit Green `#16A66A`, Sky
+  Wash `#EAF4FF`, Loss Red `#D64545`), washes, navy-derived neutrals, semantic **tones**
+  (`neutral`, `info`, `action`, `fresh`, `profit`, `loss`), Inter typography, spacing/radius,
+  component variant types and mascot tokens. Web gets them as `--rd-*` CSS variables.
+- **UI primitives are implemented per platform** (only tokens/types are shared):
+  - web: `apps/web/src/components/ui` (CSS Modules) - gallery at http://localhost:3000/dev/ui
+  - mobile: `apps/mobile/src/ui` (StyleSheet) - shown on the app's development home screen
+  - `Button`, `TextInput`, `Card`, `Badge`, `Metric`, `EmptyState`, `SystemBanner`,
+    `Page` (web) / `Screen` (mobile), `LoadingState`.
+- **Accessibility rules baked into tokens** (enforced by tests): primary buttons use navy text on
+  orange (white fails contrast); yellow/green/orange are fills and accents, not small text;
+  colour is never the only signal (badges always have text).
+- **Brand assets** live only in `packages/brand-assets/` - see its README for the file table,
+  naming and how to add one. UI never references files directly: it picks a mascot token
+  (`welcome`, `confirmed`, `working`, ...) and `apps/*/src/brand/assets.ts` maps tokens to
+  files. Tokens without an approved asset render nothing.
 
 ## API conventions (apps/api)
 

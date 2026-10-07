@@ -1,17 +1,55 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { createApiClient } from '@rein-drop/api-client';
-import { colors } from '@rein-drop/design-tokens';
+import { useFonts } from 'expo-font';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { createApiClient, type ReadinessResponse } from '@rein-drop/api-client';
+import { roles } from '@rein-drop/design-tokens';
+import { Wordmark } from './src/brand/Wordmark';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  font,
+  interFonts,
+  LoadingState,
+  Metric,
+  Screen,
+  setInterLoaded,
+  SystemBanner,
+  TextInput,
+} from './src/ui';
 
 type ApiStatus =
   | { state: 'loading' }
-  | { state: 'ok'; timestamp: string }
+  | { state: 'ok'; timestamp: string; readiness: ReadinessResponse | null }
   | { state: 'error'; message: string };
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(interFonts);
+  // Continue with the system font if Inter fails to load - never block the app on fonts.
+  const fontsReady = fontsLoaded || !!fontError;
+  setInterLoaded(fontsLoaded);
+
+  return (
+    <SafeAreaProvider>
+      {fontsReady ? (
+        <Home />
+      ) : (
+        <View style={styles.boot}>
+          <LoadingState label="Starting Rein Drop…" />
+        </View>
+      )}
+      <StatusBar style="dark" />
+    </SafeAreaProvider>
+  );
+}
+
+/** Development home: API status + a compact gallery of the UI primitives. */
+function Home() {
   const [status, setStatus] = useState<ApiStatus>({ state: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -19,10 +57,15 @@ export default function App() {
     let cancelled = false;
     // Promise.resolve() so a synchronous config error (bad base URL) also lands in the catch.
     Promise.resolve()
-      .then(() => createApiClient({ baseUrl: API_BASE_URL }).getHealth())
+      .then(async () => {
+        const client = createApiClient({ baseUrl: API_BASE_URL });
+        const health = await client.getHealth();
+        const readiness = await client.getReadiness().catch(() => null);
+        return { timestamp: health.timestamp, readiness };
+      })
       .then(
-        (health) => {
-          if (!cancelled) setStatus({ state: 'ok', timestamp: health.timestamp });
+        (result) => {
+          if (!cancelled) setStatus({ state: 'ok', ...result });
         },
         (err: unknown) => {
           if (!cancelled) {
@@ -41,63 +84,75 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Rein Drop</Text>
-      <Text style={styles.subtitle}>Local development scaffold</Text>
+    <Screen>
+      <Wordmark height={44} />
+      <Text style={[styles.muted, font('regular')]}>Local development scaffold</Text>
 
-      <View style={styles.card}>
-        {status.state === 'loading' && (
+      <Card title="System status">
+        {status.state === 'loading' && <LoadingState label="Checking API…" />}
+        {status.state === 'ok' && (
           <View style={styles.row}>
-            <ActivityIndicator color={colors.navy} />
-            <Text style={styles.body}>Checking API…</Text>
+            <Badge tone="profit">API live</Badge>
+            {status.readiness ? (
+              <Badge tone={status.readiness.status === 'ready' ? 'profit' : 'loss'}>
+                {`${status.readiness.status === 'ready' ? 'Ready' : 'Not ready'} · database ${status.readiness.checks.database}`}
+              </Badge>
+            ) : (
+              <Badge tone="neutral">Readiness unknown</Badge>
+            )}
           </View>
         )}
-        {status.state === 'ok' && (
-          <Text style={[styles.body, { color: colors.green }]}>API reachable ({status.timestamp})</Text>
-        )}
         {status.state === 'error' && (
-          <>
-            <Text style={[styles.body, { color: colors.orange }]}>API unreachable: {status.message}</Text>
-            <Text style={styles.hint}>Base URL: {API_BASE_URL || '(not set - see .env.example)'}</Text>
-            <Pressable accessibilityRole="button" onPress={retry} style={styles.button}>
-              <Text style={styles.buttonText}>Retry</Text>
-            </Pressable>
-          </>
+          <SystemBanner
+            tone="error"
+            title="API unreachable"
+            message={`${status.message}. Base URL: ${API_BASE_URL || '(not set - see .env.example)'}`}
+            action={
+              <Button variant="secondary" onPress={retry}>
+                Retry
+              </Button>
+            }
+          />
         )}
-      </View>
-      <StatusBar style="dark" />
-    </View>
+      </Card>
+
+      <Card title="UI primitives">
+        <View style={styles.row}>
+          <Button>Start watching</Button>
+          <Button variant="secondary">Save</Button>
+        </View>
+        <View style={styles.row}>
+          <Button variant="text">Edit</Button>
+          <Button variant="destructive">Archive</Button>
+          <Button loading>Saving</Button>
+        </View>
+        <TextInput label="Email" kind="email" placeholder="you@example.com" />
+        <TextInput label="Password" kind="password" />
+        <TextInput label="Max buy price" kind="money" currency="USD" placeholder="0.00" error="Enter a price above 0" />
+        <View style={styles.row}>
+          <Badge tone="fresh">Just dropped · 2 min ago</Badge>
+          <Badge tone="neutral">eBay</Badge>
+          <Badge tone="loss">Unavailable</Badge>
+        </View>
+        <View style={styles.row}>
+          <Metric label="Realized profit" value="+$386" tone="profit" />
+          <Metric label="Upside" value="$150" estimated />
+        </View>
+        <SystemBanner tone="warning" title="Facebook Marketplace checks are delayed" message="eBay monitoring continues." />
+      </Card>
+
+      <EmptyState
+        mascot="welcome"
+        title="No Hunts yet"
+        description="Tell Rein Drop what to watch for and it will check the marketplaces for you."
+        action={<Button>Create your first Hunt</Button>}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: { fontSize: 32, fontWeight: '700', color: colors.navy },
-  subtitle: { marginTop: 4, color: colors.navy },
-  card: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.navy,
-    alignSelf: 'stretch',
-    gap: 8,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  body: { color: colors.navy },
-  hint: { color: colors.navy, fontSize: 12 },
-  button: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.orange,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  buttonText: { color: colors.canvas, fontWeight: '600' },
+  boot: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
+  muted: { color: roles.textMuted },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' },
 });

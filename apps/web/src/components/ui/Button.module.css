@@ -1,0 +1,63 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rd-space-2);
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-5);
+  border: 1px solid transparent;
+  border-radius: var(--rd-radius-sm);
+  font: inherit;
+  font-size: var(--rd-font-size-md);
+  font-weight: var(--rd-font-weight-semibold);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, filter 120ms ease;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Navy text on orange: white would be 2.84:1 (fails AA). */
+.primary {
+  background: var(--rd-action);
+  color: var(--rd-on-action);
+}
+.primary:not(:disabled):hover {
+  filter: brightness(0.95);
+}
+
+.secondary {
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  border-color: var(--rd-text);
+}
+.secondary:not(:disabled):hover {
+  background: var(--rd-surface-secondary);
+}
+
+.text {
+  background: transparent;
+  color: var(--rd-text);
+  padding: 0 var(--rd-space-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.text:not(:disabled):hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.destructive {
+  background: var(--rd-destructive-surface);
+  color: var(--rd-on-destructive);
+  border-color: var(--rd-destructive);
+}
+.destructive:not(:disabled):hover {
+  filter: brightness(0.97);
+}

@@ -1,0 +1,50 @@
+import type { ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { bannerToneColors, fontSize, radius, space, tones, type BannerTone } from '@rein-drop/design-tokens';
+import { font } from './fonts';
+
+export interface SystemBannerProps {
+  /** e.g. source degraded -> warning, payment issue -> error, plan limit -> info. */
+  tone?: BannerTone;
+  title: string;
+  message?: string;
+  /** Recovery action - banners should never be a dead end. */
+  action?: ReactNode;
+}
+
+const TONE_LABEL: Record<BannerTone, string> = {
+  info: 'Info',
+  success: 'Success',
+  warning: 'Warning',
+  error: 'Error',
+};
+
+export function SystemBanner({ tone = 'info', title, message, action }: SystemBannerProps) {
+  const t = tones[bannerToneColors[tone]];
+  return (
+    <View
+      accessibilityRole={tone === 'error' ? 'alert' : 'summary'}
+      accessibilityLiveRegion={tone === 'error' ? 'assertive' : 'polite'}
+      accessibilityLabel={`${TONE_LABEL[tone]}: ${title}${message ? `. ${message}` : ''}`}
+      style={[styles.banner, { backgroundColor: t.background, borderLeftColor: t.accent }]}
+    >
+      <Text style={[styles.title, font('semibold'), { color: t.foreground }]}>{title}</Text>
+      {message && <Text style={[styles.message, font('regular'), { color: t.foreground }]}>{message}</Text>}
+      {action && <View style={styles.action}>{action}</View>}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  banner: {
+    gap: space[1],
+    paddingVertical: space[3],
+    paddingHorizontal: space[4],
+    borderLeftWidth: 4,
+    borderRadius: radius.sm,
+    alignSelf: 'stretch',
+  },
+  title: { fontSize: fontSize.md },
+  message: { fontSize: fontSize.sm },
+  action: { marginTop: space[2], alignItems: 'flex-start' },
+});

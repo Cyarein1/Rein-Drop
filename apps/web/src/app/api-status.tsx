@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { createApiClient, type ReadinessResponse } from "@rein-drop/api-client";
-import { colors } from "@rein-drop/design-tokens";
+import { Badge, SystemBanner } from "@/components/ui";
 
 type StatusResult =
   | { ok: true; timestamp: string; readiness: ReadinessResponse | null }
@@ -12,35 +12,42 @@ export async function ApiStatus() {
   const baseUrl = process.env.API_BASE_URL ?? "";
   const result = await checkApi(baseUrl);
 
-  if (result.ok) {
-    const database = result.readiness?.checks.database;
+  if (!result.ok) {
     return (
-      <div>
-        <p style={{ color: colors.green }}>API reachable ({result.timestamp})</p>
-        <p>
-          Ready:{" "}
-          {result.readiness ? (
-            <span
-              style={{
-                color: result.readiness.status === "ready" ? colors.green : colors.orange,
-              }}
-            >
-              {result.readiness.status} (database {database})
-            </span>
-          ) : (
-            <span style={{ color: colors.orange }}>unknown - /ready did not respond</span>
-          )}
-        </p>
-      </div>
+      <SystemBanner
+        tone="error"
+        title="API unreachable"
+        message={
+          <>
+            {result.message}. API_BASE_URL: {baseUrl || "(not set - see apps/web/.env.example)"}.
+            Start it with <code>pnpm --filter api dev</code> and refresh.
+          </>
+        }
+      />
     );
   }
+
+  const ready = result.readiness?.status === "ready";
   return (
-    <div>
-      <p style={{ color: colors.orange }}>API unreachable: {result.message}</p>
-      <p style={{ fontSize: 14 }}>
-        API_BASE_URL: {baseUrl || "(not set - see apps/web/.env.example)"}.
-        Start it with <code>pnpm --filter api dev</code> and refresh.
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Badge tone="profit">API live</Badge>
+        {result.readiness ? (
+          <Badge tone={ready ? "profit" : "loss"}>
+            {ready ? "Ready" : "Not ready"} · database {result.readiness.checks.database}
+          </Badge>
+        ) : (
+          <Badge tone="neutral">Readiness unknown</Badge>
+        )}
       </p>
+      {result.readiness && !ready && (
+        <SystemBanner
+          tone="warning"
+          title="Database unavailable"
+          message="Start it with pnpm infra:up - the API keeps running meanwhile."
+        />
+      )}
+      <p style={{ fontSize: 14, color: "var(--rd-text-muted)" }}>Checked {result.timestamp}</p>
     </div>
   );
 }

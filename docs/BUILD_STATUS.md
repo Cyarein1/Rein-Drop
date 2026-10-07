@@ -4,6 +4,55 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 6 - Design tokens, brand assets, web + mobile UI primitives
+
+**Inputs:** Brand Identity v2.1, App Flow Blueprint v1.0 (shared by the user), plus from the
+user's `Downloads/ReinDrop` kit: Mascot Usage Guide v1.0, Mobile UI Screenbook v1.0 (component
+variants), Mascot Branding Kit (wash colours), and the production asset files.
+
+**What was added**
+
+- `@rein-drop/design-tokens` rewritten: brand palette (incl. Sky Wash, Loss Red), washes (Soft
+  Orange `#FFF0E8`, Soft Yellow `#FFF8D9` from the branding kit; green/red washes derived),
+  navy-derived neutrals (brand defines no greys), semantic tones + roles, Inter typography
+  (weights per brand doc), spacing/radius/touch target (engineering defaults, marked), component
+  variant types (Screenbook section 10), mascot tokens (Usage Guide section 10), `cssVariables()`.
+  Contrast-driven choices: navy text on orange buttons; destructive = red wash + red border +
+  navy text. 11 tests enforce palette and AA contrast.
+- `packages/brand-assets/`: 11 production files from `Downloads/ReinDrop/branding assets`,
+  renamed semantically (logo/, app-icon/, mascot/) with README (source->file table, usage,
+  how to add). Concept sheets copied to `docs/brand/reference/` (not production). Brand Identity
+  v2.1 (pdf/docx) and Mascot Usage Guide copied to `docs/brand/`.
+  Mapped mascot tokens: `welcome` (wave), `confirmed` (thumbs-up), `inventory` (holding box);
+  the other 9 tokens are `null` (render nothing) until assets are approved.
+- Web primitives (`apps/web/src/components/ui`, CSS Modules on `--rd-*` variables): Button,
+  TextInput (text/email/password with show-hide/money/search, hint, error), Card, Badge,
+  Metric (profit/loss/estimated/comparison), EmptyState (optional mascot token), SystemBanner,
+  Page, LoadingState/Spinner. Inter via `@fontsource-variable/inter` (self-hosted). Wordmark
+  component. Home page uses them; gallery at `/dev/ui`.
+- Mobile primitives (`apps/mobile/src/ui`, StyleSheet): same set with `Screen` instead of Page;
+  Inter via `@expo-google-fonts/inter` (5 weights only) with system-font fallback;
+  `react-native-safe-area-context`. App.tsx shows API status + a primitives gallery.
+
+**What works (verified)**
+
+- `pnpm build` 11/11 (web routes `/`, `/dev/ui`; mobile iOS + Android bundles with 5 PNG + 5 TTF
+  assets), `pnpm typecheck` 17/17, `pnpm lint` 17/17, tests: design-tokens 11, contracts 6,
+  api-client 8, api 25, worker 3.
+- Built web served: `/` and `/dev/ui` 200; wordmark and mascot images served through Next image
+  optimization (mascot 34 KB at 384 px).
+- **Not yet viewed on a device/emulator or in a browser by a human** - layout/visual polish needs
+  your eyes (`pnpm --filter web dev` -> /dev/ui, `pnpm --filter mobile start`).
+
+**Divergence to resolve (from App Flow Blueprint)**
+
+- The Blueprint defines **Seller Snapshot = the 5-question onboarding profile** (categories,
+  reseller stage, sources, deal criteria + optional target, improvement goal). Step 5's
+  `SellerSnapshot` contract (`GET /me/snapshot`, dashboard counts) does not match. Proposed fix:
+  rename the step-5 contract to a home/dashboard summary and model the real Seller Snapshot
+  (answers stored on SellerProfile) - awaiting the user's go-ahead.
+
+
 ### Step 5 - Shared contracts (zod) + typed API client
 
 **What was added**
@@ -228,10 +277,10 @@ pnpm --filter mobile start
 
 ## Known issues
 
-- **Port 5432 conflict on the dev machine:** a native Windows PostgreSQL 18 service
-  (`postgresql-x64-18`, automatic start) already listens on 5432, so `pnpm infra:up` fails there
-  until the user either stops that service or sets `POSTGRES_PORT=5433` (+ matching
-  `DATABASE_URL`). See README troubleshooting. Decision pending with the user.
+- ~~Port 5432 conflict~~ **Resolved (option A):** the native Windows PostgreSQL 18 service
+  (`postgresql-x64-18`) is stopped and set to Manual; Docker Postgres now runs on 5432 with the
+  default config (no `.env` files needed). Restart it with `Start-Service postgresql-x64-18` only
+  if needed - it will conflict with `pnpm infra:up` again.
 - Worker validates `DATABASE_URL` but does not use the database yet (no jobs need it).
 - Mobile shows liveness only ("API reachable"); it does not call `/ready`.
 - Global pipe only validates DTOs built with `createZodDto`; a handler typed with a plain class
@@ -257,10 +306,14 @@ pnpm --filter mobile start
 - `TODO(marketplace)`: normalized Listing model + MarketplaceProvider interface; Facebook data provider TBD.
 - `TODO(ai)`: AIProvider interface + deterministic MockAIProvider; Foundry models per task TBD.
 - `TODO(worker)`: job runner / scheduler abstraction; queue choice TBD.
-- `TODO(brand)`: typography, spacing, radius tokens.
+- `TODO(brand)`: font size scale, spacing and neutral greys are engineering defaults - confirm in
+  the high-fidelity design pass.
+- `TODO(assets)`: export optimized @1x/@2x/@3x mascot PNGs for mobile (originals are 1-2 MB);
+  wire `app-icon-mascot.png` into `app.json` once approved for stores; SVG wordmarks if available.
+- Product docs (App Flow Blueprint, Mobile UI Screenbook, Technical Architecture, Build Prompts,
+  Product Blueprint) are still only in `Downloads/` - consider copying them to `docs/product/`.
 
 ## Next step
 
-Resolve the port 5432 conflict (stop native service vs. Docker on 5433). Then likely: local
-dev auth abstraction (so `/me` and per-user data can work), then implement the Hunt endpoints
+Fix the Seller Snapshot divergence (above). Then likely: local dev auth abstraction (so `/me` and per-user data can work), then implement the Hunt endpoints
 against these contracts. (Await the next prompt.)

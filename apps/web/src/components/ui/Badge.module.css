@@ -1,0 +1,32 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  padding: 2px var(--rd-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--rd-radius-full);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--rd-radius-full);
+  flex-shrink: 0;
+}
+
+.neutral { background: var(--rd-tone-neutral-bg); color: var(--rd-tone-neutral-fg); border-color: var(--rd-neutral-border); }
+.neutral .dot { background: var(--rd-tone-neutral-accent); }
+.info { background: var(--rd-tone-info-bg); color: var(--rd-tone-info-fg); }
+.info .dot { background: var(--rd-tone-info-accent); }
+.action { background: var(--rd-tone-action-bg); color: var(--rd-tone-action-fg); }
+.action .dot { background: var(--rd-tone-action-accent); }
+.fresh { background: var(--rd-tone-fresh-bg); color: var(--rd-tone-fresh-fg); border-color: var(--rd-tone-fresh-accent); }
+.fresh .dot { background: var(--rd-tone-fresh-accent); }
+.profit { background: var(--rd-tone-profit-bg); color: var(--rd-tone-profit-fg); }
+.profit .dot { background: var(--rd-tone-profit-accent); }
+.loss { background: var(--rd-tone-loss-bg); color: var(--rd-tone-loss-fg); }
+.loss .dot { background: var(--rd-tone-loss-accent); }

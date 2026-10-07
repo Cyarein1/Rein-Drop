@@ -1,0 +1,43 @@
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-medium);
+}
+
+.estimated {
+  padding: 0 var(--rd-space-2);
+  border: 1px dashed var(--rd-text-muted);
+  border-radius: var(--rd-radius-full);
+  font-size: var(--rd-font-size-xs);
+}
+
+/* KPI size (>= 24px, 800 weight) so green/red text meet WCAG AA-large. */
+.value {
+  font-size: var(--rd-font-size-2xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.neutral { color: var(--rd-text); }
+.profit { color: var(--rd-color-green); }
+.loss { color: var(--rd-color-loss-red); }
+
+.comparison,
+.caption {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.comparison strong {
+  color: var(--rd-text);
+}
