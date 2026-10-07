@@ -87,17 +87,22 @@ enum DealAnalysisStatus {
   FAILED
 }
 
+/// Where a notification is delivered. Mirrors NOTIFICATION_CHANNELS in @rein-drop/contracts.
 enum AlertChannel {
   IN_APP
   PUSH
   EMAIL
 }
 
-enum AlertStatus {
+/// One channel's delivery of an Alert.
+/// PENDING -> SENT (real provider) | SIMULATED (local simulator) | FAILED (gave up);
+/// SKIPPED = never attempted (turned off in preferences, or no provider configured).
+enum DeliveryStatus {
   PENDING
   SENT
+  SIMULATED
+  SKIPPED
   FAILED
-  READ
 }
 
 enum InventoryStatus {
@@ -171,15 +176,16 @@ model User {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
-  sellerProfile  SellerProfile?
-  hunts          Hunt[]
-  alerts         Alert[]
-  savedDeals     SavedDeal[]
-  inventoryItems InventoryItem[]
-  sales          Sale[]
-  costs          Cost[]
-  subscriptions  Subscription[]
-  usageEvents    UsageEvent[]
+  sellerProfile           SellerProfile?
+  hunts                   Hunt[]
+  alerts                  Alert[]
+  notificationPreferences NotificationPreference[]
+  savedDeals              SavedDeal[]
+  inventoryItems          InventoryItem[]
+  sales                   Sale[]
+  costs                   Cost[]
+  subscriptions           Subscription[]
+  usageEvents             UsageEvent[]
 
   @@unique([authProvider, authSubject])
 }
@@ -558,6 +564,7 @@ model DealAnalysis {
 
   listing   Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
   huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  alerts    Alert[]
 
   /// One analysis per match per distinct input: a retried / repeated job updates it in place.
   @@unique([huntMatchId, inputHash])
@@ -572,25 +579,69 @@ model DealAnalysis {
 // User engagement
 // ---------------------------------------------------------------------------
 
+/// One intended notification to a user (what the in-app inbox lists). Channel-independent: each
+/// channel's attempt is a NotificationDelivery. Created at most once per intent via dedupeKey.
 model Alert {
-  id           String       @id @default(uuid(7)) @db.Uuid
-  userId       String       @db.Uuid
-  huntId       String?      @db.Uuid
-  huntMatchId  String?      @db.Uuid
-  channel      AlertChannel
-  status       AlertStatus  @default(PENDING)
-  title        String
-  body         String?
-  errorMessage String?
-  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
-  sentAt       DateTime?    @db.Timestamptz(3)
-  readAt       DateTime?    @db.Timestamptz(3)
+  id             String    @id @default(uuid(7)) @db.Uuid
+  userId         String    @db.Uuid
+  /// NOTIFICATION_CATEGORIES in @rein-drop/contracts, e.g. "deal_alerts" | "exceptional_deals".
+  category       String
+  huntId         String?   @db.Uuid
+  huntMatchId    String?   @db.Uuid
+  /// The analysis that made the match eligible.
+  dealAnalysisId String?   @db.Uuid
+  /// At most one alert per intent, e.g. "deal:<huntMatchId>" - a match never alerts twice.
+  dedupeKey      String    @unique
+  title          String
+  body           String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  /// Read in the inbox (or opened from a notification).
+  readAt         DateTime? @db.Timestamptz(3)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hunt      Hunt?      @relation(fields: [huntId], references: [id], onDelete: SetNull)
-  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hunt         Hunt?                  @relation(fields: [huntId], references: [id], onDelete: SetNull)
+  huntMatch    HuntMatch?             @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  dealAnalysis DealAnalysis?          @relation(fields: [dealAnalysisId], references: [id], onDelete: SetNull)
+  deliveries   NotificationDelivery[]
 
-  @@index([userId, status, createdAt])
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+/// One channel's attempt to deliver an Alert. PENDING rows are the outbox the worker sends from.
+model NotificationDelivery {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  alertId     String         @db.Uuid
+  channel     AlertChannel
+  status      DeliveryStatus @default(PENDING)
+  /// Who delivered it: "in_app", "simulator", or a provider id once one exists.
+  provider    String?
+  /// Why it was SKIPPED or FAILED (e.g. "disabled_by_preference", "not_configured").
+  reason      String?
+  attempts    Int            @default(0)
+  /// A worker is sending it until then (concurrency-safe outbox claim).
+  lockedUntil DateTime?      @db.Timestamptz(3)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  sentAt      DateTime?      @db.Timestamptz(3)
+
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@unique([alertId, channel])
+  @@index([status, createdAt])
+}
+
+/// A user's explicit choice for one (category, channel). Missing rows use the defaults in
+/// @rein-drop/contracts (NOTIFICATION_RULES) - nothing is stored until the user changes something.
+model NotificationPreference {
+  userId    String       @db.Uuid
+  category  String
+  channel   AlertChannel
+  enabled   Boolean
+  updatedAt DateTime     @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, category, channel])
 }
 
 model SavedDeal {

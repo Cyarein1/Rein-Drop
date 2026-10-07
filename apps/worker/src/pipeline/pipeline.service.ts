@@ -1,12 +1,14 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { JobRunner } from '../queue/job-runner.js';
+import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
 import { ANALYSIS_RUNNER } from './deal-analysis.handler.js';
 import { HuntScheduler } from './hunt-scheduler.js';
 
 /**
- * Drives the pipeline in this process: a scheduler tick (due hunts -> jobs) and a runner tick
- * (jobs -> searches). Each loop never overlaps itself; shutdown waits for in-flight work.
+ * Drives the pipeline in this process: a scheduler tick (due hunts -> jobs), a search runner,
+ * an analysis runner (deal scoring + alerts) and the notification outbox (push / email
+ * deliveries). Each loop never overlaps itself; shutdown waits for in-flight work.
  * Several worker processes can run side by side - claiming and leasing are concurrency-safe.
  */
 @Injectable()
@@ -21,6 +23,7 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
     private readonly scheduler: HuntScheduler,
     private readonly runner: JobRunner,
     @Inject(ANALYSIS_RUNNER) private readonly analysisRunner: JobRunner,
+    private readonly notifications: NotificationDispatcher,
   ) {}
 
   onApplicationBootstrap() {
@@ -40,6 +43,10 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
       this.loop('analysis', runnerIntervalMs, async () => {
         const r = await this.analysisRunner.runOnce();
         if (r.received > 0) this.logger.log(`Analysed ${r.received} match(es): ${JSON.stringify(r.outcomes)}`);
+      }),
+      this.loop('notifications', runnerIntervalMs, async () => {
+        const n = await this.notifications.dispatchPending();
+        if (n.claimed > 0) this.logger.log(`Notifications: ${JSON.stringify(n)}`);
       }),
     ];
   }

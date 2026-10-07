@@ -1,11 +1,71 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 26)_
+_Last updated: 2026-10-07 (step 27)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 27 - Notification preferences, alerts, deliveries, local simulator + inbox (Build Prompt 24)
+
+**What was added** (rules and rationale: `docs/decisions/0006-alerts-and-notifications.md`)
+
+- DB migration `20261007180312_notifications`: `Alert` reshaped into one intended notification
+  (category, hunt / match / analysis links, unique `dedupeKey`, title, body, readAt); new
+  `NotificationDelivery` (one per channel: status PENDING / SENT / SIMULATED / SKIPPED / FAILED,
+  provider, reason, attempts, outbox lease) and `NotificationPreference` (user, category, channel,
+  enabled - stored only when changed). `AlertStatus` enum replaced by `DeliveryStatus`. No alert
+  rows existed.
+- Contracts `notifications.ts`: categories (deal alerts, exceptional deals, operational, weekly
+  insight, marketing) in three groups (alerts / insights / marketing), channel rules per category
+  (inbox always on for service alerts, never for marketing; push on, email off; weekly insight
+  and marketing opt-in), `deliveryPlan()`, preferences / update / inbox / dev log schemas. Enum
+  mirrors checked by test.
+- Worker:
+  - `writeDealAlert` in the same transaction as an eligible DealAnalysis: at most one alert per
+    deal (`deal:<match>`, ON CONFLICT DO NOTHING), only while the match is still NEW; IN_APP
+    delivered on write, turned-off channels SKIPPED, others PENDING.
+  - `NotificationDispatcher` (outbox, 4th worker loop): claims due PENDING deliveries with
+    `FOR UPDATE SKIP LOCKED`, sends through `NotificationSender`s, records SENT / SIMULATED /
+    FAILED (backoff, max attempts) / SKIPPED not_configured.
+  - `SimulatedSender` logs `[simulated push] to <email>: <title>`; config `NOTIFICATION_DELIVERY`
+    (simulator default; required in production, simulator refused).
+- API `NotificationsModule`: `GET/PATCH /me/notification-preferences` (only editable channels can
+  change), `GET /alerts` (newest first, unread count, cursor, unread filter), `POST
+  /alerts/:id/read`, `POST /alerts/read-all`, `GET /dev/notifications` (development-only log).
+- api-client + client-core (`notification-view.ts`: sections, copy, optimistic toggle, alert view).
+- Web: bell with unread count in the top bar (both layouts), `/alerts` inbox (open -> marks read
+  and opens the deal, Mark all read), Settings > Notifications switches (alerts / insights /
+  marketing sections, saved per switch), `/dev/notifications` simulator log.
+- Mobile: bell in every tab header, `alerts` inbox screen, Settings notification switches.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (contracts 42, client-core 39, api-client 13,
+  api unit 96, worker unit 29).
+- `pnpm --filter worker test:int` 31/31, incl. 6 new (checkpoint): a strong eligible deal creates
+  one alert with in-app SENT / push PENDING / email SKIPPED; preferences respected (push off ->
+  SKIPPED, email on -> delivered; marketing consent changes nothing); running the worker again on
+  the same fixture - redelivered jobs, next polling window and next-day re-analysis - creates no
+  duplicate alert; the outbox delivers each pending push / email exactly once through the
+  simulator; a failing channel backs off then FAILS; no provider -> SKIPPED not_configured; an
+  ignored deal never alerts.
+- `pnpm --filter api test:e2e` 51/51 (+6), `pnpm --filter api test:int` 20/20 (+4).
+- Browser e2e (Edge 390x844) with alerts written by the real worker writer and sent by the real
+  dispatcher (the third write for the same deal returned null - dedupe confirmed): 13/13 - bell
+  count, inbox order + exceptional styling, open -> deal + read, mark all read clears the bell,
+  separate preference sections, locked inbox switches, marketing without inbox, choices persist,
+  simulator log rows. Test data removed afterwards.
+- Mobile: typecheck, lint, Expo export - not run on a device.
+- Note: during verification the user's API dev server (:4000) was not running; the built API was
+  started temporarily (auto-stopped after 6 minutes). Restart it with `pnpm --filter api dev`.
+
+**Not done / TODO**
+
+- Operational alerts (source degraded long enough to matter) - Build Prompt 32; weekly insight.
+- Quiet hours, per-Hunt caps / digests; strong -> exceptional upgrade doesn't alert again.
+- Expo push (Build Prompt 25); email provider TBD.
 
 ### Step 26 - Deals feed + Deal Detail on web and mobile (Build Prompt 23)
 
@@ -1240,7 +1300,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-23 (our steps 1-26 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-24 (our steps 1-27 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1257,6 +1317,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 24 in document order: notification preferences, Alert + NotificationDelivery, one
-alert per eligible DealAnalysis, and a local notification simulator / in-app inbox.
+Build Prompt 25 in document order: Expo push notifications (device tokens, permission timing,
+a real push sender behind NotificationSender).
 (Await the next prompt.)

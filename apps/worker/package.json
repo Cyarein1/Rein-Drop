@@ -18,6 +18,7 @@
     "@nestjs/common": "^12.1.2",
     "@nestjs/core": "^12.1.2",
     "@rein-drop/ai-core": "workspace:*",
+    "@rein-drop/contracts": "workspace:*",
     "@rein-drop/db": "workspace:*",
     "@rein-drop/env": "workspace:*",
     "@rein-drop/marketplace-core": "workspace:*",

@@ -15,7 +15,10 @@ import {
 } from '@rein-drop/scoring';
 import type { Clock, LeasedJob } from '../queue/job-queue.js';
 import { RetryableJobError, type JobHandler } from '../queue/job-runner.js';
+import { writeDealAlert } from '../notifications/alert-writer.js';
 import { toMatchHunt } from './match-stage.js';
+
+const MARKETPLACE_NAME: Record<string, string> = { ebay: 'eBay', facebook: 'Facebook Marketplace' };
 
 export const ANALYSIS_QUEUE = 'deal-analysis';
 export const ANALYSIS_JOB_TYPE = 'deal.analyze';
@@ -36,6 +39,7 @@ export type AnalysisOutcome = 'analyzed' | 'failed' | 'unchanged' | 'match_gone'
  * never send a listing that fails hard filters to an LLM). Idempotent: one DealAnalysis per
  * (match, input hash); an unchanged input is never analysed twice. A retryable AI failure retries
  * the job; the last attempt (or a permanent failure) is stored as FAILED, which never alerts.
+ * An eligible analysis writes the deal's alert (at most one per match) in the same transaction.
  */
 export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
   readonly type = ANALYSIS_JOB_TYPE;
@@ -157,10 +161,31 @@ export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
       alertKind: eligibility.kind,
       completedAt: now,
     };
-    await this.prisma.dealAnalysis.upsert({
-      where: key,
-      create: { listingId: listing.id, huntMatchId: match.id, inputHash, ...data },
-      update: data,
+    await this.prisma.$transaction(async (tx) => {
+      const analysis = await tx.dealAnalysis.upsert({
+        where: key,
+        create: { listingId: listing.id, huntMatchId: match.id, inputHash, ...data },
+        update: data,
+        select: { id: true },
+      });
+      if (!eligibility.eligible || !eligibility.kind) return;
+      // The user may have ignored / bought it while the AI was running: only a still-NEW match alerts.
+      const current = await tx.huntMatch.findUnique({ where: { id: match.id }, select: { status: true } });
+      if (current?.status !== 'NEW') return;
+      // Same transaction as the analysis: the alert exists exactly when its eligible analysis does.
+      // writeDealAlert is idempotent per match, so re-analysis never alerts twice.
+      await writeDealAlert(tx, {
+        userId: hunt.userId,
+        huntId: hunt.id,
+        huntMatchId: match.id,
+        dealAnalysisId: analysis.id,
+        kind: eligibility.kind,
+        title: `${eligibility.kind === 'exceptional' ? 'Exceptional deal' : 'Strong deal'}: ${listing.title}`,
+        body: [record.status === 'COMPLETED' ? record.result.explanation.headline : null, `${MARKETPLACE_NAME[listing.marketplace.key] ?? listing.marketplace.key} · ${hunt.name}`]
+          .filter(Boolean)
+          .join(' - '),
+        now,
+      });
     });
     return record.status === 'COMPLETED' ? 'analyzed' : 'failed';
   }

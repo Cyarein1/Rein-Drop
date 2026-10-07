@@ -7,6 +7,8 @@ import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { CLOCK, JOB_QUEUE, type Clock, type JobQueue } from '../queue/job-queue.js';
 import { JobRunner } from '../queue/job-runner.js';
 import { PostgresJobQueue } from '../queue/postgres-job-queue.js';
+import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
+import { createNotificationSenders } from '../notifications/senders.js';
 import { ANALYSIS_QUEUE, ANALYSIS_RUNNER, DealAnalysisHandler } from './deal-analysis.handler.js';
 import { HuntScheduler } from './hunt-scheduler.js';
 import { createWorkerMarketplaceRegistry } from './marketplace-registry.js';
@@ -26,7 +28,7 @@ class PrismaLifecycle implements OnApplicationShutdown {
 }
 
 /**
- * Scheduler + queue + runners + marketplace search + deal analysis. Swapping the queue for Azure
+ * Scheduler + queue + runners + marketplace search + deal analysis + notification outbox. Swapping the queue for Azure
  * means replacing the JOB_QUEUE provider only.
  */
 @Module({
@@ -72,6 +74,17 @@ class PrismaLifecycle implements OnApplicationShutdown {
       inject: [JOB_QUEUE, DealAnalysisHandler, WORKER_CONFIG, CLOCK],
       useFactory: (q: JobQueue, analysis: DealAnalysisHandler, c: WorkerConfig, clock: Clock) =>
         new JobRunner(q, [analysis], { queue: ANALYSIS_QUEUE, maxJobs: c.pipeline.jobsPerTick, leaseMs: c.pipeline.leaseMs }, clock),
+    },
+    {
+      provide: NotificationDispatcher,
+      inject: [PRISMA, WORKER_CONFIG, CLOCK],
+      useFactory: (p: PrismaClient, c: WorkerConfig, clock: Clock) =>
+        new NotificationDispatcher(
+          p,
+          createNotificationSenders(c.notifications.delivery),
+          { batchSize: 20, leaseMs: c.pipeline.leaseMs, maxAttempts: c.pipeline.maxAttempts },
+          clock,
+        ),
     },
     PipelineService,
   ],

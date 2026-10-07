@@ -290,6 +290,30 @@ describe('API (e2e)', () => {
     });
   });
 
+  describe('Notifications (HTTP layer; behaviour is covered by test/notifications.int-spec.ts)', () => {
+    const asDev = (req: request.Test) => req.set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT);
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer()).get('/alerts').expect(401);
+      await request(app.getHttpServer()).get('/me/notification-preferences').expect(401);
+      await request(app.getHttpServer()).get('/dev/notifications').expect(401);
+    });
+
+    it.each([
+      ['an empty change list', { changes: [] }, 'body.changes'],
+      ['turning off the in-app inbox for deal alerts', { changes: [{ category: 'deal_alerts', channel: 'IN_APP', enabled: false }] }, 'body.changes.0.channel'],
+      ['marketing in the inbox', { changes: [{ category: 'marketing', channel: 'IN_APP', enabled: true }] }, 'body.changes.0.channel'],
+      ['an unknown category', { changes: [{ category: 'sms_spam', channel: 'PUSH', enabled: true }] }, 'body.changes.0.category'],
+    ])('PATCH preferences rejects %s with 400', async (_label, body, path) => {
+      const res = await asDev(request(app.getHttpServer()).patch('/me/notification-preferences')).send(body).expect(400);
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
+    });
+
+    it('rejects a malformed alert id with 400', async () => {
+      await asDev(request(app.getHttpServer()).post('/alerts/nope/read')).expect(400);
+    });
+  });
+
   describe('errors and validation', () => {
     it('unknown route -> 404 in the standard error shape', async () => {
       const res = await request(app.getHttpServer()).get('/nope?token=abc').expect(404);

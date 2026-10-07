@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
-import type { SellerSnapshot, UserLocale } from '@rein-drop/api-client';
-import { huntFormContext, snapshotAnswerRows } from '@rein-drop/client-core';
-import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { StyleSheet, Switch, Text, View } from 'react-native';
+import type { NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
+import { huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
+import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
 import { apiBaseUrl, getApiClient } from '@/config/api';
@@ -96,11 +96,13 @@ export default function SettingsScreen() {
         <Text style={[styles.muted, font('regular')]}>Plans and pricing are not decided yet.</Text>
       </Card>
 
-      <Card title="Notifications">
-        <Text style={[styles.muted, font('regular')]}>
-          Deal alerts, operational alerts and the weekly insight will be configured here.
-        </Text>
-      </Card>
+      {sessionState.status === 'authenticated' ? (
+        <NotificationsCard />
+      ) : (
+        <Card title="Notifications">
+          <Text style={[styles.muted, font('regular')]}>Sign in to choose how Rein Drop alerts you.</Text>
+        </Card>
+      )}
 
       <Card title="Developer">
         <View style={styles.row}>
@@ -219,7 +221,107 @@ function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
   );
 }
 
+/**
+ * Notification choices per category and channel (Screenbook frame 28). Alerts, insights and
+ * marketing are separate sections; marketing is opt-in. Each switch saves on its own.
+ */
+function NotificationsCard() {
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [status, setStatus] = useState<{ error: boolean; text: string } | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      Promise.resolve()
+        .then(() => getApiClient().getNotificationPreferences())
+        .then(
+          (p) => !cancelled && (setPrefs(p), setFailed(false)),
+          () => !cancelled && setFailed(true),
+        );
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const toggle = async (category: NotificationCategory, channel: NotificationChannel, enabled: boolean) => {
+    if (!prefs) return;
+    const before = prefs;
+    setPrefs(withPreference(prefs, category, channel, enabled));
+    setSaving(`${category}:${channel}`);
+    setStatus(null);
+    try {
+      setPrefs(await getApiClient().updateNotificationPreferences({ changes: [{ category, channel, enabled }] }));
+      setStatus({ error: false, text: 'Saved' });
+    } catch (err) {
+      setPrefs(before);
+      setStatus({ error: true, text: `Not saved: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (failed && !prefs) {
+    return (
+      <Card title="Notifications">
+        <SystemBanner tone="error" title="Couldn't load your notification settings" message="Leave and reopen Settings to try again." />
+      </Card>
+    );
+  }
+  if (!prefs) {
+    return (
+      <Card title="Notifications">
+        <LoadingState label="Loading notification settings…" />
+      </Card>
+    );
+  }
+  return (
+    <Card title="Notifications">
+      {preferenceSections(prefs).map((section) => (
+        <View key={section.group} style={styles.prefSection}>
+          <Text style={[styles.label, font('bold')]} accessibilityRole="header">
+            {section.title}
+          </Text>
+          <Text style={[styles.muted, font('regular')]}>{section.description}</Text>
+          {section.categories.map((c) => (
+            <View key={c.category} style={styles.answer}>
+              <Text style={[styles.body, font('semibold')]}>{c.title}</Text>
+              <Text style={[styles.muted, font('regular')]}>{c.description}</Text>
+              {c.channels.map((ch) => (
+                <View key={ch.channel} style={styles.switchRow}>
+                  <Text style={[styles.body, font('regular')]}>
+                    {ch.label}
+                    {!ch.editable ? ' (always on)' : ''}
+                  </Text>
+                  <Switch
+                    value={ch.enabled}
+                    disabled={!ch.editable || saving === `${c.category}:${ch.channel}`}
+                    onValueChange={(v) => void toggle(c.category, ch.channel, v)}
+                    accessibilityLabel={`${c.title}: ${ch.label}`}
+                    trackColor={{ true: roles.text, false: roles.border }}
+                  />
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ))}
+      <Text style={[styles.muted, font('regular')]}>{NOTIFICATION_CHANNELS_NOTE}</Text>
+      {status && (
+        <Text style={[status.error ? styles.error : styles.muted, font('regular')]} accessibilityLiveRegion="polite">
+          {status.text}
+        </Text>
+      )}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  prefSection: { gap: space[2], paddingTop: space[2] },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
+  error: { color: roles.text, fontSize: fontSize.sm, paddingLeft: space[2], borderLeftWidth: 3, borderLeftColor: tones.loss.accent },
   answer: { gap: 2 },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] },
   label: { color: roles.text, fontSize: fontSize.md },

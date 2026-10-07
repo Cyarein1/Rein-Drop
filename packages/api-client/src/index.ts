@@ -5,6 +5,13 @@
  */
 import {
   accountIdentitySchema,
+  alertPageSchema,
+  alertSchema,
+  listAlertsQuerySchema,
+  markAllAlertsReadResponseSchema,
+  notificationLogSchema,
+  notificationPreferencesSchema,
+  updateNotificationPreferencesRequestSchema,
   createHuntRequestSchema,
   dealDetailSchema,
   dealPageSchema,
@@ -30,6 +37,12 @@ import {
   updateSellerSnapshotRequestSchema,
   saveSellerSnapshotRequestSchema,
   type AccountIdentity,
+  type Alert,
+  type AlertPage,
+  type ListAlertsQueryInput,
+  type NotificationLog,
+  type NotificationPreferences,
+  type UpdateNotificationPreferencesRequest,
   type SaveSellerSnapshotRequestInput,
   type CreateHuntRequestInput,
   type DealDetail,
@@ -139,6 +152,16 @@ export interface ApiClient {
   unignoreDeal(id: string): Promise<DealDetail>;
   /** Records the purchase (price defaults to the asking price). Idempotent. */
   markDealBought(id: string, input?: MarkDealBoughtRequest): Promise<DealDetail>;
+
+  /** Per-category, per-channel notification choices (marketing separate, opt-in). */
+  getNotificationPreferences(): Promise<NotificationPreferences>;
+  updateNotificationPreferences(input: UpdateNotificationPreferencesRequest): Promise<NotificationPreferences>;
+  /** In-app inbox, newest first, with the unread count. */
+  listAlerts(query?: ListAlertsQueryInput): Promise<AlertPage>;
+  markAlertRead(id: string): Promise<Alert>;
+  markAllAlertsRead(): Promise<{ updated: number }>;
+  /** DEVELOPMENT ONLY: the notification simulator log (404 in production). */
+  getNotificationLog(): Promise<NotificationLog>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -263,5 +286,20 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: validateInput(markDealBoughtRequestSchema, input, 'body'),
         response: dealDetailSchema,
       }),
+
+    getNotificationPreferences: () =>
+      send(http, { method: 'GET', path: '/me/notification-preferences', response: notificationPreferencesSchema }),
+    updateNotificationPreferences: async (input) =>
+      send(http, {
+        method: 'PATCH',
+        path: '/me/notification-preferences',
+        body: validateInput(updateNotificationPreferencesRequestSchema, input, 'body'),
+        response: notificationPreferencesSchema,
+      }),
+    listAlerts: async (query = {}) =>
+      send(http, { method: 'GET', path: '/alerts', query: validateInput(listAlertsQuerySchema, query, 'query'), response: alertPageSchema }),
+    markAlertRead: (id) => send(http, { method: 'POST', path: `/alerts/${pathId(id)}/read`, response: alertSchema }),
+    markAllAlertsRead: () => send(http, { method: 'POST', path: '/alerts/read-all', response: markAllAlertsReadResponseSchema }),
+    getNotificationLog: () => send(http, { method: 'GET', path: '/dev/notifications', response: notificationLogSchema }),
   };
 }

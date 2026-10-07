@@ -1,13 +1,19 @@
 import { Module } from '@nestjs/common';
+import { AlertsController, DevNotificationsController, NotificationPreferencesController } from './notifications.controller.js';
+import { NotificationsService } from './notifications.service.js';
 
 /**
- * Notifications - Alerts to users across channels (in-app, push, email).
+ * Notifications - alerts to users across channels (in-app, push, email).
  *
- * Owns: Alert
- * TODO(notifications): push and transactional email providers TBD.
- *
- * Scaffold only: no controllers or services yet. Other modules must use this
- * module's exported providers rather than querying its tables directly.
+ * Owns: Alert, NotificationDelivery, NotificationPreference
+ * The worker creates alerts (one per eligible deal) and sends deliveries through its outbox;
+ * this module serves preferences, the in-app inbox and the development delivery log.
+ * Endpoints: GET/PATCH /me/notification-preferences, GET /alerts, POST /alerts/:id/read,
+ * POST /alerts/read-all, GET /dev/notifications (development only).
+ * TODO(notifications): Expo push (Build Prompt 25); email provider TBD.
  */
-@Module({})
+@Module({
+  controllers: [NotificationPreferencesController, AlertsController, DevNotificationsController],
+  providers: [NotificationsService],
+})
 export class NotificationsModule {}

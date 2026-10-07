@@ -5,6 +5,7 @@ import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { PlaceholderNotice } from "../placeholder-notice";
+import { NotificationSettings } from "./NotificationSettings";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -22,14 +23,13 @@ export default function SettingsPage() {
           <p style={{ color: "var(--rd-text-muted)" }}>Plans and pricing are not decided yet.</p>
         </Card>
 
-        <Card title="Notifications">
-          <p style={{ color: "var(--rd-text-muted)" }}>
-            Deal alerts, operational alerts and the weekly insight will be configured here.
-          </p>
-        </Card>
+        <NotificationsCard />
 
         <Card title="Developer">
           <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <li>
+              <Link href="/dev/notifications">Notification simulator log</Link>
+            </li>
             <li>
               <Link href="/dev">System status</Link>
             </li>
@@ -125,6 +125,21 @@ async function AccountCard() {
           Sign out
         </Button>
       </div>
+    </Card>
+  );
+}
+
+/** Notification preferences (Screenbook frame 28). */
+async function NotificationsCard() {
+  const api = await getServerApiClient();
+  const prefs = await api.getNotificationPreferences().catch(() => null);
+  return (
+    <Card title="Notifications" action={<ButtonLink href="/alerts" variant="text">Open inbox</ButtonLink>}>
+      {prefs ? (
+        <NotificationSettings initial={prefs} />
+      ) : (
+        <SystemBanner tone="error" title="Couldn't load your notification settings" message="Refresh the page to try again." />
+      )}
     </Card>
   );
 }

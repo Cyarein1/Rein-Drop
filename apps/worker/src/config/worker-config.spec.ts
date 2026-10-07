@@ -16,6 +16,7 @@ describe('loadWorkerConfig', () => {
         maxAttempts: 5,
         searchMaxPages: 1,
       },
+      notifications: { delivery: 'simulator' },
       ai: { provider: 'mock' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
@@ -37,6 +38,7 @@ describe('loadWorkerConfig', () => {
         'DATABASE_URL: is required when NODE_ENV=production',
         'HUNT_POLL_INTERVAL_MINUTES: is required when NODE_ENV=production',
         'AI_PROVIDER: is required when NODE_ENV=production',
+        'NOTIFICATION_DELIVERY: is required when NODE_ENV=production',
       ]);
     }
   });
@@ -60,16 +62,24 @@ describe('loadWorkerConfig', () => {
         DATABASE_URL: 'postgresql://u:p@db/app',
         HUNT_POLL_INTERVAL_MINUTES: '15',
         AI_PROVIDER: 'foundry',
+        NOTIFICATION_DELIVERY: 'disabled',
         FACEBOOK_DEV_SCENARIO: 'empty',
       }),
     ).toThrow('FACEBOOK_DEV_SCENARIO: development-only, not allowed when NODE_ENV=production');
+  });
+
+  it('simulates notifications locally and refuses the simulator in production', () => {
+    expect(loadWorkerConfig({ NOTIFICATION_DELIVERY: 'disabled' }).notifications).toEqual({ delivery: 'disabled' });
+    expect(() =>
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'foundry', NOTIFICATION_DELIVERY: 'simulator' }),
+    ).toThrow('NOTIFICATION_DELIVERY: simulator is development-only, not allowed when NODE_ENV=production');
   });
 
   it('uses the mock AI provider locally and refuses it in production', () => {
     expect(loadWorkerConfig({ AI_PROVIDER: 'foundry' }).ai).toEqual({ provider: 'foundry' });
     expect(() => loadWorkerConfig({ AI_PROVIDER: 'openai' })).toThrow(/AI_PROVIDER: must be one of: mock, foundry/);
     expect(() =>
-      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock' }),
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock', NOTIFICATION_DELIVERY: 'disabled' }),
     ).toThrow('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
   });
 });

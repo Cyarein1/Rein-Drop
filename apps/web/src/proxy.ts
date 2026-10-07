@@ -22,6 +22,7 @@ export const config = {
     "/onboarding/:path*",
     "/hunts/:path*",
     "/deals/:path*",
+    "/alerts/:path*",
     "/analytics/:path*",
     "/settings/:path*",
   ],

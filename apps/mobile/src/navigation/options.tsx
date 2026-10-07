@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, type ColorValue } from 'react-native';
+import { Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import { fontSize, roles, size } from '@rein-drop/design-tokens';
 import { font } from '@/ui';
 
@@ -37,7 +37,34 @@ export function SettingsHeaderButton() {
   );
 }
 
+/** Header button to the in-app inbox (alerts). */
+export function InboxHeaderButton() {
+  return (
+    <Link href="/alerts" asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Inbox"
+        hitSlop={8}
+        style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+      >
+        <NavIcon name={{ ios: 'bell', android: 'notifications' }} color={roles.text} />
+      </Pressable>
+    </Link>
+  );
+}
+
+/** Right side of every tab header: inbox, then Settings. */
+export function TabHeaderButtons() {
+  return (
+    <View style={styles.row}>
+      <InboxHeaderButton />
+      <SettingsHeaderButton />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
   headerButton: {
     width: size.touchTarget,
     height: size.touchTarget,

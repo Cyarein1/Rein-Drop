@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { Wordmark } from "@/brand/Wordmark";
 import { AccountSummary } from "./AccountSummary";
+import { AlertsBell, BellLink } from "./AlertsBell";
 import { BottomNav, CreateHuntButton, SidebarNav, TopBarSettingsLink } from "./ShellNav";
 import styles from "./AppShell.module.css";
 
 /**
  * Authenticated web shell.
  * - >= 768px: left sidebar (wordmark, Create Hunt, destinations) + top bar (account).
- * - <  768px: top bar (wordmark, Settings) + fixed bottom navigation.
+ * - <  768px: top bar (wordmark, inbox bell, Settings) + fixed bottom navigation.
+ * The inbox bell (unread count) is in the top bar on both layouts.
  * The shell itself is static; the session-dependent account area streams in behind
  * Suspense, and each page verifies the session itself (see `Protected`).
  */
@@ -33,6 +35,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Wordmark height={26} />
           </Link>
           <div className={styles.topBarEnd}>
+            <Suspense fallback={<BellLink unread={0} />}>
+              <AlertsBell />
+            </Suspense>
             <div className={`${styles.account} ${styles.desktopOnly}`}>
               <Suspense fallback={<span className={styles.avatar} aria-hidden="true" />}>
                 <AccountSummary />

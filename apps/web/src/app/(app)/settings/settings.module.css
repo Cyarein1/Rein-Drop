@@ -1,0 +1,70 @@
+.prefs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-4);
+}
+
+.prefSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+}
+
+.prefSection + .prefSection {
+  padding-top: var(--rd-space-4);
+  border-top: 1px solid var(--rd-neutral-border);
+}
+
+.prefHeading {
+  font-size: var(--rd-font-size-md);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.category {
+  margin: 0;
+  padding: var(--rd-space-3) 0 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+}
+
+.categoryTitle {
+  padding: 0;
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2) var(--rd-space-5);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  min-height: var(--rd-touch-target);
+  cursor: pointer;
+}
+
+.switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--rd-color-navy);
+}
+
+.switch:has(input:disabled) {
+  cursor: default;
+}
+
+.muted {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.error {
+  padding-left: var(--rd-space-2);
+  border-left: 3px solid var(--rd-tone-loss-accent);
+  font-size: var(--rd-font-size-sm);
+}

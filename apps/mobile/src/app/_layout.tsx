@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="hunts/new" options={{ title: 'Create Hunt', presentation: 'modal' }} />
         <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
         <Stack.Screen name="deals/[id]" options={{ title: 'Deal' }} />
+        <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>
       <StatusBar style="dark" />

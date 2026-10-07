@@ -400,6 +400,9 @@ importers:
       '@rein-drop/ai-core':
         specifier: workspace:*
         version: link:../../packages/ai-core
+      '@rein-drop/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@rein-drop/db':
         specifier: workspace:*
         version: link:../../packages/db

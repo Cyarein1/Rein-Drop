@@ -3,11 +3,13 @@ import {
   DEAL_CONFIDENCE_LEVELS,
   DEAL_MATCH_STATUSES,
   DEAL_STRENGTHS,
+  DELIVERY_STATUSES,
+  NOTIFICATION_CHANNELS,
   HUNT_STATUSES,
   LISTING_STATUSES,
   marketplaceKeySchema,
 } from '@rein-drop/contracts';
-import { DealAnalysisStatus, HuntMatchStatus, HuntStatus, ListingStatus } from '@rein-drop/db';
+import { AlertChannel, DealAnalysisStatus, DeliveryStatus, HuntMatchStatus, HuntStatus, ListingStatus } from '@rein-drop/db';
 import { MARKETPLACE_IDS as CORE_MARKETPLACE_IDS } from '@rein-drop/marketplace-core';
 import { CONFIDENCE_LEVELS, DEAL_STRENGTHS as SCORING_STRENGTHS } from '@rein-drop/scoring';
 
@@ -20,6 +22,8 @@ describe('contract enums match the database schema', () => {
     ['ListingStatus', LISTING_STATUSES, ListingStatus],
     ['HuntMatchStatus', DEAL_MATCH_STATUSES, HuntMatchStatus],
     ['DealAnalysisStatus', DEAL_ANALYSIS_STATUSES, DealAnalysisStatus],
+    ['AlertChannel', NOTIFICATION_CHANNELS, AlertChannel],
+    ['DeliveryStatus', DELIVERY_STATUSES, DeliveryStatus],
   ] as const)('%s', (_name, contract, prismaEnum) => {
     expect(sorted(contract)).toEqual(sorted(Object.values(prismaEnum)));
   });

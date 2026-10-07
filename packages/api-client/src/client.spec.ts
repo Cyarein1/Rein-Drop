@@ -142,6 +142,26 @@ describe('createApiClient', () => {
     await expect(c.markDealBought(ID, { price: { amountMinor: 0, currency: 'ZAR' } })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
+  it('notifications: inbox query, read actions and validated preference changes', async () => {
+    const inbox = fakeFetch(200, { items: [], nextCursor: null, unreadCount: 3 });
+    await expect(client(inbox).listAlerts({ unreadOnly: 'true' })).resolves.toMatchObject({ unreadCount: 3 });
+    expect(inbox.mock.calls[0]![0]).toBe('http://api.test/alerts?limit=20&unreadOnly=true');
+
+    const read = fakeFetch(200, { updated: 2 });
+    await expect(client(read).markAllAlertsRead()).resolves.toEqual({ updated: 2 });
+    expect([read.mock.calls[0]![0], read.mock.calls[0]![1]?.method]).toEqual(['http://api.test/alerts/read-all', 'POST']);
+
+    const prefs = fakeFetch(200, { categories: [] });
+    await client(prefs).updateNotificationPreferences({ changes: [{ category: 'marketing', channel: 'EMAIL', enabled: true }] });
+    expect(prefs.mock.calls[0]![1]?.method).toBe('PATCH');
+    // The in-app inbox can't be switched off for deal alerts - refused before any request.
+    const refused = fakeFetch(200, { categories: [] });
+    await expect(
+      client(refused).updateNotificationPreferences({ changes: [{ category: 'deal_alerts', channel: 'IN_APP', enabled: false }] }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(refused).not.toHaveBeenCalled();
+  });
+
   it('serializes list queries with defaults', async () => {
     const fetch = fakeFetch(200, { items: [HUNT], nextCursor: null });
     const page = await client(fetch).listHunts({ status: 'LIVE' });

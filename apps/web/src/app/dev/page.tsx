@@ -25,6 +25,9 @@ export default function DevHome() {
         <li>
           <Link href="/dev/ui">UI primitives gallery</Link>
         </li>
+        <li>
+          <Link href="/dev/notifications">Notification simulator log</Link>
+        </li>
       </ul>
     </Page>
   );

@@ -35,6 +35,11 @@ const workerEnvSchema = z.object({
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
   /** Which AIProvider analyses matched listings. `mock` is deterministic and local-only. */
+  /**
+   * How push / email deliveries go out. simulator = logged + marked SIMULATED (local only);
+   * disabled = not sent (SKIPPED, not_configured). TODO(notifications): Expo push (Build Prompt 25), email provider TBD.
+   */
+  NOTIFICATION_DELIVERY: z.enum(['simulator', 'disabled'], { error: 'must be one of: simulator, disabled' }).optional(),
   AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
 });
 
@@ -52,6 +57,8 @@ export interface WorkerConfig {
     readonly maxAttempts: number;
     readonly searchMaxPages: number;
   };
+  /** Push / email delivery mode for the notification outbox. */
+  readonly notifications: { readonly delivery: 'simulator' | 'disabled' };
   /** AIProvider for deal analysis (@rein-drop/ai-core). */
   readonly ai: { readonly provider: AIProviderId };
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
@@ -65,13 +72,14 @@ export function loadWorkerConfig(
   env: Record<string, string | undefined> = process.env,
 ): WorkerConfig {
   const parsed = parseEnv('worker', workerEnvSchema, env, {
-    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER'],
+    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY'],
   });
   if (parsed.NODE_ENV === 'production') {
     const problems = (['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const)
       .filter((key) => parsed[key] !== undefined)
       .map((key) => `${key}: development-only, not allowed when NODE_ENV=production`);
     // The mock produces believable but meaningless analyses: never in front of real users.
+    if (parsed.NOTIFICATION_DELIVERY === 'simulator') problems.push('NOTIFICATION_DELIVERY: simulator is development-only, not allowed when NODE_ENV=production');
     if (parsed.AI_PROVIDER === 'mock') problems.push('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
     if (problems.length > 0) throw new EnvValidationError('worker', problems);
   }
@@ -88,6 +96,7 @@ export function loadWorkerConfig(
       maxAttempts: parsed.WORKER_JOB_MAX_ATTEMPTS,
       searchMaxPages: parsed.WORKER_SEARCH_MAX_PAGES,
     }),
+    notifications: Object.freeze({ delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator' }),
     ai: Object.freeze({ provider: parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER }),
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',

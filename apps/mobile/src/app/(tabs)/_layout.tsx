@@ -2,7 +2,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { fontSize, radius, roles, size } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { headerOptions, NavIcon, SettingsHeaderButton } from '@/navigation/options';
+import { headerOptions, NavIcon, TabHeaderButtons } from '@/navigation/options';
 import { font } from '@/ui';
 
 /**
@@ -23,7 +23,7 @@ function AppTabs() {
     <Tabs
       screenOptions={{
         ...headerOptions(),
-        headerRight: () => <SettingsHeaderButton />,
+        headerRight: () => <TabHeaderButtons />,
         tabBarActiveTintColor: roles.text,
         tabBarInactiveTintColor: roles.textMuted,
         tabBarStyle: { backgroundColor: roles.background, borderTopColor: roles.border },

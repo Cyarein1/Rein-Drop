@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-07, after step 26 (Build Prompt 23)._
+_Last updated: 2026-10-07, after step 27 (Build Prompt 24)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -35,6 +35,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D17 | Inventory quantity / lots | Step 3 | One row per physical item |
 | D18 | Whether "Save" and "Watch" are one action; what marks a deal "Missed" (Blueprint section 22) | Docs review | Save = watch (one action, step 25); "Missed" not built |
 | D19 | Feed ranking: freshness bonus size and how fast it fades | Step 25 | Up to 14 points, fading over 72 hours (never lifts a deal over a stronger band) |
+| D21 | Notification defaults (push on / email off for alerts; weekly insight + marketing opt-in) | Step 27 | Decision 0006 table |
+| D22 | Quiet hours, per-Hunt caps / digests, and whether a later "exceptional" score should alert again | Step 27 | None; one alert per deal, never upgraded |
 | D20 | Ignore reasons: free text, or a fixed list of choices? | Step 25 | Optional free text (200 chars) |
 
 ## 2. Not built yet (by area)
@@ -81,9 +83,9 @@ These block or shape work; the code uses placeholders until you decide.
 - Undo / edit a purchase made with Bought (price, date, costs) - step 25; prompt 28.
 - Listing images on deal cards / detail (dev image URLs are fake; real image hosts need allowlisting) - step 26.
 - The AI explanation doesn't receive comparables, so with an estimate it can contradict the economics ("estimated in a later step") - step 26 (with D13).
-- Creating alerts (next, prompt 24): once per match, preferences, channels, per-hunt caps, in-app inbox / local
-  simulator - step 24; prompt 24.
-- Expo push notifications - prompt 25.
+- Expo push notifications (device tokens, permission timing, real push sender) - prompt 25 (next).
+- Email provider for notifications - step 27 (D14).
+- Operational alerts (source degraded long enough to matter) and the weekly insight are not generated - step 27; prompt 32.
 - Exceptional-deal mascot asset (only if approved artwork exists) - prompt 23.
 
 ### Plans and billing
@@ -115,7 +117,7 @@ These block or shape work; the code uses placeholders until you decide.
 ## 3. Built but not yet verified by a person
 
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
-  (step 17), onboarding (step 23), Deals feed + detail (step 26). Only typecheck / lint / bundle builds have been run.
+  (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -133,7 +135,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-24 Notifications + local simulator -
 25 Expo push - 26 Hunts management screens - 27 Home dashboard - 28 Bought / Inventory / Sold
 backend - 29 Inventory and sale UI - 30 Analytics backend - 31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
@@ -164,4 +165,5 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Deal analysis was opaque in the contract (`analysis.result: unknown`) | Steps 5, 22 | Step 25 |
 | Stale "TODO(product): matching rules" comment in the API matching module | Step 21 | Step 25 |
 | Deals feed + Deal Detail screens (web + mobile) | Step 5 | Step 26 |
+| Alerts: preferences, one alert per eligible deal, deliveries, simulator, inbox | Step 24 | Step 27 |
 | Worker could overwrite a user's decision made while a search was running | Step 25 (found) | Step 25 |
