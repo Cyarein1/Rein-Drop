@@ -1,34 +1,38 @@
+/**
+ * Typed client for the Rein Drop API, shared by web and mobile.
+ * All request/response types come from @rein-drop/contracts - apps should
+ * import them from here (or from contracts), never redeclare them.
+ */
 import {
-  isApiErrorBody,
-  type ApiErrorCode,
-  type ApiErrorDetail,
+  accountIdentitySchema,
+  createHuntRequestSchema,
+  dealDetailSchema,
+  dealPageSchema,
+  healthResponseSchema,
+  huntPageSchema,
+  huntSchema,
+  listDealsQuerySchema,
+  listHuntsQuerySchema,
+  readinessResponseSchema,
+  sellerSnapshotSchema,
+  updateHuntRequestSchema,
+  type AccountIdentity,
+  type CreateHuntRequest,
+  type DealDetail,
+  type DealSummary,
   type HealthResponse,
+  type Hunt,
+  type ListDealsQueryInput,
+  type ListHuntsQueryInput,
+  type Page,
   type ReadinessResponse,
+  type SellerSnapshot,
+  type UpdateHuntRequest,
 } from '@rein-drop/contracts';
+import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
-export type {
-  ApiErrorBody,
-  ApiErrorCode,
-  ApiErrorDetail,
-  HealthResponse,
-  ReadinessResponse,
-} from '@rein-drop/contracts';
-
-/** Thrown for network failures, timeouts and non-2xx responses. */
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    /** HTTP status code, or undefined when the request never got a response. */
-    readonly status?: number,
-    /** Present when the API returned its standard error body. */
-    readonly code?: ApiErrorCode,
-    readonly details?: ApiErrorDetail[],
-    readonly requestId?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+export { ApiError } from './errors.js';
+export type * from '@rein-drop/contracts';
 
 export interface ApiClientOptions {
   /** e.g. http://localhost:4000 - no trailing path. */
@@ -37,6 +41,11 @@ export interface ApiClientOptions {
   timeoutMs?: number;
   /** Override for tests or non-standard runtimes. */
   fetch?: typeof fetch;
+  /**
+   * Extra headers for every request.
+   * TODO(auth): the auth provider is TBD; credentials will be supplied through this hook.
+   */
+  getHeaders?: HttpOptions['getHeaders'];
 }
 
 export interface ApiClient {
@@ -44,70 +53,78 @@ export interface ApiClient {
   getHealth(): Promise<HealthResponse>;
   /** Readiness. Resolves for both ready (200) and not ready (503). */
   getReadiness(): Promise<ReadinessResponse>;
+
+  /** Current account (placeholder until auth is chosen). */
+  getMe(): Promise<AccountIdentity>;
+  getSellerSnapshot(): Promise<SellerSnapshot>;
+
+  listHunts(query?: ListHuntsQueryInput): Promise<Page<Hunt>>;
+  getHunt(id: string): Promise<Hunt>;
+  createHunt(input: CreateHuntRequest): Promise<Hunt>;
+  updateHunt(id: string, input: UpdateHuntRequest): Promise<Hunt>;
+
+  listDeals(query?: ListDealsQueryInput): Promise<Page<DealSummary>>;
+  getDeal(id: string): Promise<DealDetail>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/**
+ * Throws ApiError for configuration problems immediately, and from each method
+ * for client-side validation, network, timeout, error and contract-mismatch failures.
+ */
 export function createApiClient(options: ApiClientOptions): ApiClient {
-  const baseUrl = normalizeBaseUrl(options.baseUrl);
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const doFetch = options.fetch ?? globalThis.fetch;
-
-  async function request<T>(path: string, acceptStatuses: readonly number[] = []): Promise<T> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let response: Response;
-    try {
-      response = await doFetch(`${baseUrl}${path}`, {
-        headers: { Accept: 'application/json' },
-        signal: controller.signal,
-      });
-    } catch (err) {
-      const reason = controller.signal.aborted
-        ? `timed out after ${timeoutMs}ms`
-        : err instanceof Error
-          ? err.message
-          : String(err);
-      throw new ApiError(`Request to ${path} failed: ${reason}`);
-    } finally {
-      clearTimeout(timer);
-    }
-
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      throw new ApiError(`Response from ${path} was not valid JSON`, response.status);
-    }
-
-    if (response.ok || acceptStatuses.includes(response.status)) {
-      return body as T;
-    }
-    if (isApiErrorBody(body)) {
-      throw new ApiError(body.message, body.statusCode, body.code, body.details, body.requestId);
-    }
-    throw new ApiError(`Request to ${path} failed with HTTP ${response.status}`, response.status);
-  }
+  const http: HttpOptions = {
+    baseUrl: normalizeBaseUrl(options.baseUrl),
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    fetch: options.fetch ?? ((...args) => globalThis.fetch(...args)),
+    getHeaders: options.getHeaders,
+  };
 
   return {
-    getHealth: () => request<HealthResponse>('/health'),
-    getReadiness: () => request<ReadinessResponse>('/ready', [503]),
-  };
-}
+    getHealth: () => send(http, { method: 'GET', path: '/health', response: healthResponseSchema }),
+    getReadiness: () =>
+      send(http, {
+        method: 'GET',
+        path: '/ready',
+        response: readinessResponseSchema,
+        acceptStatuses: [503],
+      }),
 
-function normalizeBaseUrl(raw: string): string {
-  const trimmed = raw?.trim();
-  if (!trimmed) {
-    throw new ApiError('API base URL is not configured');
-  }
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    throw new ApiError(`API base URL is not a valid URL: "${trimmed}"`);
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new ApiError(`API base URL must use http or https: "${trimmed}"`);
-  }
-  return trimmed.replace(/\/+$/, '');
+    getMe: () => send(http, { method: 'GET', path: '/me', response: accountIdentitySchema }),
+    getSellerSnapshot: () =>
+      send(http, { method: 'GET', path: '/me/snapshot', response: sellerSnapshotSchema }),
+
+    listHunts: async (query = {}) =>
+      send(http, {
+        method: 'GET',
+        path: '/hunts',
+        query: validateInput(listHuntsQuerySchema, query, 'query'),
+        response: huntPageSchema,
+      }),
+    getHunt: (id) => send(http, { method: 'GET', path: `/hunts/${pathId(id)}`, response: huntSchema }),
+    createHunt: async (input) =>
+      send(http, {
+        method: 'POST',
+        path: '/hunts',
+        body: validateInput(createHuntRequestSchema, input, 'body'),
+        response: huntSchema,
+      }),
+    updateHunt: async (id, input) =>
+      send(http, {
+        method: 'PATCH',
+        path: `/hunts/${pathId(id)}`,
+        body: validateInput(updateHuntRequestSchema, input, 'body'),
+        response: huntSchema,
+      }),
+
+    listDeals: async (query = {}) =>
+      send(http, {
+        method: 'GET',
+        path: '/deals',
+        query: validateInput(listDealsQuerySchema, query, 'query'),
+        response: dealPageSchema,
+      }),
+    getDeal: (id) => send(http, { method: 'GET', path: `/deals/${pathId(id)}`, response: dealDetailSchema }),
+  };
 }

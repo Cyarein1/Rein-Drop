@@ -4,6 +4,47 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 5 - Shared contracts (zod) + typed API client
+
+**What was added**
+
+- `@rein-drop/contracts` is now zod schemas with inferred types (was plain interfaces), split
+  per flow:
+  - `common`: uuid ids, ISO timestamps, money (integer minor units + ISO-4217), marketplace key
+    (from marketplace-core), cursor pagination (`limit` 1-100, default 20; `{ items, nextCursor }`).
+  - `account`: `AccountIdentity` (`GET /me`) - **placeholder** until the auth provider is chosen
+    (userId, email, displayName only).
+  - `seller-snapshot`: `SellerSnapshot` (`GET /me/snapshot`) - dashboard counts derivable from
+    existing tables (activeHunts, newMatches, savedDeals, inventoryOnHand = IN_STOCK + LISTED).
+    Decided with the user: dashboard summary; profit/revenue metrics TODO.
+  - `hunts`: create (name, query, marketplaces; trimmed, length-limited, unique marketplaces),
+    update (partial, at least one field, can change status), read, list query (status filter).
+    Hunt criteria intentionally omitted (TODO).
+  - `listings`: `ListingSummary` / `ListingDetail` - only cross-marketplace fields.
+  - `deals`: a deal = HuntMatch + listing + latest analysis (`id` = HuntMatch id).
+    `DealSummary` / `DealDetail`; `analysis.result` is opaque (`unknown`) until the AIProvider
+    output is defined. List query: huntId, matchStatus.
+  - `errors` / `health`: existing contracts converted to schemas.
+- `@rein-drop/api-client`: typed methods for all of the above; validates request bodies/queries
+  client-side (server-identical error details), validates responses against the contract,
+  `getHeaders` hook as the auth placeholder. Only throws `ApiError`.
+- api: `contracts-enums.spec.ts` fails if contract enums drift from Prisma enums.
+- Vitest added to contracts and api-client; spec files excluded from `dist` but typechecked
+  (`tsconfig.spec.json`).
+
+**What works (verified)**
+
+- `pnpm build` 11/11 (mobile bundle includes zod), `pnpm typecheck` 17/17, `pnpm lint` 17/17.
+- Tests: contracts 6, api-client 8 (fake fetch: validation, query serialization, error
+  mapping, contract mismatch, 503 readiness, network failure), api 25 + e2e 8, worker 3.
+- One zod 4 copy for all our code (zod 3 exists only inside Expo's CLI tooling).
+
+**Not done (by design)**
+
+- No API endpoints for `/me`, `/me/snapshot`, `/hunts`, `/deals` yet - the client methods will get
+  `404 NOT_FOUND` until the modules implement them.
+
+
 ### Step 4 - API domain modules + cross-cutting concerns
 
 **What was added**
@@ -220,7 +261,6 @@ pnpm --filter mobile start
 
 ## Next step
 
-Resolve the port 5432 conflict (stop native service vs. Docker on 5433). Then likely: auth
-abstraction (local dev auth first) so modules can scope data per user, or the marketplace
-adapter boundary (mock eBay/Facebook adapters writing RawListing -> Listing). (Await the next
-prompt.)
+Resolve the port 5432 conflict (stop native service vs. Docker on 5433). Then likely: local
+dev auth abstraction (so `/me` and per-user data can work), then implement the Hunt endpoints
+against these contracts. (Await the next prompt.)

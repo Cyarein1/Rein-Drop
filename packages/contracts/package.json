@@ -18,13 +18,19 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json",
     "lint": "oxlint src",
-    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@rein-drop/config": "workspace:*",
     "oxlint": "^1.87.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@rein-drop/marketplace-core": "workspace:*",
+    "zod": "^4.6.5"
   }
 }

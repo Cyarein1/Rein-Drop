@@ -24,8 +24,8 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | `apps/api` | `api` | NestJS HTTP API |
 | `apps/worker` | `worker` | Nest standalone background worker (no HTTP) |
 | `apps/mobile` | `mobile` | Expo / React Native |
-| `packages/contracts` | `@rein-drop/contracts` | Shared API request/response types |
-| `packages/api-client` | `@rein-drop/api-client` | Typed fetch client for the API (web + mobile) |
+| `packages/contracts` | `@rein-drop/contracts` | Zod schemas + inferred types for every API request/response (single source of truth) |
+| `packages/api-client` | `@rein-drop/api-client` | Typed, validating fetch client for the API (web + mobile) |
 | `packages/db` | `@rein-drop/db` | Prisma schema, migrations, seed, client (server-only) |
 | `packages/env` | `@rein-drop/env` | Server-side env validation helpers (api + worker) |
 | `packages/marketplace-core` | `@rein-drop/marketplace-core` | Marketplace adapter boundary (eBay, Facebook Marketplace) |
@@ -133,6 +133,25 @@ Physical phone: set `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to your com
 (find it with `ipconfig`, "IPv4 Address"), e.g. `http://192.168.1.50:4000`, and allow Node.js
 through Windows Firewall on private networks when prompted.
 
+## Shared contracts and API client
+
+- **DTOs are defined once**, as zod schemas in `packages/contracts/src/` (one file per flow:
+  `account`, `seller-snapshot`, `hunts`, `listings`, `deals`, `health`, `errors`, plus `common`
+  for ids, timestamps, money and pagination). Types are inferred from the schemas
+  (`z.infer`). Web, mobile and the API import them - never redeclare a request/response type
+  in an app.
+- **Wire conventions:** UUID ids; ISO-8601 UTC timestamps; money as
+  `{ amountMinor: integer, currency: "USD" }`; list endpoints use cursor pagination
+  (`?limit=&cursor=` -> `{ items, nextCursor }`); status enums use the same upper-case values
+  as the database (a test in `apps/api` fails if they drift).
+- **API client:** `createApiClient({ baseUrl })` from `@rein-drop/api-client`. Methods:
+  `getHealth`, `getReadiness`, `getMe`, `getSellerSnapshot`, `listHunts`, `getHunt`,
+  `createHunt`, `updateHunt`, `listDeals`, `getDeal`. It validates request bodies before
+  sending (same `VALIDATION_FAILED` + `details` format as the server, so forms can show the
+  errors directly), validates responses against the contract, and throws only `ApiError`.
+- In the API, use the same schemas for input validation:
+  `class CreateHuntDto extends createZodDto(createHuntRequestSchema) {}`.
+
 ## API conventions (apps/api)
 
 - **Domain modules** live in `apps/api/src/modules/<name>/` - users, seller-profile, hunts,
@@ -184,7 +203,7 @@ running. Start it and wait for "Engine running".
 pnpm build      # build every workspace (mobile = expo export for android + ios)
 pnpm typecheck
 pnpm lint
-pnpm test       # api + worker unit tests
+pnpm test       # api, worker, contracts and api-client unit tests
 pnpm clean      # remove build output
 ```
 
