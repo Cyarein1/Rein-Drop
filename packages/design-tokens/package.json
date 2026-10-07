@@ -1,0 +1,30 @@
+{
+  "name": "@rein-drop/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rein Drop brand design tokens",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "@rein-drop/config": "workspace:*",
+    "oxlint": "^1.87.0",
+    "typescript": "~6.0.3"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "worker",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Rein Drop background worker (Nest standalone application context, no HTTP server)",
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src/",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.1.2",
+    "@nestjs/core": "^12.1.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.8",
+    "@nestjs/schematics": "^12.0.6",
+    "@types/node": "^24.19.1",
+    "oxlint": "^1.87.0",
+    "typescript": "~6.0.3"
+  }
+}

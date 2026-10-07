@@ -1,0 +1,21 @@
+{
+  "name": "rein-drop",
+  "private": true,
+  "description": "Rein Drop - AI-powered reseller sourcing platform (monorepo)",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean"
+  },
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.7"
+  }
+}
