@@ -11,7 +11,12 @@ export async function ApiStatus() {
 
   if (result.ok) {
     return (
-      <p style={{ color: colors.green }}>API reachable ({result.timestamp})</p>
+      <p style={{ color: colors.green }}>
+        API reachable ({result.timestamp}) - database{" "}
+        <span style={{ color: result.database === "up" ? colors.green : colors.orange }}>
+          {result.database}
+        </span>
+      </p>
     );
   }
   return (
@@ -27,10 +32,13 @@ export async function ApiStatus() {
 
 async function checkHealth(
   baseUrl: string,
-): Promise<{ ok: true; timestamp: string } | { ok: false; message: string }> {
+): Promise<
+  | { ok: true; timestamp: string; database: "up" | "down" }
+  | { ok: false; message: string }
+> {
   try {
     const health = await createApiClient({ baseUrl, timeoutMs: 3000 }).getHealth();
-    return { ok: true, timestamp: health.timestamp };
+    return { ok: true, timestamp: health.timestamp, database: health.database };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : String(err) };
   }

@@ -14,7 +14,14 @@
     "infra:status": "docker compose ps",
     "infra:logs": "docker compose logs -f postgres",
     "infra:psql": "docker compose exec postgres psql",
-    "infra:reset": "docker compose down --volumes"
+    "infra:reset": "docker compose down --volumes",
+    "db:generate": "pnpm --filter @rein-drop/db db:generate",
+    "db:migrate": "pnpm --filter @rein-drop/db db:migrate",
+    "db:deploy": "pnpm --filter @rein-drop/db db:deploy",
+    "db:status": "pnpm --filter @rein-drop/db db:status",
+    "db:seed": "pnpm --filter @rein-drop/db db:seed",
+    "db:reset": "pnpm --filter @rein-drop/db db:reset",
+    "db:studio": "pnpm --filter @rein-drop/db db:studio"
   },
   "packageManager": "pnpm@12.9.1",
   "engines": {

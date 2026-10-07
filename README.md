@@ -12,7 +12,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | Web (Next.js) | http://localhost:3000 | `apps/web/package.json` (`--port 3000`) |
 | API (NestJS) | http://localhost:4000 (health: `/health`) | `PORT` in `apps/api/.env` |
 | PostgreSQL (Docker) | `localhost:5432` (loopback only) | `POSTGRES_PORT` in root `.env` |
-| Prisma Studio | http://localhost:5555 | not added yet |
+| Prisma Studio | http://localhost:5555 (when running `pnpm db:studio`) | `packages/db/package.json` |
 | Expo / Metro | http://localhost:8081 | Expo default |
 | Worker | no port (background process) | |
 
@@ -26,6 +26,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | `apps/mobile` | `mobile` | Expo / React Native |
 | `packages/contracts` | `@rein-drop/contracts` | Shared API request/response types |
 | `packages/api-client` | `@rein-drop/api-client` | Typed fetch client for the API (web + mobile) |
+| `packages/db` | `@rein-drop/db` | Prisma schema, migrations, seed, client (server-only) |
 | `packages/env` | `@rein-drop/env` | Server-side env validation helpers (api + worker) |
 | `packages/marketplace-core` | `@rein-drop/marketplace-core` | Marketplace adapter boundary (eBay, Facebook Marketplace) |
 | `packages/ai-core` | `@rein-drop/ai-core` | `AIProvider` boundary (mock locally, Microsoft Foundry later) |
@@ -69,6 +70,7 @@ Copy-Item apps/api/.env.example apps/api/.env
 Copy-Item apps/worker/.env.example apps/worker/.env
 Copy-Item apps/web/.env.example apps/web/.env.local
 Copy-Item apps/mobile/.env.example apps/mobile/.env
+Copy-Item packages/db/.env.example packages/db/.env    # Prisma CLI (migrate/seed/studio)
 ```
 
 The API and worker validate their environment on startup. If something is wrong they exit
@@ -84,7 +86,7 @@ Invalid environment configuration for api:
 |---|---|---|---|
 | `NODE_ENV` | api, worker | `development` | `development` \| `test` \| `production` |
 | `PORT` | api | `4000` | |
-| `DATABASE_URL` | api, worker | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production. Not connected yet. |
+| `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |
@@ -101,10 +103,27 @@ pnpm infra:down     # stop and remove the container (data is kept)
 pnpm infra:reset    # stop AND DELETE all local database data
 ```
 
-### 5. Run the apps (one PowerShell window per process)
+### 5. Create the database schema and seed it
 
 ```powershell
-pnpm --filter api dev       # http://localhost:4000/health
+pnpm db:migrate     # apply migrations (first run creates all tables)
+pnpm db:seed        # eBay + Facebook Marketplace, and development plans (idempotent)
+pnpm db:studio      # browse data at http://localhost:5555 (Ctrl+C to stop)
+```
+
+Other database commands: `pnpm db:status` (pending migrations), `pnpm db:generate` (regenerate
+the client after editing `schema.prisma` - `pnpm build` also does this), `pnpm db:deploy`
+(apply migrations without prompts, for CI/servers), `pnpm db:reset` (**drops all data**,
+re-applies migrations, then run `pnpm db:seed`).
+
+Changing the schema: edit `packages/db/prisma/schema.prisma`, then
+`pnpm db:migrate --name describe_the_change`. Commit the new folder under
+`packages/db/prisma/migrations/`.
+
+### 6. Run the apps (one PowerShell window per process)
+
+```powershell
+pnpm --filter api dev       # http://localhost:4000/health (includes "database": "up" | "down")
 pnpm --filter worker dev    # logs a heartbeat
 pnpm --filter web dev       # http://localhost:3000 - shows API reachability
 pnpm --filter mobile start  # scan the QR code with Expo Go
@@ -128,7 +147,7 @@ Get-Service postgresql*
 Then either:
 
 - **Use another port for Docker** - in root `.env` set `POSTGRES_PORT=5433`, and in
-  `apps/api/.env` and `apps/worker/.env` set
+  `apps/api/.env`, `apps/worker/.env` and `packages/db/.env` set
   `DATABASE_URL=postgresql://reindrop:reindrop@localhost:5433/reindrop`; or
 - **Stop the native service** (admin PowerShell) if you don't need it:
   `Stop-Service postgresql-x64-18; Set-Service postgresql-x64-18 -StartupType Manual`.

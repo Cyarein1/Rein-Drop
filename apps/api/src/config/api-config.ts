@@ -18,7 +18,7 @@ const apiEnvSchema = z.object({
 export interface ApiConfig {
   readonly nodeEnv: NodeEnv;
   readonly port: number;
-  /** Not connected yet - the database layer is added in a later step. */
+  /** Used by DatabaseModule (Prisma). Connection is lazy, so startup never needs the DB. */
   readonly databaseUrl: string;
 }
 

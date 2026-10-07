@@ -1,0 +1,45 @@
+{
+  "name": "@rein-drop/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Prisma schema, migrations, seed and client for the Rein Drop backend (api + worker)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.scripts.json",
+    "lint": "oxlint --ignore-pattern \"src/generated/**\" src prisma prisma.config.ts",
+    "clean": "node -e \"const fs=require('node:fs');for(const d of ['dist','src/generated'])fs.rmSync(d,{recursive:true,force:true})\"",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio --port 5555"
+  },
+  "devDependencies": {
+    "@rein-drop/config": "workspace:*",
+    "@rein-drop/marketplace-core": "workspace:*",
+    "@types/node": "^24.19.1",
+    "oxlint": "^1.87.0",
+    "prisma": "~7.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "~7.10.0",
+    "@prisma/client": "~7.10.0",
+    "@rein-drop/env": "workspace:*"
+  }
+}

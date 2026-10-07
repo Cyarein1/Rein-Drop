@@ -1,0 +1,9 @@
+{
+  "extends": "@rein-drop/config/tsconfig/library.json",
+  "display": "Typecheck only: prisma.config.ts and prisma/seed.ts (run via Prisma CLI / tsx)",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["prisma.config.ts", "prisma/**/*.ts"]
+}

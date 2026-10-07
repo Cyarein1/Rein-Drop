@@ -1,0 +1,490 @@
+// Rein Drop - initial PostgreSQL schema.
+//
+// Conventions
+// - IDs: time-ordered UUIDv7 stored as native uuid.
+// - Money: integer minor units (e.g. cents) + ISO-4217 currency code. Never floats.
+// - Timestamps: timestamptz(3).
+// - Marketplace-specific data never becomes a column on Listing. It stays in
+//   RawListing.payload (verbatim source) and Listing.sourceMetadata (extras kept
+//   after normalization). Marketplaces are rows, not an enum, so adding one does
+//   not require a migration.
+// - Fields whose shape is a pending product decision are Json with a TODO, rather
+//   than invented columns.
+//
+// Datasource URL is configured in prisma.config.ts (Prisma 7).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums - stable lifecycle / status concepts only
+// ---------------------------------------------------------------------------
+
+enum HuntStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+/// Processing state of a raw source record.
+enum RawListingStatus {
+  PENDING
+  NORMALIZED
+  FAILED
+  SKIPPED
+}
+
+/// Availability of a listing on its source marketplace, as last observed.
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  ENDED
+  REMOVED
+  UNKNOWN
+}
+
+/// User-facing state of a match between a hunt and a listing.
+enum HuntMatchStatus {
+  NEW
+  SEEN
+  DISMISSED
+}
+
+enum DealAnalysisStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum AlertChannel {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum InventoryStatus {
+  IN_STOCK
+  LISTED
+  SOLD
+  RETURNED
+  WRITTEN_OFF
+}
+
+enum CostCategory {
+  SHIPPING
+  MARKETPLACE_FEE
+  PAYMENT_FEE
+  REPAIR
+  SUPPLIES
+  OTHER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+/// TODO(auth): link to the managed auth provider's subject id once the provider is chosen.
+model User {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  email       String   @unique
+  displayName String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  sellerProfile  SellerProfile?
+  hunts          Hunt[]
+  alerts         Alert[]
+  savedDeals     SavedDeal[]
+  inventoryItems InventoryItem[]
+  sales          Sale[]
+  costs          Cost[]
+  subscriptions  Subscription[]
+  usageEvents    UsageEvent[]
+}
+
+/// Reseller-specific profile, 1:1 with User.
+/// TODO(product): sourcing preferences (location, categories, budgets) are not specified yet.
+model SellerProfile {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  userId      String   @unique @db.Uuid
+  displayName String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Marketplaces & listings
+// ---------------------------------------------------------------------------
+
+/// A listing source. `key` matches MarketplaceId in @rein-drop/marketplace-core.
+model Marketplace {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  key       String   @unique
+  name      String
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  huntMarketplaces HuntMarketplace[]
+  rawListings      RawListing[]
+  listings         Listing[]
+  sales            Sale[]
+}
+
+/// Verbatim record fetched from a marketplace adapter. Append-only snapshots:
+/// the same external listing can be fetched many times.
+model RawListing {
+  id            String           @id @default(uuid(7)) @db.Uuid
+  marketplaceId String           @db.Uuid
+  /// The marketplace's own identifier for the listing.
+  externalId    String
+  /// Unmodified source payload.
+  payload       Json
+  status        RawListingStatus @default(PENDING)
+  /// Why normalization failed or was skipped.
+  statusReason  String?
+  fetchedAt     DateTime         @default(now()) @db.Timestamptz(3)
+  /// Set once normalized into a Listing.
+  listingId     String?          @db.Uuid
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+
+  marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+  listing     Listing?    @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([marketplaceId, externalId])
+  @@index([status])
+  @@index([listingId])
+}
+
+/// Normalized, marketplace-agnostic listing. One row per (marketplace, externalId).
+/// Only fields common to every marketplace belong here.
+model Listing {
+  id             String        @id @default(uuid(7)) @db.Uuid
+  marketplaceId  String        @db.Uuid
+  externalId     String
+  url            String
+  title          String
+  description    String?
+  /// Asking price in minor units; null when the source shows no price.
+  priceMinor     Int?
+  currency       String?       @db.Char(3)
+  /// Source wording, not yet normalized. TODO(marketplace): normalized condition scale.
+  conditionText  String?
+  /// Source wording. TODO(marketplace): structured location once needed for distance search.
+  locationText   String?
+  imageUrls      String[]
+  status         ListingStatus @default(UNKNOWN)
+  /// When the seller listed it, if the source exposes it.
+  listedAt       DateTime?     @db.Timestamptz(3)
+  firstSeenAt    DateTime      @default(now()) @db.Timestamptz(3)
+  lastSeenAt     DateTime      @default(now()) @db.Timestamptz(3)
+  /// Marketplace-specific extras retained after normalization (never queried as columns).
+  sourceMetadata Json?
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+
+  marketplace    Marketplace     @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+  rawListings    RawListing[]
+  huntMatches    HuntMatch[]
+  dealAnalyses   DealAnalysis[]
+  savedDeals     SavedDeal[]
+  inventoryItems InventoryItem[]
+
+  @@unique([marketplaceId, externalId])
+  @@index([status])
+  @@index([lastSeenAt])
+}
+
+// ---------------------------------------------------------------------------
+// Hunts (saved sourcing searches) & matches
+// ---------------------------------------------------------------------------
+
+model Hunt {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  userId    String     @db.Uuid
+  name      String
+  /// Free-text search terms.
+  query     String
+  /// TODO(product): typed filter shape (price range, condition, location radius...)
+  /// to be defined in @rein-drop/contracts before it is relied on.
+  criteria  Json?
+  status    HuntStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplaces HuntMarketplace[]
+  matches      HuntMatch[]
+  alerts       Alert[]
+
+  @@index([userId, status])
+}
+
+/// Which marketplaces a hunt searches.
+model HuntMarketplace {
+  huntId        String   @db.Uuid
+  marketplaceId String   @db.Uuid
+  isEnabled     Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  hunt        Hunt        @relation(fields: [huntId], references: [id], onDelete: Cascade)
+  marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)
+
+  @@id([huntId, marketplaceId])
+  @@index([marketplaceId])
+}
+
+/// A listing that matched a hunt. Separate from Listing (shared across users)
+/// and RawListing (source data).
+model HuntMatch {
+  id        String          @id @default(uuid(7)) @db.Uuid
+  huntId    String          @db.Uuid
+  listingId String          @db.Uuid
+  status    HuntMatchStatus @default(NEW)
+  matchedAt DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime        @updatedAt @db.Timestamptz(3)
+
+  hunt         Hunt           @relation(fields: [huntId], references: [id], onDelete: Cascade)
+  listing      Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  dealAnalyses DealAnalysis[]
+  alerts       Alert[]
+  savedDeals   SavedDeal[]
+
+  @@unique([huntId, listingId])
+  @@index([huntId, status])
+  @@index([listingId])
+}
+
+/// AI evaluation of a listing, optionally in the context of a hunt match.
+model DealAnalysis {
+  id           String             @id @default(uuid(7)) @db.Uuid
+  listingId    String             @db.Uuid
+  huntMatchId  String?            @db.Uuid
+  status       DealAnalysisStatus @default(PENDING)
+  /// AIProvider id that produced it, e.g. "mock" | "foundry" (see @rein-drop/ai-core).
+  provider     String
+  /// Provider model/deployment name, when applicable.
+  model        String?
+  /// TODO(ai): structured output schema is defined with the AIProvider interface.
+  result       Json?
+  errorMessage String?
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  completedAt  DateTime?          @db.Timestamptz(3)
+
+  listing   Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+
+  @@index([listingId, createdAt])
+  @@index([huntMatchId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// User engagement
+// ---------------------------------------------------------------------------
+
+model Alert {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  userId       String       @db.Uuid
+  huntId       String?      @db.Uuid
+  huntMatchId  String?      @db.Uuid
+  channel      AlertChannel
+  status       AlertStatus  @default(PENDING)
+  title        String
+  body         String?
+  errorMessage String?
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  sentAt       DateTime?    @db.Timestamptz(3)
+  readAt       DateTime?    @db.Timestamptz(3)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hunt      Hunt?      @relation(fields: [huntId], references: [id], onDelete: SetNull)
+  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+}
+
+model SavedDeal {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  userId      String   @db.Uuid
+  listingId   String   @db.Uuid
+  /// The match it was saved from, if any.
+  huntMatchId String?  @db.Uuid
+  note        String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, listingId])
+}
+
+// ---------------------------------------------------------------------------
+// Reselling ledger
+// ---------------------------------------------------------------------------
+
+/// An item the user bought to resell. Doubles as the purchase record.
+/// TODO(product): quantity/lots - currently one row per physical item.
+model InventoryItem {
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  userId             String          @db.Uuid
+  /// Source listing it was bought from, if sourced through Rein Drop.
+  listingId          String?         @db.Uuid
+  title              String
+  status             InventoryStatus @default(IN_STOCK)
+  purchasePriceMinor Int
+  currency           String          @db.Char(3)
+  purchasedAt        DateTime        @db.Timestamptz(3)
+  notes              String?
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  sale    Sale?
+  costs   Cost[]
+
+  @@index([userId, status])
+}
+
+model Sale {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @db.Uuid
+  inventoryItemId String   @unique @db.Uuid
+  /// Where it sold, when it was one of the known marketplaces.
+  marketplaceId   String?  @db.Uuid
+  salePriceMinor  Int
+  currency        String   @db.Char(3)
+  soldAt          DateTime @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  marketplace   Marketplace?  @relation(fields: [marketplaceId], references: [id], onDelete: SetNull)
+  costs         Cost[]
+
+  @@index([userId, soldAt])
+}
+
+/// Additional cost attached to an inventory item and/or a sale.
+model Cost {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  userId          String       @db.Uuid
+  inventoryItemId String?      @db.Uuid
+  saleId          String?      @db.Uuid
+  category        CostCategory
+  amountMinor     Int
+  currency        String       @db.Char(3)
+  incurredAt      DateTime     @db.Timestamptz(3)
+  note            String?
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  sale          Sale?          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([userId, incurredAt])
+  @@index([inventoryItemId])
+  @@index([saleId])
+}
+
+// ---------------------------------------------------------------------------
+// Plans, entitlements, billing & usage
+// ---------------------------------------------------------------------------
+
+/// TODO(billing): prices live with the billing provider (Stripe is the leading candidate, TBD);
+/// no price columns until that is decided.
+model Plan {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  code              String   @unique
+  name              String
+  isActive          Boolean  @default(true)
+  /// Seeded for local development only; must never be offered to real users.
+  isDevelopmentOnly Boolean  @default(false)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  entitlements  Entitlement[]
+  subscriptions Subscription[]
+}
+
+/// A capability or limit granted by a plan.
+/// TODO(product): entitlement keys and limits are not defined yet.
+model Entitlement {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  planId    String   @db.Uuid
+  /// Stable feature key, also used by UsageEvent.key for metered features.
+  key       String
+  /// Numeric limit; null means unlimited (or not a metered feature).
+  limit     Int?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, key])
+}
+
+model Subscription {
+  id                     String             @id @default(uuid(7)) @db.Uuid
+  userId                 String             @db.Uuid
+  planId                 String             @db.Uuid
+  status                 SubscriptionStatus
+  /// TODO(billing): billing provider name and its subscription id, once chosen.
+  provider               String?
+  providerSubscriptionId String?            @unique
+  currentPeriodStart     DateTime?          @db.Timestamptz(3)
+  currentPeriodEnd       DateTime?          @db.Timestamptz(3)
+  canceledAt             DateTime?          @db.Timestamptz(3)
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime           @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+}
+
+/// Append-only record of metered usage, checked against Entitlement limits.
+model UsageEvent {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  userId         String   @db.Uuid
+  /// Matches Entitlement.key.
+  key            String
+  quantity       Int      @default(1)
+  /// Optional caller-supplied key to make recording idempotent.
+  idempotencyKey String?  @unique
+  metadata       Json?
+  occurredAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, key, occurredAt])
+}
