@@ -1,50 +1,56 @@
 import { Logger } from '@nestjs/common';
-import type { NotificationCategory } from '@rein-drop/contracts';
+import type { PrismaClient } from '@rein-drop/db';
+import { ExpoPushProvider } from './push/expo-push-provider.js';
+import { PushNotificationSender } from './push/push-sender.js';
+import type { PushProvider } from './push/push-provider.js';
+import { SimulatedPushProvider } from './push/simulated-push-provider.js';
+import type { NotificationMessage, NotificationSender, SendResult } from './sender-types.js';
 
-export interface NotificationMessage {
-  deliveryId: string;
-  alertId: string;
-  channel: 'PUSH' | 'EMAIL';
-  category: NotificationCategory;
-  title: string;
-  body: string | null;
-  recipient: { userId: string; email: string };
-}
+export { DeliverySkipped, type NotificationMessage, type NotificationSender, type SendResult } from './sender-types.js';
 
 /**
- * One external channel (push or email). Real providers implement this later (Expo push:
- * Build Prompt 25; email provider TBD). `send` throws to signal failure; the dispatcher retries.
- */
-export interface NotificationSender {
-  /** Stored as NotificationDelivery.provider. */
-  readonly id: string;
-  /** True for the local simulator: deliveries become SIMULATED, never SENT. */
-  readonly simulated: boolean;
-  send(message: NotificationMessage): Promise<void>;
-}
-
-/**
- * Local simulator: "delivers" by writing a log line. Together with the NotificationDelivery rows
- * (status SIMULATED) this is the notification log, so the whole pipeline runs without Expo push
- * or an email provider. Never used in production (worker config refuses it).
+ * Local email simulator: "delivers" by writing a log line. Together with the NotificationDelivery
+ * rows (status SIMULATED) this is the notification log. Never used in production (config refuses it).
+ * TODO(notifications): email provider TBD.
  */
 export class SimulatedSender implements NotificationSender {
-  readonly id = 'simulator';
-  readonly simulated = true;
   private readonly logger = new Logger('NotificationSimulator');
   /** Messages "sent" by this instance (handy in tests). */
   readonly sent: NotificationMessage[] = [];
 
-  async send(message: NotificationMessage): Promise<void> {
+  async send(message: NotificationMessage): Promise<SendResult> {
     this.sent.push(message);
     this.logger.log(`[simulated ${message.channel.toLowerCase()}] to ${message.recipient.email}: ${message.title}${message.body ? ` - ${message.body}` : ''}`);
+    return { provider: 'simulator', simulated: true };
   }
 }
 
 export type NotificationSenders = Partial<Record<'PUSH' | 'EMAIL', NotificationSender>>;
 
-/** `simulator`: both channels simulated. `disabled`: no external channel (deliveries SKIPPED). */
-export function createNotificationSenders(mode: 'simulator' | 'disabled'): NotificationSenders {
-  if (mode === 'disabled') return {};
-  return { PUSH: new SimulatedSender(), EMAIL: new SimulatedSender() };
+export interface SenderConfig {
+  nodeEnv: string;
+  /** Email (and anything without its own provider). */
+  delivery: 'simulator' | 'disabled';
+  push: { provider: 'expo' | 'simulator' | 'none'; expoAccessToken: string | null };
+}
+
+/**
+ * Wires the senders from config:
+ * - PUSH: per device provider - `expo` tokens go to the Expo push service when PUSH_PROVIDER=expo
+ *   (else the simulator); `dev_simulated` tokens are always simulated, and never outside
+ *   development. PUSH_PROVIDER=none -> no push sender (deliveries SKIPPED not_configured).
+ * - EMAIL: simulator or nothing.
+ */
+export function createNotificationSenders(prisma: PrismaClient, config: SenderConfig): NotificationSenders {
+  const senders: NotificationSenders = {};
+  if (config.delivery === 'simulator') senders.EMAIL = new SimulatedSender();
+  if (config.push.provider !== 'none') {
+    const simulator = new SimulatedPushProvider();
+    const providers: Record<string, PushProvider> = {
+      expo: config.push.provider === 'expo' ? new ExpoPushProvider({ accessToken: config.push.expoAccessToken ?? undefined }) : simulator,
+    };
+    if (config.nodeEnv !== 'production') providers.dev_simulated = simulator;
+    senders.PUSH = new PushNotificationSender(prisma, providers);
+  }
+  return senders;
 }

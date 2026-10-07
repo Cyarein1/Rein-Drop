@@ -3,6 +3,7 @@ import type { NotificationCategory } from '@rein-drop/contracts';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
 import type { Clock } from '../queue/job-queue.js';
 import { exponentialBackoffMs } from '../queue/job-runner.js';
+import { DeliverySkipped } from './sender-types.js';
 import type { NotificationSenders } from './senders.js';
 
 export interface DispatcherOptions {
@@ -75,22 +76,27 @@ export class NotificationDispatcher {
       return 'skipped';
     }
     try {
-      await sender.send({
+      const result = await sender.send({
         deliveryId: id,
         alertId: delivery.alertId,
         channel: channel as 'PUSH' | 'EMAIL',
         category: delivery.alert.category as NotificationCategory,
         title: delivery.alert.title,
         body: delivery.alert.body,
+        dealId: delivery.alert.huntMatchId,
         recipient: { userId: delivery.alert.user.id, email: delivery.alert.user.email },
       });
-      await finish({ status: sender.simulated ? 'SIMULATED' : 'SENT', provider: sender.id, sentAt: now, reason: null });
-      return sender.simulated ? 'simulated' : 'sent';
+      await finish({ status: result.simulated ? 'SIMULATED' : 'SENT', provider: result.provider, sentAt: now, reason: null });
+      return result.simulated ? 'simulated' : 'sent';
     } catch (err) {
+      if (err instanceof DeliverySkipped) {
+        await finish({ status: 'SKIPPED', reason: err.reason });
+        return 'skipped';
+      }
       const reason = (err instanceof Error ? err.message : String(err)).slice(0, 500);
       if (delivery.attempts >= this.options.maxAttempts) {
         this.logger.warn(`Delivery ${id} (${channel}) failed after ${delivery.attempts} attempts: ${reason}`);
-        await finish({ status: 'FAILED', provider: sender.id, reason });
+        await finish({ status: 'FAILED', reason });
         return 'failed';
       }
       // Stay PENDING; not claimable again until the backoff has passed.

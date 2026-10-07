@@ -180,6 +180,7 @@ model User {
   hunts                   Hunt[]
   alerts                  Alert[]
   notificationPreferences NotificationPreference[]
+  pushDevices             PushDevice[]
   savedDeals              SavedDeal[]
   inventoryItems          InventoryItem[]
   sales                   Sale[]
@@ -628,6 +629,32 @@ model NotificationDelivery {
 
   @@unique([alertId, channel])
   @@index([status, createdAt])
+}
+
+/// A phone that can receive push notifications for a user. Keyed by its token: registering the same
+/// token again refreshes it (and moves it to the signed-in user).
+model PushDevice {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  userId         String    @db.Uuid
+  /// PUSH_DEVICE_PROVIDERS in @rein-drop/contracts: "expo" (Expo push token) | "dev_simulated"
+  /// (development only: Expo Go can't receive push since SDK 53, so it registers a simulated token).
+  provider       String
+  token          String    @unique
+  /// "ios" | "android".
+  platform       String
+  deviceName     String?
+  appVersion     String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  /// Last registration from the app (refreshed on launch while permission is granted).
+  lastSeenAt     DateTime  @default(now()) @db.Timestamptz(3)
+  /// Set when the device must not be used (unregistered by the user, or the push service said
+  /// the token is no longer valid). Re-registering clears it.
+  disabledAt     DateTime? @db.Timestamptz(3)
+  disabledReason String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, disabledAt])
 }
 
 /// A user's explicit choice for one (category, channel). Missing rows use the defaults in

@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-07, after step 27 (Build Prompt 24)._
+_Last updated: 2026-10-07, after step 28 (Build Prompt 25)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -37,6 +37,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D19 | Feed ranking: freshness bonus size and how fast it fades | Step 25 | Up to 14 points, fading over 72 hours (never lifts a deal over a stronger band) |
 | D21 | Notification defaults (push on / email off for alerts; weekly insight + marketing opt-in) | Step 27 | Decision 0006 table |
 | D22 | Quiet hours, per-Hunt caps / digests, and whether a later "exceptional" score should alert again | Step 27 | None; one alert per deal, never upgraded |
+| D23 | Expo / EAS account for a development build (needed to receive real pushes) | Step 28 | Expo Go + simulated development tokens |
 | D20 | Ignore reasons: free text, or a fixed list of choices? | Step 25 | Optional free text (200 chars) |
 
 ## 2. Not built yet (by area)
@@ -83,7 +84,8 @@ These block or shape work; the code uses placeholders until you decide.
 - Undo / edit a purchase made with Bought (price, date, costs) - step 25; prompt 28.
 - Listing images on deal cards / detail (dev image URLs are fake; real image hosts need allowlisting) - step 26.
 - The AI explanation doesn't receive comparables, so with an estimate it can contradict the economics ("estimated in a later step") - step 26 (with D13).
-- Expo push notifications (device tokens, permission timing, real push sender) - prompt 25 (next).
+- Real push on a phone: EAS project id + development build (D23) - step 28.
+- Expo push receipts (errors reported after the ticket), badge counts - step 28.
 - Email provider for notifications - step 27 (D14).
 - Operational alerts (source degraded long enough to matter) and the weekly insight are not generated - step 27; prompt 32.
 - Exceptional-deal mascot asset (only if approved artwork exists) - prompt 23.
@@ -117,7 +119,8 @@ These block or shape work; the code uses placeholders until you decide.
 ## 3. Built but not yet verified by a person
 
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
-  (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27). Only typecheck / lint / bundle builds have been run.
+  (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27), push permission
+  prompt + tap-to-open + real Expo push (step 28). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -135,7 +138,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-25 Expo push - 26 Hunts management screens - 27 Home dashboard - 28 Bought / Inventory / Sold
+26 Hunts management screens - 27 Home dashboard - 28 Bought / Inventory / Sold
 backend - 29 Inventory and sale UI - 30 Analytics backend - 31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
@@ -166,4 +169,6 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Stale "TODO(product): matching rules" comment in the API matching module | Step 21 | Step 25 |
 | Deals feed + Deal Detail screens (web + mobile) | Step 5 | Step 26 |
 | Alerts: preferences, one alert per eligible deal, deliveries, simulator, inbox | Step 24 | Step 27 |
+| Expo push: PushProvider, device tokens, permission after first live Hunt | Step 27 | Step 28 |
+| Stale "monitoring engine isn't built yet" note on the live screens | Step 17 | Step 28 |
 | Worker could overwrite a user's decision made while a search was running | Step 25 (found) | Step 25 |

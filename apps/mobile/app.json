@@ -33,7 +33,13 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#12233F"
+        }
+      ]
     ]
   }
 }

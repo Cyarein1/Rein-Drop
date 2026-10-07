@@ -309,6 +309,15 @@ describe('API (e2e)', () => {
       expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
     });
 
+    it('push device registration requires auth and a token in the format of its provider', async () => {
+      await request(app.getHttpServer()).post('/me/push-devices').send({}).expect(401);
+      const res = await asDev(request(app.getHttpServer()).post('/me/push-devices'))
+        .send({ provider: 'expo', token: 'not-a-token', platform: 'android' })
+        .expect(400);
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain('body.token');
+      await asDev(request(app.getHttpServer()).post('/me/push-devices')).send({ provider: 'fcm', token: 'x', platform: 'android' }).expect(400);
+    });
+
     it('rejects a malformed alert id with 400', async () => {
       await asDev(request(app.getHttpServer()).post('/alerts/nope/read')).expect(400);
     });

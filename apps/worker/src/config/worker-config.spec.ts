@@ -16,7 +16,7 @@ describe('loadWorkerConfig', () => {
         maxAttempts: 5,
         searchMaxPages: 1,
       },
-      notifications: { delivery: 'simulator' },
+      notifications: { delivery: 'simulator', push: { provider: 'simulator', expoAccessToken: null } },
       ai: { provider: 'mock' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
     });
@@ -39,6 +39,7 @@ describe('loadWorkerConfig', () => {
         'HUNT_POLL_INTERVAL_MINUTES: is required when NODE_ENV=production',
         'AI_PROVIDER: is required when NODE_ENV=production',
         'NOTIFICATION_DELIVERY: is required when NODE_ENV=production',
+        'PUSH_PROVIDER: is required when NODE_ENV=production',
       ]);
     }
   });
@@ -63,15 +64,22 @@ describe('loadWorkerConfig', () => {
         HUNT_POLL_INTERVAL_MINUTES: '15',
         AI_PROVIDER: 'foundry',
         NOTIFICATION_DELIVERY: 'disabled',
+        PUSH_PROVIDER: 'expo',
         FACEBOOK_DEV_SCENARIO: 'empty',
       }),
     ).toThrow('FACEBOOK_DEV_SCENARIO: development-only, not allowed when NODE_ENV=production');
   });
 
   it('simulates notifications locally and refuses the simulator in production', () => {
-    expect(loadWorkerConfig({ NOTIFICATION_DELIVERY: 'disabled' }).notifications).toEqual({ delivery: 'disabled' });
+    expect(loadWorkerConfig({ NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'expo', EXPO_ACCESS_TOKEN: 'secret' }).notifications).toEqual({
+      delivery: 'disabled',
+      push: { provider: 'expo', expoAccessToken: 'secret' },
+    });
     expect(() =>
-      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'foundry', NOTIFICATION_DELIVERY: 'simulator' }),
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'foundry', NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'simulator' }),
+    ).toThrow('PUSH_PROVIDER: simulator is development-only, not allowed when NODE_ENV=production');
+    expect(() =>
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'foundry', NOTIFICATION_DELIVERY: 'simulator', PUSH_PROVIDER: 'expo' }),
     ).toThrow('NOTIFICATION_DELIVERY: simulator is development-only, not allowed when NODE_ENV=production');
   });
 
@@ -79,7 +87,7 @@ describe('loadWorkerConfig', () => {
     expect(loadWorkerConfig({ AI_PROVIDER: 'foundry' }).ai).toEqual({ provider: 'foundry' });
     expect(() => loadWorkerConfig({ AI_PROVIDER: 'openai' })).toThrow(/AI_PROVIDER: must be one of: mock, foundry/);
     expect(() =>
-      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock', NOTIFICATION_DELIVERY: 'disabled' }),
+      loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock', NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'expo' }),
     ).toThrow('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
   });
 });

@@ -6,6 +6,7 @@ import { huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapsh
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
+import { PushCard } from '@/notifications/PushCard';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
@@ -95,6 +96,12 @@ export default function SettingsScreen() {
       <Card title="Plan & billing">
         <Text style={[styles.muted, font('regular')]}>Plans and pricing are not decided yet.</Text>
       </Card>
+
+      {sessionState.status === 'authenticated' && (
+        <Card title="Notifications on this phone">
+          <PushCard variant="settings" />
+        </Card>
+      )}
 
       {sessionState.status === 'authenticated' ? (
         <NotificationsCard />

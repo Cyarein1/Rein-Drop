@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useState, useTransition } from "react";
 import type { ActivationBlock, ActivationCheck, EntitlementEvaluation, Hunt, Plan } from "@rein-drop/api-client";
@@ -219,12 +220,11 @@ function LiveView({ hunt, context }: { hunt: Hunt; context: HuntFormContext }) {
       </Card>
       <Card title="What happens next">
         <p>You can leave Rein Drop. We&apos;ll alert you when something worth reviewing appears.</p>
+        <p>
+          Alerts land in your <Link href="/alerts">inbox</Link>. To get them as notifications, open the Rein Drop app on your
+          phone and turn notifications on.
+        </p>
       </Card>
-      <SystemBanner
-        tone="info"
-        title="Development note"
-        message="The monitoring engine isn't built yet, so marketplaces are not actually being checked."
-      />
       <div className={styles.actions}>
         <ButtonLink href="/hunts" fullWidth>
           Go to Hunts

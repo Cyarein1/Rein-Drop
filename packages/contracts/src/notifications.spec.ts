@@ -54,3 +54,17 @@ describe('notification preferences', () => {
     expect(updateNotificationPreferencesRequestSchema.safeParse({ changes: [] }).success).toBe(false);
   });
 });
+
+describe('push device registration', () => {
+  const base = { platform: 'android', deviceName: 'Pixel 8' } as const;
+  it('accepts Expo tokens and development simulated tokens in their own formats', async () => {
+    const { registerPushDeviceRequestSchema } = await import('./notifications.js');
+    expect(registerPushDeviceRequestSchema.safeParse({ ...base, provider: 'expo', token: 'ExponentPushToken[abc123XYZ]' }).success).toBe(true);
+    expect(registerPushDeviceRequestSchema.safeParse({ ...base, provider: 'expo', token: 'ExpoPushToken[abc]' }).success).toBe(true);
+    expect(registerPushDeviceRequestSchema.safeParse({ ...base, provider: 'dev_simulated', token: 'dev-simulated:0199a000-0000-7000-8000-000000000001' }).success).toBe(true);
+    const wrong = registerPushDeviceRequestSchema.safeParse({ ...base, provider: 'expo', token: 'dev-simulated:0199a000-0000-7000-8000-000000000001' });
+    expect(wrong.success).toBe(false);
+    expect(wrong.error!.issues[0]!.path).toEqual(['token']);
+    expect(registerPushDeviceRequestSchema.safeParse({ ...base, provider: 'apns', token: 'x' }).success).toBe(false);
+  });
+});

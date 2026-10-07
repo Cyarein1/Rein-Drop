@@ -121,4 +121,29 @@ describe('Notifications (integration, real database)', () => {
     expect(log.items.find((d) => d.channel === 'EMAIL')!.reason).toBe('disabled_by_preference');
     expect(((await as(request(server()).get('/dev/notifications'), OTHER).expect(200)).body as NotificationLog).items).toHaveLength(0);
   });
+
+  it('push devices: register, refresh by token, move between accounts, unregister', async () => {
+    const token = `ExponentPushToken[int-test-${randomUUID().slice(0, 8)}]`;
+    const first = await as(request(server()).post('/me/push-devices')).send({ provider: 'expo', token, platform: 'ios', deviceName: 'iPhone 15' }).expect(200);
+    expect(first.body).toMatchObject({ provider: 'expo', platform: 'ios', deviceName: 'iPhone 15', active: true, disabledReason: null });
+    // Refresh (app launch): same row, newer lastSeenAt.
+    const again = await as(request(server()).post('/me/push-devices')).send({ provider: 'expo', token, platform: 'ios', deviceName: 'iPhone 15' }).expect(200);
+    expect(again.body.id).toBe(first.body.id);
+    expect(Date.parse(again.body.lastSeenAt)).toBeGreaterThanOrEqual(Date.parse(first.body.lastSeenAt));
+    expect((await as(request(server()).get('/me/push-devices')).expect(200)).body.items).toHaveLength(1);
+
+    // Unregister: kept, inactive; someone else can't touch it.
+    await as(request(server()).delete(`/me/push-devices/${first.body.id}`), OTHER).expect(404);
+    const off = await as(request(server()).delete(`/me/push-devices/${first.body.id}`)).expect(200);
+    expect(off.body).toMatchObject({ active: false, disabledReason: 'unregistered' });
+
+    // The same phone signs into another account: the token moves and is active again.
+    const moved = await as(request(server()).post('/me/push-devices'), OTHER).send({ provider: 'expo', token, platform: 'ios' }).expect(200);
+    expect(moved.body).toMatchObject({ id: first.body.id, active: true });
+    expect((await as(request(server()).get('/me/push-devices')).expect(200)).body.items).toHaveLength(0);
+    expect((await prisma.pushDevice.findUniqueOrThrow({ where: { token } })).userId).toBe(otherId);
+
+    // Development token from Expo Go (allowed outside production).
+    await as(request(server()).post('/me/push-devices')).send({ provider: 'dev_simulated', token: `dev-simulated:${randomUUID()}`, platform: 'android' }).expect(200);
+  });
 });

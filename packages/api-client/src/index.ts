@@ -11,6 +11,9 @@ import {
   markAllAlertsReadResponseSchema,
   notificationLogSchema,
   notificationPreferencesSchema,
+  pushDeviceListSchema,
+  pushDeviceSchema,
+  registerPushDeviceRequestSchema,
   updateNotificationPreferencesRequestSchema,
   createHuntRequestSchema,
   dealDetailSchema,
@@ -42,6 +45,8 @@ import {
   type ListAlertsQueryInput,
   type NotificationLog,
   type NotificationPreferences,
+  type PushDevice,
+  type RegisterPushDeviceRequest,
   type UpdateNotificationPreferencesRequest,
   type SaveSellerSnapshotRequestInput,
   type CreateHuntRequestInput,
@@ -162,6 +167,12 @@ export interface ApiClient {
   markAllAlertsRead(): Promise<{ updated: number }>;
   /** DEVELOPMENT ONLY: the notification simulator log (404 in production). */
   getNotificationLog(): Promise<NotificationLog>;
+
+  /** Register (or refresh) this phone for push. Same token = same device. */
+  registerPushDevice(input: RegisterPushDeviceRequest): Promise<PushDevice>;
+  listPushDevices(): Promise<PushDevice[]>;
+  /** Stop push to this phone. */
+  unregisterPushDevice(id: string): Promise<PushDevice>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -301,5 +312,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     markAlertRead: (id) => send(http, { method: 'POST', path: `/alerts/${pathId(id)}/read`, response: alertSchema }),
     markAllAlertsRead: () => send(http, { method: 'POST', path: '/alerts/read-all', response: markAllAlertsReadResponseSchema }),
     getNotificationLog: () => send(http, { method: 'GET', path: '/dev/notifications', response: notificationLogSchema }),
+
+    registerPushDevice: async (input) =>
+      send(http, {
+        method: 'POST',
+        path: '/me/push-devices',
+        body: validateInput(registerPushDeviceRequestSchema, input, 'body'),
+        response: pushDeviceSchema,
+      }),
+    listPushDevices: async () => (await send(http, { method: 'GET', path: '/me/push-devices', response: pushDeviceListSchema })).items,
+    unregisterPushDevice: (id) => send(http, { method: 'DELETE', path: `/me/push-devices/${pathId(id)}`, response: pushDeviceSchema }),
   };
 }

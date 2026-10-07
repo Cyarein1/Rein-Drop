@@ -1,11 +1,58 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 27)_
+_Last updated: 2026-10-07 (step 28)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 28 - Expo push notifications with a development device token flow (Build Prompt 25)
+
+**What was added** (rules: addendum in `docs/decisions/0006-alerts-and-notifications.md`)
+
+- DB migration `..._push_devices`: `PushDevice` (user, provider `expo` | `dev_simulated`,
+  unique token, platform, device name, app version, lastSeenAt, disabledAt / disabledReason).
+- Contracts: register request (token format checked per provider), device + list schemas.
+- API: `GET/POST /me/push-devices`, `DELETE /me/push-devices/:id` (kept, marked unregistered;
+  re-registering re-enables and moves a token to the signed-in user). Development tokens -> 403
+  in production.
+- Worker: `PushProvider` interface; `ExpoPushProvider` (Expo Push Service, batches of 100,
+  optional access token, ticket errors mapped, outages retryable); `SimulatedPushProvider`;
+  `PushNotificationSender` (all active devices, each through its provider; dead tokens disabled;
+  no device -> SKIPPED `no_device`). Senders now report `{ provider, simulated }`;
+  `DeliverySkipped` marks a delivery SKIPPED with a reason. Config `PUSH_PROVIDER`
+  (simulator | expo | none; required in production, simulator refused), `EXPO_ACCESS_TOKEN`;
+  `NOTIFICATION_DELIVERY` now covers email only.
+- Mobile (`expo-notifications`, `expo-device`, AsyncStorage via `expo install`; config plugin):
+  `src/notifications/push.ts` (permission, Android "alerts" channel, Expo token in a development
+  build, stable `dev-simulated:` token in Expo Go / simulator / no EAS project in development,
+  registration, refresh, disable); `NotificationsBridge` (foreground display, silent refresh on
+  launch only when already allowed, tap -> opens the deal + marks the alert read, cold start
+  included); `PushCard` - the ask on the "Hunt is live" screen (explainer, Turn on / Not now) and a
+  "Notifications on this phone" card in Settings. client-core `push-view.ts` holds the copy.
+- Web: the live screen points to the inbox and the phone app (no web push). The stale
+  "monitoring engine isn't built yet" notes were removed from both live screens.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (contracts 43, client-core 42, api-client 13,
+  api unit 98, worker unit 32 incl. Expo provider mapping / batching / auth / outages).
+  `expo install --check`: up to date.
+- `pnpm --filter worker test:int` 32/32 (+1): no device -> SKIPPED no_device; a development token
+  (simulated) + an Expo token Expo reports as DeviceNotRegistered -> delivered (SIMULATED), Expo
+  device disabled; re-enabled Expo device accepted -> SENT via expo; all devices gone -> SKIPPED.
+- `pnpm --filter api test:e2e` 52/52 (+1), `pnpm --filter api test:int` 21/21 (+1: register,
+  refresh, cross-user 404, unregister, token moves to another account, dev token accepted).
+- Live against the running API: dev token registered, listed, unregistered (row removed after).
+- **Not verified on a phone**: permission prompt, tap-to-open, and real Expo push (needs a
+  development build with an EAS project id - not configured here).
+
+**Not done / TODO**
+
+- EAS project id + development build to receive real pushes (`eas init`, `eas build --profile
+  development`) - needs the owner's Expo account.
+- Expo push receipts check; badge counts; quiet hours (D22).
 
 ### Step 27 - Notification preferences, alerts, deliveries, local simulator + inbox (Build Prompt 24)
 
@@ -1312,7 +1359,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-24 (our steps 1-27 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-25 (our steps 1-28 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1329,6 +1376,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 25 in document order: Expo push notifications (device tokens, permission timing,
-a real push sender behind NotificationSender).
+Build Prompt 26 in document order: Hunts management screens (detail, edit, pause / resume,
+archive / restore).
 (Await the next prompt.)

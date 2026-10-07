@@ -81,7 +81,7 @@ class PrismaLifecycle implements OnApplicationShutdown {
       useFactory: (p: PrismaClient, c: WorkerConfig, clock: Clock) =>
         new NotificationDispatcher(
           p,
-          createNotificationSenders(c.notifications.delivery),
+          createNotificationSenders(p, { nodeEnv: c.nodeEnv, delivery: c.notifications.delivery, push: c.notifications.push }),
           { batchSize: 20, leaseMs: c.pipeline.leaseMs, maxAttempts: c.pipeline.maxAttempts },
           clock,
         ),

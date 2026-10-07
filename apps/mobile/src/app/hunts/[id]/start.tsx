@@ -21,6 +21,7 @@ import { SessionGate } from '@/auth/SessionGate';
 import { useSession } from '@/auth/SessionProvider';
 import { getApiClient } from '@/config/api';
 import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { PushCard } from '@/notifications/PushCard';
 
 interface Loaded {
   hunt: Hunt;
@@ -151,11 +152,8 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
             You can leave Rein Drop. We&apos;ll alert you when something worth reviewing appears.
           </Text>
         </Card>
-        <SystemBanner
-          tone="info"
-          title="Development note"
-          message="The monitoring engine isn't built yet, so marketplaces are not actually being checked."
-        />
+        {/* The moment push is worth asking for: a Hunt is now live (never on app launch). */}
+        <PushCard variant="prompt" />
         <Button onPress={() => router.dismissTo('/hunts')} fullWidth>
           Go to Hunts
         </Button>

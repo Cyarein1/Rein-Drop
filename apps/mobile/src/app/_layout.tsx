@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SessionProvider } from '@/auth/SessionProvider';
+import { NotificationsBridge } from '@/notifications/NotificationsBridge';
 import { headerOptions } from '@/navigation/options';
 import { interFonts, setInterLoaded } from '@/ui';
 
@@ -32,6 +33,7 @@ export default function RootLayout() {
 
   return (
     <SessionProvider>
+      <NotificationsBridge />
       <Stack screenOptions={headerOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />

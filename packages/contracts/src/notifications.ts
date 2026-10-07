@@ -192,3 +192,51 @@ export const notificationLogSchema = z.object({
   ),
 });
 export type NotificationLog = z.infer<typeof notificationLogSchema>;
+
+// ---------------------------------------------------------------------------
+// Push devices
+// ---------------------------------------------------------------------------
+
+/**
+ * expo = an Expo push token from a development / store build.
+ * dev_simulated = DEVELOPMENT ONLY: Expo Go can't receive push (SDK 53+), so it registers a
+ * stable simulated token and the worker simulates the push. The API refuses it in production.
+ */
+export const PUSH_DEVICE_PROVIDERS = ['expo', 'dev_simulated'] as const;
+export const pushDeviceProviderSchema = z.enum(PUSH_DEVICE_PROVIDERS);
+export type PushDeviceProvider = z.infer<typeof pushDeviceProviderSchema>;
+
+export const PUSH_PLATFORMS = ['ios', 'android'] as const;
+
+const EXPO_TOKEN = /^Expo(nent)?PushToken\[[^\]]{1,200}\]$/;
+const DEV_SIMULATED_TOKEN = /^dev-simulated:[0-9a-f-]{36}$/;
+
+/** `POST /me/push-devices` - register or refresh this phone. */
+export const registerPushDeviceRequestSchema = z
+  .object({
+    provider: pushDeviceProviderSchema,
+    token: z.string().trim().min(1).max(255),
+    platform: z.enum(PUSH_PLATFORMS),
+    deviceName: z.string().trim().min(1).max(100).nullable().optional(),
+    appVersion: z.string().trim().min(1).max(40).nullable().optional(),
+  })
+  .superRefine((req, ctx) => {
+    const ok = req.provider === 'expo' ? EXPO_TOKEN.test(req.token) : DEV_SIMULATED_TOKEN.test(req.token);
+    if (!ok) ctx.addIssue({ code: 'custom', path: ['token'], message: `Not a valid ${req.provider} push token` });
+  });
+export type RegisterPushDeviceRequest = z.infer<typeof registerPushDeviceRequestSchema>;
+
+export const pushDeviceSchema = z.object({
+  id: idSchema,
+  provider: pushDeviceProviderSchema,
+  platform: z.enum(PUSH_PLATFORMS),
+  deviceName: z.string().nullable(),
+  createdAt: isoDateTimeSchema,
+  lastSeenAt: isoDateTimeSchema,
+  /** False once unregistered or rejected by the push service. */
+  active: z.boolean(),
+  disabledReason: z.string().nullable(),
+});
+export type PushDevice = z.infer<typeof pushDeviceSchema>;
+
+export const pushDeviceListSchema = z.object({ items: z.array(pushDeviceSchema) });

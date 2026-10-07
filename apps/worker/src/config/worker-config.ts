@@ -39,6 +39,13 @@ const workerEnvSchema = z.object({
    * How push / email deliveries go out. simulator = logged + marked SIMULATED (local only);
    * disabled = not sent (SKIPPED, not_configured). TODO(notifications): Expo push (Build Prompt 25), email provider TBD.
    */
+  /**
+   * Push sender: expo = Expo Push Service for Expo tokens; simulator = log only; none = no push
+   * (deliveries SKIPPED). Development-simulated device tokens are always simulated, never in production.
+   */
+  PUSH_PROVIDER: z.enum(['expo', 'simulator', 'none'], { error: 'must be one of: expo, simulator, none' }).optional(),
+  /** Only needed if 'enhanced push security' is on for the Expo project. Secret. */
+  EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
   NOTIFICATION_DELIVERY: z.enum(['simulator', 'disabled'], { error: 'must be one of: simulator, disabled' }).optional(),
   AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
 });
@@ -58,7 +65,11 @@ export interface WorkerConfig {
     readonly searchMaxPages: number;
   };
   /** Push / email delivery mode for the notification outbox. */
-  readonly notifications: { readonly delivery: 'simulator' | 'disabled' };
+  readonly notifications: {
+    /** Email (push has its own provider). */
+    readonly delivery: 'simulator' | 'disabled';
+    readonly push: { readonly provider: 'expo' | 'simulator' | 'none'; readonly expoAccessToken: string | null };
+  };
   /** AIProvider for deal analysis (@rein-drop/ai-core). */
   readonly ai: { readonly provider: AIProviderId };
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
@@ -72,13 +83,14 @@ export function loadWorkerConfig(
   env: Record<string, string | undefined> = process.env,
 ): WorkerConfig {
   const parsed = parseEnv('worker', workerEnvSchema, env, {
-    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY'],
+    requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY', 'PUSH_PROVIDER'],
   });
   if (parsed.NODE_ENV === 'production') {
     const problems = (['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const)
       .filter((key) => parsed[key] !== undefined)
       .map((key) => `${key}: development-only, not allowed when NODE_ENV=production`);
     // The mock produces believable but meaningless analyses: never in front of real users.
+    if (parsed.PUSH_PROVIDER === 'simulator') problems.push('PUSH_PROVIDER: simulator is development-only, not allowed when NODE_ENV=production');
     if (parsed.NOTIFICATION_DELIVERY === 'simulator') problems.push('NOTIFICATION_DELIVERY: simulator is development-only, not allowed when NODE_ENV=production');
     if (parsed.AI_PROVIDER === 'mock') problems.push('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
     if (problems.length > 0) throw new EnvValidationError('worker', problems);
@@ -96,7 +108,10 @@ export function loadWorkerConfig(
       maxAttempts: parsed.WORKER_JOB_MAX_ATTEMPTS,
       searchMaxPages: parsed.WORKER_SEARCH_MAX_PAGES,
     }),
-    notifications: Object.freeze({ delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator' }),
+    notifications: Object.freeze({
+      delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator',
+      push: Object.freeze({ provider: parsed.PUSH_PROVIDER ?? 'simulator', expoAccessToken: parsed.EXPO_ACCESS_TOKEN ?? null }),
+    }),
     ai: Object.freeze({ provider: parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER }),
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',

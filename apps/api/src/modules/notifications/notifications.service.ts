@@ -7,11 +7,27 @@ import {
   type NotificationCategory,
   type NotificationLog,
   type NotificationPreferences,
+  type PushDevice,
+  type PushDeviceProvider,
+  type RegisterPushDeviceRequest,
   type UpdateNotificationPreferencesRequest,
 } from '@rein-drop/contracts';
-import type { Alert as AlertRow, PrismaClient } from '@rein-drop/db';
+import type { Alert as AlertRow, PrismaClient, PushDevice as PushDeviceRow } from '@rein-drop/db';
 import { AppException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+
+export function toPushDevice(row: PushDeviceRow): PushDevice {
+  return {
+    id: row.id,
+    provider: row.provider as PushDeviceProvider,
+    platform: row.platform as PushDevice['platform'],
+    deviceName: row.deviceName,
+    createdAt: row.createdAt.toISOString(),
+    lastSeenAt: row.lastSeenAt.toISOString(),
+    active: row.disabledAt === null,
+    disabledReason: row.disabledReason,
+  };
+}
 
 export function toAlert(row: AlertRow): Alert {
   return {
@@ -103,5 +119,36 @@ export class NotificationsService {
         sentAt: d.sentAt?.toISOString() ?? null,
       })),
     };
+  }
+
+  /**
+   * Registers this phone for push, or refreshes it. Keyed by token: a token seen before is
+   * re-enabled and moved to the caller (a phone signed into another account).
+   */
+  async registerDevice(userId: string, request: RegisterPushDeviceRequest): Promise<PushDevice> {
+    const data = {
+      userId,
+      provider: request.provider,
+      platform: request.platform,
+      deviceName: request.deviceName ?? null,
+      appVersion: request.appVersion ?? null,
+      lastSeenAt: new Date(),
+      disabledAt: null,
+      disabledReason: null,
+    };
+    return toPushDevice(await this.prisma.pushDevice.upsert({ where: { token: request.token }, create: { token: request.token, ...data }, update: data }));
+  }
+
+  async devices(userId: string): Promise<{ items: PushDevice[] }> {
+    const rows = await this.prisma.pushDevice.findMany({ where: { userId }, orderBy: { lastSeenAt: 'desc' } });
+    return { items: rows.map(toPushDevice) };
+  }
+
+  /** Stops push to this phone (kept for history; registering again re-enables it). */
+  async unregisterDevice(userId: string, id: string): Promise<PushDevice> {
+    await this.prisma.pushDevice.updateMany({ where: { id, userId, disabledAt: null }, data: { disabledAt: new Date(), disabledReason: 'unregistered' } });
+    const row = await this.prisma.pushDevice.findFirst({ where: { id, userId } });
+    if (!row) throw new AppException('NOT_FOUND', 'Device not found', HttpStatus.NOT_FOUND);
+    return toPushDevice(row);
   }
 }

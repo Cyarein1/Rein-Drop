@@ -12,6 +12,9 @@ import { LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
 import { DevEbayAdapter, DevFacebookDataProvider, FacebookAdapter } from '@rein-drop/marketplace-core/adapters';
 import { NotificationDispatcher } from '../src/notifications/notification-dispatcher.js';
+import { ExpoPushProvider } from '../src/notifications/push/expo-push-provider.js';
+import { PushNotificationSender } from '../src/notifications/push/push-sender.js';
+import { SimulatedPushProvider } from '../src/notifications/push/simulated-push-provider.js';
 import { SimulatedSender, type NotificationSender } from '../src/notifications/senders.js';
 import { DealAnalysisHandler } from '../src/pipeline/deal-analysis.handler.js';
 import { HuntScheduler } from '../src/pipeline/hunt-scheduler.js';
@@ -182,18 +185,68 @@ describe('alerts and notification deliveries (integration, real database)', () =
     const alert = (await alertsOf(alice))[0]!;
     const deliveries = (where: object) => prisma.notificationDelivery.findFirstOrThrow({ where: { alertId: alert.id, ...where } });
     await prisma.notificationDelivery.updateMany({ where: { alertId: alert.id, channel: 'PUSH' }, data: { status: 'PENDING', attempts: 0, lockedUntil: new Date(t), sentAt: null } });
-    const broken: NotificationSender = { id: 'broken', simulated: false, send: () => Promise.reject(new Error('push service down')) };
+    const broken: NotificationSender = { send: () => Promise.reject(new Error('push service down')) };
 
     expect(await dispatcher({ PUSH: broken }, 2).dispatchPending()).toMatchObject({ claimed: 1, retrying: 1 });
     expect(await deliveries({ channel: 'PUSH' })).toMatchObject({ status: 'PENDING', attempts: 1, reason: 'push service down' });
     expect(await dispatcher({ PUSH: broken }, 2).dispatchPending()).toMatchObject({ claimed: 0 }); // backing off
     t += 60_000;
     expect(await dispatcher({ PUSH: broken }, 2).dispatchPending()).toMatchObject({ claimed: 1, failed: 1 });
-    expect(await deliveries({ channel: 'PUSH' })).toMatchObject({ status: 'FAILED', attempts: 2, provider: 'broken' });
+    expect(await deliveries({ channel: 'PUSH' })).toMatchObject({ status: 'FAILED', attempts: 2, reason: 'push service down' });
 
     await prisma.notificationDelivery.updateMany({ where: { alertId: alert.id, channel: 'PUSH' }, data: { status: 'PENDING', attempts: 0, lockedUntil: new Date(t) } });
     expect(await dispatcher({}).dispatchPending()).toMatchObject({ claimed: 1, skipped: 1 });
     expect(await deliveries({ channel: 'PUSH' })).toMatchObject({ status: 'SKIPPED', reason: 'not_configured' });
+  });
+
+  it('push: each registered device through its provider; dead tokens switched off; no device -> skipped', async () => {
+    const alert = (await alertsOf(alice))[0]!;
+    const resetPush = () =>
+      prisma.notificationDelivery.updateMany({ where: { alertId: alert.id, channel: 'PUSH' }, data: { status: 'PENDING', attempts: 0, lockedUntil: new Date(t), reason: null, provider: null } });
+    const push = (where: object = {}) => prisma.notificationDelivery.findFirstOrThrow({ where: { alertId: alert.id, channel: 'PUSH', ...where } });
+
+    // No phone registered: nothing to send to.
+    await resetPush();
+    const simulator = new SimulatedPushProvider();
+    const sender = (expoFetch: typeof fetch) =>
+      new PushNotificationSender(prisma, { dev_simulated: simulator, expo: new ExpoPushProvider({ fetch: expoFetch }) });
+    const expoSays = (tickets: object[]) =>
+      (async (_url: string | URL | Request, init?: RequestInit) => {
+        expoRequests.push(JSON.parse(String(init?.body)));
+        return new Response(JSON.stringify({ data: tickets }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch;
+    const expoRequests: unknown[] = [];
+    expect(await dispatcher({ PUSH: sender(expoSays([])) }).dispatchPending()).toMatchObject({ claimed: 1, skipped: 1 });
+    expect(await push()).toMatchObject({ status: 'SKIPPED', reason: 'no_device' });
+
+    // Two phones: Expo Go (development token) + a development build (Expo token Expo says is gone).
+    await prisma.pushDevice.createMany({
+      data: [
+        { userId: alice, provider: 'dev_simulated', token: `dev-simulated:${randomUUID()}`, platform: 'android' },
+        { userId: alice, provider: 'expo', token: `ExponentPushToken[int-test-${randomUUID().slice(0, 8)}]`, platform: 'ios' },
+      ],
+    });
+    await resetPush();
+    const gone = { status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' } };
+    expect(await dispatcher({ PUSH: sender(expoSays([gone])) }).dispatchPending()).toMatchObject({ claimed: 1, simulated: 1 });
+    expect(await push()).toMatchObject({ status: 'SIMULATED', provider: 'simulator' });
+    expect(simulator.sent.at(-1)).toMatchObject({ title: alert.title, data: { alertId: alert.id, dealId: alert.huntMatchId }, channelId: 'alerts' });
+    expect(expoRequests).toHaveLength(1);
+    const expoDevice = await prisma.pushDevice.findFirstOrThrow({ where: { userId: alice, provider: 'expo' } });
+    expect(expoDevice).toMatchObject({ disabledReason: 'device_not_registered' });
+    expect(expoDevice.disabledAt).not.toBeNull();
+
+    // Expo accepts a re-enabled device: a real send (SENT, provider expo).
+    await prisma.pushDevice.updateMany({ where: { userId: alice }, data: { disabledAt: null, disabledReason: null } });
+    await prisma.pushDevice.updateMany({ where: { userId: alice, provider: 'dev_simulated' }, data: { disabledAt: new Date(t), disabledReason: 'unregistered' } });
+    await resetPush();
+    expect(await dispatcher({ PUSH: sender(expoSays([{ status: 'ok', id: 'ticket-1' }])) }).dispatchPending()).toMatchObject({ claimed: 1, sent: 1 });
+    expect(await push()).toMatchObject({ status: 'SENT', provider: 'expo' });
+
+    // Every device gone -> skipped, not retried forever.
+    await resetPush();
+    expect(await dispatcher({ PUSH: sender(expoSays([gone])) }).dispatchPending()).toMatchObject({ claimed: 1, skipped: 1 });
+    expect(await push()).toMatchObject({ status: 'SKIPPED', reason: 'no_device' });
   });
 
   it('a deal the user ignored before its analysis finished never alerts', async () => {

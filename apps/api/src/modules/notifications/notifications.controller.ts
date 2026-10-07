@@ -1,12 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   idSchema,
   listAlertsQuerySchema,
+  registerPushDeviceRequestSchema,
   updateNotificationPreferencesRequestSchema,
   type Alert,
   type AlertPage,
   type NotificationLog,
   type NotificationPreferences,
+  type PushDevice,
 } from '@rein-drop/contracts';
 import { z } from 'zod';
 import type { Principal } from '../../auth/auth.types.js';
@@ -19,6 +21,7 @@ import { NotificationsService } from './notifications.service.js';
 class UpdatePreferencesDto extends createZodDto(updateNotificationPreferencesRequestSchema) {}
 class ListAlertsQueryDto extends createZodDto(listAlertsQuerySchema) {}
 class AlertIdParams extends createZodDto(z.object({ id: idSchema })) {}
+class RegisterPushDeviceDto extends createZodDto(registerPushDeviceRequestSchema) {}
 
 /** Per-category, per-channel choices. Marketing is a separate group and opt-in only. */
 @Controller('me/notification-preferences')
@@ -76,5 +79,36 @@ export class DevNotificationsController {
       throw new AppException('NOT_FOUND', 'Cannot GET /dev/notifications', HttpStatus.NOT_FOUND);
     }
     return this.notifications.deliveryLog(user.userId);
+  }
+}
+
+/**
+ * Phones registered for push (Expo push tokens; development-simulated tokens outside production).
+ * The app registers after the user allows notifications, and refreshes on launch while allowed.
+ */
+@Controller('me/push-devices')
+export class PushDevicesController {
+  constructor(
+    private readonly notifications: NotificationsService,
+    @Inject(API_CONFIG) private readonly config: ApiConfig,
+  ) {}
+
+  @Get()
+  list(@CurrentUser() user: Principal): Promise<{ items: PushDevice[] }> {
+    return this.notifications.devices(user.userId);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.OK)
+  async register(@CurrentUser() user: Principal, @Body() body: RegisterPushDeviceDto): Promise<PushDevice> {
+    if (body.provider === 'dev_simulated' && this.config.nodeEnv === 'production') {
+      throw new AppException('FORBIDDEN', 'Development push tokens are not accepted', HttpStatus.FORBIDDEN);
+    }
+    return this.notifications.registerDevice(user.userId, body);
+  }
+
+  @Delete(':id')
+  unregister(@CurrentUser() user: Principal, @Param() params: AlertIdParams): Promise<PushDevice> {
+    return this.notifications.unregisterDevice(user.userId, params.id);
   }
 }
