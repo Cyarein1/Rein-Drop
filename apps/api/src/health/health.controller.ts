@@ -1,24 +1,33 @@
-import { Controller, Get, Inject, Logger } from '@nestjs/common';
-import type { HealthResponse } from '@rein-drop/contracts';
+import { Controller, Get, HttpStatus, Inject, Logger, Res } from '@nestjs/common';
+import type { HealthResponse, ReadinessResponse } from '@rein-drop/contracts';
 import { PrismaClient } from '@rein-drop/db';
+import type { Response } from 'express';
 import { PRISMA } from '../database/database.module.js';
 
 const DB_CHECK_TIMEOUT_MS = 2000;
 
-@Controller('health')
+@Controller()
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
 
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  @Get()
-  async getHealth(): Promise<HealthResponse> {
-    const databaseUp = await this.isDatabaseUp();
+  /** Liveness: the process is up and serving. Checks no dependencies. */
+  @Get('health')
+  getHealth(): HealthResponse {
+    return { status: 'ok', service: 'api', timestamp: new Date().toISOString() };
+  }
+
+  /** Readiness: dependencies are reachable. 503 with the same body when not. */
+  @Get('ready')
+  async getReady(@Res({ passthrough: true }) res: Response): Promise<ReadinessResponse> {
+    const database = (await this.isDatabaseUp()) ? 'up' : 'down';
+    const ready = database === 'up';
+    res.status(ready ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE);
     return {
-      status: databaseUp ? 'ok' : 'degraded',
-      service: 'api',
+      status: ready ? 'ready' : 'not_ready',
+      checks: { database },
       timestamp: new Date().toISOString(),
-      database: databaseUp ? 'up' : 'down',
     };
   }
 

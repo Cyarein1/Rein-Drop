@@ -1,6 +1,18 @@
-import type { HealthResponse } from '@rein-drop/contracts';
+import {
+  isApiErrorBody,
+  type ApiErrorCode,
+  type ApiErrorDetail,
+  type HealthResponse,
+  type ReadinessResponse,
+} from '@rein-drop/contracts';
 
-export type { HealthResponse } from '@rein-drop/contracts';
+export type {
+  ApiErrorBody,
+  ApiErrorCode,
+  ApiErrorDetail,
+  HealthResponse,
+  ReadinessResponse,
+} from '@rein-drop/contracts';
 
 /** Thrown for network failures, timeouts and non-2xx responses. */
 export class ApiError extends Error {
@@ -8,6 +20,10 @@ export class ApiError extends Error {
     message: string,
     /** HTTP status code, or undefined when the request never got a response. */
     readonly status?: number,
+    /** Present when the API returned its standard error body. */
+    readonly code?: ApiErrorCode,
+    readonly details?: ApiErrorDetail[],
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -24,7 +40,10 @@ export interface ApiClientOptions {
 }
 
 export interface ApiClient {
+  /** Liveness. */
   getHealth(): Promise<HealthResponse>;
+  /** Readiness. Resolves for both ready (200) and not ready (503). */
+  getReadiness(): Promise<ReadinessResponse>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -34,7 +53,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const doFetch = options.fetch ?? globalThis.fetch;
 
-  async function request<T>(path: string): Promise<T> {
+  async function request<T>(path: string, acceptStatuses: readonly number[] = []): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let response: Response;
@@ -54,21 +73,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       clearTimeout(timer);
     }
 
-    if (!response.ok) {
-      throw new ApiError(
-        `Request to ${path} failed with HTTP ${response.status}`,
-        response.status,
-      );
-    }
+    let body: unknown;
     try {
-      return (await response.json()) as T;
+      body = await response.json();
     } catch {
       throw new ApiError(`Response from ${path} was not valid JSON`, response.status);
     }
+
+    if (response.ok || acceptStatuses.includes(response.status)) {
+      return body as T;
+    }
+    if (isApiErrorBody(body)) {
+      throw new ApiError(body.message, body.statusCode, body.code, body.details, body.requestId);
+    }
+    throw new ApiError(`Request to ${path} failed with HTTP ${response.status}`, response.status);
   }
 
   return {
     getHealth: () => request<HealthResponse>('/health'),
+    getReadiness: () => request<ReadinessResponse>('/ready', [503]),
   };
 }
 

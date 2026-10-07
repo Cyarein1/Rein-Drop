@@ -10,7 +10,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 | Service | Address | Configured by |
 |---|---|---|
 | Web (Next.js) | http://localhost:3000 | `apps/web/package.json` (`--port 3000`) |
-| API (NestJS) | http://localhost:4000 (health: `/health`) | `PORT` in `apps/api/.env` |
+| API (NestJS) | http://localhost:4000 (`/health`, `/ready`) | `PORT` in `apps/api/.env` |
 | PostgreSQL (Docker) | `localhost:5432` (loopback only) | `POSTGRES_PORT` in root `.env` |
 | Prisma Studio | http://localhost:5555 (when running `pnpm db:studio`) | `packages/db/package.json` |
 | Expo / Metro | http://localhost:8081 | Expo default |
@@ -123,7 +123,7 @@ Changing the schema: edit `packages/db/prisma/schema.prisma`, then
 ### 6. Run the apps (one PowerShell window per process)
 
 ```powershell
-pnpm --filter api dev       # http://localhost:4000/health (includes "database": "up" | "down")
+pnpm --filter api dev       # http://localhost:4000/health and /ready
 pnpm --filter worker dev    # logs a heartbeat
 pnpm --filter web dev       # http://localhost:3000 - shows API reachability
 pnpm --filter mobile start  # scan the QR code with Expo Go
@@ -132,6 +132,25 @@ pnpm --filter mobile start  # scan the QR code with Expo Go
 Physical phone: set `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to your computer's LAN IP
 (find it with `ipconfig`, "IPv4 Address"), e.g. `http://192.168.1.50:4000`, and allow Node.js
 through Windows Firewall on private networks when prompted.
+
+## API conventions (apps/api)
+
+- **Domain modules** live in `apps/api/src/modules/<name>/` - users, seller-profile, hunts,
+  marketplaces, listings, matching, deal-intelligence, deals, outcomes, analytics, plans
+  (plans + entitlements), billing, notifications, usage. Each module's header comment states
+  what it owns. Modules talk to each other through exported providers, not each other's tables.
+- **Health:** `GET /health` = liveness (process up, no dependency checks, always 200).
+  `GET /ready` = readiness (database reachable): 200 `ready` or 503 `not_ready`, same body.
+- **Validation:** request DTOs are zod schemas wrapped with `createZodDto(schema)`
+  (`src/common/validation`); a global pipe validates `@Body/@Query/@Param` typed with them and
+  strips unknown keys.
+- **Errors:** every non-2xx response (except `/ready`) has one shape (`ApiErrorBody` in
+  `@rein-drop/contracts`):
+  `{ statusCode, code, message, details?, requestId, path, timestamp }`. Throw `AppException`
+  for a specific `code`. Unexpected errors return `500 INTERNAL_ERROR` with no internal details
+  (the stack trace is logged server-side).
+- **Request logging:** one line per request: `GET /path 200 3.1ms [request-id]`. Send an
+  `x-request-id` header to correlate; the API always returns one.
 
 ## Troubleshooting (Windows)
 

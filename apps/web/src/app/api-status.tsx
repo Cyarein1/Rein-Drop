@@ -1,22 +1,37 @@
 import { connection } from "next/server";
-import { createApiClient } from "@rein-drop/api-client";
+import { createApiClient, type ReadinessResponse } from "@rein-drop/api-client";
 import { colors } from "@rein-drop/design-tokens";
 
-/** Server component: checks apps/api reachability on every request. */
+type StatusResult =
+  | { ok: true; timestamp: string; readiness: ReadinessResponse | null }
+  | { ok: false; message: string };
+
+/** Server component: checks apps/api liveness (/health) and readiness (/ready) per request. */
 export async function ApiStatus() {
   await connection();
   const baseUrl = process.env.API_BASE_URL ?? "";
-
-  const result = await checkHealth(baseUrl);
+  const result = await checkApi(baseUrl);
 
   if (result.ok) {
+    const database = result.readiness?.checks.database;
     return (
-      <p style={{ color: colors.green }}>
-        API reachable ({result.timestamp}) - database{" "}
-        <span style={{ color: result.database === "up" ? colors.green : colors.orange }}>
-          {result.database}
-        </span>
-      </p>
+      <div>
+        <p style={{ color: colors.green }}>API reachable ({result.timestamp})</p>
+        <p>
+          Ready:{" "}
+          {result.readiness ? (
+            <span
+              style={{
+                color: result.readiness.status === "ready" ? colors.green : colors.orange,
+              }}
+            >
+              {result.readiness.status} (database {database})
+            </span>
+          ) : (
+            <span style={{ color: colors.orange }}>unknown - /ready did not respond</span>
+          )}
+        </p>
+      </div>
     );
   }
   return (
@@ -30,15 +45,12 @@ export async function ApiStatus() {
   );
 }
 
-async function checkHealth(
-  baseUrl: string,
-): Promise<
-  | { ok: true; timestamp: string; database: "up" | "down" }
-  | { ok: false; message: string }
-> {
+async function checkApi(baseUrl: string): Promise<StatusResult> {
   try {
-    const health = await createApiClient({ baseUrl, timeoutMs: 3000 }).getHealth();
-    return { ok: true, timestamp: health.timestamp, database: health.database };
+    const client = createApiClient({ baseUrl, timeoutMs: 3000 });
+    const health = await client.getHealth();
+    const readiness = await client.getReadiness().catch(() => null);
+    return { ok: true, timestamp: health.timestamp, readiness };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : String(err) };
   }

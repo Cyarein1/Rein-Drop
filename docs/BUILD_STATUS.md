@@ -4,6 +4,40 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 4 - API domain modules + cross-cutting concerns
+
+**What was added**
+
+- 14 domain module scaffolds in `apps/api/src/modules/` (registered via `DOMAIN_MODULES`):
+  users (User), seller-profile (SellerProfile), hunts (Hunt, HuntMarketplace), marketplaces
+  (Marketplace + adapter boundary), listings (RawListing, Listing), matching (HuntMatch),
+  deal-intelligence (DealAnalysis, via AIProvider), deals (SavedDeal), outcomes (InventoryItem,
+  Sale, Cost), analytics (no tables, read-only), plans (Plan, Entitlement), billing
+  (Subscription), notifications (Alert), usage (UsageEvent). Empty on purpose - no controllers,
+  services or endpoints yet; header comments record ownership and TODOs.
+- Global validation: `createZodDto(schema)` + global `ZodValidationPipe` (zod, consistent with
+  env config; unknown keys stripped; errors -> `VALIDATION_FAILED` with per-field `details`).
+- Consistent error shape: `ApiErrorBody` + `API_ERROR_CODES` in `@rein-drop/contracts`; global
+  `AllExceptionsFilter` maps AppException, Nest HttpExceptions, Prisma P2002 -> 409 / P2025 -> 404,
+  malformed JSON / oversized body, and hides unexpected errors as `500 INTERNAL_ERROR`.
+  `AppException(code, message, status, details?)` for module code.
+- Request logging middleware with request id (`x-request-id`: reused if safe, else UUID; echoed
+  in the response and in error bodies). Logs path only (no query strings).
+- `GET /health` is now pure liveness (no DB). New `GET /ready`: readiness with DB check,
+  200 `ready` / 503 `not_ready`. (Changed from step 3, where /health carried the DB status.)
+- api-client: parses `ApiErrorBody` into `ApiError` (`code`, `details`, `requestId`); new
+  `getReadiness()` (resolves on 503). Web status page shows liveness + readiness.
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17.
+- api unit tests 20 (filter mapping, validation pipe, request id, health/ready); api e2e 8
+  (health, request-id echo, ready 503 without DB, 404 shape, valid/invalid body, malformed
+  JSON, 500 without leaking). Worker 3.
+- Built API against Docker Postgres (port 5433): all 14 modules load, `/ready` -> 200 ready,
+  unknown route -> standard 404 body, one log line per request with request id.
+
+
 ### Step 3 - Prisma data layer + initial schema
 
 **What was added**
@@ -158,7 +192,9 @@ pnpm --filter mobile start
   until the user either stops that service or sets `POSTGRES_PORT=5433` (+ matching
   `DATABASE_URL`). See README troubleshooting. Decision pending with the user.
 - Worker validates `DATABASE_URL` but does not use the database yet (no jobs need it).
-- Mobile still shows only "API reachable"; it does not display the new `database` field.
+- Mobile shows liveness only ("API reachable"); it does not call `/ready`.
+- Global pipe only validates DTOs built with `createZodDto`; a handler typed with a plain class
+  or interface is not validated - convention to follow when adding endpoints.
 - Prisma CLI prints an "update available 7.10.0 -> 8.0.0-rc" banner; ignore until 8.0 is stable.
 
 - `pnpm-workspace.yaml` has a `minimumReleaseAgeExclude` list that pnpm wrote itself during
@@ -185,5 +221,6 @@ pnpm --filter mobile start
 ## Next step
 
 Resolve the port 5432 conflict (stop native service vs. Docker on 5433). Then likely: auth
-abstraction (local dev auth first) or the marketplace adapter boundary (normalized Listing
-contract + mock eBay/Facebook adapters writing RawListing -> Listing). (Await the next prompt.)
+abstraction (local dev auth first) so modules can scope data per user, or the marketplace
+adapter boundary (mock eBay/Facebook adapters writing RawListing -> Listing). (Await the next
+prompt.)
