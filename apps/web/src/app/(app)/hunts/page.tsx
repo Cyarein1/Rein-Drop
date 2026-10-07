@@ -50,7 +50,7 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
         <SystemBanner
           tone="success"
           title="Hunt saved as a draft"
-          message={`"${created.name}" is ready. Monitoring starts after plan selection - coming soon.`}
+          message={`"${created.name}" is ready. Choose Start watching when you want monitoring to begin.`}
         />
       )}
       {items.length === 0 ? (
@@ -82,6 +82,13 @@ function HuntCard({ hunt }: { hunt: Hunt }) {
         {hunt.marketplaces.map((m) => MARKETPLACE[m] ?? m).join(" · ")}
         {hunt.location ? ` · ${hunt.location.text}` : ""}
       </p>
+      {hunt.status === "DRAFT" && (
+        <div>
+          <ButtonLink href={`/hunts/${hunt.id}/start`} variant="secondary">
+            Start watching
+          </ButtonLink>
+        </div>
+      )}
     </Card>
   );
 }

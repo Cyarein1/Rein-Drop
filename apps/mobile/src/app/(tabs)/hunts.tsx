@@ -51,7 +51,7 @@ export default function HuntsScreen() {
         <SystemBanner
           tone="success"
           title="Hunt saved as a draft"
-          message={`"${createdHunt.name}" is ready. Monitoring starts after plan selection - coming soon.`}
+          message={`"${createdHunt.name}" is ready. Choose Start watching when you want monitoring to begin.`}
         />
       )}
       {state.status === 'loading' && <LoadingState label="Loading your Hunts…" />}
@@ -85,6 +85,16 @@ export default function HuntsScreen() {
                 {hunt.marketplaces.map((m) => MARKETPLACE[m] ?? m).join(' · ')}
                 {hunt.location ? ` · ${hunt.location.text}` : ''}
               </Text>
+              {hunt.status === 'DRAFT' && (
+                <View>
+                  <Button
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/hunts/[id]/start', params: { id: hunt.id } })}
+                  >
+                    Start watching
+                  </Button>
+                </View>
+              )}
             </Card>
           );
         })}

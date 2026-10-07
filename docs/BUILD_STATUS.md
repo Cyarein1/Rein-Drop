@@ -4,6 +4,49 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 17 - Plan gate + DEVELOPMENT-ONLY fake billing
+
+**What was added**
+
+- Contracts: `SubscriptionSummary` {planCode, status, provider, isDevelopment};
+  `POST /billing/dev/confirm` request/response; `GET /me/entitlements` now includes `subscription`
+  (null = no plan chosen yet, Free applies).
+- API: `DevBillingController` `POST /billing/dev/confirm` {planCode} - **404 in production**
+  (checked on both `config.nodeEnv` and `process.env.NODE_ENV`, before any database access). In a
+  transaction it cancels other active subscriptions and upserts one `dev-fake:<userId>` ACTIVE
+  subscription. Real activation still goes through the normal entitlement checks.
+- client-core `plan-gate.ts`: `planGateOptions()` (price label `Free` / `Price TBD`, plain
+  entitlement lines, per-plan "can't run this Hunt" reasons via `evaluateActivation`, recommended =
+  first plan that can run the Hunt, current plan), `describeEntitlements()`, `RESOLUTION_LABEL`.
+  Everything comes from `/plans` + `/me/entitlements` - no plan names or limits in the clients.
+- Web: `/hunts/[id]/start` (server-loaded hunt, plans, entitlements, activation-check). Views:
+  quick start (already on a plan that allows it) / plan gate ("Development data" banner,
+  "Price TBD", "Placeholder limits", block reasons) / development confirmation ("no card, no
+  charge") / live. Review "Start watching" saves the draft then opens the gate; draft cards on
+  Hunts link to it. Shell nav now reads the pathname inside `<Suspense>` (needed for this dynamic
+  route with Cache Components).
+- Mobile: `hunts/[id]/start` modal with the same four views; Review "Start watching" saves then
+  replaces the Create modal with the gate; draft cards in the Hunts tab get "Start watching".
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 44/44 tasks (incl. mobile export). Tests: contracts
+  35, client-core 17, api-client 11, api 76 + e2e 36 + **integration 9** on real Postgres (dev
+  billing: null -> free -> pro, one active sub, unknown/retired plan 404, empty body 400; limit
+  enforcement), web 6, mobile 7.
+- Browser e2e (Edge, 390x844, against the running web + API), 16/16: Review -> Start watching
+  saves and opens the gate; Free/Pro/Ultimate with Price TBD and placeholder labels; Free ->
+  development confirmation -> hunt LIVE and dev subscription recorded; a second hunt is blocked
+  (reason shown, Free "Current" and disabled, hunt still DRAFT); upgrade to Pro -> LIVE. Test
+  hunts and subscription deleted afterwards.
+
+**Not done**
+
+- `TODO(billing)`: real checkout (Stripe / App Store / Play) not integrated; prices TBD.
+- Mobile plan gate typechecks/lints/exports but has not been run on a device or simulator.
+- Monitoring engine not built: a LIVE hunt is not actually checked yet (the live screen says so).
+- No Hunt detail screen yet for pause / archive / restore from the UI.
+
 ### Step 16 - Plans, entitlements, activation enforcement
 
 **What was added** (decision record: `docs/decisions/0003-plans-entitlements-placeholders.md`)
@@ -715,7 +758,7 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: onboarding screens (reseller gate + five Seller Snapshot questions + "Rein Drop will
-prioritize..." summary) on web and mobile, flowing into the Create Hunt flow; then Hunt detail /
-edit / pause / archive / restore screens.
+Likely: Hunt detail / edit / pause / archive / restore screens (so a user blocked by the
+live-Hunt limit can pause another Hunt from the UI), or onboarding screens (reseller gate + five
+Seller Snapshot questions) on web and mobile.
 (Await the next prompt.)

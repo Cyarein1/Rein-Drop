@@ -63,6 +63,27 @@ describe('Plans & entitlements (integration, real database)', () => {
     });
   });
 
+  it('development fake billing records an explicit plan choice (no subscription before)', async () => {
+    const server = app.getHttpServer();
+    expect((await as(request(server).get('/me/entitlements')).expect(200)).body.subscription).toBeNull();
+
+    const free = await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'free' }).expect(200);
+    expect(free.body.subscription).toEqual({ planCode: 'free', status: 'ACTIVE', provider: 'dev-fake', isDevelopment: true });
+
+    await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'pro' }).expect(200);
+    const pro = await as(request(server).get('/me/entitlements')).expect(200);
+    expect(pro.body).toMatchObject({ subscription: { planCode: 'pro' }, plan: { code: 'pro' } });
+    // Still exactly one current subscription.
+    expect(await prisma.subscription.count({ where: { userId, status: 'ACTIVE' } })).toBe(1);
+
+    await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'dev-free' }).expect(404); // retired
+    await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'nope' }).expect(404);
+    await as(request(server).post('/billing/dev/confirm')).send({}).expect(400);
+
+    // Back to Free for the limit test below.
+    await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'free' }).expect(200);
+  });
+
   it('enforces the active-hunt limit, preserves the draft, and reports a structured block', async () => {
     const server = app.getHttpServer();
     const ent = await as(request(server).get('/me/entitlements')).expect(200);

@@ -34,3 +34,10 @@
 2. Set `limitsFinal: true` for finalised plans; run `pnpm db:seed` (it makes each plan's
    entitlements exactly match the catalogue).
 3. Prices belong with the billing provider decision (Stripe leading candidate) - separate step.
+
+## Development billing (step 17)
+
+Until a billing provider is integrated, the plan gate uses `POST /billing/dev/confirm`, which
+records a `dev-fake:<userId>` subscription with no payment. It returns 404 in production, so the
+real provider must replace it before launch. Clients show "Development data" and "Price TBD" for
+every non-free plan.

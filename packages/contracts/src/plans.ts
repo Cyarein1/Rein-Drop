@@ -58,8 +58,29 @@ export const planSchema = z.object({
 export type Plan = z.infer<typeof planSchema>;
 export const planListSchema = z.object({ items: z.array(planSchema) });
 
+/**
+ * The user's current subscription. `provider: "dev-fake"` = created by the DEVELOPMENT-ONLY
+ * fake billing confirmation (no real payment). TODO(billing): real provider (Stripe / app
+ * stores) is not integrated.
+ */
+export const subscriptionSummarySchema = z.object({
+  planCode: z.string(),
+  status: z.enum(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'EXPIRED']),
+  provider: z.string().nullable(),
+  isDevelopment: z.boolean(),
+});
+export type SubscriptionSummary = z.infer<typeof subscriptionSummarySchema>;
+
+/** `POST /billing/dev/confirm` (DEVELOPMENT ONLY - 404 in production). */
+export const devBillingConfirmRequestSchema = z.object({ planCode: z.string().trim().min(1).max(50) });
+export type DevBillingConfirmRequest = z.infer<typeof devBillingConfirmRequestSchema>;
+export const devBillingConfirmResponseSchema = z.object({ subscription: subscriptionSummarySchema });
+export type DevBillingConfirmResponse = z.infer<typeof devBillingConfirmResponseSchema>;
+
 /** `GET /me/entitlements` - the caller's plan, what it allows, and current usage. */
 export const entitlementEvaluationSchema = z.object({
+  /** Null = the user has not chosen a plan yet (they are on Free by default). */
+  subscription: subscriptionSummarySchema.nullable(),
   plan: planSchema.pick({ code: true, name: true, pricing: true, limitsFinal: true }),
   entitlements: planEntitlementsSchema,
   usage: z.object({ activeHunts: z.number().int().min(0) }),

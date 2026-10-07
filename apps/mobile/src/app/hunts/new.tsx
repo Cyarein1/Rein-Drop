@@ -94,7 +94,7 @@ function CreateHuntFlow({ values: initialValues, context, prefilled, placeholder
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<HuntFormErrors>({});
   const [request, setRequest] = useState<CreateHuntRequest | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<'list' | 'start' | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const set = <K extends HuntFormField>(field: K, value: HuntFormValues[K]) => {
@@ -115,13 +115,18 @@ function CreateHuntFlow({ values: initialValues, context, prefilled, placeholder
     setSaveError(null);
   };
 
-  const save = async () => {
+  const save = async (next: 'list' | 'start') => {
     if (!request) return;
-    setSaving(true);
+    setSaving(next);
     setSaveError(null);
     try {
       const hunt = await getApiClient().createHunt(request);
-      router.dismissTo({ pathname: '/hunts', params: { created: hunt.id } });
+      if (next === 'start') {
+        // Saved as a draft first, so nothing is lost if the user leaves the plan gate.
+        router.replace({ pathname: '/hunts/[id]/start', params: { id: hunt.id } });
+      } else {
+        router.dismissTo({ pathname: '/hunts', params: { created: hunt.id } });
+      }
     } catch (err) {
       const details = err instanceof ApiError ? (err.details ?? []) : [];
       if (details.length > 0) {
@@ -130,7 +135,7 @@ function CreateHuntFlow({ values: initialValues, context, prefilled, placeholder
       }
       setSaveError(err instanceof Error ? err.message : "We couldn't save your hunt. Please try again.");
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
@@ -154,20 +159,24 @@ function CreateHuntFlow({ values: initialValues, context, prefilled, placeholder
           <SystemBanner key={w} tone="warning" title="Before this Hunt can start watching" message={w} />
         ))}
         {saveError && <SystemBanner tone="error" title="Not saved" message={saveError} />}
-        <Button onPress={save} loading={saving} fullWidth>
-          Save as draft
-        </Button>
-        <Button variant="secondary" onPress={() => setRequest(null)} disabled={saving} fullWidth>
-          Edit
-        </Button>
         <View style={styles.startWatching}>
-          <Button variant="secondary" disabled fullWidth>
+          <Button onPress={() => save('start')} loading={saving === 'start'} disabled={saving !== null} fullWidth>
             Start watching
           </Button>
-          <Text style={[styles.muted, font('regular')]}>
-            Monitoring starts after you choose a plan - coming soon. Your Hunt is saved as a draft.
-          </Text>
+          <Text style={[styles.muted, font('regular')]}>Saves your Hunt, then you choose a plan.</Text>
         </View>
+        <Button
+          variant="secondary"
+          onPress={() => save('list')}
+          loading={saving === 'list'}
+          disabled={saving !== null}
+          fullWidth
+        >
+          Save as draft
+        </Button>
+        <Button variant="secondary" onPress={() => setRequest(null)} disabled={saving !== null} fullWidth>
+          Edit
+        </Button>
       </Screen>
     );
   }

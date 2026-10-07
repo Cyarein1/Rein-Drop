@@ -85,12 +85,13 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
     window.scrollTo({ top: 0 });
   };
 
-  const save = () => {
+  /** Saves the draft; then either back to the list or on to the plan gate ("Start watching"). */
+  const save = (next: "list" | "start") => {
     if (!request) return;
     startSaving(async () => {
       const result = await saveHuntDraft(request);
       if (result.ok) {
-        router.push(`/hunts?created=${result.huntId}`);
+        router.push(next === "start" ? `/hunts/${result.huntId}/start` : `/hunts?created=${result.huntId}`);
         return;
       }
       if (Object.keys(result.errors).length > 0) {
@@ -123,20 +124,18 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
         ))}
         {saveError && <SystemBanner tone="error" title="Not saved" message={saveError} />}
         <div className={styles.actions}>
-          <Button onClick={save} loading={saving} fullWidth>
-            Save as draft
-          </Button>
-          <Button variant="secondary" onClick={() => setRequest(null)} disabled={saving} fullWidth>
-            Edit
-          </Button>
-        </div>
-        <div className={styles.startWatching}>
-          <Button variant="secondary" disabled fullWidth aria-describedby="start-watching-note">
+          <Button onClick={() => save("start")} loading={saving} fullWidth aria-describedby="start-watching-note">
             Start watching
           </Button>
           <p id="start-watching-note" className={styles.muted}>
-            Monitoring starts after you choose a plan - coming soon. Your Hunt is saved as a draft.
+            Saves your Hunt, then you choose a plan.
           </p>
+          <Button variant="secondary" onClick={() => save("list")} disabled={saving} fullWidth>
+            Save as draft
+          </Button>
+          <Button variant="text" onClick={() => setRequest(null)} disabled={saving} fullWidth>
+            Edit
+          </Button>
         </div>
       </Page>
     );

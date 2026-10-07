@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '../billing/billing.module.js';
 import { HuntsModule } from '../hunts/hunts.module.js';
 import { PlansModule } from '../plans/plans.module.js';
 import { EntitlementsController } from './entitlements.controller.js';
@@ -11,7 +12,7 @@ import { EntitlementsController } from './entitlements.controller.js';
  * Endpoints: GET /me/entitlements.
  */
 @Module({
-  imports: [PlansModule, HuntsModule],
+  imports: [PlansModule, HuntsModule, BillingModule],
   controllers: [EntitlementsController],
 })
 export class EntitlementsModule {}

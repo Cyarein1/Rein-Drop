@@ -2,45 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { BOTTOM_ITEMS, isActive, NAV, SIDEBAR_ITEMS, type NavItem } from "./nav";
 import styles from "./AppShell.module.css";
 
-function useIsActive() {
-  const pathname = usePathname();
-  return (item: NavItem) => isActive(pathname, item);
+/**
+ * Navigation pieces. Each renders from a `pathname` prop; the exported components read the
+ * current path with `usePathname()` inside <Suspense> (required on dynamic routes with Cache
+ * Components) and fall back to the same links without an active state while it streams.
+ */
+
+type PathProps = { pathname: string | null };
+const active = (pathname: string | null, item: NavItem) => pathname !== null && isActive(pathname, item);
+
+function withPathname(Component: (props: PathProps) => React.ReactNode) {
+  function Live() {
+    return <Component pathname={usePathname()} />;
+  }
+  return function NavWithPath() {
+    return (
+      <Suspense fallback={<Component pathname={null} />}>
+        <Live />
+      </Suspense>
+    );
+  };
 }
 
-/** Desktop: persistent primary action (Screenbook section 11: "Persistent Create Hunt action"). */
-export function CreateHuntButton() {
-  const active = useIsActive()(NAV.createHunt);
+function CreateHuntButtonView({ pathname }: PathProps) {
+  const current = active(pathname, NAV.createHunt);
   const Icon = NAV.createHunt.icon;
   return (
-    <Link
-      href={NAV.createHunt.href}
-      className={styles.createButton}
-      aria-current={active ? "page" : undefined}
-    >
+    <Link href={NAV.createHunt.href} className={styles.createButton} aria-current={current ? "page" : undefined}>
       <Icon aria-hidden="true" size={20} strokeWidth={2.5} />
       <span>{NAV.createHunt.label}</span>
     </Link>
   );
 }
 
-export function SidebarNav() {
-  const active = useIsActive();
+function SidebarNavView({ pathname }: PathProps) {
   return (
     <nav aria-label="Primary" className={styles.sidebarNav}>
       <ul>
         {SIDEBAR_ITEMS.map((item) => {
           const Icon = item.icon;
-          const current = active(item);
+          const current = active(pathname, item);
           return (
             <li key={item.href}>
-              <Link
-                href={item.href}
-                className={styles.sidebarLink}
-                aria-current={current ? "page" : undefined}
-              >
+              <Link href={item.href} className={styles.sidebarLink} aria-current={current ? "page" : undefined}>
                 <Icon aria-hidden="true" size={20} strokeWidth={current ? 2.5 : 2} />
                 <span>{item.label}</span>
               </Link>
@@ -53,14 +61,13 @@ export function SidebarNav() {
 }
 
 /** Mobile: Home - Hunts - central Create - Deals - Analytics. */
-export function BottomNav() {
-  const active = useIsActive();
+function BottomNavView({ pathname }: PathProps) {
   return (
     <nav aria-label="Primary" className={styles.bottomNav}>
       <ul>
         {BOTTOM_ITEMS.map((item) => {
           const Icon = item.icon;
-          const current = active(item);
+          const current = active(pathname, item);
           const isCreate = item.href === NAV.createHunt.href;
           return (
             <li key={item.href}>
@@ -83,8 +90,8 @@ export function BottomNav() {
 }
 
 /** Mobile top bar: Settings is not in the bottom bar, so it lives here. */
-export function TopBarSettingsLink() {
-  const current = useIsActive()(NAV.settings);
+function TopBarSettingsLinkView({ pathname }: PathProps) {
+  const current = active(pathname, NAV.settings);
   const Icon = NAV.settings.icon;
   return (
     <Link
@@ -97,3 +104,9 @@ export function TopBarSettingsLink() {
     </Link>
   );
 }
+
+/** Desktop: persistent primary action (Screenbook section 11). */
+export const CreateHuntButton = withPathname(CreateHuntButtonView);
+export const SidebarNav = withPathname(SidebarNavView);
+export const BottomNav = withPathname(BottomNavView);
+export const TopBarSettingsLink = withPathname(TopBarSettingsLinkView);

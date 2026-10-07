@@ -12,6 +12,8 @@ import {
   homeSummarySchema,
   huntEventListSchema,
   activationCheckSchema,
+  devBillingConfirmRequestSchema,
+  devBillingConfirmResponseSchema,
   entitlementEvaluationSchema,
   planListSchema,
   updateUserLocaleRequestSchema,
@@ -46,6 +48,7 @@ import {
   type UserLocale,
   type ActivationCheck,
   type EntitlementEvaluation,
+  type SubscriptionSummary,
   type Plan,
 } from '@rein-drop/contracts';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
@@ -114,6 +117,11 @@ export interface ApiClient {
   listPlans(): Promise<Plan[]>;
   /** The caller's plan, entitlements, usage and remaining allowance. */
   getEntitlements(): Promise<EntitlementEvaluation>;
+  /**
+   * DEVELOPMENT ONLY: fake billing confirmation for a plan (no payment). The API answers
+   * 404 in production. TODO(billing): real checkout is not integrated.
+   */
+  confirmDevBilling(planCode: string): Promise<SubscriptionSummary>;
 
   listDeals(query?: ListDealsQueryInput): Promise<Page<DealSummary>>;
   getDeal(id: string): Promise<DealDetail>;
@@ -205,6 +213,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     listPlans: async () => (await send(http, { method: 'GET', path: '/plans', response: planListSchema })).items,
     getEntitlements: () =>
       send(http, { method: 'GET', path: '/me/entitlements', response: entitlementEvaluationSchema }),
+    confirmDevBilling: async (planCode) =>
+      (
+        await send(http, {
+          method: 'POST',
+          path: '/billing/dev/confirm',
+          body: validateInput(devBillingConfirmRequestSchema, { planCode }, 'body'),
+          response: devBillingConfirmResponseSchema,
+        })
+      ).subscription,
 
     listDeals: async (query = {}) =>
       send(http, {
