@@ -267,3 +267,6 @@ pnpm clean      # remove build output
 ```
 
 Single workspace: `pnpm --filter <name> <script>`, e.g. `pnpm --filter api test:e2e`.
+
+Real-database integration tests (need `pnpm infra:up`, `pnpm db:migrate`, `pnpm db:seed`):
+`pnpm --filter api test:int`. They create a throwaway user and delete it afterwards.

@@ -4,6 +4,58 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 13 - Hunt CRUD + lifecycle
+
+**What was added**
+
+- Lifecycle: `DRAFT -> LIVE <-> PAUSED`, `DRAFT|LIVE|PAUSED -> ARCHIVED` (server-enforced; invalid
+  moves 409). Endpoints (current user only; another user's hunt = 404):
+  `GET/POST /hunts`, `GET/PATCH /hunts/:id`, `GET /hunts/:id/events`,
+  `POST /hunts/:id/{activate,pause,resume,archive}`. **No DELETE** - archived hunts are kept,
+  read-only and hidden from the default list (`?status=ARCHIVED` shows them).
+- Fields (contract `hunts.ts` -> explicit columns; unused `criteria` JSON dropped): `query`
+  (product / natural language), optional `name` (defaults to the query), `marketplaces` (>= 1),
+  `location` {text, radiusKm 1-500} where relevant, `conditions` (new/used/refurbished; empty =
+  any), `maxPrice` (money), optional `target` (dollar `profit` OR `margin` %), `priority`
+  (`NORMAL` only for MVP), `exclusions` (<= 20), timestamps `createdAt`, `updatedAt`,
+  `lastEditedAt`, `activatedAt` (first live), `pausedAt`, `archivedAt`.
+- Meaningful-criteria validation (shared in contracts, used by client and server): query 2-200
+  chars with letters/digits; unique marketplaces; positive amounts; one currency for max price and
+  profit target; unique exclusions; an exclusion may not be a word of the query. PATCH merges with
+  the stored hunt and re-validates the whole result.
+- Going live (activate / resume, and edits to a LIVE hunt): Facebook Marketplace requires a
+  location (local pickup). `TODO(product)` confirm; `TODO(plan-gate)` entitlement checks at
+  activation (Blueprint sections 6, 14).
+- History: new `HuntEvent` table (CREATED, EDITED with field-level before/after, ACTIVATED,
+  PAUSED, RESUMED, ARCHIVED; actor + from/to status), written in the same transaction as each
+  change. Edits keep the hunt id; removing a marketplace disables the `HuntMarketplace` row instead
+  of deleting it. Status changes are guarded against concurrent updates.
+- Database: migration `..._hunt_lifecycle` (HuntStatus DRAFT/LIVE/PAUSED/ARCHIVED, HuntPriority,
+  HuntEventType, hunt criteria + lifecycle columns, HuntEvent, HuntMarketplace.updatedAt).
+  Generated with `migrate diff`; the generated SQL had an ordering bug (altered HuntEvent columns
+  before the table existed) - fixed by hand, applied with `migrate deploy`, and `migrate diff`
+  confirms no drift. No hunt rows existed, so the enum change lost nothing.
+- Pagination: newest first, cursor = last id (UUIDv7 is time-ordered).
+- api-client: `createHunt` (input type with defaults), `transitionHunt(id, action)`,
+  `listHuntEvents(id)`.
+- New real-database integration suite: `pnpm --filter api test:int` (`test/*.int-spec.ts`,
+  separate from `pnpm test`; uses a throwaway user and deletes it).
+
+**What works (verified)**
+
+- `pnpm build` 11/11, `pnpm typecheck` 17/17, `pnpm lint` 17/17; tests: api 72 + e2e 36 (+10
+  hunts HTTP: auth, 7 validation cases, bad id, no DELETE) + **integration 3 against Docker
+  Postgres** (full lifecycle incl. not-ready 409, edit keeps id, marketplace disabled not deleted,
+  live edit guard, archive read-only + hidden, 6-event history, cursor paging, cross-user 404);
+  contracts 24, api-client 10. Integration cleanup verified (0 leftover rows). The running API
+  serves `GET /hunts`.
+
+**Open decisions**
+
+- Location for local marketplaces is free text (no geocoding provider yet); radius stored in km.
+- Archived hunts cannot be restored (not requested).
+
+
 ### Step 12 - "Are you a reseller?" gate before the Seller Snapshot
 
 **Product decision (user, 2026-10-07):** ask "Are you a reseller?" before the five Seller
@@ -534,7 +586,7 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: Seller Snapshot onboarding screens (one question per screen, "n of 5" progress,
-personalized summary - Blueprint section 4) on web and mobile using the new endpoints; then Hunt
-endpoints + the assisted first-Hunt flow (pre-filled from the snapshot).
+Likely: onboarding screens (reseller gate + five Seller Snapshot questions + summary) and the
+assisted first-Hunt flow (create -> review -> "Start watching") on web and mobile, pre-filled from
+the snapshot; Hunts list/detail screens using the new endpoints.
 (Await the next prompt.)

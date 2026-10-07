@@ -10,6 +10,7 @@ import {
   dealPageSchema,
   healthResponseSchema,
   homeSummarySchema,
+  huntEventListSchema,
   huntPageSchema,
   huntSchema,
   listDealsQuerySchema,
@@ -21,12 +22,14 @@ import {
   saveSellerSnapshotRequestSchema,
   type AccountIdentity,
   type SaveSellerSnapshotRequestInput,
-  type CreateHuntRequest,
+  type CreateHuntRequestInput,
   type DealDetail,
   type DealSummary,
   type HealthResponse,
   type HomeSummary,
   type Hunt,
+  type HuntAction,
+  type HuntEvent,
   type ListDealsQueryInput,
   type ListHuntsQueryInput,
   type Page,
@@ -72,10 +75,17 @@ export interface ApiClient {
   /** Counts for the returning-user home. */
   getHomeSummary(): Promise<HomeSummary>;
 
+  /** Newest first; archived hunts only when `status: 'ARCHIVED'` is requested. */
   listHunts(query?: ListHuntsQueryInput): Promise<Page<Hunt>>;
   getHunt(id: string): Promise<Hunt>;
-  createHunt(input: CreateHuntRequest): Promise<Hunt>;
+  /** Creates a DRAFT hunt. */
+  createHunt(input: CreateHuntRequestInput): Promise<Hunt>;
+  /** Edits criteria (same id; recorded in the hunt's history). */
   updateHunt(id: string, input: UpdateHuntRequest): Promise<Hunt>;
+  /** Lifecycle: activate (DRAFT->LIVE), pause, resume (PAUSED->LIVE), archive. */
+  transitionHunt(id: string, action: HuntAction): Promise<Hunt>;
+  /** The hunt's history, oldest first. */
+  listHuntEvents(id: string): Promise<HuntEvent[]>;
 
   listDeals(query?: ListDealsQueryInput): Promise<Page<DealSummary>>;
   getDeal(id: string): Promise<DealDetail>;
@@ -147,6 +157,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: validateInput(updateHuntRequestSchema, input, 'body'),
         response: huntSchema,
       }),
+    transitionHunt: (id, action) =>
+      send(http, { method: 'POST', path: `/hunts/${pathId(id)}/${action}`, response: huntSchema }),
+    listHuntEvents: async (id) =>
+      (await send(http, { method: 'GET', path: `/hunts/${pathId(id)}/events`, response: huntEventListSchema })).items,
 
     listDeals: async (query = {}) =>
       send(http, {

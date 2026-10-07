@@ -7,10 +7,20 @@ const HUNT = {
   id: ID,
   name: 'Levis',
   query: 'levis 501',
-  status: 'ACTIVE',
+  status: 'DRAFT',
+  priority: 'NORMAL',
   marketplaces: ['ebay'],
+  location: null,
+  conditions: [],
+  maxPrice: null,
+  target: null,
+  exclusions: [],
   createdAt: NOW,
   updatedAt: NOW,
+  lastEditedAt: null,
+  activatedAt: null,
+  pausedAt: null,
+  archivedAt: null,
 };
 
 function fakeFetch(status: number, body: unknown) {
@@ -40,7 +50,17 @@ describe('createApiClient', () => {
     const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe('http://api.test/hunts');
     expect(init?.method).toBe('POST');
-    expect(JSON.parse(String(init?.body))).toEqual({ name: 'Levis', query: 'levis 501', marketplaces: ['ebay'] });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      name: 'Levis',
+      query: 'levis 501',
+      marketplaces: ['ebay'],
+      location: null,
+      conditions: [],
+      maxPrice: null,
+      target: null,
+      exclusions: [],
+      priority: 'NORMAL',
+    });
     const headers = (init?.headers ?? {}) as Record<string, string>;
     expect(headers['x-test']).toBe('1');
   });
@@ -52,15 +72,22 @@ describe('createApiClient', () => {
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ code: 'VALIDATION_FAILED', status: undefined });
-    expect((err as ApiError).details?.map((d) => d.path)).toEqual(['body.name', 'body.marketplaces']);
+    expect((err as ApiError).details?.map((d) => d.path)).toEqual(['body.name', 'body.query', 'body.marketplaces']);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('posts lifecycle actions to /hunts/:id/<action>', async () => {
+    const fetch = fakeFetch(200, { ...HUNT, status: 'LIVE', activatedAt: NOW });
+    await expect(client(fetch).transitionHunt(ID, 'activate')).resolves.toMatchObject({ status: 'LIVE' });
+    expect(fetch.mock.calls[0]![0]).toBe(`http://api.test/hunts/${ID}/activate`);
+    expect(fetch.mock.calls[0]![1]?.method).toBe('POST');
   });
 
   it('serializes list queries with defaults', async () => {
     const fetch = fakeFetch(200, { items: [HUNT], nextCursor: null });
-    const page = await client(fetch).listHunts({ status: 'ACTIVE' });
+    const page = await client(fetch).listHunts({ status: 'LIVE' });
     expect(page.items).toHaveLength(1);
-    expect(fetch.mock.calls[0]![0]).toBe('http://api.test/hunts?limit=20&status=ACTIVE');
+    expect(fetch.mock.calls[0]![0]).toBe('http://api.test/hunts?limit=20&status=LIVE');
   });
 
   it('maps the standard API error body to ApiError', async () => {

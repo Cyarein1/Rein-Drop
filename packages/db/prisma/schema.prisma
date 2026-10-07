@@ -28,9 +28,26 @@ datasource db {
 // Enums - stable lifecycle / status concepts only
 // ---------------------------------------------------------------------------
 
+/// Hunt lifecycle: DRAFT -> LIVE <-> PAUSED; any -> ARCHIVED (never deleted).
 enum HuntStatus {
-  ACTIVE
+  DRAFT
+  LIVE
   PAUSED
+  ARCHIVED
+}
+
+/// Monitoring priority. MVP: NORMAL only ("Hot Hunt" is a later plan feature).
+enum HuntPriority {
+  NORMAL
+}
+
+/// Append-only Hunt history.
+enum HuntEventType {
+  CREATED
+  EDITED
+  ACTIVATED
+  PAUSED
+  RESUMED
   ARCHIVED
 }
 
@@ -256,33 +273,76 @@ model Listing {
 // Hunts (saved sourcing searches) & matches
 // ---------------------------------------------------------------------------
 
+/// A saved sourcing search. Criteria shape is defined in @rein-drop/contracts (hunts.ts).
+/// Edits keep the same id; history lives in HuntEvent. Never deleted - archived instead.
 model Hunt {
-  id        String     @id @default(uuid(7)) @db.Uuid
-  userId    String     @db.Uuid
-  name      String
-  /// Free-text search terms.
-  query     String
-  /// TODO(product): typed filter shape (price range, condition, location radius...)
-  /// to be defined in @rein-drop/contracts before it is relied on.
-  criteria  Json?
-  status    HuntStatus @default(ACTIVE)
-  createdAt DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+  id       String       @id @default(uuid(7)) @db.Uuid
+  userId   String       @db.Uuid
+  name     String
+  /// The product or a natural-language description of what to find.
+  query    String
+  status   HuntStatus   @default(DRAFT)
+  priority HuntPriority @default(NORMAL)
+
+  /// Free-text place (city / area / postal code) until geocoding exists. Null = no location.
+  locationText        String?
+  radiusKm            Int?
+  /// Accepted listing conditions (contract values); empty = any.
+  conditions          String[] @default([])
+  /// Max acquisition price in minor units.
+  maxPriceMinor       Int?
+  /// Currency for maxPriceMinor and targetProfitMinor (one currency per hunt).
+  priceCurrency       String?  @db.Char(3)
+  /// Optional target: dollar profit (minor units) OR margin (whole percent), never both.
+  targetProfitMinor   Int?
+  targetMarginPercent Int?
+  /// Keywords whose listings are ignored.
+  exclusions          String[] @default([])
+
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  /// Last criteria edit.
+  lastEditedAt DateTime? @db.Timestamptz(3)
+  /// First time the hunt went LIVE.
+  activatedAt  DateTime? @db.Timestamptz(3)
+  pausedAt     DateTime? @db.Timestamptz(3)
+  archivedAt   DateTime? @db.Timestamptz(3)
 
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   marketplaces HuntMarketplace[]
+  events       HuntEvent[]
   matches      HuntMatch[]
   alerts       Alert[]
 
   @@index([userId, status])
 }
 
-/// Which marketplaces a hunt searches.
+/// Append-only history of a hunt (creation, criteria edits, lifecycle changes).
+model HuntEvent {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  huntId      String        @db.Uuid
+  type        HuntEventType
+  fromStatus  HuntStatus?
+  toStatus    HuntStatus?
+  /// For EDITED: { field: { before, after } } in contract shape.
+  changes     Json?
+  /// Who caused the event (null for system events).
+  actorUserId String?       @db.Uuid
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+
+  hunt Hunt @relation(fields: [huntId], references: [id], onDelete: Cascade)
+
+  @@index([huntId, createdAt])
+}
+
+/// Which marketplaces a hunt searches. Removing a marketplace from a hunt disables the
+/// row instead of deleting it, so past matches stay attributable.
 model HuntMarketplace {
   huntId        String   @db.Uuid
   marketplaceId String   @db.Uuid
   isEnabled     Boolean  @default(true)
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 
   hunt        Hunt        @relation(fields: [huntId], references: [id], onDelete: Cascade)
   marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Restrict)

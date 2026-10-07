@@ -220,6 +220,38 @@ describe('API (e2e)', () => {
     });
   });
 
+  describe('Hunts (HTTP layer; lifecycle is covered by test/hunts.int-spec.ts)', () => {
+    const asDev = (req: request.Test) => req.set(DEV_AUTH_HEADER, DEV_AUTH_SUBJECT);
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer()).get('/hunts').expect(401);
+      await request(app.getHttpServer()).post('/hunts').send({ query: 'ps5', marketplaces: ['ebay'] }).expect(401);
+    });
+
+    it.each([
+      ['no marketplace', { query: 'ps5 slim', marketplaces: [] }, 'body.marketplaces'],
+      ['meaningless search terms', { query: '??', marketplaces: ['ebay'] }, 'body.query'],
+      ['an unsupported marketplace', { query: 'ps5 slim', marketplaces: ['craigslist'] }, 'body.marketplaces.0'],
+      ['an exclusion that hides everything', { query: 'ps5 slim', marketplaces: ['ebay'], exclusions: ['ps5'] }, 'body.exclusions.0'],
+      ['a zero max price', { query: 'ps5 slim', marketplaces: ['ebay'], maxPrice: { amountMinor: 0, currency: 'USD' } }, 'body.maxPrice'],
+      ['an unknown condition', { query: 'ps5 slim', marketplaces: ['ebay'], conditions: ['mint'] }, 'body.conditions.0'],
+      ['a non-NORMAL priority', { query: 'ps5 slim', marketplaces: ['ebay'], priority: 'HOT' }, 'body.priority'],
+    ])('POST rejects %s with 400', async (_label, body, path) => {
+      const res = await asDev(request(app.getHttpServer()).post('/hunts')).send(body).expect(400);
+      expect(res.body.code).toBe('VALIDATION_FAILED');
+      expect(res.body.details.map((d: { path: string }) => d.path)).toContain(path);
+    });
+
+    it('rejects a malformed hunt id with 400', async () => {
+      const res = await asDev(request(app.getHttpServer()).get('/hunts/not-a-uuid')).expect(400);
+      expect(res.body.details.map((d: { path: string }) => d.path)).toEqual(['param.id']);
+    });
+
+    it('has no DELETE endpoint (hunts are archived, never deleted)', async () => {
+      await asDev(request(app.getHttpServer()).delete('/hunts/01990000-0000-7000-8000-000000000001')).expect(404);
+    });
+  });
+
   describe('errors and validation', () => {
     it('unknown route -> 404 in the standard error shape', async () => {
       const res = await request(app.getHttpServer()).get('/nope?token=abc').expect(404);
