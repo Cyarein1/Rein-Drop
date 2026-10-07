@@ -1,0 +1,74 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-6);
+}
+
+/* Location + radius: side by side when there is room, stacked on small phones. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-3);
+}
+
+.grow {
+  flex: 1 1 220px;
+}
+
+.radius {
+  flex: 0 1 140px;
+}
+
+.sentence {
+  font-size: var(--rd-font-size-lg);
+  line-height: 1.5;
+}
+
+.review {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--rd-space-1) var(--rd-space-4);
+  padding: var(--rd-space-3) 0;
+  border-bottom: 1px solid var(--rd-neutral-border);
+}
+
+.reviewRow:last-child {
+  border-bottom: 0;
+}
+
+.reviewRow dt {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.reviewRow dd {
+  margin: 0;
+  font-weight: var(--rd-font-weight-semibold);
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.startWatching {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+  padding-top: var(--rd-space-2);
+  border-top: 1px solid var(--rd-neutral-border);
+}
+
+.muted {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}

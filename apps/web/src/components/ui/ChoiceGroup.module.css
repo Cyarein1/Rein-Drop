@@ -1,0 +1,75 @@
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: var(--rd-space-1);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.hint {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  font-weight: var(--rd-font-weight-medium);
+  cursor: pointer;
+  user-select: none;
+}
+
+.chip:hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+/* Selected: navy outline on Sky Wash - selection is structure, not action, so not orange. */
+.chip:has(.input:checked) {
+  border-color: var(--rd-color-navy);
+  background: var(--rd-surface-secondary);
+  font-weight: var(--rd-font-weight-semibold);
+  box-shadow: inset 0 0 0 1px var(--rd-color-navy);
+}
+
+.chip:has(.input:focus-visible) {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Visually hidden but focusable native input. */
+.input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.error {
+  color: var(--rd-text);
+  font-size: var(--rd-font-size-sm);
+  padding-left: var(--rd-space-2);
+  border-left: 3px solid var(--rd-destructive);
+}

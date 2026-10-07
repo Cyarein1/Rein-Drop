@@ -4,6 +4,54 @@ _Last updated: 2026-10-07_
 
 ## Completed steps
 
+### Step 15 - Create Hunt flow (web + mobile), Review, save as draft
+
+**What was added**
+
+- New package `@rein-drop/client-core` (platform-neutral, no UI): Create Hunt form model,
+  `huntFormDefaults()` (Seller Snapshot + locale -> defaults), `buildCreateHuntRequest()`
+  (money text -> minor units in the user's currency, radius in the user's unit -> km, location only
+  when a local marketplace is chosen, canonical marketplace order, shared contract validation),
+  `mapHuntErrors()` (API/schema details -> form fields), `huntReview()` (plain-English sentence +
+  labelled details + go-live warnings), money parsing/formatting, `queryPlaceholder()`.
+- Defaults from the Seller Snapshot, always **visible and editable** ("From your Seller Snapshot
+  ... - change it anytime"): marketplaces from sourcing answers (both when no signal), deal rule ->
+  profit / margin target or max price (only when the currency matches the user's), category ->
+  example placeholder. Non-reseller answers are ignored. Currency falls back to USD only when the
+  user has no locale yet (fallback, not a product decision).
+- Form (mobile-first, both platforms): product/description, eBay / Facebook chips,
+  location + radius shown only when Facebook is chosen, condition chips (Any/New/Used/Refurbished),
+  max price, target (none / minimum profit / minimum margin), "More filters" disclosure with words
+  to ignore. Errors per field; on web, focus moves to the first invalid field.
+- Review screen: plain-English summary, details list, warning when the hunt cannot go live yet
+  (Facebook without location), **Save as draft**, Edit, and a disabled **Start watching** with
+  "Monitoring starts after you choose a plan - coming soon". No activation call anywhere.
+- Web: `/hunts/new` (server loads snapshot + locale, client flow, save via Server Action so API
+  credentials stay server-side), `/hunts` lists real hunts with status badges + "saved as a draft"
+  confirmation. New web primitives `ChoiceGroup` (native checkbox/radio chips) and `Disclosure`.
+- Mobile: `hunts/new` modal (same model and review), header title switches to "Review Hunt",
+  `router.dismissTo('/hunts')` after save; Hunts tab lists real hunts (reloads on focus, loading /
+  error + retry / empty states). New mobile primitives `ChoiceGroup` and `Disclosure`.
+
+**What works (verified)**
+
+- `pnpm build` 12/12, `pnpm typecheck` 19/19, `pnpm lint` 19/19; tests: client-core 13 (+13),
+  contracts 31, api 72, api-client 10, web 6, mobile 7, design-tokens 11, worker 3.
+- **Browser end-to-end on web (headless Edge via puppeteer-core, 390x844 phone viewport), 15/15
+  checks:** Snapshot defaults preselected and labelled (Facebook, R 500 profit), ZAR + km from
+  locale, placeholder from categories, empty submit -> error + focus, fill + change a default,
+  review sentence, disabled Start watching, save -> `/hunts` with confirmation and Draft badge.
+  Saved record checked via API: DRAFT, `activatedAt` null, ZAR minor units, km. Test data
+  (2 hunts, snapshot, locale) removed afterwards.
+- **Mobile:** typecheck, lint and iOS/Android bundles only - **not yet run on a device/emulator**.
+
+**Known limitations**
+
+- No hunt detail / edit screen yet (list cards are not links).
+- Onboarding (reseller gate + Seller Snapshot screens) is not built, so defaults only appear once
+  the snapshot exists (via API for now).
+
+
 ### Step 14 - Locale preferences, restore archived hunts, geocoding decision
 
 **Decisions (product owner, 2026-10-07)** - recorded in `docs/decisions/`:
@@ -629,7 +677,7 @@ pnpm --filter mobile start
 
 ## Next step
 
-Likely: onboarding screens (reseller gate + five Seller Snapshot questions + summary) and the
-assisted first-Hunt flow (create -> review -> "Start watching") on web and mobile, pre-filled from
-the snapshot; Hunts list/detail screens using the new endpoints.
+Likely: onboarding screens (reseller gate + five Seller Snapshot questions + "Rein Drop will
+prioritize..." summary) on web and mobile, flowing into the Create Hunt flow; then Hunt detail /
+edit / pause / archive / restore screens.
 (Await the next prompt.)

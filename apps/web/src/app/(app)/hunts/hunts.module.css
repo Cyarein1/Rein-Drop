@@ -1,0 +1,13 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
+.meta {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}

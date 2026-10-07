@@ -1,0 +1,6 @@
+/**
+ * Platform-neutral client logic shared by web and mobile: form models, defaults,
+ * parsing and formatting. No React, no platform UI, no network calls.
+ */
+export * from './money.js';
+export * from './hunt-form.js';
