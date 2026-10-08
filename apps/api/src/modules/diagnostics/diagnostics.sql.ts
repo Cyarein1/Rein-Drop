@@ -67,6 +67,8 @@ export type AnalysisRow = GroupRow &
     aiProviders: string[] | null;
     inputTokens: bigint | null;
     outputTokens: bigint | null;
+    /** Sum of the tasks' reported cost; null when none reported one. */
+    aiCostUsd: number | null;
   };
 
 export type AlertRow = GroupRow & { alerts: number };
@@ -143,12 +145,13 @@ export function diagnosticsQueries(prisma: PrismaClient, w: DiagnosticsWindow) {
     prisma.$queryRaw<AnalysisRow[]>(Prisma.sql`
       WITH x AS (
         SELECT ${MATCH_SOURCE_COLUMNS}, d."status"::text AS "status", d."alertEligible", d."provider" AS "ai", d."durationMs"::float8 AS "aiMs",
-          u."inputTokens", u."outputTokens"
+          u."inputTokens", u."outputTokens", u."costUsd"
         FROM "DealAnalysis" d
         JOIN "HuntMatch" m ON m."id" = d."huntMatchId"
         ${MATCH_SOURCE}
         LEFT JOIN LATERAL (
-          SELECT SUM((t."value" -> 'usage' ->> 'inputTokens')::bigint) AS "inputTokens", SUM((t."value" -> 'usage' ->> 'outputTokens')::bigint) AS "outputTokens"
+          SELECT SUM((t."value" -> 'usage' ->> 'inputTokens')::bigint) AS "inputTokens", SUM((t."value" -> 'usage' ->> 'outputTokens')::bigint) AS "outputTokens",
+            SUM((t."value" ->> 'costUsd')::float8) AS "costUsd"
           FROM jsonb_each(CASE WHEN jsonb_typeof(d."providerMetadata" -> 'tasks') = 'object' THEN d."providerMetadata" -> 'tasks' ELSE '{}'::jsonb END) t
         ) u ON TRUE
         WHERE ${inWindow(Prisma.sql`d."createdAt"`, w)}
@@ -161,6 +164,7 @@ export function diagnosticsQueries(prisma: PrismaClient, w: DiagnosticsWindow) {
         array_agg(DISTINCT x."ai") AS "aiProviders",
         SUM(x."inputTokens")::bigint AS "inputTokens",
         SUM(x."outputTokens")::bigint AS "outputTokens",
+        SUM(x."costUsd")::float8 AS "aiCostUsd",
         ${stats(Prisma.sql`x."aiMs"`, 'ai')}
       FROM x ${GROUP_BY}`),
 

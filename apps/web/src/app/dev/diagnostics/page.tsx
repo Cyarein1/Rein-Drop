@@ -61,7 +61,7 @@ async function Report({ searchParams }: { searchParams: PageProps<"/dev/diagnost
           <li>Search activity counts runs started in the window; candidates, analyses and alerts are attributed to the run that first produced the match.</li>
           <li>&quot;Returned&quot; and &quot;matched&quot; include repeats (the same listing seen again on the next poll); &quot;new&quot; counts first sightings only.</li>
           <li>Request latency is the slowest source request per run, measured by the worker. Listing age = first seen − posted, only where the source exposes a posting time.</li>
-          <li>Cost is what sources report: ~ marks estimates from published pricing; &quot;unknown&quot; means free, quota-based or not reported - never zero. AI cost stays unknown until an AI provider reports it.</li>
+          <li>Cost is what sources report: ~ marks estimates from published pricing; &quot;unknown&quot; means free, quota-based or not reported - never zero. AI cost is shown only when the AI provider reports it (Foundry with FOUNDRY_PRICE_* set).</li>
           <li>Per Hunt-day = known cost ÷ Hunts served ÷ window days. Grouped runs split their cost evenly between their Hunts.</li>
         </ul>
       </Card>

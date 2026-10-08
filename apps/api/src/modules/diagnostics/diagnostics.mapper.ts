@@ -91,8 +91,8 @@ function sourceRow(
       providerIsEstimate: run?.costIsEstimate === true,
       runsWithKnownCost: num(run?.costKnownRuns),
       runsWithUnknownCost: runs - num(run?.costKnownRuns),
-      // No AI provider reports cost yet and no AI pricing is configured (TBD with Foundry, prompt 37).
-      aiUsd: null,
+      // Only what the AI provider reported (Foundry with FOUNDRY_PRICE_* set); the mock reports none.
+      aiUsd: analysis?.aiCostUsd === null || analysis?.aiCostUsd === undefined ? null : usd(num(analysis.aiCostUsd)),
       perRunUsd: costPer(providerUsd, runs),
       perNewMatchUsd: costPer(providerUsd, newMatches),
       perAlertUsd: costPer(providerUsd, alerts),

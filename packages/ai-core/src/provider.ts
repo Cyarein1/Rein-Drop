@@ -5,7 +5,7 @@ import type {
   ProductExtraction,
 } from './schemas.js';
 
-/** `mock` = local deterministic provider (default). `foundry` = future Microsoft Foundry provider. */
+/** `mock` = local deterministic provider (default). `foundry` = Microsoft Foundry (Azure OpenAI v1 API), configured by environment. */
 export const AI_PROVIDER_IDS = ['mock', 'foundry'] as const;
 export type AIProviderId = (typeof AI_PROVIDER_IDS)[number];
 export const DEFAULT_AI_PROVIDER: AIProviderId = 'mock';
@@ -90,7 +90,7 @@ export interface AIResult<T> {
 
 /**
  * The AI boundary. Domain code calls these structured tasks and never sees prompts, models or
- * vendor SDKs. Implementations: MockAIProvider (local), Foundry (later). Always use a provider
+ * vendor SDKs. Implementations: MockAIProvider (local), FoundryAIProvider. Always use a provider
  * wrapped by `withValidation`, so every output is schema-checked and grounded in the input.
  */
 export interface AIProvider {
@@ -108,20 +108,27 @@ export const AI_ERROR_CODES = [
   'NOT_CONFIGURED',
   'RATE_LIMITED',
   'UNAVAILABLE',
+  /** The provider's content safety filter blocked the prompt or the answer. */
+  'CONTENT_FILTERED',
+  /** The provider rejected the request itself (e.g. the deployment doesn't support structured outputs). */
+  'REQUEST_REJECTED',
 ] as const;
 export type AIErrorCode = (typeof AI_ERROR_CODES)[number];
 
 export class AIProviderError extends Error {
   readonly retryable: boolean;
+  /** When the provider asked us to retry (rate limits); null = no preference. */
+  readonly retryAfter: Date | null;
 
   constructor(
     readonly code: AIErrorCode,
     message: string,
     readonly details: string[] = [],
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; retryAfter?: Date | null },
   ) {
     super(message, options);
     this.name = 'AIProviderError';
     this.retryable = code === 'RATE_LIMITED' || code === 'UNAVAILABLE';
+    this.retryAfter = options?.retryAfter ?? null;
   }
 }

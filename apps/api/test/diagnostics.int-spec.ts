@@ -120,7 +120,7 @@ describe('Ingestion diagnostics (integration, real database)', () => {
         provider: 'mock',
         alertEligible: true,
         durationMs: 12,
-        providerMetadata: { tasks: { extractProduct: { usage: { inputTokens: 100, outputTokens: 20 } }, explainDeal: { usage: null } } },
+        providerMetadata: { tasks: { extractProduct: { usage: { inputTokens: 100, outputTokens: 20 }, costUsd: 0.00072 }, explainDeal: { usage: null, costUsd: null } } },
         createdAt: at('2021-02-01T10:00:05Z'),
       },
     });
@@ -176,7 +176,7 @@ describe('Ingestion diagnostics (integration, real database)', () => {
       providerIsEstimate: true,
       runsWithKnownCost: 2,
       runsWithUnknownCost: 0,
-      aiUsd: null,
+      aiUsd: 0.00072, // reported by the AI provider on one task
       perRunUsd: 0.031,
       perNewMatchUsd: 0.020667,
       perAlertUsd: 0.062,

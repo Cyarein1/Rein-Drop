@@ -1,11 +1,63 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 39)_
+_Last updated: 2026-10-09 (step 40)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 40 - Microsoft Foundry AIProvider (Build Prompt 37)
+
+Production-capable `AIProvider` for Microsoft Foundry, configured by environment; the mock stays
+the default offline provider (decision [0012](decisions/0012-foundry-ai-provider.md)).
+
+**What was added**
+
+- ai-core `foundry/`:
+  - `FoundryAIProvider`: Azure OpenAI in Foundry Models **v1** API
+    (`POST {endpoint}/openai/v1/chat/completions`, no api-version), `api-key` header (bearer-token
+    function supported for Entra ID), one deployment per task from config, structured outputs
+    (`json_schema`, `strict: true`), `max_completion_tokens`, no temperature.
+  - `toStrictJsonSchema`: the task zod schemas converted to Azure's strict JSON Schema subset.
+  - Versioned prompts (`foundry-*@1`) with the canonical fact values evidence must match; listing
+    text declared untrusted.
+  - Timeouts (25 s per request), in-process retries (1, exponential backoff + jitter, honouring
+    `retry-after-ms` / `retry-after` up to 5 s), longer waits handed to the job queue with the
+    service's retry time; `foundryWorstCaseMs` for the lease check.
+  - Error mapping: NOT_CONFIGURED (401/403/404), RATE_LIMITED (429), UNAVAILABLE (408/5xx/network/
+    timeout), new CONTENT_FILTERED (400 content_filter / finish_reason content_filter), new
+    REQUEST_REJECTED (other 400), INVALID_OUTPUT (length, refusal, non-JSON); the key never appears.
+  - Usage metadata per task: deployment, reported model version, prompt version, latency, tokens,
+    request id, attempts, `costUsd` only with configured pricing.
+  - `resolveFoundryConfig` / `foundryEnvShape`; `createAIProvider('foundry', config)`.
+- `AIProviderError.retryAfter`; failed analysis records carry it; the worker's analysis handler
+  retries at that time.
+- Worker config: `FOUNDRY_ENDPOINT`, `FOUNDRY_API_KEY`, `FOUNDRY_DEPLOYMENT` (+ per-task),
+  `FOUNDRY_TIMEOUT_MS`, `FOUNDRY_MAX_RETRIES`, `FOUNDRY_MAX_OUTPUT_TOKENS`,
+  `FOUNDRY_PRICE_INPUT_PER_1M_USD` / `_OUTPUT_`; refuses missing values, http endpoints, half
+  pricing and a job lease shorter than the worst case. `.env.example` + README.
+- Diagnostics: AI cost = the tasks' reported `costUsd` (unknown when not reported).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54. ai-core 42 (+1 live skipped): strict schema
+  rules for all three tasks (closed objects, all required, no unsupported keywords, depth <= 5,
+  <= 100 properties), request shape (URL forms, deployment per task, key only in the header,
+  bearer auth), full candidate analysis through a fake Foundry with usage / cost, schema / JSON /
+  truncation / refusal / content-filter rejections, ungrounded output rejected, every HTTP error
+  class without retries or key leaks, 429 retried after `retry-after-ms`, long waits handed to the
+  queue, 5xx / network backoff, request timeout abort, config resolution. Worker config tests
+  (Foundry env, https, lease check, no key in errors).
+- Worker int 40/40 (rate-limit retry time reaches the job queue), API int 49/49, e2e 52/52.
+- **Not run against a real Foundry deployment** - no credentials on this machine; the live test
+  (`foundry-ai-provider.live.spec.ts`) is skipped.
+
+**Not done / TODO**
+
+- Live run with your deployment (prompt quality and validation-failure rate unproven).
+- Managed identity (keyless) auth wiring; model / deployment / region choice (D33).
+- No repair attempt when a model's output fails validation.
 
 ### Step 39 - Internal ingestion diagnostics: economics and freshness (Build Prompt 36)
 

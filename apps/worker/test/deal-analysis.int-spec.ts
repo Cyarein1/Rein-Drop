@@ -206,6 +206,13 @@ describe('deal analysis pipeline (integration, real database)', () => {
     await expect(handler.analyze(job(1))).rejects.toBeInstanceOf(RetryableJobError);
     expect(await prisma.dealAnalysis.count({ where: { huntMatchId: target.huntMatchId! } })).toBe(0);
 
+    // A rate limit waits as long as the AI provider asked (e.g. Foundry retry-after-ms).
+    const retryAfter = new Date(t + 45_000);
+    const limited = createMockAIProvider();
+    limited.explainDeal = () => Promise.reject(new AIProviderError('RATE_LIMITED', 'Rate limit is exceeded', [], { retryAfter }));
+    const limitedHandler = new DealAnalysisHandler(prisma, limited, registry, undefined, clock);
+    await expect(limitedHandler.analyze(job(1))).rejects.toMatchObject({ name: 'RetryableJobError', retryAt: retryAfter });
+
     expect(await handler.analyze(job(3))).toBe('failed');
     const failed = await prisma.dealAnalysis.findFirstOrThrow({ where: { huntMatchId: target.huntMatchId! } });
     expect(failed).toMatchObject({ status: 'FAILED', strength: null, confidence: null, score: null, alertEligible: false, alertKind: null });

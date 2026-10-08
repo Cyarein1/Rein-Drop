@@ -117,7 +117,8 @@ export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
 
     const record = await analyzeCandidate(this.ai, input, () => this.clock().getTime());
     if (record.status === 'FAILED' && record.retryable && job.attempt < job.maxAttempts) {
-      throw new RetryableJobError(`AI ${record.errorCode}: ${record.errorMessage}`);
+      // Rate limits: wait as long as the provider asked (the job runner's backoff otherwise).
+      throw new RetryableJobError(`AI ${record.errorCode}: ${record.errorMessage}`, record.retryAfter);
     }
 
     const economics = computeEconomics({ asking: price, knownCosts, maxPrice: criteria.maxPrice, target: criteria.target, comparables }, this.policy);

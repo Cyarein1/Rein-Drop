@@ -19,7 +19,7 @@ describe('loadWorkerConfig', () => {
       },
       sourceHealth: { slowMs: 5_000, downAfterFailures: 3, backoffBaseMs: 30_000, backoffMaxMs: 900_000, probeIntervalMs: 60_000 },
       notifications: { delivery: 'simulator', push: { provider: 'simulator', expoAccessToken: null } },
-      ai: { provider: 'mock' },
+      ai: { provider: 'mock', foundry: null },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
       ebayApi: null,
@@ -109,10 +109,45 @@ describe('loadWorkerConfig', () => {
   });
 
   it('uses the mock AI provider locally and refuses it in production', () => {
-    expect(loadWorkerConfig({ AI_PROVIDER: 'foundry' }).ai).toEqual({ provider: 'foundry' });
+    expect(loadWorkerConfig({}).ai).toEqual({ provider: 'mock', foundry: null });
     expect(() => loadWorkerConfig({ AI_PROVIDER: 'openai' })).toThrow(/AI_PROVIDER: must be one of: mock, foundry/);
     expect(() =>
       loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'mock', NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'expo' }),
     ).toThrow('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
+  });
+
+  const FOUNDRY = { AI_PROVIDER: 'foundry', FOUNDRY_ENDPOINT: 'https://rein.openai.azure.com', FOUNDRY_API_KEY: 'k3y-secret', FOUNDRY_DEPLOYMENT: 'gpt-4o-mini-prod' };
+
+  it('configures Foundry from the environment: endpoint, key, deployments, limits, pricing', () => {
+    expect(loadWorkerConfig({ ...FOUNDRY, FOUNDRY_DEPLOYMENT_DEAL_EXPLANATION: 'gpt-4o-prod', FOUNDRY_MAX_RETRIES: '0', FOUNDRY_PRICE_INPUT_PER_1M_USD: '0.15', FOUNDRY_PRICE_OUTPUT_PER_1M_USD: '0.6' }).ai).toEqual({
+      provider: 'foundry',
+      foundry: {
+        endpoint: 'https://rein.openai.azure.com',
+        auth: { kind: 'api-key', key: 'k3y-secret' },
+        deployments: { extractProduct: 'gpt-4o-mini-prod', assessConditionRisk: 'gpt-4o-mini-prod', explainDeal: 'gpt-4o-prod' },
+        timeoutMs: undefined,
+        maxRetries: 0,
+        maxOutputTokens: undefined,
+        pricing: { inputPer1M: 0.15, outputPer1M: 0.6 },
+      },
+    });
+  });
+
+  it('refuses Foundry without endpoint / key / deployment, over http, or with a lease shorter than its retries', () => {
+    expect(() => loadWorkerConfig({ AI_PROVIDER: 'foundry' })).toThrow(/FOUNDRY_ENDPOINT: required[\s\S]*FOUNDRY_API_KEY: required[\s\S]*FOUNDRY_DEPLOYMENT: required/);
+    expect(() => loadWorkerConfig({ ...FOUNDRY, FOUNDRY_ENDPOINT: 'http://rein.openai.azure.com' })).toThrow(/FOUNDRY_ENDPOINT: must be an https URL/);
+    expect(() => loadWorkerConfig({ ...FOUNDRY, FOUNDRY_TIMEOUT_MS: '60000' })).toThrow(/WORKER_JOB_LEASE_MS: 120000 ms is shorter than one Foundry analysis can take \(250000 ms/);
+    expect(loadWorkerConfig({ ...FOUNDRY, FOUNDRY_TIMEOUT_MS: '60000', WORKER_JOB_LEASE_MS: '300000' }).ai.foundry?.timeoutMs).toBe(60_000);
+  });
+
+  it('never puts the Foundry key in an error message', () => {
+    let message = '';
+    try {
+      loadWorkerConfig({ ...FOUNDRY, FOUNDRY_ENDPOINT: 'nope' });
+    } catch (err) {
+      message = String(err);
+    }
+    expect(message).toMatch(/FOUNDRY_ENDPOINT/);
+    expect(message).not.toContain('k3y-secret');
   });
 });

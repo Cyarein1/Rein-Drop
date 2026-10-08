@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, type AIProviderId } from '@rein-drop/ai-core';
+import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, foundryEnvShape, foundryWorstCaseMs, resolveFoundryConfig, type AIProviderId, type FoundryConfig } from '@rein-drop/ai-core';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
 import {
   DEV_SCENARIOS,
@@ -70,6 +70,8 @@ const workerEnvSchema = z.object({
   EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
   NOTIFICATION_DELIVERY: z.enum(['simulator', 'disabled'], { error: 'must be one of: simulator, disabled' }).optional(),
   AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
+  // Microsoft Foundry (AI_PROVIDER=foundry) - see resolveFoundryConfig. Secrets come from the environment only.
+  ...foundryEnvShape,
 });
 
 /** Validated, typed worker configuration. Inject with `@Inject(WORKER_CONFIG)`. */
@@ -101,8 +103,8 @@ export interface WorkerConfig {
     readonly delivery: 'simulator' | 'disabled';
     readonly push: { readonly provider: 'expo' | 'simulator' | 'none'; readonly expoAccessToken: string | null };
   };
-  /** AIProvider for deal analysis (@rein-drop/ai-core). */
-  readonly ai: { readonly provider: AIProviderId };
+  /** AIProvider for deal analysis (@rein-drop/ai-core); `foundry` holds its config (secret - never log it). */
+  readonly ai: { readonly provider: AIProviderId; readonly foundry: FoundryConfig | null };
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
   /** Simulated latency of the development sources, ms. */
@@ -124,7 +126,15 @@ export function loadWorkerConfig(
   });
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
-  const problems = [...ebay.problems, ...facebook.problems];
+  const aiProvider = parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER;
+  const ai = resolveFoundryConfig(aiProvider, parsed);
+  const problems = [...ebay.problems, ...facebook.problems, ...ai.problems];
+  // A job must finish within its lease, or a second worker could pick it up while it still runs.
+  if (ai.foundry && foundryWorstCaseMs(ai.foundry) > parsed.WORKER_JOB_LEASE_MS) {
+    problems.push(
+      `WORKER_JOB_LEASE_MS: ${parsed.WORKER_JOB_LEASE_MS} ms is shorter than one Foundry analysis can take (${foundryWorstCaseMs(ai.foundry)} ms with these timeouts / retries) - raise it, or lower FOUNDRY_TIMEOUT_MS / FOUNDRY_MAX_RETRIES`,
+    );
+  }
   if (parsed.NODE_ENV === 'production') {
     // The latency settings have defaults, so check whether they were set at all.
     for (const key of ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO', 'EBAY_DEV_LATENCY_MS', 'FACEBOOK_DEV_LATENCY_MS']) {
@@ -161,7 +171,7 @@ export function loadWorkerConfig(
       delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator',
       push: Object.freeze({ provider: parsed.PUSH_PROVIDER ?? 'simulator', expoAccessToken: parsed.EXPO_ACCESS_TOKEN ?? null }),
     }),
-    ai: Object.freeze({ provider: parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER }),
+    ai: Object.freeze({ provider: aiProvider, foundry: ai.foundry ? Object.freeze(ai.foundry) : null }),
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',

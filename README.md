@@ -102,6 +102,10 @@ Invalid environment configuration for api:
 | `FACEBOOK_SOURCE` | api, worker | `dev` | `dev` = development provider; `apify` = Apify Marketplace scraper - **development only** (terms D12), refused in production. See `docs/providers/facebook-apify.md`. |
 | `APIFY_TOKEN`, `FACEBOOK_APIFY_CURRENCY` | api, worker | - | Required for `apify`. Token is a secret (never commit); currency = the searched region's ISO code. |
 | `FACEBOOK_APIFY_RESULTS_LIMIT`, `FACEBOOK_APIFY_PRICE_PER_1000_USD`, `FACEBOOK_APIFY_TIMEOUT_SECONDS`, `FACEBOOK_APIFY_ACTOR` | api, worker | `20`, `2.60`, `240`, `apify~facebook-marketplace-scraper` | Results per search, cost estimate / cap, run timeout, actor id. |
+| `AI_PROVIDER` | worker | `mock` | `mock` = deterministic local AI (refused in production); `foundry` = Microsoft Foundry (decision 0012). |
+| `FOUNDRY_ENDPOINT`, `FOUNDRY_API_KEY`, `FOUNDRY_DEPLOYMENT` | worker | - | Required for `foundry`: resource endpoint, key (**secret - never commit**), deployment name (or `FOUNDRY_DEPLOYMENT_PRODUCT_EXTRACTION` / `_CONDITION_RISK` / `_DEAL_EXPLANATION` per task). |
+| `FOUNDRY_TIMEOUT_MS`, `FOUNDRY_MAX_RETRIES`, `FOUNDRY_MAX_OUTPUT_TOKENS` | worker | `25000`, `1`, `1500` | Per-request timeout, retries, output cap; one analysis must fit `WORKER_JOB_LEASE_MS`. |
+| `FOUNDRY_PRICE_INPUT_PER_1M_USD`, `FOUNDRY_PRICE_OUTPUT_PER_1M_USD` | worker | - | Your Azure prices; without them AI cost is reported as unknown. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |

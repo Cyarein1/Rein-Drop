@@ -53,7 +53,7 @@ describe('ingestion diagnostics mapper', () => {
         { total: 1, marketplace: null, provider: null, reason: 'price', count: 13n },
       ],
       analyses: [
-        { total: 0, marketplace: 'facebook', provider: 'apify-marketplace', analyzed: 6, completed: 5, failed: 1, alertEligible: 2, aiProviders: ['mock'], inputTokens: null, outputTokens: null, aiSamples: 6, aiP50: 3, aiP95: 9, aiMax: 10 },
+        { total: 0, marketplace: 'facebook', provider: 'apify-marketplace', analyzed: 6, completed: 5, failed: 1, alertEligible: 2, aiProviders: ['foundry'], inputTokens: 6000n, outputTokens: 1200n, aiCostUsd: 0.00432, aiSamples: 6, aiP50: 3, aiP95: 9, aiMax: 10 },
       ],
       alerts: [
         { total: 0, marketplace: 'facebook', provider: 'apify-marketplace', alerts: 2 },
@@ -79,7 +79,7 @@ describe('ingestion diagnostics mapper', () => {
       huntsServed: 2,
       listings: { returned: 80, new: 30, duplicates: 2 },
       candidates: { evaluated: 30, matched: 12, newMatches: 6, rejected: 18, rejectionReasons: [{ reason: 'price', count: 13 }, { reason: 'relevance', count: 5 }] },
-      analysis: { analyzed: 6, completed: 5, failed: 1, alertEligible: 2, aiProviders: ['mock'], inputTokens: null, duration: { samples: 6, p50Ms: 3, p95Ms: 9, maxMs: 10 } },
+      analysis: { analyzed: 6, completed: 5, failed: 1, alertEligible: 2, aiProviders: ['foundry'], inputTokens: 6000, outputTokens: 1200, duration: { samples: 6, p50Ms: 3, p95Ms: 9, maxMs: 10 } },
       alerts: 2,
       latency: { request: { samples: 4, p50Ms: 61_234, p95Ms: 90_000, maxMs: 95_001 } },
     });
@@ -89,7 +89,7 @@ describe('ingestion diagnostics mapper', () => {
       providerIsEstimate: true,
       runsWithKnownCost: 4,
       runsWithUnknownCost: 0,
-      aiUsd: null,
+      aiUsd: 0.00432, // as reported by the AI provider
       perRunUsd: 0.052,
       perNewMatchUsd: 0.034667,
       perAlertUsd: 0.104,

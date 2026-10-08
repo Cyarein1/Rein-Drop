@@ -39,7 +39,7 @@ class PrismaLifecycle implements OnApplicationShutdown {
     PrismaLifecycle,
     { provide: MarketplaceRegistry, inject: [WORKER_CONFIG], useFactory: createWorkerMarketplaceRegistry },
     // Fails at startup when the configured provider isn't available (e.g. foundry: NOT_CONFIGURED).
-    { provide: AI_PROVIDER, inject: [WORKER_CONFIG], useFactory: (c: WorkerConfig) => createAIProvider(c.ai.provider) },
+    { provide: AI_PROVIDER, inject: [WORKER_CONFIG], useFactory: (c: WorkerConfig) => createAIProvider(c.ai.provider, c.ai.foundry) },
     { provide: JOB_QUEUE, inject: [PRISMA, CLOCK], useFactory: (p: PrismaClient, clock: Clock) => new PostgresJobQueue(p, clock) },
     {
       provide: HuntScheduler,

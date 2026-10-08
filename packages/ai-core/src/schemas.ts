@@ -137,6 +137,10 @@ export const aiResultMetaSchema = z.object({
   usage: z.object({ inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative() }).nullable(),
   /** Provider request / trace id, for support. */
   requestId: z.string().nullable(),
+  /** USD cost when the provider's pricing is configured; absent / null = unknown. Never estimated without pricing. */
+  costUsd: z.number().nonnegative().nullable().optional(),
+  /** Requests sent for this task, retries included (absent for the mock). */
+  attempts: z.number().int().positive().optional(),
 });
 export type AIResultMeta = z.infer<typeof aiResultMetaSchema>;
 

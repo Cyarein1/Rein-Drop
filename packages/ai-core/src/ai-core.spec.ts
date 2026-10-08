@@ -284,7 +284,7 @@ describe('withValidation (grounding)', () => {
     expect(r).toMatchObject({ errorCode: 'UNAVAILABLE', retryable: true });
   });
 
-  it('has no Foundry provider yet', () => {
+  it('needs configuration for Foundry; the mock needs none', () => {
     expect(() => createAIProvider('foundry')).toThrow(AIProviderError);
     expect(createAIProvider('mock').id).toBe('mock');
   });

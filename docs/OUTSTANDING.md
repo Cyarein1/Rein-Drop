@@ -45,6 +45,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D33 | Which Foundry model(s) / deployment type (Standard vs provisioned) and region for each AI task, and the AI budget per analysis | Step 40 | None - set by FOUNDRY_DEPLOYMENT* in the environment |
 | D32 | Which diagnostics thresholds matter (acceptable cost per Hunt per day, freshness target, noise ratio) | Step 39 | None - the report shows raw numbers only |
 | D31 | Source health thresholds: slow > 5 s, down after 3 failures, cool-down 30 s doubling to 15 min, search timeout 30 s | Step 35 | As listed (decision 0009) |
 | D30 | Analytics recommendation thresholds (held 30+ days, 60% ignored with 5+ viewed, 3 missed) and their order | Step 34 | As listed (`ANALYTICS_RECOMMENDATION_RULES`) |
@@ -81,20 +82,22 @@ These block or shape work; the code uses placeholders until you decide.
 - Cost: Apify about USD 5 a day per Hunt at 20 results every 15 min - needs the cost model / cadence (D7, prompt 36) - step 38.
 - eBay live tests are skipped until eBay credentials are configured (set EBAY_CLIENT_ID / EBAY_CLIENT_SECRET to run them) - step 37.
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
-- Diagnostics: AI cost unknown until an AI provider reports usage / pricing (prompt 37) - step 39.
 - Diagnostics are system-wide behind "signed in" only: add a staff / admin role before running them anywhere shared - step 39.
 - Diagnostics aggregate live without dedicated indexes on SearchRun.startedAt / Listing.firstSeenAt / DealAnalysis.createdAt - fine locally, revisit with volume - step 39.
 - Measure cost / freshness / noise with a controlled window of several Hunts (and Apify / eBay credentials) to decide D7 - step 39.
 
 ### Matching, analysis, scoring
 - Relevance is lexical (synonyms only via the AI); stopwords English only - step 21.
-- Foundry AIProvider (models per task, credentials) - step 22; prompt 37.
+- Foundry live test skipped until FOUNDRY_ENDPOINT / FOUNDRY_API_KEY / FOUNDRY_DEPLOYMENT are set; the prompts are unproven on a real model (watch INVALID_OUTPUT / UNGROUNDED_OUTPUT rates) - step 40.
+- Foundry auth is the resource key only; managed identity (Entra ID, keyless) needs @azure/identity wiring - step 40 (prompts 40 / 42).
+- AI cost appears only with FOUNDRY_PRICE_INPUT_PER_1M_USD / FOUNDRY_PRICE_OUTPUT_PER_1M_USD from your Azure price sheet - step 40.
+- Output that fails validation (schema / grounding) is stored as FAILED and never re-asked; consider one repair attempt - step 40.
+- Golden test datasets for AI quality (docs review) - step 40.
 - Mock AI text is English only - step 22.
 - Seller facts and comparable sales as AI evidence (schemas only allow "not available") - step 22 (D13).
 - Resale estimates / upside (needs D13); auctions are scored on their current bid - step 24.
 - Changing an AI prompt version alone doesn't trigger re-analysis - step 24.
 - Unchanged open matches are re-analysed once a day (watch cost once Foundry is used) - step 24.
-- AI cost metadata and golden test datasets - docs review.
 
 ### Deals and alerts
 - "Suppress similar noise" after Ignore (Blueprint section 10): reasons are stored, not used - step 25.
@@ -171,7 +174,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-37 Microsoft Foundry - 38 Managed auth -
+38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
@@ -227,3 +230,6 @@ These block or shape work; the code uses placeholders until you decide.
 | Development sources had no latency simulation | Step 19 | Step 35 |
 | Ingestion economics, latency and cost per request (docs review; prompt 36) | Docs review | Step 39 (`/dev/diagnostics`) |
 | Worker kept only the latest request latency (MarketplaceHealth) | Step 35 | Step 39 (`SearchRun.requestLatencyMs`) |
+| Foundry AIProvider (models per task, credentials) | Step 22 | Step 40 (decision 0012) |
+| AI cost metadata (docs review) | Docs review | Step 40 (`costUsd` per task when pricing is configured) |
+| Diagnostics AI cost always unknown | Step 39 | Step 40 (sums reported `costUsd`) |

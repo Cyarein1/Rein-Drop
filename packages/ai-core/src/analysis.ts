@@ -45,7 +45,7 @@ export type CandidateAnalysisRecord = {
   durationMs: number;
 } & (
   | { status: 'COMPLETED'; result: CandidateAnalysisResult; errorMessage: null }
-  | { status: 'FAILED'; result: null; errorCode: AIProviderError['code']; errorMessage: string; retryable: boolean }
+  | { status: 'FAILED'; result: null; errorCode: AIProviderError['code']; errorMessage: string; retryable: boolean; retryAfter: Date | null }
 );
 
 const unique = (values: string[]) => (values.length > 0 ? [...new Set(values)].join(',') : null);
@@ -107,6 +107,7 @@ export async function analyzeCandidate(
       errorCode: error.code,
       errorMessage: [error.message, ...error.details].join(' | ').slice(0, 2000),
       retryable: error.retryable,
+      retryAfter: error.retryAfter,
     };
   }
 }

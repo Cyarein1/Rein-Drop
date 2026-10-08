@@ -1,9 +1,7 @@
 /**
  * AI boundary. All AI goes through an AIProvider so the app runs locally on a deterministic mock and
- * can later use Microsoft Foundry without changing domain code. Every output is structured,
- * schema-validated and grounded in the input (see validation.ts).
- *
- * TODO(ai): Foundry provider; models per task are TBD.
+ * use Microsoft Foundry (AI_PROVIDER=foundry) without changing domain code. Every output is
+ * structured, schema-validated and grounded in the input (see validation.ts).
  */
 export {
   AI_ERROR_CODES,
@@ -57,3 +55,17 @@ export {
   type CandidateAnalysisResult,
 } from './analysis.js';
 export { createAIProvider, createMockAIProvider } from './factory.js';
+export {
+  FOUNDRY_DEFAULTS,
+  FoundryAIProvider,
+  chatCompletionsUrl,
+  foundryWorstCaseMs,
+  type FoundryAuth,
+  type FoundryConfig,
+  type FoundryFetch,
+  type FoundryHttpResponse,
+  type FoundryOptions,
+} from './foundry/foundry-ai-provider.js';
+export { foundryEnvShape, resolveFoundryConfig, type FoundryEnv } from './foundry/foundry-config.js';
+export { FOUNDRY_PROMPT_VERSIONS, type FoundryTask } from './foundry/prompts.js';
+export { toStrictJsonSchema } from './foundry/strict-json-schema.js';

@@ -115,7 +115,7 @@ export const sourceDiagnosticsSchema = z.object({
     providerIsEstimate: z.boolean(),
     runsWithKnownCost: count,
     runsWithUnknownCost: count,
-    /** AI cost in USD; null until an AI provider reports cost or pricing is configured. */
+    /** AI cost in USD as the AI provider reported it (Foundry with pricing configured); null = unknown. */
     aiUsd: z.number().nullable(),
     perRunUsd: z.number().nullable(),
     perNewMatchUsd: z.number().nullable(),
