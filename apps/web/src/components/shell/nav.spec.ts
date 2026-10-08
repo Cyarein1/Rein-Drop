@@ -20,9 +20,15 @@ describe("isActive", () => {
 
   it("marks exactly one destination active per primary route", () => {
     const all = Object.values(NAV);
-    for (const path of ["/home", "/hunts", "/hunts/new", "/deals", "/analytics", "/settings"]) {
+    for (const path of ["/home", "/hunts", "/hunts/new", "/deals", "/analytics", "/settings", "/inventory", "/inventory/x/sell"]) {
       expect(all.filter((item) => isActive(path, item))).toHaveLength(1);
     }
+  });
+
+  it("inventory screens belong to Analytics", () => {
+    expect(isActive("/inventory", NAV.analytics)).toBe(true);
+    expect(isActive("/inventory/abc/result", NAV.analytics)).toBe(true);
+    expect(isActive("/inventoryx", NAV.analytics)).toBe(false);
   });
 });
 

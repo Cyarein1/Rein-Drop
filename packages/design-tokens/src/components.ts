@@ -10,8 +10,8 @@ import type { Tone } from './semantic.js';
 export const BUTTON_VARIANTS = ['primary', 'secondary', 'text', 'destructive'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANTS)[number];
 
-/** Text - password - money - search (+ email for account creation). */
-export const TEXT_INPUT_KINDS = ['text', 'email', 'password', 'money', 'search'] as const;
+/** Text - password - money - search (+ email for account creation, date = a calendar day, YYYY-MM-DD). */
+export const TEXT_INPUT_KINDS = ['text', 'email', 'password', 'money', 'search', 'date'] as const;
 export type TextInputKind = (typeof TEXT_INPUT_KINDS)[number];
 
 /** Badge uses (freshness, marketplace, confidence, status) are expressed through tones. */

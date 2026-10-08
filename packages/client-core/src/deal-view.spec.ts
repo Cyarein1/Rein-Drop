@@ -154,13 +154,25 @@ describe('actions and forms', () => {
   });
 
   it('Bought starts at the asking price; a price is needed when the listing shows none', () => {
-    expect(boughtFormDefaults(deal, ZA)).toEqual({ price: '4000.00', currency: 'ZAR' });
-    expect(boughtFormDefaults({ price: { asking: null, knownCosts: null, knownTotal: null } }, ZA)).toEqual({ price: '', currency: 'ZAR' });
+    expect(boughtFormDefaults({ price: { ...deal.price, knownCosts: null } }, ZA)).toEqual({ price: '4000.00', currency: 'ZAR', shipping: '' });
+    expect(boughtFormDefaults({ price: { asking: ZAR(400_000), knownCosts: ZAR(15_000), knownTotal: ZAR(415_000) } }, ZA)).toEqual({
+      price: '4000.00',
+      currency: 'ZAR',
+      shipping: '150.00',
+    });
+    expect(boughtFormDefaults({ price: { asking: null, knownCosts: null, knownTotal: null } }, ZA)).toEqual({ price: '', currency: 'ZAR', shipping: '' });
     expect(buildBoughtRequest('3500', 'ZAR', ZAR(400_000))).toEqual({ ok: true, request: { price: ZAR(350_000) } });
     expect(buildBoughtRequest('', 'ZAR', ZAR(400_000))).toEqual({ ok: true, request: {} });
-    expect(buildBoughtRequest('', 'ZAR', null)).toEqual({ ok: false, error: 'Enter what you paid' });
-    expect(buildBoughtRequest('0', 'ZAR', null)).toEqual({ ok: false, error: 'Enter what you paid' });
+    expect(buildBoughtRequest('', 'ZAR', null)).toEqual({ ok: false, error: 'Enter what you paid', field: 'price' });
+    expect(buildBoughtRequest('0', 'ZAR', null)).toEqual({ ok: false, error: 'Enter what you paid', field: 'price' });
     expect(buildBoughtRequest('lots', 'ZAR', null).ok).toBe(false);
+    // Shipping to you (from the listing, editable) becomes a purchase cost.
+    expect(buildBoughtRequest('3500', 'ZAR', ZAR(400_000), '150')).toEqual({
+      ok: true,
+      request: { price: ZAR(350_000), costs: [{ category: 'SHIPPING', amount: ZAR(15_000) }] },
+    });
+    expect(buildBoughtRequest('', 'ZAR', ZAR(400_000), '')).toEqual({ ok: true, request: {} });
+    expect(buildBoughtRequest('3500', 'ZAR', null, 'free')).toMatchObject({ ok: false, field: 'shipping' });
   });
 
   it('Ignore reason is optional and short', () => {

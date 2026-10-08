@@ -354,20 +354,34 @@ export function buildIgnoreRequest(reasonText: string): { ok: true; request: Ign
 }
 
 /** What the Bought form starts with: the asking price, editable. */
-export function boughtFormDefaults(deal: Pick<DealSummary, 'price'>, ctx: HuntFormContext): { price: string; currency: string } {
+/** Defaults from the listing (asking price, the shipping it states) - both editable. */
+export function boughtFormDefaults(deal: Pick<DealSummary, 'price'>, ctx: HuntFormContext): { price: string; currency: string; shipping: string } {
   const asking = deal.price.asking;
-  return { price: asking ? moneyToInput(asking) : '', currency: asking?.currency ?? ctx.currency };
+  const known = deal.price.knownCosts;
+  return {
+    price: asking ? moneyToInput(asking) : '',
+    currency: asking?.currency ?? ctx.currency,
+    shipping: known && known.amountMinor > 0 && (!asking || known.currency === asking.currency) ? moneyToInput(known) : '',
+  };
 }
 
-/** Empty price = "what it was listed for" (only when it shows a price). */
+/**
+ * Empty price = "what it was listed for" (only when it shows a price). Optional shipping to you
+ * becomes a purchase cost; more costs can be added in Inventory.
+ */
 export function buildBoughtRequest(
   priceText: string,
   currency: string,
   asking: Money | null,
-): { ok: true; request: MarkDealBoughtRequest } | { ok: false; error: string } {
+  shippingText = '',
+): { ok: true; request: MarkDealBoughtRequest } | { ok: false; error: string; field?: 'price' | 'shipping' } {
   const parsed = parseMoneyInput(priceText, currency);
-  if (!parsed.ok) return { ok: false, error: parsed.message };
-  if (!parsed.money) return asking ? { ok: true, request: {} } : { ok: false, error: 'Enter what you paid' };
-  if (parsed.money.amountMinor <= 0) return { ok: false, error: 'Enter what you paid' };
-  return { ok: true, request: { price: parsed.money } };
+  if (!parsed.ok) return { ok: false, error: parsed.message, field: 'price' };
+  if (!parsed.money && !asking) return { ok: false, error: 'Enter what you paid', field: 'price' };
+  if (parsed.money && parsed.money.amountMinor <= 0) return { ok: false, error: 'Enter what you paid', field: 'price' };
+  const shipping = parseMoneyInput(shippingText, currency);
+  if (!shipping.ok) return { ok: false, error: shipping.message, field: 'shipping' };
+  const request: MarkDealBoughtRequest = parsed.money ? { price: parsed.money } : {};
+  if (shipping.money && shipping.money.amountMinor > 0) request.costs = [{ category: 'SHIPPING', amount: shipping.money }];
+  return { ok: true, request };
 }

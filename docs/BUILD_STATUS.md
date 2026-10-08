@@ -1,11 +1,111 @@
 # Build Status
 
-_Last updated: 2026-10-07 (step 30)_
+_Last updated: 2026-10-08 (step 32)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 32 - Inventory, Mark Sold and Sale Result screens (Build Prompt 29)
+
+**What was added**
+
+- client-core `inventory-view.ts` (shared by web and mobile): list rows (cost, held N days,
+  realized result only once sold, estimates labelled), detail (purchase lines, what was expected
+  at Bought), purchase editor (sends only what changed), cost-row editor, Mark Sold defaults
+  (today, the source marketplace, the usual fee rows; correcting a sale starts from it; the price
+  is never pre-filled from an estimate - the estimate is a hint), validation (date not before the
+  purchase / not in the future), a live preview using the shared `realizedResult`, and the Sale
+  Result view (realized P/L first, margin / return / days, breakdown, expected-vs-actual rows,
+  one deterministic insight). `celebrate` is true only for a realized profit > 0.
+- Bought form (web + mobile) gains "Shipping to you", defaulted from the listing and editable; it
+  becomes a purchase cost. A bought deal links to its Inventory item.
+- Web: `/inventory` (Holding / Sold / All, Show more), `/inventory/[id]` (edit purchase + costs,
+  In stock <-> Listed, sale summary, correct / undo sale with confirmation, expected at Bought,
+  links to the deal and the listing), `/inventory/[id]/sell`, `/inventory/[id]/result`.
+  Inventory sits under Analytics (screen map 21-24), so the Analytics nav item is active there.
+  Analytics and Home's profit section link to it.
+- Mobile: the same four screens as stack routes, the same entry points. The text input gains a
+  `date` kind (YYYY-MM-DD + Today / Yesterday shortcuts; web uses the native date picker).
+- Mascots: the empty inventory state uses the approved holding-box art. The success / profit
+  token is shown only when `celebrate` is true - no approved profit art exists, so a realized
+  profit gets a green branded panel and no picture; losses and estimates never get either.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 71 incl. 18 inventory tests:
+  celebrate only on realized profit, loss / break-even / other-currency never celebrated, fee and
+  shortfall insights, date rules, deterministic form keys).
+- Browser e2e (Edge 390x844) on the running web + API with temporary data: 39/39 - empty state,
+  Bought with listing shipping, edit costs, list, Mark Sold validation and live preview, Sale
+  Result (profit in green, success panel, no invented art, expected vs actual, insight), Done,
+  undo sale, a realized loss (red, not celebrated, only the buy price compared), entry points, no
+  horizontal scroll. No dev-overlay issues. Temporary data removed; the user's account unchanged.
+- Fixed during testing: a hydration mismatch on Mark Sold (cost-row keys from a module counter),
+  purchase shipping mislabelled "Shipping to buyer", a loss insight that ignored fees.
+- Mobile: typecheck, lint, Expo export - not run on a device.
+
+**Not done / TODO**
+
+- The default sale / purchase day is computed where the page renders; the server and browser
+  must share a time zone (true locally). TODO: the user's time zone (with D24).
+- Mobile date entry is typed (YYYY-MM-DD) - a native date picker needs a new dependency.
+- No approved profit / success mascot yet (Mascot Usage Guide asks for one) - the slot is wired.
+- `favicon.ico` 404 on web (brand icon still pending).
+
+### Step 31 - Bought -> Inventory -> Sold ledger, realized P/L (Build Prompt 28)
+
+Backend only; the inventory and sale screens are Build Prompt 29. Rules in
+[decision 0007](decisions/0007-outcomes-ledger.md).
+
+**What was added**
+
+- Migration `20261008125924_outcomes_ledger`: `CostCategory.TAX`; `InventoryItem.expected`
+  (JSONB, the expected snapshot frozen at Bought). Purchase costs sit on the item, selling costs
+  on the sale - never both.
+- Contracts `outcomes.ts`: purchase cost categories (tax, shipping, repair, supplies, other) and
+  selling cost categories (marketplace fee, payment fee, shipping, other); the one P/L formula
+  `realizedResult` (cost basis, net proceeds, realized profit, margin %, return %; integer minor
+  units; "unavailable" on mixed currencies, never converted); `ExpectedSnapshot`;
+  `compareAmounts`; `InventoryItem` (holding flag, purchase + costs + total, sale + costs, result
+  only once sold, days held, expected, expected-vs-actual comparison for purchase price, sale
+  price and profit); request schemas. `POST /deals/:id/bought` accepts optional `costs`.
+- API Outcomes endpoints: `GET /inventory?status=holding|sold|all` (cursor paged, newest purchase
+  first), `GET /inventory/:id`, `PATCH /inventory/:id` (title, purchase price / date, notes,
+  In stock <-> Listed), `PUT /inventory/:id/purchase-costs` (replace), `PUT /inventory/:id/sale`
+  (Mark Sold or correct: price, date not before purchase / not in the future, marketplace,
+  selling costs), `DELETE /inventory/:id/sale` (undo -> In stock). Another user's item is 404.
+- Bought now stores purchase costs and the expected snapshot (asking price, listing-stated costs,
+  ESTIMATED resale / upside only when comparable sales produced them, strength, confidence).
+  Repeating Bought never changes the item; corrections go through `/inventory`.
+- Home's realized profit uses the same `realizedResult` formula.
+- api-client: `listInventory`, `getInventoryItem`, `updateInventoryItem`, `replacePurchaseCosts`,
+  `recordSale`, `undoSale`; `realizedResult` and the cost category lists exported for the UI.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 - contracts 13 new P/L tests (no costs, fees +
+  shipping + tax + repair, losses incl. a loss purely from fees, break-even, minor units,
+  currency mismatch, missed potential not an input), api ledger mapper 5, enum mirrors for
+  InventoryStatus / CostCategory, api-client inventory routes.
+- `pnpm --filter api test:int` 38/38 incl. 8 new ledger tests on real Postgres: Bought -> item linked
+  to its deal with costs and snapshot; no invented estimates; Mark Sold validation; realized
+  profit 650 000 - 95 000 selling costs - 475 000 cost basis = 80 000 vs 185 000 estimated upside
+  (a comparison, not a loss); a realized loss of -52 000; correcting and undoing a sale; purchase
+  corrections keep the snapshot; an ignored deal never enters the ledger; paging; 404 for others.
+- `pnpm --filter api test:e2e` 52/52; `pnpm --filter worker test:int` 32/32. No test data left.
+
+**Not done / TODO**
+
+- Inventory / Mark Sold screens - Build Prompt 29.
+- Undo a Bought entirely (delete the item and reopen the deal) - not built; the purchase can be
+  corrected.
+- Returns and write-offs (statuses exist, no endpoints).
+- Estimated upside excludes selling fees, so "expected vs actual profit" compares an estimate
+  without fees to a realized result with them (labelled; better once fees can be estimated).
+- One currency per item for purchase + purchase costs; a sale in another currency is stored but
+  has no result until FX exists (never converted).
 
 ### Step 30 - Home in priority order (Build Prompt 27)
 
@@ -1468,7 +1568,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-27 (our steps 1-30 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-29 (our steps 1-32 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1485,6 +1585,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 28 in document order: Bought -> Inventory -> Sold backend (purchase costs, holding
-state, Mark Sold, realized P/L, expected vs actual; missed potential never a loss).
+Build Prompt 30 in document order: Analytics backend (realized profit, spend, margin by period /
+Hunt / product; missed potential kept apart from P/L).
 (Await the next prompt.)

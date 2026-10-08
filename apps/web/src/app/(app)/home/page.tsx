@@ -185,6 +185,11 @@ function Profit({ home, context }: { home: Home; context: HuntFormContext }) {
             {line}
           </p>
         ))}
+        {(view.holding > 0 || view.sold > 0) && (
+          <ButtonLink href="/inventory" variant="secondary">
+            {view.holding > 0 ? `Inventory · ${view.holding} holding` : "Inventory"}
+          </ButtonLink>
+        )}
       </Card>
     </section>
   );

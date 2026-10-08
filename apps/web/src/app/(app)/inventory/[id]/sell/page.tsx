@@ -1,0 +1,39 @@
+import type { Metadata } from "next";
+import { connection } from "next/server";
+import { huntFormContext } from "@rein-drop/client-core";
+import { verifySession } from "@/auth";
+import { Protected } from "@/auth/Protected";
+import { ButtonLink, Card, EmptyState, Page } from "@/components/ui";
+import { loadInventoryItem } from "../../load-item";
+import { MarkSoldForm } from "./MarkSoldForm";
+
+export const metadata: Metadata = { title: "Mark sold" };
+
+export default function MarkSoldPage({ params }: PageProps<"/inventory/[id]/sell">) {
+  return (
+    <Protected>
+      <Page>
+        <SellLoader params={params} />
+      </Page>
+    </Protected>
+  );
+}
+
+async function SellLoader({ params }: { params: PageProps<"/inventory/[id]/sell">["params"] }) {
+  await connection(); // "today" is per request
+  const { id } = await params;
+  const session = await verifySession();
+  const item = await loadInventoryItem(id);
+  if (!item.holding && !item.sale) {
+    return (
+      <Card>
+        <EmptyState
+          title="This item can't be marked sold"
+          description="Only items you're holding can be sold."
+          action={<ButtonLink href={`/inventory/${item.id}`} variant="secondary">Back to the item</ButtonLink>}
+        />
+      </Card>
+    );
+  }
+  return <MarkSoldForm item={item} context={huntFormContext(session.user.locale)} today={new Date().toISOString()} />;
+}

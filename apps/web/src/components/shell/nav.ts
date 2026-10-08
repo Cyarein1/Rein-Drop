@@ -8,6 +8,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Paths under this item that belong to a different destination. */
   excludes?: string[];
+  /** Other paths that belong to this destination (e.g. Inventory under Analytics). */
+  includes?: string[];
 }
 
 /** Primary destinations. One list drives the sidebar, top bar and bottom bar. */
@@ -16,7 +18,8 @@ export const NAV = {
   hunts: { href: "/hunts", label: "Hunts", icon: Radar, excludes: ["/hunts/new"] },
   createHunt: { href: "/hunts/new", label: "Create Hunt", shortLabel: "Create", icon: Plus },
   deals: { href: "/deals", label: "Deals", icon: Tag },
-  analytics: { href: "/analytics", label: "Analytics", icon: ChartColumn },
+  // Inventory, Mark sold and Sale result sit with the outcome screens (screen map 21-24).
+  analytics: { href: "/analytics", label: "Analytics", icon: ChartColumn, includes: ["/inventory"] },
   settings: { href: "/settings", label: "Settings", icon: Settings },
 } satisfies Record<string, NavItem>;
 
@@ -33,6 +36,7 @@ export const BOTTOM_ITEMS: NavItem[] = [NAV.home, NAV.hunts, NAV.createHunt, NAV
 export function isActive(pathname: string, item: NavItem): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
   const within = (base: string) => path === base || path.startsWith(`${base}/`);
+  if ((item.includes ?? []).some(within)) return true;
   if (!within(item.href)) return false;
   return !(item.excludes ?? []).some(within);
 }

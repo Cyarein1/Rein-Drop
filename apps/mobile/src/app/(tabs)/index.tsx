@@ -212,6 +212,13 @@ export default function HomeScreen() {
             {line}
           </Text>
         ))}
+        {(profit.holding > 0 || profit.sold > 0) && (
+          <View style={styles.start}>
+            <Button variant="secondary" onPress={() => router.push('/inventory')}>
+              {profit.holding > 0 ? `Inventory · ${profit.holding} holding` : 'Inventory'}
+            </Button>
+          </View>
+        )}
       </Card>
 
       {/* 4. Recent - only when there is something */}
@@ -263,6 +270,7 @@ const styles = StyleSheet.create({
   body: { color: roles.text, fontSize: fontSize.md },
   muted: { color: roles.textMuted, fontSize: fontSize.sm },
   flex: { flex: 1 },
+  start: { alignSelf: 'flex-start' },
   huntRow: { gap: 2, paddingVertical: space[1] },
   pressed: { opacity: 0.7 },
   monitoring: { flexDirection: 'row', alignItems: 'center', gap: space[2] },

@@ -104,6 +104,11 @@ export function DealDetailScreen({ initial, context }: { initial: DealDetail; co
           {d}
         </p>
       ))}
+      {deal.decision.inventoryItemId && (
+        <ButtonLink href={`/inventory/${deal.decision.inventoryItemId}`} variant="secondary">
+          Open in Inventory
+        </ButtonLink>
+      )}
 
       {/* ---------- Actions ---------- */}
       <div className={styles.actions}>
@@ -139,7 +144,7 @@ export function DealDetailScreen({ initial, context }: { initial: DealDetail; co
       </div>
 
       {form === "bought" && (
-        <BoughtForm deal={deal} context={context} pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => markDealBought(deal.id, request), "Marked as bought.")} />
+        <BoughtForm deal={deal} context={context} pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => markDealBought(deal.id, request), "Marked as bought. It's in your Inventory.")} />
       )}
       {form === "ignore" && (
         <IgnoreForm pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => ignoreDeal(deal.id, request), "Ignored. It's under Ignored if you change your mind.")} />
@@ -290,14 +295,15 @@ function BoughtForm({
 }) {
   const defaults = boughtFormDefaults(deal, context);
   const [price, setPrice] = useState(defaults.price);
-  const [error, setError] = useState<string | undefined>();
+  const [shipping, setShipping] = useState(defaults.shipping);
+  const [error, setError] = useState<{ field?: "price" | "shipping"; message: string } | undefined>();
   return (
     <form
       className={styles.inlineForm}
       onSubmit={(e) => {
         e.preventDefault();
-        const built = buildBoughtRequest(price, defaults.currency, deal.price.asking);
-        if (!built.ok) return setError(built.error);
+        const built = buildBoughtRequest(price, defaults.currency, deal.price.asking, shipping);
+        if (!built.ok) return setError({ field: built.field, message: built.error });
         setError(undefined);
         onSubmit(built.request);
       }}
@@ -309,10 +315,19 @@ function BoughtForm({
         value={price}
         onChange={(e) => setPrice(e.target.value)}
         hint={deal.price.asking ? "Starts at the asking price - change it if you paid less or more." : "This listing shows no price."}
-        error={error}
+        error={error?.field !== "shipping" ? error?.message : undefined}
         autoFocus
       />
-      <p className={styles.small}>This records the purchase. Sale and profit tracking come later.</p>
+      <TextInput
+        label="Shipping to you (optional)"
+        kind="money"
+        currency={defaults.currency}
+        value={shipping}
+        onChange={(e) => setShipping(e.target.value)}
+        hint={defaults.shipping ? "From the listing - change it if it was different." : "Leave empty if you collected it."}
+        error={error?.field === "shipping" ? error.message : undefined}
+      />
+      <p className={styles.small}>It goes into your Inventory, where you can add tax or repairs and mark it sold later.</p>
       <div className={styles.actions}>
         <Button type="submit" loading={pending}>
           Mark as bought

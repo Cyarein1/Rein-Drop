@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { ApiError, type DealDetail } from '@rein-drop/api-client';
 import {
@@ -86,6 +86,7 @@ export default function DealScreen() {
 type Form = 'none' | 'bought' | 'ignore';
 
 function DealBody({ initial, context }: { initial: DealDetail; context: HuntFormContext }) {
+  const router = useRouter();
   const [deal, setDeal] = useState(initial);
   const [form, setForm] = useState<Form>('none');
   const [pending, setPending] = useState(false);
@@ -158,6 +159,13 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
           {d}
         </Text>
       ))}
+      {deal.decision.inventoryItemId && (
+        <View style={styles.actions}>
+          <Button variant="secondary" onPress={() => router.push({ pathname: '/inventory/[id]', params: { id: deal.decision.inventoryItemId! } })}>
+            Open in Inventory
+          </Button>
+        </View>
+      )}
 
       <View style={styles.actions}>
         <Button variant="secondary" onPress={() => void Linking.openURL(view.url)} accessibilityHint="Opens the listing in your browser">
@@ -196,7 +204,7 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
           context={context}
           pending={pending}
           onCancel={() => setForm('none')}
-          onSubmit={(request) => run(() => api.markDealBought(deal.id, request), 'Marked as bought.')}
+          onSubmit={(request) => run(() => api.markDealBought(deal.id, request), "Marked as bought. It's in your Inventory.")}
         />
       )}
       {form === 'ignore' && (
@@ -328,10 +336,11 @@ function BoughtForm({
 }) {
   const defaults = boughtFormDefaults(deal, context);
   const [price, setPrice] = useState(defaults.price);
-  const [error, setError] = useState<string | undefined>();
+  const [shipping, setShipping] = useState(defaults.shipping);
+  const [error, setError] = useState<{ field?: 'price' | 'shipping'; message: string } | undefined>();
   const submit = () => {
-    const built = buildBoughtRequest(price, defaults.currency, deal.price.asking);
-    if (!built.ok) return setError(built.error);
+    const built = buildBoughtRequest(price, defaults.currency, deal.price.asking, shipping);
+    if (!built.ok) return setError({ field: built.field, message: built.error });
     setError(undefined);
     onSubmit(built.request);
   };
@@ -344,11 +353,20 @@ function BoughtForm({
         value={price}
         onChangeText={setPrice}
         hint={deal.price.asking ? 'Starts at the asking price - change it if you paid less or more.' : 'This listing shows no price.'}
-        error={error}
-        onSubmitEditing={submit}
+        error={error?.field !== 'shipping' ? error?.message : undefined}
         autoFocus
       />
-      <Text style={[styles.muted, font('regular')]}>This records the purchase. Sale and profit tracking come later.</Text>
+      <TextInput
+        label="Shipping to you (optional)"
+        kind="money"
+        currency={defaults.currency}
+        value={shipping}
+        onChangeText={setShipping}
+        hint={defaults.shipping ? 'From the listing - change it if it was different.' : 'Leave empty if you collected it.'}
+        error={error?.field === 'shipping' ? error.message : undefined}
+        onSubmitEditing={submit}
+      />
+      <Text style={[styles.muted, font('regular')]}>It goes into your Inventory, where you can add tax or repairs and mark it sold later.</Text>
       <View style={styles.actions}>
         <Button loading={pending} onPress={submit}>
           Mark as bought

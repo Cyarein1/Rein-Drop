@@ -43,6 +43,10 @@ export default function RootLayout() {
         <Stack.Screen name="hunts/[id]/edit" options={{ title: 'Edit Hunt' }} />
         <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
         <Stack.Screen name="deals/[id]" options={{ title: 'Deal' }} />
+        <Stack.Screen name="inventory/index" options={{ title: 'Inventory' }} />
+        <Stack.Screen name="inventory/[id]/index" options={{ title: 'Inventory item' }} />
+        <Stack.Screen name="inventory/[id]/sell" options={{ title: 'Mark sold' }} />
+        <Stack.Screen name="inventory/[id]/result" options={{ title: 'Sale result' }} />
         <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>

@@ -21,6 +21,8 @@ const INPUT_TYPE: Record<TextInputKind, string> = {
   password: "password",
   money: "text",
   search: "search",
+  // Native date picker; the value is a calendar day (YYYY-MM-DD).
+  date: "date",
 };
 
 export function TextInput({

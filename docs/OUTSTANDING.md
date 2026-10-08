@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-07, after step 30 (Build Prompt 27)._
+_Last updated: 2026-10-08, after step 32 (Build Prompt 29)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -41,6 +41,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D24 | Home "current period" for realized profit: rolling 30 days, calendar month, or user-chosen? | Step 30 | Rolling 30 days |
 | D25 | Home recommendation thresholds (3 failed checks, 24h with no deals, 20 to review with no alerts) | Step 30 | As listed |
 | D20 | Ignore reasons: free text, or a fixed list of choices? | Step 25 | Optional free text (200 chars) |
+| D26 | Margin % on a sale: profit / sale price (and return % = profit / cost basis) - confirm both are wanted | Step 31 | Both shown (decision 0007) |
+| D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 
 ## 2. Not built yet (by area)
 
@@ -83,7 +85,7 @@ These block or shape work; the code uses placeholders until you decide.
 ### Deals and alerts
 - "Suppress similar noise" after Ignore (Blueprint section 10): reasons are stored, not used - step 25.
 - Saved deals aren't specially refreshed when the source listing changes (Blueprint section 10) - step 25.
-- Undo / edit a purchase made with Bought (price, date, costs) - step 25; prompt 28.
+- Undo a Bought entirely (delete the item, reopen the deal) - step 25; editing it is done (step 31).
 - Listing images on deal cards / detail (dev image URLs are fake; real image hosts need allowlisting) - step 26.
 - The AI explanation doesn't receive comparables, so with an estimate it can contradict the economics ("estimated in a later step") - step 26 (with D13).
 - Real push on a phone: EAS project id + development build (D23) - step 28.
@@ -91,15 +93,22 @@ These block or shape work; the code uses placeholders until you decide.
 - Email provider for notifications - step 27 (D14).
 - Operational alerts (source degraded long enough to matter) and the weekly insight are not generated - step 27; prompt 32.
 - Exceptional-deal mascot asset (only if approved artwork exists) - prompt 23.
+- Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until
+  approved art exists) - step 32.
 
 ### Plans and billing
 - Real checkout (D2) - step 17; prompt 39.
 - Downgrade must never delete Hunts - docs review.
 
 ### Outcomes and analytics
-- Bought -> Inventory -> Sold backend with realized P/L, expected vs actual - prompt 28.
-- Inventory and sale screens - prompt 29.
+- Returns and write-offs (statuses exist, no endpoints) - step 31.
+- Estimated upside doesn't subtract selling fees, so expected-vs-actual profit compares an
+  estimate without fees to a result with fees - step 31 (with D13).
 - Analytics backend and screens (missed potential kept apart from P/L) - prompts 30-31.
+- Default sale / purchase day uses the rendering device's time zone; server and browser must agree
+  until the user's time zone is known (with D24) - step 32.
+- Mobile date fields are typed (YYYY-MM-DD + Today / Yesterday); a native picker needs a new
+  dependency - step 32.
 
 ### Platform and API
 - OpenAPI spec (Tech Architecture locks "REST + OpenAPI") - docs review.
@@ -113,7 +122,8 @@ These block or shape work; the code uses placeholders until you decide.
 ### Brand and assets
 - Confirm font sizes, spacing and neutral greys in the high-fidelity design pass - step 6.
 - Optimised @1x/@2x/@3x mascot PNGs for mobile (originals are 1-2 MB) - step 6.
-- App icon + splash still Expo defaults; brand icon awaits store approval - step 9.
+- App icon + splash still Expo defaults; brand icon awaits store approval - step 9. Web has no
+  `favicon.ico` either (404 in the browser console) - step 32.
 - SVG wordmarks, if available - step 6.
 - Mobile tab bar has no orange active indicator like web - step 9.
 
@@ -121,7 +131,8 @@ These block or shape work; the code uses placeholders until you decide.
 
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
   (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27), push permission
-  prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29), Home (step 30). Only typecheck / lint / bundle builds have been run.
+  prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29), Home (step 30),
+  Inventory / Mark sold / Sale result (step 32). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -139,8 +150,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-28 Bought / Inventory / Sold
-backend - 29 Inventory and sale UI - 30 Analytics backend - 31 Analytics UI - 32 Source health and
+30 Analytics backend - 31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
@@ -175,3 +185,9 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Hunt detail / edit / pause / archive / restore screens | Steps 15, 17 | Step 29 |
 | Home dashboard with real data, in Blueprint priority order | Step 5 | Step 30 |
 | Worker could overwrite a user's decision made while a search was running | Step 25 (found) | Step 25 |
+| Bought -> Inventory -> Sold backend: purchase costs, holding, Mark Sold, realized P/L, expected vs actual | Step 5 | Step 31 |
+| Edit a purchase made with Bought (price, date, costs) | Step 25 | Step 31 |
+| Home: sales couldn't be recorded, so realized profit stayed empty | Step 30 | Step 31 (API), step 32 (screens) |
+| Inventory and sale screens (Inventory, Mark sold, Sale result) on web + mobile | Step 5 | Step 32 |
+| Bought form said "Sale and profit tracking come later" | Step 26 | Step 32 |
+| Analytics placeholder said purchases and sales couldn't be logged | Step 5 | Step 32 |

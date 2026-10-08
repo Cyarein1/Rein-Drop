@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Protected } from "@/auth/Protected";
-import { Card, EmptyState, Page } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Page } from "@/components/ui";
 import { PlaceholderNotice } from "../placeholder-notice";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -9,14 +9,17 @@ export const metadata: Metadata = { title: "Analytics" };
 export default function AnalyticsPage() {
   return (
     <Protected>
-      <Page title="Analytics" description="Profit, spend and what is actually selling.">
-        <PlaceholderNotice>
-          Charts and Hunt/product analytics come after purchases and sales can be logged.
-        </PlaceholderNotice>
+      <Page
+        title="Analytics"
+        description="Profit, spend and what is actually selling."
+        actions={<ButtonLink href="/inventory" variant="secondary">Inventory</ButtonLink>}
+      >
+        <PlaceholderNotice>Charts and Hunt/product analytics come next. Purchases and sales are already recorded in Inventory.</PlaceholderNotice>
         <Card>
           <EmptyState
-            title="No sold data yet"
-            description="Log what you buy and what you sell. Realized profit, margin and Hunt performance are calculated from those outcomes."
+            title="Track what you buy and sell"
+            description="Realized profit, margin and Hunt performance are calculated from the purchases and sales in your Inventory."
+            action={<ButtonLink href="/inventory">Open Inventory</ButtonLink>}
           />
         </Card>
       </Page>

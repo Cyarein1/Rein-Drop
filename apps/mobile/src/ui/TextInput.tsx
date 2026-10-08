@@ -26,6 +26,8 @@ const KIND_PROPS: Record<TextInputKind, Partial<RNTextInputProps>> = {
   password: { autoCapitalize: 'none', autoComplete: 'current-password', autoCorrect: false },
   money: { keyboardType: 'decimal-pad' },
   search: { returnKeyType: 'search', autoCorrect: false },
+  // A calendar day typed as YYYY-MM-DD (screens offer Today / Yesterday shortcuts). TODO(ui): native date picker.
+  date: { keyboardType: 'numbers-and-punctuation', placeholder: 'YYYY-MM-DD', autoCorrect: false, autoCapitalize: 'none', maxLength: 10 },
 };
 
 export function TextInput({ label, kind = 'text', hint, error, currency, ...rest }: TextInputProps) {
