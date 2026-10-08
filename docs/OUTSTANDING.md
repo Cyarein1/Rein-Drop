@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 33 (Build Prompt 30)._
+_Last updated: 2026-10-08, after step 34 (Build Prompt 31)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -44,7 +44,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D26 | Margin % on a sale: profit / sale price (and return % = profit / cost basis) - confirm both are wanted | Step 31 | Both shown (decision 0007) |
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
-| D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity |
+| D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D30 | Analytics recommendation thresholds (held 30+ days, 60% ignored with 5+ viewed, 3 missed) and their order | Step 34 | As listed (`ANALYTICS_RECOMMENDATION_RULES`) |
 
 ## 2. Not built yet (by area)
 
@@ -97,6 +98,7 @@ These block or shape work; the code uses placeholders until you decide.
 - Exceptional-deal mascot asset (only if approved artwork exists) - prompt 23.
 - Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until
   approved art exists) - step 32.
+- Thinking / idea mascot asset for the analytics recommendation (slot wired, nothing yet) - step 34.
 
 ### Plans and billing
 - Real checkout (D2) - step 17; prompt 39.
@@ -106,7 +108,7 @@ These block or shape work; the code uses placeholders until you decide.
 - Returns and write-offs (statuses exist, no endpoints) - step 31.
 - Estimated upside doesn't subtract selling fees, so expected-vs-actual profit compares an
   estimate without fees to a result with fees - step 31 (with D13).
-- Analytics screens (overview, Hunt funnel, products, marketplaces, missed potential) - prompt 31.
+- Profit-over-time chart (needs time buckets from the API) - step 34.
 - Home "spent" is purchase price only; Analytics "spent" includes purchase costs - align - step 33.
 - Analytics aggregate live on every request (no caching) - revisit with real data volumes - step 33.
 - Default sale / purchase day uses the rendering device's time zone; server and browser must agree
@@ -136,7 +138,7 @@ These block or shape work; the code uses placeholders until you decide.
 - **Mobile on a real device / emulator**: shell (step 9), Create Hunt (step 15), plan gate
   (step 17), onboarding (step 23), Deals feed + detail (step 26), inbox + notification settings (step 27), push permission
   prompt + tap-to-open + real Expo push (step 28), Hunts list / detail / edit (step 29), Home (step 30),
-  Inventory / Mark sold / Sale result (step 32). Only typecheck / lint / bundle builds have been run.
+  Inventory / Mark sold / Sale result (step 32), Analytics screens (step 34). Only typecheck / lint / bundle builds have been run.
 - Web error page when the API is down - step 10.
 - Visual polish of the UI primitives in a browser and on a phone - step 6.
 
@@ -154,7 +156,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-31 Analytics UI - 32 Source health and
+32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
@@ -197,3 +199,5 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Analytics placeholder said purchases and sales couldn't be logged | Step 5 | Step 32 |
 | Analytics backend: period overview, Hunt funnel, products, marketplaces, missed potential (SQL aggregates) | Step 5 | Step 33 |
 | Analytics module was a scaffold with "TODO(product): metrics to report" | Step 5 | Step 33 |
+| Analytics screens: overview, Hunt funnel, products + loss review, missed potential, one recommendation | Step 5 | Step 34 |
+| Analytics placeholder notice on web and mobile | Step 5 | Step 34 |

@@ -1,11 +1,50 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 33)_
+_Last updated: 2026-10-08 (step 34)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 34 - Analytics screens: overview, Hunts, Products, Missed potential (Build Prompt 31)
+
+**What was added**
+
+- client-core `analytics-view.ts`: period labels; overview cards that always say their basis
+  (Realized / Activity / Now; Estimated where it applies); bar data for charts; Hunt funnel,
+  product rows + loss review, marketplace rows, missed-potential view (estimate labelled, "not a
+  loss", neutral colour); one data-grounded recommendation (first that applies: stale holding >= 30
+  days -> a product with a realized loss -> a Hunt whose viewed deals are >= 60% ignored (5+ viewed)
+  -> 3+ strong deals missed -> best product -> deals waiting with nothing bought -> log sales),
+  always quoting the numbers. Thresholds in `ANALYTICS_RECOMMENDATION_RULES` (D30).
+- Web: `/analytics` (period tabs 7 days ... All time; six cards; money in vs realized profit chart;
+  the recommendation; top Hunt funnels; product profit chart; marketplaces; missed summary) and
+  `/analytics/hunts`, `/analytics/products` (all products + loss review), `/analytics/missed`.
+  Charts are CSS bars (no chart library): text carries the values, bars are decoration.
+- Mobile: the Analytics tab with the same overview, and stack screens `analytics/hunts`,
+  `analytics/products`, `analytics/missed` (period carried in the route).
+- Mascot: none in the dense analytics. The thinking / idea (`suggestion`) token is wired only in
+  the recommendation box; no approved art exists, so nothing renders there yet.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 82 incl. 11 analytics view tests).
+- Browser e2e (Edge 390x844): 8/8 on the user's real account (empty state instead of zeros, no
+  recommendation without data) and 25/25 with temporary data (labelled cards, realized profit 800 =
+  1 400 profit - 600 loss in green, capital deployed, held "not a loss", money chart, the loss-
+  product recommendation with its numbers, funnel bars, period switch, Hunts / Products (loss
+  review) / Missed (estimate labelled, neutral, links to deals), no mascot, no horizontal scroll,
+  no console errors). Temporary data removed; the user's account unchanged.
+- Fixed during testing: amounts wrapping mid-number on phones; an "alerts bought" rate over 100%
+  (activity counts) is no longer shown.
+- Mobile: typecheck, lint, Expo export - not run on a device.
+
+**Not done / TODO**
+
+- No time-series chart (profit over time) - the API has no buckets yet.
+- D30 recommendation thresholds; D29 (cohort funnel would make alert-to-buy exact).
+- No approved thinking / idea mascot art.
 
 ### Step 33 - Period analytics backend (Build Prompt 30)
 
@@ -1605,7 +1644,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-30 (our steps 1-33 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-31 (our steps 1-34 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1622,5 +1661,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 31 in document order: Analytics screens (web + mobile) on the step 33 API.
+Build Prompt 32 in document order: Source health and degraded UX.
 (Await the next prompt.)
