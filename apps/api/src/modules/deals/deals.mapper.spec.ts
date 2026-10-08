@@ -118,6 +118,7 @@ const row = (over: Partial<DealRow> = {}): DealRow => ({
   poll: { lastPolledAt: new Date('2026-10-07T09:45:00Z'), lastPollStatus: 'SUCCEEDED' },
   inventoryItemId: null,
   rank: 49,
+  sourceHealth: { status: 'healthy', reason: null, nextAttemptAt: null },
   ...over,
 });
 

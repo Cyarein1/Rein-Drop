@@ -3,6 +3,8 @@ import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { JobRunner } from '../queue/job-runner.js';
 import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
 import { ANALYSIS_RUNNER } from './deal-analysis.handler.js';
+import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
+import { SourceHealthStore } from '../health/source-health.store.js';
 import { HuntScheduler } from './hunt-scheduler.js';
 
 /**
@@ -24,6 +26,8 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
     private readonly runner: JobRunner,
     @Inject(ANALYSIS_RUNNER) private readonly analysisRunner: JobRunner,
     private readonly notifications: NotificationDispatcher,
+    private readonly sourceHealth: SourceHealthStore,
+    private readonly registry: MarketplaceRegistry,
   ) {}
 
   onApplicationBootstrap() {
@@ -34,7 +38,7 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
     this.timers = [
       this.loop('scheduler', schedulerIntervalMs, async () => {
         const s = await this.scheduler.scheduleDue();
-        if (s.claimed > 0) this.logger.log(`Scheduled ${s.claimed} hunt-marketplace(s): ${s.enqueued} job(s), ${s.duplicates} duplicate(s), ${s.failed} failed`);
+        if (s.claimed > 0 || s.deferred > 0) this.logger.log(`Scheduled ${s.claimed} hunt-marketplace(s): ${s.enqueued} job(s), ${s.duplicates} duplicate(s), ${s.failed} failed, ${s.deferred} waiting for a source cool-down`);
       }),
       this.loop('runner', runnerIntervalMs, async () => {
         const r = await this.runner.runOnce();
@@ -47,6 +51,11 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
       this.loop('notifications', runnerIntervalMs, async () => {
         const n = await this.notifications.dispatchPending();
         if (n.claimed > 0) this.logger.log(`Notifications: ${JSON.stringify(n)}`);
+      }),
+      // Sources' own health checks: fills in when there were no searches lately, notices
+      // "not configured", and lets a recovered source out of its cool-down early.
+      this.loop('source-health', this.config.sourceHealth.probeIntervalMs, async () => {
+        await this.sourceHealth.probe(this.registry, this.config.sourceHealth.probeIntervalMs);
       }),
     ];
   }

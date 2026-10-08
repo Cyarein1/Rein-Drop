@@ -7,7 +7,8 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { DEV_AUTH_HEADER, type HuntActivity } from '@rein-drop/contracts';
+import { DEV_AUTH_HEADER, type HuntActivity, type SourceHealthList } from '@rein-drop/contracts';
+import { toSourceHealth } from './../src/modules/marketplaces/source-health.js';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
 import { LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { AppModule } from './../src/app.module.js';
@@ -95,6 +96,12 @@ describe('Hunt activity (integration, real database)', () => {
   });
 
   it('last checked per marketplace, failing streaks and simple performance counts', async () => {
+    // The source's own health is shared state (written by the worker); it must match /marketplaces/health.
+    const health = (await as(request(app.getHttpServer()).get('/marketplaces/health')).expect(200)).body as SourceHealthList;
+    const sourceOf = (key: string) => {
+      const h = health.items.find((i) => i.marketplace === key)!;
+      return { status: h.status, reason: h.reason, nextAttemptAt: h.nextAttemptAt };
+    };
     const a = (await as(request(app.getHttpServer()).get(`/hunts/${watching}/activity`)).expect(200)).body as HuntActivity;
     expect(a).toMatchObject({
       scanning: false,
@@ -102,8 +109,8 @@ describe('Hunt activity (integration, real database)', () => {
       counts: { deals: 6, toReview: 3, new: 2, alerts: 1, saved: 1, bought: 1 },
     });
     expect(a.marketplaces).toEqual([
-      { marketplace: 'ebay', lastCheckedAt: new Date(now - 5 * 60_000).toISOString(), lastCheck: 'ok', failingChecks: 0, nextCheckAt: new Date(now + 10 * 60_000).toISOString() },
-      { marketplace: 'facebook', lastCheckedAt: new Date(now - 2 * 60_000).toISOString(), lastCheck: 'failed', failingChecks: 3, nextCheckAt: null },
+      { marketplace: 'ebay', lastCheckedAt: new Date(now - 5 * 60_000).toISOString(), lastCheck: 'ok', failingChecks: 0, nextCheckAt: new Date(now + 10 * 60_000).toISOString(), source: sourceOf('ebay') },
+      { marketplace: 'facebook', lastCheckedAt: new Date(now - 2 * 60_000).toISOString(), lastCheck: 'failed', failingChecks: 3, nextCheckAt: null, source: sourceOf('facebook') },
     ]);
   });
 
@@ -113,5 +120,17 @@ describe('Hunt activity (integration, real database)', () => {
     expect(all.items.find((a) => a.huntId === paused)).toMatchObject({ scanning: false, marketplaces: [{ marketplace: 'ebay', nextCheckAt: null }] });
     await as(request(app.getHttpServer()).get(`/hunts/${watching}/activity`), OTHER).expect(404);
     expect((await as(request(app.getHttpServer()).get('/hunts/activity'), OTHER).expect(200)).body).toEqual({ items: [] });
+  });
+
+  it('GET /marketplaces/health: every launch marketplace, exactly as the worker recorded it (or unknown)', async () => {
+    const body = (await as(request(app.getHttpServer()).get('/marketplaces/health')).expect(200)).body as SourceHealthList;
+    expect(body.items.map((i) => i.marketplace)).toEqual(['ebay', 'facebook']);
+    const rows = await prisma.marketplaceHealth.findMany({ include: { marketplace: { select: { key: true } } } });
+    const at = new Date(body.generatedAt);
+    for (const item of body.items) {
+      const r = rows.find((x) => x.marketplace.key === item.marketplace) ?? null;
+      // Read-only: the rows belong to whatever worker is running; compare against them.
+      expect(item).toEqual(toSourceHealth(item.marketplace, r, at));
+    }
   });
 });

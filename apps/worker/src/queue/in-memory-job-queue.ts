@@ -93,6 +93,15 @@ export class InMemoryJobQueue implements JobQueue {
     });
   }
 
+  async defer(job: LeasedJob, options: { runAt: Date; reason: string }): Promise<boolean> {
+    return this.settle(job, (j) => {
+      j.status = 'QUEUED';
+      j.runAt = options.runAt;
+      j.lastError = options.reason;
+      j.attempts -= 1;
+    });
+  }
+
   async deadLetter(job: LeasedJob, reason: string): Promise<boolean> {
     return this.settle(job, (j) => {
       j.status = 'DEAD';

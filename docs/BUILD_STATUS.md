@@ -1,11 +1,65 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 34)_
+_Last updated: 2026-10-08 (step 35)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 35 - Marketplace source health, degradation and per-source backoff (Build Prompt 32)
+
+Rules in [decision 0009](decisions/0009-source-health.md).
+
+**What was added**
+
+- Migration `..._marketplace_health`: `MarketplaceHealth` (status, reason, failures, latency, last
+  success / failure, status since, `retryAfter` cool-down) and `PollStatus.DEGRADED`.
+- marketplace-core: search results can be `partial`; development sources simulate latency
+  (`*_DEV_LATENCY_MS`) and two new scenarios, `slow` and `flaky`; latency honours cancellation.
+- Worker:
+  - `health/source-health.ts`: pure state machine + per-source backoff policy (unit-tested).
+  - `SourceHealthStore` (locked read-modify-write) behind a `SourceHealthPort`; in-memory variant
+    for tests.
+  - Search handler: skips a cooling source (DeferJobError: no attempt used), times out slow
+    requests, records latency and outcomes, marks partial / slow polls DEGRADED; retries wait
+    for the source's cool-down.
+  - Scheduler: moves Hunts due on a cooling source to its retry time instead of queueing.
+  - Queue `defer()`; runner outcome `deferred`; periodic health probe loop.
+  - Config: `WORKER_SEARCH_TIMEOUT_MS`, `WORKER_SOURCE_SLOW_MS`, `WORKER_SOURCE_DOWN_AFTER`,
+    `WORKER_SOURCE_BACKOFF_BASE_MS` / `_MAX_MS`, `WORKER_HEALTH_PROBE_MS`, `*_DEV_LATENCY_MS`
+    (development only).
+- Contracts `marketplace-health.ts`; hunt activity marketplaces and deal sources carry the
+  source's state and a `degraded` last check; Home carries `sources`.
+- API: `GET /marketplaces/health`; source state in hunt activity, Deals and Home ("unknown" when
+  there's no report for an hour); Home's "checks are failing" recommendation only for Hunt-
+  specific failures (a source-wide problem is the banner's job).
+- client-core `source-view.ts`: calm banner copy, labels, `huntMonitoringHealth`; monitoring
+  lines and marketplace rows never say "OK" while a source is degraded; deals say updates may be
+  late.
+- Web + mobile: the source banner on Home, Hunts and Deals; Hunt detail rows show "Slow right
+  now" / "Not responding · tries again in 4 min".
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (marketplace-core 143 incl. slow / flaky /
+  partial / abort; worker 42 incl. 8 state-machine and deferral tests; api 119; client-core 92
+  incl. 10 source-view tests).
+- `pnpm --filter worker test:int` 40/40 incl. 8 new on real Postgres: one source failing while the
+  other is partial (neither "healthy"), cool-down + Hunts waiting instead of queueing, down after
+  3 with doubling cool-down, deferral without using an attempt, recovery, slow = degraded, timeout
+  = retryable failure, store persistence, concurrent outcomes under the row lock. The shared
+  health rows are never touched by tests (in-memory health + a throwaway marketplace row).
+- `pnpm --filter api test:int` 46/46 (incl. `/marketplaces/health` vs the database rows);
+  `test:e2e` 52/52.
+- Browser check of the banners: pending - the user's API on :4000 stopped (watch reload during
+  the schema change) and needs a restart.
+
+**Not done / TODO**
+
+- D31: thresholds. No jitter in the backoff (single local worker).
+- Real providers' quotas / health endpoints - prompts 34-35.
+- Mobile not run on a device.
 
 ### Step 34 - Analytics screens: overview, Hunts, Products, Missed potential (Build Prompt 31)
 
@@ -1644,7 +1698,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-31 (our steps 1-34 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-32 (our steps 1-35 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1661,5 +1715,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 32 in document order: Source health and degraded UX.
+Build Prompt 33 in document order: Empty / waiting / after-hours / recommendation states.
 (Await the next prompt.)

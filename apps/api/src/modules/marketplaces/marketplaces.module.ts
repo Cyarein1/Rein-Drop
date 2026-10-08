@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { marketplaceRegistryProvider } from './marketplace-registry.provider.js';
+import { MarketplacesController } from './marketplaces.controller.js';
 
 /**
  * Marketplaces - Marketplace registry and the adapter boundary to eBay / Facebook Marketplace (via @rein-drop/marketplace-core).
@@ -12,6 +13,8 @@ import { marketplaceRegistryProvider } from './marketplace-registry.provider.js'
  * marketplace-registry.provider.ts and nowhere else (enforced by src/architecture.spec.ts).
  */
 @Module({
+  // GET /marketplaces/health: source health written by the worker (decision 0009).
+  controllers: [MarketplacesController],
   providers: [marketplaceRegistryProvider],
   exports: [marketplaceRegistryProvider],
 })

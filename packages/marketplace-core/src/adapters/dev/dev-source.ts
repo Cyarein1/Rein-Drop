@@ -1,7 +1,7 @@
 import { MarketplaceError } from '../../errors.js';
 import type { SourceHealthStatus } from '../../health.js';
 import type { ListingStatus } from '../../listing.js';
-import type { MarketplaceSearchCriteria } from '../../search.js';
+import type { CancellationSignal, MarketplaceSearchCriteria } from '../../search.js';
 import { DEV_CASES, DEV_PRODUCTS, matchingProducts, type DevCase, type DevProduct } from './catalogue.js';
 
 /**
@@ -17,7 +17,10 @@ export const DEV_HOST = 'https://dev-listings.reindrop.invalid';
  * Controlled source behaviours for exercising error / degraded / empty states locally.
  * - normal: healthy, full results.
  * - empty: healthy, no results for any query.
- * - degraded: health `degraded`; searches return a short first page only (no more pages).
+ * - degraded: health `degraded`; searches return a short first page only (no more pages),
+ *   flagged `partial`.
+ * - slow: health `degraded`; full results, but every request takes DEV_SLOW_LATENCY_MS longer.
+ * - flaky: health `degraded`; every other request fails UNAVAILABLE (retryable) - exercises retry.
  * - rate_limited: health `degraded` with retryAfter; searches fail RATE_LIMITED (retryable).
  * - unavailable: health `down`; searches fail UNAVAILABLE (retryable).
  * - not_configured: health `not_configured`; searches fail NOT_CONFIGURED.
@@ -35,7 +38,12 @@ export const DEV_SCENARIOS = [
   'not_configured',
   'invalid_response',
   'malformed_payloads',
+  'slow',
+  'flaky',
 ] as const;
+
+/** Extra delay of the `slow` scenario. */
+export const DEV_SLOW_LATENCY_MS = 6_000;
 export type DevScenario = (typeof DEV_SCENARIOS)[number];
 
 export function isDevScenario(value: unknown): value is DevScenario {
@@ -49,7 +57,31 @@ export interface DevSourceOptions {
   now?: () => Date;
   /** Moment the synthetic listings are aged from (default: construction time). */
   epoch?: Date;
+  /** Simulated network latency per request, in ms (default 0). The `slow` scenario adds more. */
+  latencyMs?: number;
 }
+
+// This package has no DOM / Node typings; timers exist on every runtime it targets.
+const timers = globalThis as unknown as { setTimeout(fn: () => void, ms: number): unknown };
+const ABORT_POLL_MS = 50;
+
+/**
+ * Waits like a network call would. CancellationSignal has no events, so the wait is sliced and
+ * the signal checked between slices: an abort rejects within ABORT_POLL_MS.
+ */
+export async function devDelay(ms: number, signal?: CancellationSignal): Promise<void> {
+  let left = ms;
+  while (left > 0) {
+    if (signal?.aborted) throw signal.reason ?? new Error('aborted');
+    const slice = Math.min(left, ABORT_POLL_MS);
+    await new Promise<void>((resolve) => timers.setTimeout(resolve, slice));
+    left -= slice;
+  }
+  if (signal?.aborted) throw signal.reason ?? new Error('aborted');
+}
+
+/** Total simulated latency for a request under a scenario. */
+export const devLatency = (scenario: DevScenario, latencyMs: number) => Math.max(0, latencyMs) + (scenario === 'slow' ? DEV_SLOW_LATENCY_MS : 0);
 
 export type DevMarketplace = 'ebay' | 'facebook';
 
@@ -249,6 +281,10 @@ export function scenarioHealth(
   switch (scenario) {
     case 'degraded':
       return { status: 'degraded', message: 'Development scenario: slow, partial results', retryAfter: null };
+    case 'slow':
+      return { status: 'degraded', message: 'Development scenario: slow responses', retryAfter: null };
+    case 'flaky':
+      return { status: 'degraded', message: 'Development scenario: intermittent errors', retryAfter: null };
     case 'rate_limited':
       return { status: 'degraded', message: 'Development scenario: rate limited', retryAfter: new Date(now.getTime() + 60_000) };
     case 'unavailable':
@@ -260,13 +296,19 @@ export function scenarioHealth(
   }
 }
 
-/** The error a scenario makes every request fail with, if any. */
+/**
+ * The error a scenario makes a request fail with, if any. `call` is the source's 1-based request
+ * count: the flaky scenario fails odd-numbered requests and lets even ones through.
+ */
 export function scenarioError(
   scenario: DevScenario,
   source: { marketplace: DevMarketplace; provider: string },
   now: Date,
+  call = 1,
 ): MarketplaceError | null {
   switch (scenario) {
+    case 'flaky':
+      return call % 2 === 1 ? new MarketplaceError('UNAVAILABLE', 'Development scenario: intermittent error', source) : null;
     case 'rate_limited':
       return new MarketplaceError('RATE_LIMITED', 'Development scenario: rate limited', {
         ...source,

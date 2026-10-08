@@ -13,6 +13,7 @@ import {
 import { getServerApiClient } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Badge, ButtonLink, Card, EmptyState, Page, Spinner, SystemBanner } from "@/components/ui";
+import { SourceBanner } from "@/components/SourceBanner";
 import styles from "./hunts.module.css";
 
 export const metadata: Metadata = { title: "Hunts" };
@@ -40,6 +41,8 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
     api.listHunts({ limit: 100, ...(filter === "all" ? {} : { status: filter }) }),
     api.listHuntActivity(),
   ]).catch(() => null);
+  // Advisory: if it can't be loaded the page still works, just without the source status line.
+  const health = await api.getSourceHealth().catch(() => null);
 
   const tabs = (
     <nav aria-label="Hunt status" className={styles.tabs}>
@@ -82,6 +85,7 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
           message={`"${created.name}" is ready. Choose Start watching when you want monitoring to begin.`}
         />
       )}
+      <SourceBanner sources={health?.items ?? null} now={new Date(health?.generatedAt ?? 0)} />
       {tabs}
       {items.length === 0 ? (
         <Card>

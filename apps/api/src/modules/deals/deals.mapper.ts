@@ -9,8 +9,10 @@ import type {
   DealSummary,
   ListingStatus,
   MarketplaceKey,
+  SourceStatus,
 } from '@rein-drop/contracts';
 import type { DealAnalysis, HuntMatch, HuntMatchStatus, Listing, PollStatus } from '@rein-drop/db';
+import { lastCheckOf } from '../hunts/hunt-activity.js';
 import type { AlertEligibility, DealEconomics, ScoreReason } from '@rein-drop/scoring';
 
 /** Everything one deal is built from (loaded by DealsService). */
@@ -25,6 +27,8 @@ export interface DealRow {
   poll: { lastPolledAt: Date | null; lastPollStatus: PollStatus | null } | null;
   inventoryItemId: string | null;
   rank: number;
+  /** The marketplace source's own health right now. */
+  sourceHealth: SourceStatus;
 }
 
 /** Stored DealAnalysis.scoring (see the worker's DealAnalysisHandler). */
@@ -88,7 +92,8 @@ export function toDealSummary(row: DealRow, asOf: Date): DealSummary {
       available: AVAILABLE.has(status),
       lastSeenAt: listing.lastSeenAt.toISOString(),
       lastCheckedAt: row.poll?.lastPolledAt?.toISOString() ?? null,
-      lastCheck: row.poll?.lastPollStatus === 'SUCCEEDED' ? 'ok' : row.poll?.lastPollStatus === 'FAILED' ? 'failed' : null,
+      lastCheck: lastCheckOf(row.poll?.lastPollStatus ?? null),
+      sourceHealth: row.sourceHealth,
     },
     assessment: assessmentOf(analysis),
     estimate: estimateOf(economics ?? null),

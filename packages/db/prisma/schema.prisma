@@ -125,10 +125,23 @@ enum CostCategory {
   OTHER
 }
 
-/// Outcome of the last marketplace search for a hunt.
+/// Outcome of the last marketplace search for a hunt. DEGRADED = it worked but the source was slow
+/// or returned partial results, so the check can't be called fully healthy.
 enum PollStatus {
   SUCCEEDED
+  DEGRADED
   FAILED
+}
+
+/// A marketplace source's health, as seen by the worker (decision 0009).
+enum SourceHealthStatus {
+  HEALTHY
+  /// Working, but slow / partial / intermittently failing / rate limited.
+  DEGRADED
+  /// Failing repeatedly; searches pause until `retryAfter`.
+  DOWN
+  /// No adapter or credentials for this source.
+  NOT_CONFIGURED
 }
 
 enum SearchRunStatus {
@@ -251,6 +264,35 @@ model Marketplace {
   listings         Listing[]
   sales            Sale[]
   searchRuns       SearchRun[]
+  health           MarketplaceHealth?
+}
+
+/// Current health of one marketplace source, written by the worker from real search outcomes and
+/// periodic health probes. One row per marketplace. Drives per-source backoff (`retryAfter`) and
+/// what users see when a source is degraded (decision 0009).
+model MarketplaceHealth {
+  marketplaceId       String             @id @db.Uuid
+  /// Adapter provider that produced the latest outcome.
+  provider            String
+  status              SourceHealthStatus
+  /// Machine reason: SLOW | PARTIAL | RATE_LIMITED | UNAVAILABLE | INVALID_RESPONSE | NOT_CONFIGURED | PROBE.
+  reason              String?
+  /// Developer-facing detail (users get plain-language copy from the client).
+  message             String?
+  /// Failed search attempts in a row (reset by a success).
+  consecutiveFailures Int                @default(0)
+  /// Duration of the latest search request, ms.
+  lastLatencyMs       Int?
+  lastSuccessAt       DateTime?          @db.Timestamptz(3)
+  lastFailureAt       DateTime?          @db.Timestamptz(3)
+  /// Since when the source has been in the current status.
+  statusSince         DateTime           @default(now()) @db.Timestamptz(3)
+  /// Searches for this source pause until then (per-source backoff / cool-down). Null = go ahead.
+  retryAfter          DateTime?          @db.Timestamptz(3)
+  checkedAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+
+  marketplace Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
 }
 
 /// One executed marketplace search, serving one or more hunts with compatible criteria.

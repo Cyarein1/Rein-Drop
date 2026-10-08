@@ -14,6 +14,8 @@ import {
   buildDevListing,
   currencyDigits,
   degradedLimit,
+  devDelay,
+  devLatency,
   devSearch,
   keysetPage,
   parseDevListingId,
@@ -68,6 +70,9 @@ export class DevFacebookDataProvider implements FacebookDataProvider {
   private readonly now: () => Date;
   private readonly epoch: Date;
   private readonly currency: string;
+  private readonly latencyMs: number;
+  /** Requests so far (the flaky scenario fails every other one). */
+  private calls = 0;
   private readonly context = new Map<string, { currency: string; area: string }>();
 
   constructor(options: DevFacebookDataProviderOptions = {}) {
@@ -76,6 +81,7 @@ export class DevFacebookDataProvider implements FacebookDataProvider {
     this.now = options.now ?? (() => new Date());
     this.epoch = options.epoch ?? this.now();
     this.currency = options.currency ?? 'USD';
+    this.latencyMs = options.latencyMs ?? 0;
     this.capabilities = {
       radius: true,
       priceFilter: true,
@@ -92,9 +98,10 @@ export class DevFacebookDataProvider implements FacebookDataProvider {
 
   async search(request: FacebookSearchRequest, options?: SearchOptions): Promise<FacebookProviderPage> {
     if (options?.signal?.aborted) throw new Error('aborted');
+    await devDelay(devLatency(this.scenario, this.latencyMs), options?.signal);
     const now = this.now();
     const source = { marketplace: 'facebook' as const, provider: this.id };
-    const failure = scenarioError(this.scenario, source, now);
+    const failure = scenarioError(this.scenario, source, now, ++this.calls);
     if (failure) throw failure;
     if (this.scenario === 'empty') return { records: [], nextCursor: null };
 
@@ -111,12 +118,13 @@ export class DevFacebookDataProvider implements FacebookDataProvider {
       if (this.scenario === 'malformed_payloads' && i % 4 === 3) return { ...record, payload: { dev: 'facebook', listingRef: listing.id } };
       return record;
     });
-    return { records, nextCursor: degraded ? null : nextCursor };
+    return degraded ? { records, nextCursor: null, partial: true } : { records, nextCursor };
   }
 
-  async fetchListing(externalId: string): Promise<FacebookProviderRecord | null> {
+  async fetchListing(externalId: string, options?: SearchOptions): Promise<FacebookProviderRecord | null> {
+    await devDelay(devLatency(this.scenario, this.latencyMs), options?.signal);
     const now = this.now();
-    const failure = scenarioError(this.scenario, { marketplace: 'facebook', provider: this.id }, now);
+    const failure = scenarioError(this.scenario, { marketplace: 'facebook', provider: this.id }, now, ++this.calls);
     if (failure) throw failure;
     const parsed = parseDevListingId('facebook', externalId);
     if (!parsed) return null;

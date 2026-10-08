@@ -3,6 +3,7 @@ import { profitSnapshot } from './profit.js';
 import { homeRecommendation, type RecommendationHunt } from './recommendation.js';
 
 const NOW = new Date('2026-10-07T10:00:00Z');
+const HEALTHY = { status: 'healthy' as const, reason: null, nextAttemptAt: null };
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 
@@ -47,7 +48,7 @@ describe('homeRecommendation', () => {
     huntId: 'h',
     scanning: false,
     lastCheckedAt: NOW.toISOString(),
-    marketplaces: [{ marketplace: 'ebay', lastCheckedAt: NOW.toISOString(), lastCheck: 'ok', failingChecks: 0, nextCheckAt: null }],
+    marketplaces: [{ marketplace: 'ebay', lastCheckedAt: NOW.toISOString(), lastCheck: 'ok', failingChecks: 0, nextCheckAt: null, source: HEALTHY }],
     counts: { deals: 3, toReview: 2, new: 1, alerts: 1, saved: 0, bought: 0, ...over },
     ...a,
   });
@@ -71,10 +72,13 @@ describe('homeRecommendation', () => {
   });
 
   it('then problems: a marketplace failing repeatedly', () => {
-    const failing = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 4, nextCheckAt: null }] });
+    const failing = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 4, nextCheckAt: null, source: HEALTHY }] });
     expect(rec({ hunts: [hunt({ activity: failing })] })).toMatchObject({ code: 'source_issue', kind: 'issue', title: 'Facebook Marketplace checks are failing' });
-    const once = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 1, nextCheckAt: null }] });
+    const once = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 1, nextCheckAt: null, source: HEALTHY }] });
     expect(rec({ hunts: [hunt({ activity: once })] })).toBeNull(); // one blip isn't worth a recommendation
+    // The source itself is down for everyone: Home's source banner says so; no duplicate recommendation.
+    const sourceDown = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 4, nextCheckAt: null, source: { status: 'down', reason: 'unavailable', nextAttemptAt: null } }] });
+    expect(rec({ hunts: [hunt({ activity: sourceDown })] })?.code).not.toBe('source_issue');
   });
 
   it('then tuning, from the hunt\'s own numbers', () => {

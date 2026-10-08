@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MarketplaceAdapter } from '../../adapter.js';
 import type { MarketplaceError } from '../../errors.js';
 import type { NormalizedListing } from '../../listing.js';
@@ -8,7 +8,7 @@ import { FacebookAdapter } from '../facebook/facebook-adapter.js';
 import { DEV_CASES, DEV_PRODUCTS, matchingProducts } from './catalogue.js';
 import { DevEbayAdapter } from './dev-ebay-adapter.js';
 import { DevFacebookDataProvider } from './dev-facebook-data-provider.js';
-import { DEV_SCENARIOS, devListingId, type DevScenario, type DevSourceOptions } from './dev-source.js';
+import { DEV_SCENARIOS, DEV_SLOW_LATENCY_MS, devListingId, type DevScenario, type DevSourceOptions } from './dev-source.js';
 
 const EPOCH = new Date('2026-10-07T08:00:00Z');
 const MIN = 60_000;
@@ -223,7 +223,7 @@ describe.each(['ebay', 'facebook'] as const)('%s development scenarios', (which)
       );
 
   it('covers every scenario', () => {
-    expect(DEV_SCENARIOS).toHaveLength(8);
+    expect(DEV_SCENARIOS).toHaveLength(10);
   });
 
   it('normal: healthy with results', async () => {
@@ -252,6 +252,43 @@ describe.each(['ebay', 'facebook'] as const)('%s development scenarios', (which)
   it('unavailable: down, retryable error', async () => {
     expect(await health('unavailable')).toBe('down');
     expect(await failure('unavailable')).toMatchObject({ code: 'UNAVAILABLE', retryable: true });
+  });
+
+  it('degraded results are flagged partial', async () => {
+    expect((await make(which, { scenario: 'degraded' }).search({ ...base, query: 'iphone', limit: 10 })).partial).toBe(true);
+    expect((await make(which).search({ ...base, query: 'iphone', limit: 10 })).partial).toBeUndefined();
+  });
+
+  it('slow: degraded health, full results after the extra delay; latency honours abort', async () => {
+    vi.useFakeTimers();
+    try {
+      expect(await health('slow')).toBe('degraded');
+      let done = false;
+      const pending = make(which, { scenario: 'slow' }).search({ ...base, query: 'iphone', limit: 10 }).then((r) => {
+        done = true;
+        return r;
+      });
+      await vi.advanceTimersByTimeAsync(DEV_SLOW_LATENCY_MS - 1);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await pending).listings.length).toBe(10);
+      // Any { aborted } object is a CancellationSignal; aborting mid-wait rejects within one poll slice.
+      const signal = { aborted: false };
+      const aborted = make(which, { latencyMs: 10_000 }).search(base, { signal }).catch((e: unknown) => e as MarketplaceError);
+      await vi.advanceTimersByTimeAsync(1_000);
+      signal.aborted = true;
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await aborted).toMatchObject({ code: 'ABORTED' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flaky: every other request fails UNAVAILABLE (retryable)', async () => {
+    expect(await health('flaky')).toBe('degraded');
+    const adapter = make(which, { scenario: 'flaky' });
+    const outcome = () => adapter.search(base).then(() => 'ok', (e: MarketplaceError) => e.code);
+    expect([await outcome(), await outcome(), await outcome(), await outcome()]).toEqual(['UNAVAILABLE', 'ok', 'UNAVAILABLE', 'ok']);
   });
 
   it('not_configured: not retryable', async () => {

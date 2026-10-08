@@ -7,6 +7,8 @@ import { FacebookAdapter } from './facebook/facebook-adapter.js';
 export interface MarketplaceRegistryOptions {
   nodeEnv: 'development' | 'test' | 'production';
   devScenarios: { ebay: DevScenario; facebook: DevScenario };
+  /** Simulated latency per request for the development sources (ms, default 0). */
+  devLatencyMs?: { ebay: number; facebook: number };
 }
 
 /**
@@ -19,7 +21,7 @@ export interface MarketplaceRegistryOptions {
 export function createMarketplaceRegistry(options: MarketplaceRegistryOptions): MarketplaceRegistry {
   if (options.nodeEnv === 'production') return new MarketplaceRegistry([]);
   return new MarketplaceRegistry([
-    new DevEbayAdapter({ scenario: options.devScenarios.ebay }),
-    new FacebookAdapter(new DevFacebookDataProvider({ scenario: options.devScenarios.facebook })),
+    new DevEbayAdapter({ scenario: options.devScenarios.ebay, latencyMs: options.devLatencyMs?.ebay }),
+    new FacebookAdapter(new DevFacebookDataProvider({ scenario: options.devScenarios.facebook, latencyMs: options.devLatencyMs?.facebook })),
   ]);
 }

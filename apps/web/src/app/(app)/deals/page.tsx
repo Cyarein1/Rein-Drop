@@ -7,6 +7,7 @@ import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Page, SystemBanner } from "@/components/ui";
 import { DealFeed } from "./DealFeed";
 import { DealSelects } from "./DealSelects";
+import { SourceBanner } from "@/components/SourceBanner";
 import styles from "./deals.module.css";
 
 export const metadata: Metadata = { title: "Deals" };
@@ -57,6 +58,7 @@ async function DealsLoader({ searchParams }: { searchParams: PageProps<"/deals">
   const session = await verifySession();
   const api = await getServerApiClient();
   const result = await Promise.all([api.listDeals({ ...filters, limit: PAGE_SIZE }), api.listHunts({ limit: 100 })]).catch(() => null);
+  const health = await api.getSourceHealth().catch(() => null); // advisory only
 
   const tabs = (
     <nav aria-label="Deal status" className={styles.tabs}>
@@ -91,6 +93,7 @@ async function DealsLoader({ searchParams }: { searchParams: PageProps<"/deals">
 
   return (
     <>
+      <SourceBanner sources={health?.items ?? null} now={new Date(health?.generatedAt ?? 0)} />
       <div className={styles.filters}>
         {tabs}
         <DealSelects

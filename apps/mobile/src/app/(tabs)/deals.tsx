@@ -6,6 +6,7 @@ import { DEAL_FILTERS, dealCardView, huntFormContext, MARKETPLACE_LABEL } from '
 import { fontSize, roles } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { DealCard } from '@/components/DealCard';
+import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
@@ -69,6 +70,7 @@ export default function DealsScreen() {
 
   return (
     <Screen description="Ranked by how strong the opportunity is, then how fresh.">
+      <LiveSourceBanner />
       <ChoiceGroup legend="Show" options={DEAL_FILTERS} value={filter} onChange={change(setFilter)} />
       <ChoiceGroup
         legend="Source"

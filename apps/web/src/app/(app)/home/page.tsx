@@ -17,6 +17,7 @@ import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Metric, Page, Spinner, SystemBanner } from "@/components/ui";
 import { OnboardingRedirect } from "@/app/onboarding/OnboardingRedirect";
+import { SourceBanner } from "@/components/SourceBanner";
 import { DealCard } from "../deals/DealCard";
 import styles from "./home.module.css";
 
@@ -72,6 +73,7 @@ async function HomeLoader() {
 
   return (
     <>
+      <SourceBanner sources={home.sources} now={now} />
       <Attention home={home} context={context} />
       <Hunts home={home} now={now} />
       <Profit home={home} context={context} />

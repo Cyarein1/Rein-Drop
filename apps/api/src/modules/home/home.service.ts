@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Home, Money } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
 import { PRISMA } from '../../database/database.module.js';
+import { loadSourceHealth } from '../marketplaces/source-health.js';
 import { DealsService } from '../deals/deals.service.js';
 import { loadHuntActivity } from '../hunts/hunt-activity.js';
 import { SellerSnapshotService } from '../seller-profile/seller-snapshot.service.js';
@@ -82,6 +83,7 @@ export class HomeService {
 
     return {
       generatedAt: now.toISOString(),
+      sources: await loadSourceHealth(this.prisma, now),
       attention: { unreadAlerts, toReview: activity.reduce((sum, a) => sum + a.counts.toReview, 0), top: top.items },
       hunts: {
         live: live.length,

@@ -11,6 +11,8 @@ import {
   buildDevListing,
   currencyDigits,
   degradedLimit,
+  devDelay,
+  devLatency,
   devSearch,
   keysetPage,
   parseDevListingId,
@@ -71,6 +73,9 @@ export class DevEbayAdapter implements MarketplaceAdapter {
   private readonly now: () => Date;
   private readonly epoch: Date;
   private readonly currency: string;
+  private readonly latencyMs: number;
+  /** Requests so far (the flaky scenario fails every other one). */
+  private calls = 0;
   /** Search context per listing, so a later refresh shows the same currency / location. */
   private readonly context = new Map<string, { currency: string; location: string | null }>();
 
@@ -79,6 +84,7 @@ export class DevEbayAdapter implements MarketplaceAdapter {
     this.now = options.now ?? (() => new Date());
     this.epoch = options.epoch ?? this.now();
     this.currency = options.currency ?? 'USD';
+    this.latencyMs = options.latencyMs ?? 0;
   }
 
   async health(): Promise<SourceHealth> {
@@ -87,8 +93,9 @@ export class DevEbayAdapter implements MarketplaceAdapter {
 
   search(criteria: MarketplaceSearchCriteria, options?: SearchOptions): Promise<MarketplaceSearchResult> {
     return guardedSearch(this, criteria, options, async (applied) => {
+      await devDelay(devLatency(this.scenario, this.latencyMs), options?.signal);
       const now = this.now();
-      const failure = scenarioError(this.scenario, this, now);
+      const failure = scenarioError(this.scenario, this, now, ++this.calls);
       if (failure) throw failure;
       if (this.scenario === 'empty') return { listings: [], nextCursor: null };
 
@@ -103,14 +110,15 @@ export class DevEbayAdapter implements MarketplaceAdapter {
         if (this.scenario === 'malformed_payloads' && i % 4 === 3) return { ...raw, payload: { dev: 'ebay', itemRef: listing.id, title: 42 } };
         return raw;
       });
-      return { listings, nextCursor: degraded ? null : nextCursor };
+      return degraded ? { listings, nextCursor: null, partial: true } : { listings, nextCursor };
     });
   }
 
   async fetchListing(externalId: string, options?: SearchOptions): Promise<RawListingRecord | null> {
     if (options?.signal?.aborted) throw abortedError(this, options.signal.reason);
+    await devDelay(devLatency(this.scenario, this.latencyMs), options?.signal);
     const now = this.now();
-    const failure = scenarioError(this.scenario, this, now);
+    const failure = scenarioError(this.scenario, this, now, ++this.calls);
     if (failure) throw failure;
     const parsed = parseDevListingId('ebay', externalId);
     if (!parsed) return null;

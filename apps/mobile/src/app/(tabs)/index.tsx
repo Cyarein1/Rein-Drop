@@ -15,6 +15,7 @@ import {
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { DealCard } from '@/components/DealCard';
+import { SourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Button, Card, EmptyState, font, LoadingState, Metric, Screen, SystemBanner } from '@/ui';
 
@@ -128,6 +129,7 @@ export default function HomeScreen() {
 
   return (
     <Screen description="Is Rein Drop working, and is anything worth your attention?">
+      <SourceBanner sources={home.sources} now={loadedAt} />
       {/* 1. Needs your attention */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>

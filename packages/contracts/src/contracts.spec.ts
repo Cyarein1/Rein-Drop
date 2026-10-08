@@ -53,7 +53,7 @@ describe('deals', () => {
     listing,
     price: { asking: listing.price, knownCosts: null, knownTotal: listing.price },
     freshness: { postedAt: null, discoveredAt: NOW, ageMinutes: 5, basis: 'discovered' },
-    source: { marketplace: 'facebook', listingStatus: 'ACTIVE', available: true, lastSeenAt: NOW, lastCheckedAt: NOW, lastCheck: 'ok' },
+    source: { marketplace: 'facebook', listingStatus: 'ACTIVE', available: true, lastSeenAt: NOW, lastCheckedAt: NOW, lastCheck: 'ok', sourceHealth: { status: 'healthy', reason: null, nextAttemptAt: null } },
     assessment: { status: 'pending', strength: null, confidence: null, score: null, alertEligible: false, analyzedAt: null },
     estimate: {
       resale: { status: 'unavailable', reason: 'no_source', detail: 'No resale price source is connected yet' },

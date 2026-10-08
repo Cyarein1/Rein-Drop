@@ -19,6 +19,20 @@ export class RetryableJobError extends Error {
   }
 }
 
+/**
+ * Throw when the job can't run yet for a reason outside it (its marketplace is cooling down):
+ * it goes back to the queue for `runAt` without using up an attempt.
+ */
+export class DeferJobError extends Error {
+  constructor(
+    message: string,
+    readonly runAt: Date,
+  ) {
+    super(message);
+    this.name = 'DeferJobError';
+  }
+}
+
 /** Throw when retrying can't help (bad payload, not configured): the job is dead-lettered. */
 export class PermanentJobError extends Error {
   constructor(message: string) {
@@ -40,7 +54,7 @@ export function exponentialBackoffMs(attempt: number): number {
   return Math.min(30_000 * 2 ** Math.max(0, attempt - 1), 15 * 60_000);
 }
 
-export type JobOutcome = 'completed' | 'retried' | 'dead' | 'lease_lost';
+export type JobOutcome = 'completed' | 'retried' | 'deferred' | 'dead' | 'lease_lost';
 
 export interface RunSummary {
   received: number;
@@ -66,7 +80,7 @@ export class JobRunner {
 
   async runOnce(): Promise<RunSummary> {
     const jobs = await this.queue.receive(this.options.queue, { maxJobs: this.options.maxJobs, leaseMs: this.options.leaseMs });
-    const outcomes: Record<JobOutcome, number> = { completed: 0, retried: 0, dead: 0, lease_lost: 0 };
+    const outcomes: Record<JobOutcome, number> = { completed: 0, retried: 0, deferred: 0, dead: 0, lease_lost: 0 };
     // Sequential: keeps one worker's load on a marketplace predictable. Scale out with more workers.
     for (const job of jobs) outcomes[await this.process(job)] += 1;
     return { received: jobs.length, outcomes };
@@ -86,6 +100,9 @@ export class JobRunner {
       return settled(await this.queue.complete(job), 'completed');
     } catch (err) {
       const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      if (err instanceof DeferJobError) {
+        return settled(await this.queue.defer(job, { runAt: err.runAt, reason: message }), 'deferred');
+      }
       if (err instanceof PermanentJobError || job.attempt >= job.maxAttempts) {
         this.logger.warn(`Job ${job.type} ${job.id} dead-lettered (attempt ${job.attempt}): ${message}`);
         return settled(await this.queue.deadLetter(job, message), 'dead');

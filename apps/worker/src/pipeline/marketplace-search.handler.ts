@@ -12,7 +12,9 @@ import {
 import { dedupeKeyFor } from '@rein-drop/matching';
 import type { Clock, JobQueue, LeasedJob } from '../queue/job-queue.js';
 import { ANALYSIS_JOB_TYPE, type AnalysisJobPayload } from './deal-analysis.handler.js';
-import { PermanentJobError, RetryableJobError, type JobHandler } from '../queue/job-runner.js';
+import { DeferJobError, PermanentJobError, RetryableJobError, type JobHandler } from '../queue/job-runner.js';
+import { isCoolingDown, type HealthOutcome, type HealthState } from '../health/source-health.js';
+import type { SourceHealthPort } from '../health/source-health.store.js';
 import { MatchStage, type MatchStageSummary } from './match-stage.js';
 import { SEARCH_JOB_TYPE, type SearchJobPayload } from './search-plan.js';
 
@@ -24,6 +26,20 @@ export interface MarketplaceSearchHandlerOptions {
   maxPages: number;
   /** Where to enqueue deal analysis for the open matches a run confirms. Omit to skip analysis. */
   analysis?: { queue: JobQueue; queueName: string; maxAttempts: number };
+  /** Records source health and enforces per-source cool-downs. Omit to skip (some tests). */
+  health?: SourceHealthPort;
+  /** A search request taking longer than this is cancelled and counts as a timeout failure. */
+  searchTimeoutMs?: number;
+  /** Slow-search threshold used when no health store is configured (the store has its own policy). */
+  slowMs?: number;
+}
+
+/** How one search went, for the source's health and the hunts' poll status. */
+interface FetchStats {
+  pages: number;
+  /** Slowest single request, ms. */
+  latencyMs: number;
+  partial: boolean;
 }
 
 /**
@@ -73,6 +89,13 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
       throw new PermanentJobError(err instanceof Error ? err.message : String(err));
     }
 
+    // A source cooling down (repeated failures / rate limit) is not called at all: the job waits
+    // for it without using up an attempt, so one bad source can't exhaust every Hunt's retries.
+    const health = await this.options.health?.get(marketplace.id);
+    if (health && isCoolingDown(health, this.clock())) {
+      throw new DeferJobError(`${payload.marketplace} is cooling down (${health.status}, ${health.reason ?? 'no reason'})`, health.retryAfter!);
+    }
+
     const run = await this.prisma.searchRun.upsert({
       where: { jobId: job.id },
       create: {
@@ -88,8 +111,9 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     });
 
     let openMatchIds: string[];
+    const stats: FetchStats = { pages: 0, latencyMs: 0, partial: false };
     try {
-      const pages = await this.fetch(adapter, payload, run.id, marketplace.id);
+      await this.fetch(adapter, payload, run.id, marketplace.id, stats);
       await this.normalizePending(adapter, run.id);
       const location = payload.criteria.location;
       const { summary: matches, openMatchIds: open } = await this.matchStage.run({
@@ -102,7 +126,8 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
           adapter.capabilities.location !== 'unsupported' &&
           (location.radiusKm === null || adapter.capabilities.radius),
       });
-      await this.finishRun(run.id, pages, huntIds, targets, marketplace.id, payload.marketplace, matches);
+      const state = await this.recordHealth(marketplace.id, adapter.provider, { kind: 'success', latencyMs: stats.latencyMs, partial: stats.partial });
+      await this.finishRun(run.id, stats, state, huntIds, targets, marketplace.id, payload.marketplace, matches);
       openMatchIds = open;
     } catch (err) {
       await this.prisma.searchRun.update({
@@ -116,7 +141,16 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
       });
       await this.recordPollFailure(huntIds, marketplace.id, err);
       if (isMarketplaceError(err)) {
-        if (err.retryable) throw new RetryableJobError(`${err.code}: ${err.message}`, err.retryAfter);
+        // Only the source's own failures count against its health (not our database errors).
+        const state = await this.recordHealth(marketplace.id, adapter.provider, {
+          kind: 'failure',
+          code: err.code,
+          message: `${err.code}: ${err.message}`.slice(0, 500),
+          latencyMs: stats.latencyMs || null,
+          retryAfter: err.retryAfter,
+        });
+        // The retry waits for the source's cool-down (which already respects its own retryAfter).
+        if (err.retryable) throw new RetryableJobError(`${err.code}: ${err.message}`, state?.retryAfter ?? err.retryAfter);
         throw new PermanentJobError(`${err.code}: ${err.message}`);
       }
       throw err; // database / unexpected errors: let the runner retry with backoff
@@ -142,13 +176,13 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
   }
 
   /** Fetches up to maxPages and stores every raw record (duplicates from a retry are ignored). */
-  private async fetch(adapter: MarketplaceAdapter, payload: SearchJobPayload, runId: string, marketplaceId: string): Promise<number> {
+  private async fetch(adapter: MarketplaceAdapter, payload: SearchJobPayload, runId: string, marketplaceId: string, stats: FetchStats): Promise<void> {
     const limit = adapter.capabilities.maxPageSize;
     let cursor: string | null = null;
-    let pages = 0;
     do {
-      const result = await adapter.search({ ...payload.criteria, limit, cursor });
-      pages += 1;
+      const result = await this.timedSearch(adapter, { ...payload.criteria, limit, cursor }, stats);
+      stats.pages += 1;
+      if (result.partial) stats.partial = true;
       if (result.listings.length > 0) {
         await this.prisma.rawListing.createMany({
           data: result.listings.map((raw) => ({
@@ -163,8 +197,42 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
         });
       }
       cursor = result.nextCursor;
-    } while (cursor !== null && pages < this.options.maxPages);
-    return pages;
+    } while (cursor !== null && stats.pages < this.options.maxPages);
+  }
+
+  /** One request with a timeout; tracks the slowest latency. A timeout becomes a retryable failure. */
+  private async timedSearch(adapter: MarketplaceAdapter, criteria: Parameters<MarketplaceAdapter['search']>[0], stats: FetchStats) {
+    const timeoutMs = this.options.searchTimeoutMs;
+    const controller = new AbortController();
+    const timer = timeoutMs ? setTimeout(() => controller.abort(new Error('timeout')), timeoutMs) : null;
+    const started = performance.now();
+    try {
+      return await adapter.search(criteria, { signal: controller.signal });
+    } catch (err) {
+      if (controller.signal.aborted && isMarketplaceError(err) && err.code === 'ABORTED') {
+        const limit = timeoutMs! < 1000 ? `${timeoutMs}ms` : `${Math.round(timeoutMs! / 1000)}s`;
+        throw new MarketplaceError('UNAVAILABLE', `No answer within ${limit} (timeout)`, {
+          marketplace: adapter.marketplace,
+          provider: adapter.provider,
+          cause: err,
+        });
+      }
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+      stats.latencyMs = Math.max(stats.latencyMs, performance.now() - started);
+    }
+  }
+
+  private async recordHealth(marketplaceId: string, provider: string, outcome: HealthOutcome): Promise<HealthState | null> {
+    if (!this.options.health) return null;
+    try {
+      return await this.options.health.record(marketplaceId, provider, outcome);
+    } catch (err) {
+      // Health is advisory: never fail (or retry) a search because it couldn't be recorded.
+      this.logger.warn(`Could not record source health: ${describe(err)}`);
+      return null;
+    }
   }
 
   /** Normalizes this run's PENDING raw records, one small transaction each. */
@@ -208,7 +276,8 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
 
   private async finishRun(
     runId: string,
-    pages: number,
+    stats: FetchStats,
+    health: HealthState | null,
     huntIds: string[],
     targets: { huntId: string; hunt: { userId: string } }[],
     marketplaceId: string,
@@ -220,11 +289,18 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     await this.prisma.$transaction([
       this.prisma.searchRun.update({
         where: { id: runId },
-        data: { status: 'SUCCEEDED', pagesFetched: pages, resultCount, finishedAt: now, ...matches },
+        data: { status: 'SUCCEEDED', pagesFetched: stats.pages, resultCount, finishedAt: now, ...matches },
       }),
+      // Slow or partial: it worked, but the Hunt must not look fully healthy.
       this.prisma.huntMarketplace.updateMany({
         where: { huntId: { in: huntIds }, marketplaceId },
-        data: { lastPolledAt: now, lastPollStatus: 'SUCCEEDED', lastPollErrorCode: null, lastPollError: null, consecutiveFailures: 0 },
+        data: {
+          lastPolledAt: now,
+          lastPollStatus: degradedReason(stats, health, this.options.slowMs) ? 'DEGRADED' : 'SUCCEEDED',
+          lastPollErrorCode: degradedReason(stats, health, this.options.slowMs),
+          lastPollError: null,
+          consecutiveFailures: 0,
+        },
       }),
       this.prisma.usageEvent.createMany({
         data: targets.map((t) => ({
@@ -251,6 +327,13 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
       },
     });
   }
+}
+
+/** PARTIAL / SLOW when the search worked but not fully; null when it was a clean success. */
+function degradedReason(stats: FetchStats, health: HealthState | null, slowMs: number | undefined): string | null {
+  if (stats.partial) return 'PARTIAL';
+  if (health ? health.reason === 'SLOW' : slowMs !== undefined && stats.latencyMs > slowMs) return 'SLOW';
+  return null;
 }
 
 /**

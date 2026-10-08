@@ -1,6 +1,6 @@
 import { InMemoryJobQueue } from './in-memory-job-queue.js';
 import type { LeasedJob } from './job-queue.js';
-import { JobRunner, PermanentJobError, RetryableJobError, exponentialBackoffMs, type JobHandler } from './job-runner.js';
+import { DeferJobError, JobRunner, PermanentJobError, RetryableJobError, exponentialBackoffMs, type JobHandler } from './job-runner.js';
 
 function setup(handle: (job: LeasedJob) => Promise<void>, maxAttempts = 3) {
   let t = Date.parse('2026-10-07T10:00:00Z');
@@ -16,7 +16,7 @@ describe('JobRunner', () => {
   it('completes jobs whose handler succeeds', async () => {
     const { runner, enqueue, queue } = setup(async () => {});
     await enqueue();
-    expect(await runner.runOnce()).toEqual({ received: 1, outcomes: { completed: 1, retried: 0, dead: 0, lease_lost: 0 } });
+    expect(await runner.runOnce()).toEqual({ received: 1, outcomes: { completed: 1, retried: 0, deferred: 0, dead: 0, lease_lost: 0 } });
     expect(queue.jobs[0]!.status).toBe('SUCCEEDED');
   });
 
@@ -29,6 +29,22 @@ describe('JobRunner', () => {
     expect(queue.jobs[0]).toMatchObject({ status: 'QUEUED', lastError: 'Error: db hiccup' });
     expect(queue.jobs[0]!.runAt.getTime()).toBe(clock().getTime() + 30_000);
     expect((await runner.runOnce()).received).toBe(0); // not due yet
+  });
+
+  it('defers a job (source cooling down) without using up an attempt', async () => {
+    let calls = 0;
+    const { runner, enqueue, queue, clock, advance } = setup(async () => {
+      calls += 1;
+      if (calls <= 5) throw new DeferJobError('ebay is cooling down', new Date(clock().getTime() + 60_000));
+    }, 2);
+    await enqueue();
+    for (let i = 0; i < 5; i++) {
+      expect((await runner.runOnce()).outcomes.deferred).toBe(1);
+      expect(queue.jobs[0]).toMatchObject({ status: 'QUEUED', attempts: 0 });
+      advance(60_000);
+    }
+    // Deferred 5 times with maxAttempts 2 and still not dead: then it runs.
+    expect((await runner.runOnce()).outcomes.completed).toBe(1);
   });
 
   it("honours a source's retryAfter when it is later than the backoff", async () => {

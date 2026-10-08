@@ -32,8 +32,17 @@ const workerEnvSchema = z.object({
   WORKER_JOB_LEASE_MS: intSchema({ min: 5_000, default: 120_000 }),
   WORKER_JOB_MAX_ATTEMPTS: intSchema({ min: 1, max: 20, default: 5 }),
   WORKER_SEARCH_MAX_PAGES: intSchema({ min: 1, max: 10, default: 1 }),
+  // Source health and per-source backoff (decision 0009).
+  WORKER_SEARCH_TIMEOUT_MS: intSchema({ min: 1_000, max: 300_000, default: 30_000 }),
+  WORKER_SOURCE_SLOW_MS: intSchema({ min: 100, max: 120_000, default: 5_000 }),
+  WORKER_SOURCE_DOWN_AFTER: intSchema({ min: 1, max: 20, default: 3 }),
+  WORKER_SOURCE_BACKOFF_BASE_MS: intSchema({ min: 1_000, max: 600_000, default: 30_000 }),
+  WORKER_SOURCE_BACKOFF_MAX_MS: intSchema({ min: 1_000, max: 86_400_000, default: 900_000 }),
+  WORKER_HEALTH_PROBE_MS: intSchema({ min: 5_000, default: 60_000 }),
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
+  EBAY_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
+  FACEBOOK_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
   /** Which AIProvider analyses matched listings. `mock` is deterministic and local-only. */
   /**
    * How push / email deliveries go out. simulator = logged + marked SIMULATED (local only);
@@ -63,6 +72,15 @@ export interface WorkerConfig {
     readonly leaseMs: number;
     readonly maxAttempts: number;
     readonly searchMaxPages: number;
+    readonly searchTimeoutMs: number;
+  };
+  /** Marketplace source health + per-source backoff. */
+  readonly sourceHealth: {
+    readonly slowMs: number;
+    readonly downAfterFailures: number;
+    readonly backoffBaseMs: number;
+    readonly backoffMaxMs: number;
+    readonly probeIntervalMs: number;
   };
   /** Push / email delivery mode for the notification outbox. */
   readonly notifications: {
@@ -74,6 +92,8 @@ export interface WorkerConfig {
   readonly ai: { readonly provider: AIProviderId };
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
+  /** Simulated latency of the development sources, ms. */
+  readonly devMarketplaceLatencyMs: { readonly ebay: number; readonly facebook: number };
 }
 
 export const WORKER_CONFIG = Symbol('WORKER_CONFIG');
@@ -86,8 +106,9 @@ export function loadWorkerConfig(
     requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY', 'PUSH_PROVIDER'],
   });
   if (parsed.NODE_ENV === 'production') {
-    const problems = (['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const)
-      .filter((key) => parsed[key] !== undefined)
+    // The latency settings have defaults, so check whether they were set at all.
+    const problems = ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO', 'EBAY_DEV_LATENCY_MS', 'FACEBOOK_DEV_LATENCY_MS']
+      .filter((key) => env[key] !== undefined && env[key] !== '')
       .map((key) => `${key}: development-only, not allowed when NODE_ENV=production`);
     // The mock produces believable but meaningless analyses: never in front of real users.
     if (parsed.PUSH_PROVIDER === 'simulator') problems.push('PUSH_PROVIDER: simulator is development-only, not allowed when NODE_ENV=production');
@@ -107,6 +128,14 @@ export function loadWorkerConfig(
       leaseMs: parsed.WORKER_JOB_LEASE_MS,
       maxAttempts: parsed.WORKER_JOB_MAX_ATTEMPTS,
       searchMaxPages: parsed.WORKER_SEARCH_MAX_PAGES,
+      searchTimeoutMs: parsed.WORKER_SEARCH_TIMEOUT_MS,
+    }),
+    sourceHealth: Object.freeze({
+      slowMs: parsed.WORKER_SOURCE_SLOW_MS,
+      downAfterFailures: parsed.WORKER_SOURCE_DOWN_AFTER,
+      backoffBaseMs: parsed.WORKER_SOURCE_BACKOFF_BASE_MS,
+      backoffMaxMs: Math.max(parsed.WORKER_SOURCE_BACKOFF_MAX_MS, parsed.WORKER_SOURCE_BACKOFF_BASE_MS),
+      probeIntervalMs: parsed.WORKER_HEALTH_PROBE_MS,
     }),
     notifications: Object.freeze({
       delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator',
@@ -117,5 +146,6 @@ export function loadWorkerConfig(
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
     }),
+    devMarketplaceLatencyMs: Object.freeze({ ebay: parsed.EBAY_DEV_LATENCY_MS, facebook: parsed.FACEBOOK_DEV_LATENCY_MS }),
   });
 }

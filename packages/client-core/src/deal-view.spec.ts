@@ -41,7 +41,7 @@ const deal: DealDetail = {
   },
   price: { asking: ZAR(400_000), knownCosts: ZAR(15_000), knownTotal: ZAR(415_000) },
   freshness: { postedAt: NOW, discoveredAt: NOW, ageMinutes: 25, basis: 'posted' },
-  source: { marketplace: 'ebay', listingStatus: 'ACTIVE', available: true, lastSeenAt: NOW, lastCheckedAt: NOW, lastCheck: 'ok' },
+  source: { marketplace: 'ebay', listingStatus: 'ACTIVE', available: true, lastSeenAt: NOW, lastCheckedAt: NOW, lastCheck: 'ok', sourceHealth: { status: 'healthy', reason: null, nextAttemptAt: null } },
   assessment: { status: 'completed', strength: 'strong', confidence: 'medium', score: 72, alertEligible: true, analyzedAt: NOW },
   estimate: {
     resale: { status: 'unavailable', reason: 'no_source', detail: 'No resale price source is connected yet' },

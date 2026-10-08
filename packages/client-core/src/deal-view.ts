@@ -111,6 +111,9 @@ export function joinList(items: string[]): string {
 export function sourceNote(source: DealSourceStatus): { text: string; tone: DealTone } | null {
   const name = MARKETPLACE_LABEL[source.marketplace];
   if (!source.available) return { text: `${LISTING_GONE[source.listingStatus] ?? 'No longer listed'} on ${name}`, tone: 'loss' };
+  // The source's own state affects every deal from it: say so calmly, before this Hunt's last check.
+  if (source.sourceHealth.status === 'down') return { text: `${name} isn't responding right now - this listing may have changed`, tone: 'fresh' };
+  if (source.sourceHealth.status === 'degraded') return { text: `${name} is slow right now - updates may be late`, tone: 'fresh' };
   if (source.lastCheck === 'failed') return { text: `Couldn't check ${name} on the last try`, tone: 'fresh' };
   return null;
 }

@@ -38,6 +38,8 @@ export interface FacebookProviderRecord {
 export interface FacebookProviderPage {
   records: FacebookProviderRecord[];
   nextCursor: string | null;
+  /** The provider returned fewer results than exist (degraded). */
+  partial?: boolean;
 }
 
 export interface FacebookProviderHealth {

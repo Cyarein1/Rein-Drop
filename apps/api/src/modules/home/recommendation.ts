@@ -87,7 +87,11 @@ export function homeRecommendation(facts: RecommendationFacts, t = RECOMMENDATIO
   }
 
   for (const hunt of live) {
-    const failing = hunt.activity.marketplaces.filter((m) => m.lastCheck === 'failed' && m.failingChecks >= t.sourceFailingChecks);
+    // A source that is degraded / down for everyone is explained by Home's source banner; this
+    // rule is for checks failing for this Hunt while the source itself is fine.
+    const failing = hunt.activity.marketplaces.filter(
+      (m) => m.lastCheck === 'failed' && m.failingChecks >= t.sourceFailingChecks && m.source.status !== 'degraded' && m.source.status !== 'down',
+    );
     if (failing.length > 0) {
       const names = failing.map((m) => MARKETPLACE_NAME[m.marketplace] ?? m.marketplace).join(' and ');
       return {

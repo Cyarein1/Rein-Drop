@@ -12,6 +12,7 @@ import {
 import { ageText, joinList, MARKETPLACE_LABEL, type DealTone, type Labelled } from './deal-view.js';
 import { buildCreateHuntRequest, huntReview, type HuntFormContext, type HuntFormErrors, type HuntFormValues } from './hunt-form.js';
 import { moneyToInput } from './money.js';
+import { retryText, sourceIssue, type HuntMonitoringHealth } from './source-view.js';
 
 /**
  * Hunts list / detail / edit view model, shared by web and mobile. "Active" is the user-facing
@@ -62,10 +63,33 @@ export interface MonitoringLine {
   scanning: boolean;
 }
 
-/** One line on what monitoring is doing right now. */
+type MarketplaceActivity = HuntActivity['marketplaces'][number];
+
+/**
+ * What's wrong with one marketplace for this Hunt, if anything: the source's own state first
+ * (it affects everyone), then this Hunt's last check.
+ */
+function marketplaceProblem(m: MarketplaceActivity): string | null {
+  const name = MARKETPLACE_LABEL[m.marketplace];
+  const issue = sourceIssue(m.source);
+  if (issue) return `${name} ${issue.phrase}`;
+  if (m.lastCheck === 'failed') return `couldn't check ${name} last time`;
+  if (m.lastCheck === 'degraded') return `${name} was slow or incomplete last time`;
+  return null;
+}
+
+/** ok = every marketplace working; partial = some aren't (others continue); impaired = none are. */
+export function huntMonitoringHealth(activity: HuntActivity | null): HuntMonitoringHealth {
+  if (!activity || activity.marketplaces.length === 0) return 'unknown';
+  const problems = activity.marketplaces.filter((m) => marketplaceProblem(m) !== null).length;
+  if (problems === 0) return activity.marketplaces.every((m) => m.lastCheck === null && m.source.status === 'unknown') ? 'unknown' : 'ok';
+  return problems === activity.marketplaces.length ? 'impaired' : 'partial';
+}
+
+/** One line on what monitoring is doing right now. Never "all good" while a source isn't. */
 export function monitoringLine(hunt: Pick<Hunt, 'status' | 'marketplaces' | 'archivedAt'>, activity: HuntActivity | null, now: Date = new Date()): MonitoringLine {
   const names = joinList(hunt.marketplaces.map((m) => MARKETPLACE_LABEL[m]));
-  const failing = activity?.marketplaces.filter((m) => m.lastCheck === 'failed').map((m) => MARKETPLACE_LABEL[m.marketplace]) ?? [];
+  const problems = (activity?.marketplaces ?? []).map(marketplaceProblem).filter((p): p is string => p !== null);
   const last = activity?.lastCheckedAt ? `last checked ${ageText(minutesSince(activity.lastCheckedAt, now))}` : null;
   switch (hunt.status) {
     case 'DRAFT':
@@ -76,7 +100,7 @@ export function monitoringLine(hunt: Pick<Hunt, 'status' | 'marketplaces' | 'arc
       return { text: last ? `Paused · ${last}` : 'Paused', tone: 'info', scanning: false };
     case 'LIVE':
       if (activity?.scanning) return { text: `Checking ${names} for the first time…`, tone: 'info', scanning: true };
-      if (failing.length > 0) return { text: `${last ? capitalize(last) : 'Watching'} · couldn't check ${joinList(failing)} last time`, tone: 'fresh', scanning: false };
+      if (problems.length > 0) return { text: `${last ? capitalize(last) : 'Watching'} · ${problems.join(' · ')}`, tone: 'fresh', scanning: false };
       return { text: last ? `Watching · ${last}` : `Watching ${names}`, tone: 'action', scanning: false };
   }
 }
@@ -123,13 +147,19 @@ export interface MarketplaceRow {
 export function marketplaceRows(hunt: Pick<Hunt, 'status'>, activity: HuntActivity | null, now: Date = new Date()): MarketplaceRow[] {
   return (activity?.marketplaces ?? []).map((m) => {
     const checked = m.lastCheckedAt ? `Checked ${ageText(minutesSince(m.lastCheckedAt, now))}` : 'Not checked yet';
-    const next = hunt.status === 'LIVE' ? (m.nextCheckAt ? ` · next ${untilText(m.nextCheckAt, now)}` : ' · next check soon') : '';
-    const status: Labelled =
-      m.lastCheck === 'failed'
+    const live = hunt.status === 'LIVE';
+    // While the source cools down, the next check is its retry time.
+    const next = !live ? '' : m.source.nextAttemptAt ? ` · tries again ${retryText(m.source.nextAttemptAt, now)}` : m.nextCheckAt ? ` · next ${untilText(m.nextCheckAt, now)}` : ' · next check soon';
+    const issue = sourceIssue(m.source);
+    const status: Labelled = issue
+      ? { label: issue.label, tone: issue.tone }
+      : m.lastCheck === 'failed'
         ? { label: m.failingChecks > 1 ? `${m.failingChecks} failed checks` : 'Last check failed', tone: 'fresh' }
-        : m.lastCheck === 'ok'
-          ? { label: 'OK', tone: 'profit' }
-          : { label: hunt.status === 'LIVE' ? 'Starting' : 'Not checked', tone: 'neutral' };
+        : m.lastCheck === 'degraded'
+          ? { label: 'Incomplete last time', tone: 'fresh' }
+          : m.lastCheck === 'ok'
+            ? { label: 'OK', tone: 'profit' }
+            : { label: live ? 'Starting' : 'Not checked', tone: 'neutral' };
     return { name: MARKETPLACE_LABEL[m.marketplace], status, detail: `${checked}${next}` };
   });
 }

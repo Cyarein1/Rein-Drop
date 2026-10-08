@@ -12,6 +12,7 @@ import {
   type HuntListFilter,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Badge, Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
@@ -47,6 +48,7 @@ export default function HuntsScreen() {
 
   return (
     <Screen description="Everything Rein Drop is watching for you.">
+      <LiveSourceBanner />
       {createdHunt && (
         <SystemBanner tone="success" title="Hunt saved as a draft" message={`"${createdHunt.name}" is ready. Choose Start watching when you want monitoring to begin.`} />
       )}

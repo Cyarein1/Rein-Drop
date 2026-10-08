@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema, pageQuerySchema, pageSchema } from './common.js';
 import { listingDetailSchema, listingStatusSchema, listingSummarySchema } from './listings.js';
+import { sourceStatusSchema } from './marketplace-health.js';
 import { boughtCostsSchema } from './outcomes.js';
 
 /**
@@ -72,7 +73,9 @@ export const dealSourceStatusSchema = z.object({
   lastSeenAt: isoDateTimeSchema,
   /** Last search of this marketplace for the deal's hunt. */
   lastCheckedAt: isoDateTimeSchema.nullable(),
-  lastCheck: z.enum(['ok', 'failed']).nullable(),
+  lastCheck: z.enum(['ok', 'degraded', 'failed']).nullable(),
+  /** The marketplace source's own health right now. */
+  sourceHealth: sourceStatusSchema,
 });
 export type DealSourceStatus = z.infer<typeof dealSourceStatusSchema>;
 

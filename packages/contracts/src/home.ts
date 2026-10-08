@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { idSchema, isoDateTimeSchema, moneySchema } from './common.js';
 import { dealSummarySchema } from './deals.js';
 import { huntActivitySchema, huntStatusSchema } from './hunts.js';
+import { sourceHealthSchema } from './marketplace-health.js';
 
 const count = z.number().int().min(0);
 
@@ -52,6 +53,8 @@ export type HomeTarget = z.infer<typeof homeTargetSchema>;
 
 export const homeSchema = z.object({
   generatedAt: isoDateTimeSchema,
+  /** Marketplace sources' health, so Home can say calmly when one is degraded and the rest continue. */
+  sources: z.array(sourceHealthSchema),
   /** 1. What needs the user now. */
   attention: z.object({
     unreadAlerts: count,

@@ -98,6 +98,8 @@ import {
   type MarketplaceAnalytics,
   type MissedPotential,
   type ProductAnalytics,
+  sourceHealthListSchema,
+  type SourceHealthList,
 } from '@rein-drop/contracts';
 import type { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
@@ -227,6 +229,9 @@ export interface ApiClient {
   getMarketplaceAnalytics(query?: AnalyticsQueryInput): Promise<MarketplaceAnalytics>;
   /** Strong deals never bought - potential, never a loss. */
   getMissedPotential(query?: AnalyticsQueryInput): Promise<MissedPotential>;
+
+  /** Marketplace sources' health (healthy / degraded / down / not configured / unknown). */
+  getSourceHealth(): Promise<SourceHealthList>;
 }
 
 function analytics<T>(http: HttpOptions, view: string, query: AnalyticsQueryInput, response: z.ZodType<T>): Promise<T> {
@@ -418,5 +423,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getProductAnalytics: async (query = {}) => analytics(http, 'products', query, productAnalyticsSchema),
     getMarketplaceAnalytics: async (query = {}) => analytics(http, 'marketplaces', query, marketplaceAnalyticsSchema),
     getMissedPotential: async (query = {}) => analytics(http, 'missed', query, missedPotentialSchema),
+
+    getSourceHealth: () => send(http, { method: 'GET', path: '/marketplaces/health', response: sourceHealthListSchema }),
   };
 }

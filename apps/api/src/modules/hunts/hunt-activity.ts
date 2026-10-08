@@ -1,5 +1,11 @@
 import type { HuntActivity, MarketplaceKey } from '@rein-drop/contracts';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
+import { sourceStatusByKey } from '../marketplaces/source-health.js';
+
+/** PollStatus -> the contract's last check ("degraded" = it worked, but slow or partial). */
+export function lastCheckOf(status: 'SUCCEEDED' | 'DEGRADED' | 'FAILED' | null): 'ok' | 'degraded' | 'failed' | null {
+  return status === 'SUCCEEDED' ? 'ok' : status === 'DEGRADED' ? 'degraded' : status === 'FAILED' ? 'failed' : null;
+}
 
 interface CountRow {
   huntId: string;
@@ -31,7 +37,7 @@ export async function loadHuntActivity(prisma: PrismaClient, userId: string, hun
   if (hunts.length === 0) return [];
   const ids = hunts.map((h) => h.id);
 
-  const [counts, alerts] = await Promise.all([
+  const [counts, alerts, sourceOf] = await Promise.all([
     prisma.$queryRaw<CountRow[]>(Prisma.sql`
       SELECT m."huntId"::text AS "huntId",
         count(*) FILTER (WHERE m."status" <> 'EXPIRED')::int AS "deals",
@@ -45,6 +51,7 @@ export async function loadHuntActivity(prisma: PrismaClient, userId: string, hun
       WHERE m."huntId" IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
       GROUP BY m."huntId"`),
     prisma.alert.groupBy({ by: ['huntId'], where: { userId, huntId: { in: ids } }, _count: { _all: true } }),
+    sourceStatusByKey(prisma, new Date()),
   ]);
   const countsBy = new Map(counts.map((c) => [c.huntId, c]));
   const alertsBy = new Map(alerts.map((a) => [a.huntId, a._count._all]));
@@ -53,9 +60,10 @@ export async function loadHuntActivity(prisma: PrismaClient, userId: string, hun
     const marketplaces = hunt.marketplaces.map((m) => ({
       marketplace: m.marketplace.key as MarketplaceKey,
       lastCheckedAt: m.lastPolledAt?.toISOString() ?? null,
-      lastCheck: m.lastPollStatus === 'SUCCEEDED' ? ('ok' as const) : m.lastPollStatus === 'FAILED' ? ('failed' as const) : null,
+      lastCheck: lastCheckOf(m.lastPollStatus),
       failingChecks: m.consecutiveFailures,
       nextCheckAt: hunt.status === 'LIVE' ? (m.nextPollAt?.toISOString() ?? null) : null,
+      source: sourceOf(m.marketplace.key as MarketplaceKey),
     }));
     const checked = marketplaces.map((m) => m.lastCheckedAt).filter((d): d is string => d !== null).sort();
     const c = countsBy.get(hunt.id);

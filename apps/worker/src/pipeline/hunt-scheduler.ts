@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
+import type { SourceHealthPort } from '../health/source-health.store.js';
 import type { Clock, JobQueue } from '../queue/job-queue.js';
 import { SEARCH_JOB_TYPE, SEARCH_QUEUE, planSearchJobs, type DueTarget } from './search-plan.js';
 
@@ -12,6 +13,8 @@ export interface HuntSchedulerOptions {
   queue?: string;
   /** Only consider these users' hunts (integration tests / targeted backfills). Default: everyone. */
   onlyUserIds?: string[];
+  /** Source cool-downs (per-source backoff). Omit to schedule regardless of source health. */
+  health?: Pick<SourceHealthPort, 'coolingDown'>;
 }
 
 export interface ScheduleSummary {
@@ -19,6 +22,8 @@ export interface ScheduleSummary {
   enqueued: number;
   duplicates: number;
   failed: number;
+  /** Hunt-marketplaces whose next check moved to the end of their source's cool-down. */
+  deferred: number;
 }
 
 /**
@@ -41,6 +46,19 @@ export class HuntScheduler {
   async scheduleDue(): Promise<ScheduleSummary> {
     const now = this.clock();
     const next = new Date(now.getTime() + this.options.pollIntervalMs);
+    // Per-source backoff: hunts due on a marketplace that is cooling down wait for it (their next
+    // check moves to the end of the cool-down) instead of queueing searches that would fail.
+    let deferred = 0;
+    for (const cooling of (await this.options.health?.coolingDown(now)) ?? []) {
+      deferred += await this.prisma.$executeRaw`
+        UPDATE "HuntMarketplace" AS hm
+        SET "nextPollAt" = ${cooling.retryAfter}, "updatedAt" = ${now}
+        FROM "Hunt" AS h
+        WHERE h.id = hm."huntId" AND hm."marketplaceId" = ${cooling.marketplaceId}::uuid
+          AND hm."isEnabled" AND h.status = 'LIVE'
+          AND (hm."nextPollAt" IS NULL OR hm."nextPollAt" < ${cooling.retryAfter})
+          ${this.options.onlyUserIds ? Prisma.sql`AND h."userId" = ANY(${this.options.onlyUserIds}::uuid[])` : Prisma.empty}`;
+    }
     const targets = await this.prisma.$queryRaw<DueTarget[]>`
       UPDATE "HuntMarketplace" AS hm
       SET "nextPollAt" = ${next}, "updatedAt" = ${now}
@@ -61,7 +79,7 @@ export class HuntScheduler {
       RETURNING hm."huntId", h."userId", m.key AS marketplace, h.query, h."locationText", h."radiusKm",
                 h.conditions, h."maxPriceMinor", h."priceCurrency"`;
 
-    const summary: ScheduleSummary = { claimed: targets.length, enqueued: 0, duplicates: 0, failed: 0 };
+    const summary: ScheduleSummary = { claimed: targets.length, enqueued: 0, duplicates: 0, failed: 0, deferred };
     for (const plan of planSearchJobs(targets, now, this.options.pollIntervalMs)) {
       try {
         const result = await this.queue.enqueue({

@@ -13,3 +13,4 @@ export * from './hunt-view.js';
 export * from './home-view.js';
 export * from './inventory-view.js';
 export * from './analytics-view.js';
+export * from './source-view.js';

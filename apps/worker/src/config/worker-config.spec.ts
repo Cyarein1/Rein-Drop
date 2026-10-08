@@ -15,11 +15,32 @@ describe('loadWorkerConfig', () => {
         leaseMs: 120_000,
         maxAttempts: 5,
         searchMaxPages: 1,
+        searchTimeoutMs: 30_000,
       },
+      sourceHealth: { slowMs: 5_000, downAfterFailures: 3, backoffBaseMs: 30_000, backoffMaxMs: 900_000, probeIntervalMs: 60_000 },
       notifications: { delivery: 'simulator', push: { provider: 'simulator', expoAccessToken: null } },
       ai: { provider: 'mock' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
+      devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
     });
+  });
+
+  it('development source latency is development-only', () => {
+    expect(loadWorkerConfig({ EBAY_DEV_LATENCY_MS: '3000', FACEBOOK_DEV_SCENARIO: 'slow' })).toMatchObject({
+      devMarketplaceLatencyMs: { ebay: 3000, facebook: 0 },
+      devMarketplaceScenarios: { facebook: 'slow' },
+    });
+    expect(() =>
+      loadWorkerConfig({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://x@y/z',
+        HUNT_POLL_INTERVAL_MINUTES: '15',
+        AI_PROVIDER: 'foundry',
+        NOTIFICATION_DELIVERY: 'disabled',
+        PUSH_PROVIDER: 'none',
+        EBAY_DEV_LATENCY_MS: '3000',
+      }),
+    ).toThrow('EBAY_DEV_LATENCY_MS: development-only');
   });
 
   it('rejects a heartbeat below 1000ms', () => {

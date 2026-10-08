@@ -76,6 +76,11 @@ export class PostgresJobQueue implements JobQueue {
     return this.settle(job, { status: 'QUEUED', runAt: options.runAt, lastError: options.error.slice(0, 2000) });
   }
 
+  defer(job: LeasedJob, options: { runAt: Date; reason: string }): Promise<boolean> {
+    // receive() counted this delivery as an attempt; give it back.
+    return this.settle(job, { status: 'QUEUED', runAt: options.runAt, lastError: options.reason.slice(0, 2000), attempts: { decrement: 1 } });
+  }
+
   deadLetter(job: LeasedJob, reason: string): Promise<boolean> {
     return this.settle(job, { status: 'DEAD', lastError: reason.slice(0, 2000), completedAt: this.clock() });
   }

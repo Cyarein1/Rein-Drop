@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 34 (Build Prompt 31)._
+_Last updated: 2026-10-08, after step 35 (Build Prompt 32)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -45,6 +45,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D31 | Source health thresholds: slow > 5 s, down after 3 failures, cool-down 30 s doubling to 15 min, search timeout 30 s | Step 35 | As listed (decision 0009) |
 | D30 | Analytics recommendation thresholds (held 30+ days, 60% ignored with 5+ viewed, 3 missed) and their order | Step 34 | As listed (`ANALYTICS_RECOMMENDATION_RULES`) |
 
 ## 2. Not built yet (by area)
@@ -121,7 +122,9 @@ These block or shape work; the code uses placeholders until you decide.
 - CORS policy (only needed once a browser calls the API directly) - step 10.
 - UI translations (only English exists) - step 14.
 - App-store storefront country to refine mobile locale detection - step 14.
-- Source health / degraded states, empty / waiting / after-hours states - prompts 32-33.
+- Empty / waiting / after-hours states - prompt 33.
+- Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
+- Browser check of the source banners - pending the user's API restart (step 35).
 - Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
 - Local MVP acceptance script + one-command reset / seed - prompt 41.
 
@@ -156,8 +159,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-32 Source health and
-degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
+33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
@@ -201,3 +203,6 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Analytics module was a scaffold with "TODO(product): metrics to report" | Step 5 | Step 33 |
 | Analytics screens: overview, Hunt funnel, products + loss review, missed potential, one recommendation | Step 5 | Step 34 |
 | Analytics placeholder notice on web and mobile | Step 5 | Step 34 |
+| Source health / degraded UX: MarketplaceHealth, per-source backoff, calm banners, Hunts never falsely healthy | Step 18 | Step 35 |
+| Adapter `health()` was never called; slow / partial searches counted as clean successes | Step 18 | Step 35 |
+| Development sources had no latency simulation | Step 19 | Step 35 |

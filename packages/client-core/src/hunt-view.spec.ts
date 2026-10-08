@@ -13,6 +13,7 @@ import {
 
 const NOW = new Date('2026-10-07T10:00:00.000Z');
 const ago = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000).toISOString();
+const HEALTHY = { status: 'healthy' as const, reason: null, nextAttemptAt: null };
 const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
 const US = { currency: 'USD', distanceUnit: 'mi' as const, localeTag: 'en-US' };
 
@@ -40,8 +41,8 @@ const activity = (over: Partial<HuntActivity> = {}): HuntActivity => ({
   scanning: false,
   lastCheckedAt: ago(5),
   marketplaces: [
-    { marketplace: 'ebay', lastCheckedAt: ago(5), lastCheck: 'ok', failingChecks: 0, nextCheckAt: new Date(NOW.getTime() + 10 * 60_000).toISOString() },
-    { marketplace: 'facebook', lastCheckedAt: ago(7), lastCheck: 'ok', failingChecks: 0, nextCheckAt: null },
+    { marketplace: 'ebay', lastCheckedAt: ago(5), lastCheck: 'ok', failingChecks: 0, nextCheckAt: new Date(NOW.getTime() + 10 * 60_000).toISOString(), source: HEALTHY },
+    { marketplace: 'facebook', lastCheckedAt: ago(7), lastCheck: 'ok', failingChecks: 0, nextCheckAt: null, source: HEALTHY },
   ],
   counts: { deals: 6, toReview: 3, new: 2, alerts: 1, saved: 1, bought: 0 },
   ...over,
@@ -66,7 +67,7 @@ describe('monitoring line', () => {
       { name: 'eBay', status: { label: 'OK', tone: 'profit' }, detail: 'Checked 5 min ago · next in 10 min' },
       { name: 'Facebook Marketplace', status: { label: 'OK', tone: 'profit' }, detail: 'Checked 7 min ago · next check soon' },
     ]);
-    const failing = activity({ marketplaces: [{ marketplace: 'facebook', lastCheckedAt: ago(2), lastCheck: 'failed', failingChecks: 3, nextCheckAt: null }] });
+    const failing = activity({ marketplaces: [{ marketplace: 'facebook', lastCheckedAt: ago(2), lastCheck: 'failed', failingChecks: 3, nextCheckAt: null, source: HEALTHY }] });
     expect(marketplaceRows({ status: 'PAUSED' }, failing, NOW)).toEqual([
       { name: 'Facebook Marketplace', status: { label: '3 failed checks', tone: 'fresh' }, detail: 'Checked 2 min ago' },
     ]);

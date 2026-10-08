@@ -56,7 +56,7 @@ export class FacebookAdapter implements MarketplaceAdapter {
       const location = applied.location!;
       try {
         const page = await this.data.search({ ...applied, location }, options);
-        return { listings: page.records.map((r) => this.toRaw(r)), nextCursor: page.nextCursor };
+        return { listings: page.records.map((r) => this.toRaw(r)), nextCursor: page.nextCursor, ...(page.partial ? { partial: true } : {}) };
       } catch (err) {
         throw this.wrap(err, options);
       }

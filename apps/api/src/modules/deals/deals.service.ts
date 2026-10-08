@@ -1,9 +1,10 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { DealDetail, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, Money, Page } from '@rein-drop/contracts';
+import type { DealDetail, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, MarketplaceKey, Money, Page } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
 import { feedRank, type DealEconomics } from '@rein-drop/scoring';
 import { AppException, ValidationFailedException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { sourceStatusByKey } from '../marketplaces/source-health.js';
 import { MatchingService } from '../matching/matching.service.js';
 import { expectedSnapshot } from '../outcomes/ledger.js';
 import { OutcomesService } from '../outcomes/outcomes.service.js';
@@ -164,12 +165,13 @@ export class DealsService {
         inventoryItem: { select: { id: true } },
       },
     });
-    const [saved, polls] = await Promise.all([
+    const [saved, polls, sourceOf] = await Promise.all([
       this.prisma.savedDeal.findMany({ where: { userId, listingId: { in: matches.map((m) => m.listingId) } }, select: { listingId: true, createdAt: true } }),
       this.prisma.huntMarketplace.findMany({
         where: { huntId: { in: [...new Set(matches.map((m) => m.huntId))] } },
         select: { huntId: true, marketplaceId: true, lastPolledAt: true, lastPollStatus: true },
       }),
+      sourceStatusByKey(this.prisma, this.clock()),
     ]);
     const savedAt = new Map(saved.map((s) => [s.listingId, s.createdAt]));
     const poll = new Map(polls.map((p) => [`${p.huntId}:${p.marketplaceId}`, p]));
@@ -185,6 +187,7 @@ export class DealsService {
         savedAt: savedAt.get(m.listingId) ?? null,
         poll: poll.get(`${m.huntId}:${m.listing.marketplaceId}`) ?? null,
         inventoryItemId: m.inventoryItem?.id ?? null,
+        sourceHealth: sourceOf(m.listing.marketplace.key as MarketplaceKey),
         rank: feedRank(analysis?.score ?? null, (now.getTime() - from.getTime()) / 3_600_000),
       };
     });

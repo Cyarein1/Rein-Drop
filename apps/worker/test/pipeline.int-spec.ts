@@ -107,9 +107,9 @@ describe('worker pipeline (integration, real database)', () => {
 
   it('claims due LIVE hunts once and groups compatible ones into one job per search', async () => {
     const { scheduler } = pipeline();
-    expect(await scheduler.scheduleDue()).toEqual({ claimed: 3, enqueued: 2, duplicates: 0, failed: 0 });
+    expect(await scheduler.scheduleDue()).toEqual({ claimed: 3, enqueued: 2, duplicates: 0, failed: 0, deferred: 0 });
     // Same tick again: nothing is due any more.
-    expect(await scheduler.scheduleDue()).toEqual({ claimed: 0, enqueued: 0, duplicates: 0, failed: 0 });
+    expect(await scheduler.scheduleDue()).toEqual({ claimed: 0, enqueued: 0, duplicates: 0, failed: 0, deferred: 0 });
 
     const jobs = await prisma.job.findMany({ where: { queue: QUEUE } });
     expect(jobs).toHaveLength(2);

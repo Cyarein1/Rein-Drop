@@ -63,6 +63,11 @@ export interface JobQueue {
   /** Returns false when the lease was lost (the job was delivered to someone else). */
   complete(job: LeasedJob): Promise<boolean>;
   retry(job: LeasedJob, options: { runAt: Date; error: string }): Promise<boolean>;
+  /**
+   * Puts the job back for later WITHOUT using up an attempt (it never really ran - e.g. its
+   * marketplace is cooling down). Storage Queue / Service Bus: re-send with a delay.
+   */
+  defer(job: LeasedJob, options: { runAt: Date; reason: string }): Promise<boolean>;
   deadLetter(job: LeasedJob, reason: string): Promise<boolean>;
 }
 

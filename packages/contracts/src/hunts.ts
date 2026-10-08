@@ -9,6 +9,7 @@ import {
   pageSchema,
   type MarketplaceKey,
 } from './common.js';
+import { sourceStatusSchema } from './marketplace-health.js';
 
 /**
  * Hunts - saved sourcing searches (App Flow Blueprint sections 5, 13, 14).
@@ -303,11 +304,14 @@ export const huntMarketplaceActivitySchema = z.object({
   marketplace: marketplaceKeySchema,
   /** Last finished search of this marketplace for the hunt (null = never checked). */
   lastCheckedAt: isoDateTimeSchema.nullable(),
-  lastCheck: z.enum(['ok', 'failed']).nullable(),
+  /** ok / degraded (worked, but slow or partial) / failed; null = never checked. */
+  lastCheck: z.enum(['ok', 'degraded', 'failed']).nullable(),
   /** Failed checks in a row since the last success. */
   failingChecks: z.number().int().nonnegative(),
   /** When the next check is due (null = as soon as possible, while live). */
   nextCheckAt: isoDateTimeSchema.nullable(),
+  /** The marketplace source's own health right now (shared by every Hunt using it). */
+  source: sourceStatusSchema,
 });
 
 /** `GET /hunts/:id/activity` (one) and `GET /hunts/activity` (all of the user's hunts). */

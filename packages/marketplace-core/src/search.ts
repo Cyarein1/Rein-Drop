@@ -42,6 +42,11 @@ export interface MarketplaceSearchResult {
   listings: RawListingRecord[];
   /** Null when there are no more pages. */
   nextCursor: string | null;
+  /**
+   * True when the source says it returned fewer results than exist (a degraded source). The
+   * listings are still valid; callers record the poll as degraded rather than fully successful.
+   */
+  partial?: boolean;
 }
 
 /** Hard-rule violations that make a search impossible for this source (empty = searchable). */
