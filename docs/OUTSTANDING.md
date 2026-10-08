@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 37 (Build Prompt 34)._
+_Last updated: 2026-10-08, after step 38 (Build Prompt 35)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -27,7 +27,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D9 | Margin definition: upside / resale price, or return on cost | Step 24 | Upside / resale price |
 | D10 | How old a listing may be and still alert | Step 24 | 48 hours |
 | D11 | Hunts with no max price and no target: should they ever alert before resale data exists? | Step 24 | No (feed only) |
-| D12 | Real eBay data source and terms; Facebook data provider | Step 18 | eBay: Browse API built (decision 0010) - confirm licence / production keyset / quota; Facebook: development source only (prompt 35) |
+| D12 | Real eBay data source and terms; Facebook data provider | Step 18 | eBay: Browse API built (decision 0010) - confirm licence / production keyset / quota; Facebook: Apify Marketplace scraper as a DEVELOPMENT provider (docs/providers/facebook-apify.md) - scraped public pages, Meta terms restrict this; legal review needed before any production source |
 | D13 | Comparable-sales / resale price source | Step 22 | None - no estimates are made |
 | D14 | Push and email providers | Step 4 | None (prompts 24-25) |
 | D15 | Product analytics vendor (PostHog candidate) and which metrics | Step 4 | None (prompt 43) |
@@ -73,7 +73,11 @@ These block or shape work; the code uses placeholders until you decide.
   narrowed hunt keep their matches NEW instead of becoming unavailable - step 21.
 - Job retention (SUCCEEDED / DEAD rows grow forever) and lease renewal - step 20.
 - Development listings re-age every time the worker restarts - step 20.
-- Real Facebook data provider (D12) - step 18; prompt 35.
+- Production Facebook data source (D12) - the Apify provider is development-only and refused in production - step 38.
+- Apify live tests are skipped until APIFY_TOKEN + FACEBOOK_APIFY_CURRENCY are set (each live run costs about USD 0.013) - step 38.
+- Apify provider limits: city slug guessed from free text, no radius / price / condition push-down, no posting time (freshness = first seen), no single-listing refresh - step 38.
+- Apify runs (tens of seconds, up to 300 s) can outlast the default job lease (120 s): raise WORKER_JOB_LEASE_MS when using it - step 38.
+- Cost: Apify about USD 5 a day per Hunt at 20 results every 15 min - needs the cost model / cadence (D7, prompt 36) - step 38.
 - eBay live tests are skipped until eBay credentials are configured (set EBAY_CLIENT_ID / EBAY_CLIENT_SECRET to run them) - step 37.
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
 - Ingestion economics, latency and cost per request - docs review; prompt 36.
@@ -163,7 +167,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
+36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
@@ -214,4 +218,6 @@ These block or shape work; the code uses placeholders until you decide.
 | Settings "Plan & billing" said plans weren't decided - now shows the plan and live-Hunt use | Step 16 | Step 36 |
 | Deals integration test hunts could be polled by a running worker | Step 25 | Step 36 |
 | Real eBay adapter (Browse API, OAuth, rate / error handling, pagination, normalization) with mock mode kept | Step 18 | Step 37 |
+| Facebook development data provider (Apify) documented and implemented behind FacebookDataProvider; dev provider kept | Step 18 | Step 38 |
+| Provider request / result / cost metadata not recorded - now SearchRun.sourceUsage | Docs review | Step 38 |
 | Development sources had no latency simulation | Step 19 | Step 35 |

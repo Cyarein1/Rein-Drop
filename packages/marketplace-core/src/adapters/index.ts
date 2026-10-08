@@ -4,6 +4,15 @@
  * `@rein-drop/marketplace-core`.
  */
 export { FacebookAdapter } from './facebook/facebook-adapter.js';
+export {
+  APIFY_DEFAULT_ACTOR,
+  APIFY_PROVIDER_ID,
+  ApifyMarketplaceProvider,
+  marketplaceSearchUrl,
+  type ApifyMarketplaceConfig,
+  type ApifyMarketplaceOptions,
+} from './facebook/apify/apify-marketplace-provider.js';
+export { facebookEnvShape, resolveFacebookSource, type FacebookEnv } from './facebook/apify/facebook-config.js';
 export type {
   FacebookDataProvider,
   FacebookNormalizeResult,

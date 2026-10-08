@@ -1,3 +1,4 @@
+import type { JsonValue } from './json.js';
 import type { MarketplaceCapabilities } from './capabilities.js';
 import type { ListingCondition, Money } from './listing.js';
 import type { RawListingRecord } from './raw-listing.js';
@@ -47,6 +48,24 @@ export interface MarketplaceSearchResult {
    * listings are still valid; callers record the poll as degraded rather than fully successful.
    */
   partial?: boolean;
+  /** What the request(s) behind this page cost, when the source reports it (see SourceUsage). */
+  usage?: SourceUsage;
+}
+
+/**
+ * Generic per-search usage: requests, results, time and cost. Provider-specific detail goes in
+ * `details` (it is stored on the search run, never on Hunts or Listings).
+ */
+export interface SourceUsage {
+  requests: number;
+  /** Results the provider returned (and may have charged for). */
+  items: number;
+  durationMs: number | null;
+  /** Cost in USD; null when the source is free / quota-based or unknown. */
+  costUsd: number | null;
+  /** True when costUsd is computed from published pricing rather than billed. */
+  costIsEstimate: boolean;
+  details: { [key: string]: JsonValue };
 }
 
 /** Hard-rule violations that make a search impossible for this source (empty = searchable). */

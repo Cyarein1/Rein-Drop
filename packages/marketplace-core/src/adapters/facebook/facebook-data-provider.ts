@@ -2,7 +2,7 @@ import type { MarketplaceCapabilities } from '../../capabilities.js';
 import type { SourceHealthStatus } from '../../health.js';
 import type { JsonValue } from '../../json.js';
 import type { NormalizedListing } from '../../listing.js';
-import type { MarketplaceSearchCriteria, SearchLocation, SearchOptions } from '../../search.js';
+import type { MarketplaceSearchCriteria, SearchLocation, SearchOptions, SourceUsage } from '../../search.js';
 
 /**
  * Where FacebookAdapter gets Facebook Marketplace data from. Facebook has no general public
@@ -40,6 +40,8 @@ export interface FacebookProviderPage {
   nextCursor: string | null;
   /** The provider returned fewer results than exist (degraded). */
   partial?: boolean;
+  /** Requests / results / cost behind this page (recorded on the search run). */
+  usage?: SourceUsage;
 }
 
 export interface FacebookProviderHealth {

@@ -23,6 +23,7 @@ describe('loadApiConfig', () => {
       authProvider: 'dev',
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
+      facebookApify: null,
     });
   });
 
@@ -62,6 +63,7 @@ describe('loadApiConfig', () => {
       authProvider: 'dev',
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
+      facebookApify: null,
     });
   });
 

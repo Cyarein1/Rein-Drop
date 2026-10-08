@@ -23,6 +23,7 @@ describe('loadWorkerConfig', () => {
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
       ebayApi: null,
+      facebookApify: null,
     });
   });
 

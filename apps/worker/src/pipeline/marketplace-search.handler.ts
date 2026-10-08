@@ -8,6 +8,7 @@ import {
   type MarketplaceRegistry,
   type NormalizedListing,
   type RawListingRecord,
+  type SourceUsage,
 } from '@rein-drop/marketplace-core';
 import { dedupeKeyFor } from '@rein-drop/matching';
 import type { Clock, JobQueue, LeasedJob } from '../queue/job-queue.js';
@@ -40,6 +41,22 @@ interface FetchStats {
   /** Slowest single request, ms. */
   latencyMs: number;
   partial: boolean;
+  /** Source usage summed over the pages that reported it (requests, results, time, cost). */
+  usage: SourceUsage | null;
+}
+
+/** Adds one page's usage to the run's total (cost stays null only if no page reported one). */
+export function addUsage(total: SourceUsage | null, page: SourceUsage | undefined): SourceUsage | null {
+  if (!page) return total;
+  if (!total) return { ...page, details: { ...page.details } };
+  return {
+    requests: total.requests + page.requests,
+    items: total.items + page.items,
+    durationMs: total.durationMs === null && page.durationMs === null ? null : (total.durationMs ?? 0) + (page.durationMs ?? 0),
+    costUsd: total.costUsd === null && page.costUsd === null ? null : Math.round(((total.costUsd ?? 0) + (page.costUsd ?? 0)) * 1e6) / 1e6,
+    costIsEstimate: total.costIsEstimate || page.costIsEstimate,
+    details: { ...total.details, ...page.details },
+  };
 }
 
 /**
@@ -111,7 +128,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     });
 
     let openMatchIds: string[];
-    const stats: FetchStats = { pages: 0, latencyMs: 0, partial: false };
+    const stats: FetchStats = { pages: 0, latencyMs: 0, partial: false, usage: null };
     try {
       await this.fetch(adapter, payload, run.id, marketplace.id, stats);
       await this.normalizePending(adapter, run.id);
@@ -126,7 +143,14 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
           adapter.capabilities.location !== 'unsupported' &&
           (location.radiusKm === null || adapter.capabilities.radius),
       });
-      const state = await this.recordHealth(marketplace.id, adapter.provider, { kind: 'success', latencyMs: stats.latencyMs, partial: stats.partial });
+      // A source that is slow by nature (declared expectedLatencyMs) isn't "slow" at its normal speed.
+      const expected = adapter.capabilities.expectedLatencyMs;
+      const state = await this.recordHealth(marketplace.id, adapter.provider, {
+        kind: 'success',
+        latencyMs: stats.latencyMs,
+        partial: stats.partial,
+        ...(expected ? { slowAfterMs: expected * 2 } : {}),
+      });
       await this.finishRun(run.id, stats, state, huntIds, targets, marketplace.id, payload.marketplace, matches);
       openMatchIds = open;
     } catch (err) {
@@ -134,6 +158,8 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
         where: { id: run.id },
         data: {
           status: 'FAILED',
+          // What was spent before the failure still counts.
+          sourceUsage: (stats.usage ?? undefined) as Prisma.InputJsonValue | undefined,
           errorCode: isMarketplaceError(err) ? err.code : 'INTERNAL',
           errorMessage: describe(err).slice(0, 2000),
           finishedAt: this.clock(),
@@ -183,6 +209,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
       const result = await this.timedSearch(adapter, { ...payload.criteria, limit, cursor }, stats);
       stats.pages += 1;
       if (result.partial) stats.partial = true;
+      stats.usage = addUsage(stats.usage, result.usage);
       if (result.listings.length > 0) {
         await this.prisma.rawListing.createMany({
           data: result.listings.map((raw) => ({
@@ -202,7 +229,9 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
 
   /** One request with a timeout; tracks the slowest latency. A timeout becomes a retryable failure. */
   private async timedSearch(adapter: MarketplaceAdapter, criteria: Parameters<MarketplaceAdapter['search']>[0], stats: FetchStats) {
-    const timeoutMs = this.options.searchTimeoutMs;
+    // Sources that are slow by nature get room for their normal run time.
+    const expected = adapter.capabilities.expectedLatencyMs;
+    const timeoutMs = this.options.searchTimeoutMs && expected ? Math.max(this.options.searchTimeoutMs, expected * 3) : this.options.searchTimeoutMs;
     const controller = new AbortController();
     const timer = timeoutMs ? setTimeout(() => controller.abort(new Error('timeout')), timeoutMs) : null;
     const started = performance.now();
@@ -289,7 +318,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     await this.prisma.$transaction([
       this.prisma.searchRun.update({
         where: { id: runId },
-        data: { status: 'SUCCEEDED', pagesFetched: stats.pages, resultCount, finishedAt: now, ...matches },
+        data: { status: 'SUCCEEDED', pagesFetched: stats.pages, resultCount, finishedAt: now, sourceUsage: (stats.usage ?? undefined) as Prisma.InputJsonValue | undefined, ...matches },
       }),
       // Slow or partial: it worked, but the Hunt must not look fully healthy.
       this.prisma.huntMarketplace.updateMany({

@@ -111,7 +111,9 @@ export class DevEbayAdapter implements MarketplaceAdapter {
         if (this.scenario === 'malformed_payloads' && i % 4 === 3) return { ...raw, payload: { dev: 'ebay', itemRef: listing.id, title: 42 } };
         return raw;
       });
-      return degraded ? { listings, nextCursor: null, partial: true } : { listings, nextCursor };
+      // Development data is free: usage is recorded so every source reports the same way.
+      const usage = { requests: 1, items: listings.length, durationMs: null, costUsd: 0, costIsEstimate: false, details: { provider: this.provider } };
+      return degraded ? { listings, nextCursor: null, partial: true, usage } : { listings, nextCursor, usage };
     });
   }
 

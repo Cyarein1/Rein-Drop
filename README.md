@@ -99,6 +99,9 @@ Invalid environment configuration for api:
 | `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET` | api, worker | - | eBay developer keyset, required for `EBAY_SOURCE=api`. **Secrets: untracked `.env` / secret store only - never commit.** |
 | `EBAY_ENVIRONMENT` | api, worker | `production` | `production` \| `sandbox` (must match the keyset). |
 | `EBAY_MARKETPLACE_ID` | api, worker | `EBAY_US` | eBay site, e.g. `EBAY_GB`, `EBAY_AU`. |
+| `FACEBOOK_SOURCE` | api, worker | `dev` | `dev` = development provider; `apify` = Apify Marketplace scraper - **development only** (terms D12), refused in production. See `docs/providers/facebook-apify.md`. |
+| `APIFY_TOKEN`, `FACEBOOK_APIFY_CURRENCY` | api, worker | - | Required for `apify`. Token is a secret (never commit); currency = the searched region's ISO code. |
+| `FACEBOOK_APIFY_RESULTS_LIMIT`, `FACEBOOK_APIFY_PRICE_PER_1000_USD`, `FACEBOOK_APIFY_TIMEOUT_SECONDS`, `FACEBOOK_APIFY_ACTOR` | api, worker | `20`, `2.60`, `240`, `apify~facebook-marketplace-scraper` | Results per search, cost estimate / cap, run timeout, actor id. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |

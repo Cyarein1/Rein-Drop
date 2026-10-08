@@ -1,7 +1,16 @@
 import { z } from 'zod';
 import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, type AIProviderId } from '@rein-drop/ai-core';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
-import { DEV_SCENARIOS, ebayEnvShape, resolveEbaySource, type DevScenario, type EbayCredentials } from '@rein-drop/marketplace-core/adapters';
+import {
+  DEV_SCENARIOS,
+  ebayEnvShape,
+  facebookEnvShape,
+  resolveEbaySource,
+  resolveFacebookSource,
+  type ApifyMarketplaceConfig,
+  type DevScenario,
+  type EbayCredentials,
+} from '@rein-drop/marketplace-core/adapters';
 import {
   databaseUrlSchema,
   EnvValidationError,
@@ -44,6 +53,8 @@ const workerEnvSchema = z.object({
   EBAY_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
   // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
   ...ebayEnvShape,
+  // Facebook data provider: dev (default) or the Apify development integration.
+  ...facebookEnvShape,
   FACEBOOK_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
   /** Which AIProvider analyses matched listings. `mock` is deterministic and local-only. */
   /**
@@ -98,6 +109,8 @@ export interface WorkerConfig {
   readonly devMarketplaceLatencyMs: { readonly ebay: number; readonly facebook: number };
   /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
   readonly ebayApi: EbayCredentials | null;
+  /** Apify development Facebook provider config, or null for the development provider. Never log this. */
+  readonly facebookApify: ApifyMarketplaceConfig | null;
 }
 
 export const WORKER_CONFIG = Symbol('WORKER_CONFIG');
@@ -110,7 +123,8 @@ export function loadWorkerConfig(
     requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY', 'PUSH_PROVIDER'],
   });
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
-  const problems = [...ebay.problems];
+  const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
+  const problems = [...ebay.problems, ...facebook.problems];
   if (parsed.NODE_ENV === 'production') {
     // The latency settings have defaults, so check whether they were set at all.
     for (const key of ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO', 'EBAY_DEV_LATENCY_MS', 'FACEBOOK_DEV_LATENCY_MS']) {
@@ -154,5 +168,6 @@ export function loadWorkerConfig(
     }),
     devMarketplaceLatencyMs: Object.freeze({ ebay: parsed.EBAY_DEV_LATENCY_MS, facebook: parsed.FACEBOOK_DEV_LATENCY_MS }),
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
+    facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
   });
 }

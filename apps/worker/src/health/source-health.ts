@@ -44,7 +44,13 @@ export const DEFAULT_SOURCE_HEALTH_POLICY: SourceHealthPolicy = {
 };
 
 export type HealthOutcome =
-  | { kind: 'success'; latencyMs: number; partial: boolean }
+  | {
+      kind: 'success';
+      latencyMs: number;
+      partial: boolean;
+      /** This source's own "slow" threshold when it's slow by nature; never below the policy's. */
+      slowAfterMs?: number;
+    }
   | { kind: 'failure'; code: MarketplaceErrorCode | 'TIMEOUT'; message: string; latencyMs: number | null; retryAfter: Date | null }
   | { kind: 'probe'; health: Pick<SourceHealth, 'status' | 'message' | 'retryAfter'> };
 
@@ -75,7 +81,8 @@ export function nextHealth(prev: HealthState | null, outcome: HealthOutcome, now
   const p = prev ?? initialHealth(now);
 
   if (outcome.kind === 'success') {
-    const reason: HealthReason | null = outcome.partial ? 'PARTIAL' : outcome.latencyMs > policy.slowMs ? 'SLOW' : null;
+    const slowMs = Math.max(policy.slowMs, outcome.slowAfterMs ?? 0);
+    const reason: HealthReason | null = outcome.partial ? 'PARTIAL' : outcome.latencyMs > slowMs ? 'SLOW' : null;
     const status: HealthStatus = reason ? 'DEGRADED' : 'HEALTHY';
     return {
       ...p,

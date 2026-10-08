@@ -9,13 +9,8 @@ import { EBAY_HOSTS, EBAY_PUBLIC_SCOPE, ebayErrorSchema, ebayTokenSchema, type E
  * (environment) - never from code, logs or errors.
  */
 
-/** The parts of `fetch` we use (this package has no DOM / Node typings). */
-export interface HttpResponse {
-  status: number;
-  headers: { get(name: string): string | null };
-  text(): Promise<string>;
-}
-export type FetchLike = (url: string, init: { method: 'GET' | 'POST'; headers: Record<string, string>; body?: string; signal?: unknown }) => Promise<HttpResponse>;
+import type { FetchLike, HttpResponse } from '../http.js';
+export type { FetchLike, HttpResponse } from '../http.js';
 
 export interface EbayCredentials {
   clientId: string;

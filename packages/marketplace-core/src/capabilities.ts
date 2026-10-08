@@ -20,6 +20,12 @@ export interface MarketplaceCapabilities {
   fetchListing: boolean;
   /** Most results the source returns per page; requests above it are rejected. */
   maxPageSize: number;
+  /**
+   * Typical duration of one search request when it is normal for the source to be slow (e.g. a
+   * provider that runs a browser). Callers use it for timeouts and to avoid calling the source
+   * "slow" for its normal behaviour. Omitted = a fast API.
+   */
+  expectedLatencyMs?: number;
 }
 
 export const LOCATION_MODES = ['required', 'optional', 'unsupported'] as const;

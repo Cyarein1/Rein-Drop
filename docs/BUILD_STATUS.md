@@ -1,11 +1,65 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 37)_
+_Last updated: 2026-10-08 (step 38)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 38 - Facebook development data provider: Apify Marketplace scraper (Build Prompt 35)
+
+Provider chosen for development on the owner's instruction ("use any for now"); documented first
+in [`docs/providers/facebook-apify.md`](providers/facebook-apify.md) (authentication, query
+capabilities, freshness, pagination, rate / cost behaviour, limitations, terms risk).
+
+**What was added**
+
+- marketplace-core:
+  - `ApifyMarketplaceProvider` (provider id `apify-marketplace`) behind the existing
+    `FacebookDataProvider` / `FacebookAdapter`: Apify API v2 `run-sync-get-dataset-items` for
+    the published actor `apify/facebook-marketplace-scraper`; bearer-token auth (never in URLs);
+    documented `/marketplace/<city>/search/?query=` start URL; per-run caps (`maxItems`,
+    `maxTotalChargeUsd`, `timeout`); error mapping (401/403/404 not configured, 402 out of credit,
+    429 rate limited, 408 / 5xx / network retryable, 400 not retryable, unreadable invalid);
+    health checks the token + actor without running it.
+  - Normalization keeps provider fields inside the provider: marketplace-level Listing only
+    (price in the configured region currency, city / state, cover photo when present, SOLD /
+    REMOVED / ACTIVE, metadata `displayedPrice`, `salePending`, `deliveryTypes`); seller names
+    are not stored.
+  - Generic `SourceUsage` on search results (requests, results, duration, USD cost and whether
+    it's an estimate, provider details) - reported by Apify (estimated from the public price),
+    eBay (quota, no cost) and the development sources (free).
+  - Optional capability `expectedLatencyMs` for sources that are slow by nature.
+  - `resolveFacebookSource` env helper; shared `adapters/http.ts`.
+- `DevFacebookDataProvider` unchanged and still the default (`FACEBOOK_SOURCE=dev`).
+- Worker: search runs store `sourceUsage` (migration `..._search_run_source_usage`, summed over
+  pages, kept on failures); request timeout and the "slow" threshold respect a source's declared
+  latency (Apify runs take tens of seconds).
+- Config (API + worker): `FACEBOOK_SOURCE`, `APIFY_TOKEN`, `FACEBOOK_APIFY_CURRENCY`,
+  `FACEBOOK_APIFY_ACTOR`, `FACEBOOK_APIFY_RESULTS_LIMIT`, `FACEBOOK_APIFY_PRICE_PER_1000_USD`,
+  `FACEBOOK_APIFY_TIMEOUT_SECONDS`; `apify` is refused in production (terms - D12).
+  `.env.example` placeholders; README table.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54. marketplace-core 202 (+5 skipped live):
+  the shared adapter contract suite through FacebookAdapter against a fake Apify API, 13 provider
+  tests (request shape and caps, bearer token, slug, usage / cost, normalization, no seller name,
+  statuses / photos / currency, every error class, health without cost) and config tests. Worker
+  45 (usage sums, slow-by-nature threshold).
+- Worker int 40/40 (search runs record usage), API int 46/46, e2e 52/52.
+- No provider field names in apps, contracts, client-core or the database schema.
+- Live Apify tests (`apify-marketplace-provider.live.spec.ts`) **skipped** - no `APIFY_TOKEN` on
+  this machine.
+
+**Not done / TODO**
+
+- D12 terms / legal for any production Facebook source; cost model and polling cadence (D7,
+  prompt 36): about USD 5 a day per Hunt at 20 results every 15 minutes.
+- City slugs guessed from free text (geocoding, decision 0001); no radius / price / condition
+  push-down; no posting time (freshness = first seen); no single-listing refresh.
+- Apify runs can outlast the default job lease (120 s): raise `WORKER_JOB_LEASE_MS` when using it.
 
 ### Step 37 - Real eBay source: Browse API adapter (Build Prompt 34)
 
@@ -1792,7 +1846,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-34 (our steps 1-37 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-35 (our steps 1-38 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1809,5 +1863,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 35 in document order: Facebook data provider (behind FacebookDataProvider).
+Build Prompt 36 in document order: Ingestion economics (latency, cost per request, polling cadence) - search runs now record sourceUsage.
 (Await the next prompt.)

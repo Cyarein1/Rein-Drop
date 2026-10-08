@@ -327,6 +327,9 @@ model SearchRun {
   duplicateCount      Int             @default(0)
   /// Rejections per failed check, e.g. { "price": 3, "relevance": 1 }.
   rejectionSummary    Json?
+  /// What the source requests cost (marketplace-core SourceUsage, summed over pages): requests,
+  /// results, duration, cost in USD (estimate or billed) and provider details. Never on Hunts / Listings.
+  sourceUsage         Json?
   errorCode           String?
   errorMessage        String?
   startedAt           DateTime        @default(now()) @db.Timestamptz(3)

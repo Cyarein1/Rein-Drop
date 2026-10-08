@@ -1,7 +1,16 @@
 ﻿import { z } from 'zod';
 import { AUTH_PROVIDER_IDS, type AuthProviderId } from '@rein-drop/contracts';
 // Config is wiring (like the registry provider): it may name development marketplace scenarios.
-import { DEV_SCENARIOS, ebayEnvShape, resolveEbaySource, type DevScenario, type EbayCredentials } from '@rein-drop/marketplace-core/adapters';
+import {
+  DEV_SCENARIOS,
+  ebayEnvShape,
+  facebookEnvShape,
+  resolveEbaySource,
+  resolveFacebookSource,
+  type ApifyMarketplaceConfig,
+  type DevScenario,
+  type EbayCredentials,
+} from '@rein-drop/marketplace-core/adapters';
 import {
   databaseUrlSchema,
   EnvValidationError,
@@ -27,6 +36,8 @@ const apiEnvSchema = z.object({
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
   // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
   ...ebayEnvShape,
+  // Facebook data provider: dev (default) or the Apify development integration.
+  ...facebookEnvShape,
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -41,6 +52,8 @@ export interface ApiConfig {
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
   /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
   readonly ebayApi: EbayCredentials | null;
+  /** Apify development Facebook provider config, or null for the development provider. Never log this. */
+  readonly facebookApify: ApifyMarketplaceConfig | null;
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -54,7 +67,8 @@ export function loadApiConfig(
   });
 
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
-  const problems: string[] = [...ebay.problems];
+  const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
+  const problems: string[] = [...ebay.problems, ...facebook.problems];
   if (parsed.NODE_ENV === 'production') {
     // DEVELOPMENT-ONLY auth must never run in production. No managed provider exists
     // yet (TBD), so production cannot start until one is added - by design.
@@ -79,5 +93,6 @@ export function loadApiConfig(
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
     }),
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
+    facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
   });
 }

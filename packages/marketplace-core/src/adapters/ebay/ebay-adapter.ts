@@ -93,7 +93,9 @@ export class EbayAdapter implements MarketplaceAdapter {
       }
       const nextOffset = offset + limit;
       const more = Boolean(page.data.next) && listings.length > 0 && nextOffset < EBAY_MAX_RESULTS && nextOffset < (page.data.total ?? Infinity);
-      return { listings, nextCursor: more ? encodeOffset(nextOffset) : null };
+      // eBay Browse is quota-based (calls per day), not billed per call: no cost, one call counted.
+      const usage = { requests: 1, items: listings.length, durationMs: null, costUsd: null, costIsEstimate: false, details: { provider: this.provider, site: this.options.marketplaceId, offset } };
+      return { listings, nextCursor: more ? encodeOffset(nextOffset) : null, usage };
     });
   }
 

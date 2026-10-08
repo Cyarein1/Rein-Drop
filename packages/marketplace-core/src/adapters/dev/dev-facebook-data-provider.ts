@@ -118,7 +118,9 @@ export class DevFacebookDataProvider implements FacebookDataProvider {
       if (this.scenario === 'malformed_payloads' && i % 4 === 3) return { ...record, payload: { dev: 'facebook', listingRef: listing.id } };
       return record;
     });
-    return degraded ? { records, nextCursor: null, partial: true } : { records, nextCursor };
+    // Development data is free: usage is recorded so every source reports the same way.
+    const usage = { requests: 1, items: records.length, durationMs: null, costUsd: 0, costIsEstimate: false, details: { provider: this.id } };
+    return degraded ? { records, nextCursor: null, partial: true, usage } : { records, nextCursor, usage };
   }
 
   async fetchListing(externalId: string, options?: SearchOptions): Promise<FacebookProviderRecord | null> {
