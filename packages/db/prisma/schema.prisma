@@ -113,7 +113,10 @@ enum InventoryStatus {
   WRITTEN_OFF
 }
 
+/// Purchase costs (on the InventoryItem): TAX, SHIPPING, REPAIR, SUPPLIES, OTHER.
+/// Selling costs (on the Sale): MARKETPLACE_FEE, PAYMENT_FEE, SHIPPING, OTHER.
 enum CostCategory {
+  TAX
   SHIPPING
   MARKETPLACE_FEE
   PAYMENT_FEE
@@ -706,6 +709,10 @@ model InventoryItem {
   currency           String          @db.Char(3)
   purchasedAt        DateTime        @db.Timestamptz(3)
   notes              String?
+  /// What Rein Drop expected when it was bought (asking price, known costs, ESTIMATED resale /
+  /// upside if there was one) - frozen at Bought, never edited, so expected vs actual survives
+  /// corrections. Shape: ExpectedSnapshot in @rein-drop/contracts (outcomes.ts).
+  expected           Json?
   createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
 
@@ -738,7 +745,8 @@ model Sale {
   @@index([userId, soldAt])
 }
 
-/// Additional cost attached to an inventory item and/or a sale.
+/// A cost of buying (inventoryItemId set, saleId null) or of selling (saleId set, inventoryItemId
+/// null) an item. Never both, so nothing is counted twice.
 model Cost {
   id              String       @id @default(uuid(7)) @db.Uuid
   userId          String       @db.Uuid

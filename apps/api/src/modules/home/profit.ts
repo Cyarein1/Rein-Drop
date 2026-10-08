@@ -1,4 +1,4 @@
-import type { Money } from '@rein-drop/contracts';
+import { realizedResult, type Money } from '@rein-drop/contracts';
 
 /**
  * Realized results for a period - recorded purchases and sales only. Nothing here is an
@@ -56,11 +56,11 @@ export function profitSnapshot(purchases: readonly PurchaseFact[], sales: readon
     const currency = s.salePrice.currency;
     const e = entry(currency);
     e.sold += 1;
-    const comparable = s.purchasePrice.currency === currency && s.costs.every((c) => c.currency === currency);
-    if (!comparable) continue;
-    const costs = s.costs.reduce((sum, c) => sum + c.amountMinor, 0);
+    // The same formula as an inventory item's result (purchase vs selling costs both subtract).
+    const result = realizedResult({ purchasePrice: s.purchasePrice, purchaseCosts: s.costs, salePrice: s.salePrice, saleCosts: [] });
+    if (result.status !== 'ok') continue;
     e.revenue.amountMinor += s.salePrice.amountMinor;
-    e.realizedProfit.amountMinor += s.salePrice.amountMinor - s.purchasePrice.amountMinor - costs;
+    e.realizedProfit.amountMinor += result.realizedProfit.amountMinor;
   }
 
   return {

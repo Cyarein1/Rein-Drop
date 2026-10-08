@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema, pageQuerySchema, pageSchema } from './common.js';
 import { listingDetailSchema, listingStatusSchema, listingSummarySchema } from './listings.js';
+import { boughtCostsSchema } from './outcomes.js';
 
 /**
  * A "deal" is a listing surfaced to the seller by one of their hunts - a HuntMatch, together
@@ -262,8 +263,19 @@ export type IgnoreDealRequest = z.infer<typeof ignoreDealRequestSchema>;
  * `POST /deals/:id/bought` - records the purchase. Price defaults to the listing's asking price
  * and is required when the listing shows none; purchase time defaults to now.
  */
-export const markDealBoughtRequestSchema = z.object({
-  price: moneySchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] }).optional(),
-  purchasedAt: isoDateTimeSchema.optional(),
-});
+export const markDealBoughtRequestSchema = z
+  .object({
+    price: moneySchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] }).optional(),
+    purchasedAt: isoDateTimeSchema.optional(),
+    /** Optional purchase costs (tax, shipping to you, repair, ...), in the purchase price's currency. */
+    costs: boughtCostsSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.costs?.length) return;
+    // Without a price the listing's price is used; the API checks the currency against that.
+    const currency = v.price?.currency ?? v.costs[0]!.amount.currency;
+    v.costs.forEach((c, i) => {
+      if (c.amount.currency !== currency) ctx.addIssue({ code: 'custom', path: ['costs', i, 'amount', 'currency'], message: `Use ${currency}, like the price` });
+    });
+  });
 export type MarkDealBoughtRequest = z.infer<typeof markDealBoughtRequestSchema>;

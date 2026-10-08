@@ -75,6 +75,17 @@ import {
   type EntitlementEvaluation,
   type SubscriptionSummary,
   type Plan,
+  inventoryItemSchema,
+  inventoryPageSchema,
+  listInventoryQuerySchema,
+  recordSaleRequestSchema,
+  replacePurchaseCostsRequestSchema,
+  updateInventoryItemRequestSchema,
+  type InventoryItem,
+  type ListInventoryQueryInput,
+  type RecordSaleRequestInput,
+  type ReplacePurchaseCostsRequest,
+  type UpdateInventoryItemRequest,
 } from '@rein-drop/contracts';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
@@ -86,6 +97,9 @@ export {
   DEV_AUTH_SUBJECT,
   detectedLocaleRequest,
   kmToUnit,
+  PURCHASE_COST_CATEGORIES,
+  realizedResult,
+  SALE_COST_CATEGORIES,
   uiLanguage,
   unitToKm,
 } from '@rein-drop/contracts';
@@ -180,6 +194,18 @@ export interface ApiClient {
   listPushDevices(): Promise<PushDevice[]>;
   /** Stop push to this phone. */
   unregisterPushDevice(id: string): Promise<PushDevice>;
+
+  /** Inventory: holding (default), sold or all; newest purchase first. */
+  listInventory(query?: ListInventoryQueryInput): Promise<Page<InventoryItem>>;
+  getInventoryItem(id: string): Promise<InventoryItem>;
+  /** Correct the purchase, or move between In stock and Listed. */
+  updateInventoryItem(id: string, input: UpdateInventoryItemRequest): Promise<InventoryItem>;
+  /** Replaces the purchase costs (tax, shipping to you, repair, supplies, other). */
+  replacePurchaseCosts(id: string, input: ReplacePurchaseCostsRequest): Promise<InventoryItem>;
+  /** Mark Sold, or correct the sale. The result is the realized P/L. */
+  recordSale(id: string, input: RecordSaleRequestInput): Promise<InventoryItem>;
+  /** Undo the sale: the item is held again. */
+  undoSale(id: string): Promise<InventoryItem>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -330,5 +356,36 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
     listPushDevices: async () => (await send(http, { method: 'GET', path: '/me/push-devices', response: pushDeviceListSchema })).items,
     unregisterPushDevice: (id) => send(http, { method: 'DELETE', path: `/me/push-devices/${pathId(id)}`, response: pushDeviceSchema }),
+
+    listInventory: async (query = {}) =>
+      send(http, {
+        method: 'GET',
+        path: '/inventory',
+        query: validateInput(listInventoryQuerySchema, query, 'query'),
+        response: inventoryPageSchema,
+      }),
+    getInventoryItem: (id) => send(http, { method: 'GET', path: `/inventory/${pathId(id)}`, response: inventoryItemSchema }),
+    updateInventoryItem: async (id, input) =>
+      send(http, {
+        method: 'PATCH',
+        path: `/inventory/${pathId(id)}`,
+        body: validateInput(updateInventoryItemRequestSchema, input, 'body'),
+        response: inventoryItemSchema,
+      }),
+    replacePurchaseCosts: async (id, input) =>
+      send(http, {
+        method: 'PUT',
+        path: `/inventory/${pathId(id)}/purchase-costs`,
+        body: validateInput(replacePurchaseCostsRequestSchema, input, 'body'),
+        response: inventoryItemSchema,
+      }),
+    recordSale: async (id, input) =>
+      send(http, {
+        method: 'PUT',
+        path: `/inventory/${pathId(id)}/sale`,
+        body: validateInput(recordSaleRequestSchema, input, 'body'),
+        response: inventoryItemSchema,
+      }),
+    undoSale: (id) => send(http, { method: 'DELETE', path: `/inventory/${pathId(id)}/sale`, response: inventoryItemSchema }),
   };
 }

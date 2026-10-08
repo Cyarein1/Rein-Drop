@@ -1,10 +1,11 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { DealDetail, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, Money, Page } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
-import { feedRank } from '@rein-drop/scoring';
+import { feedRank, type DealEconomics } from '@rein-drop/scoring';
 import { AppException, ValidationFailedException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
 import { MatchingService } from '../matching/matching.service.js';
+import { expectedSnapshot } from '../outcomes/ledger.js';
 import { OutcomesService } from '../outcomes/outcomes.service.js';
 import { decodeCursor, encodeCursor, queryFeedPage } from './deals.feed.js';
 import { toDealDetail, toDealSummary, type DealRow } from './deals.mapper.js';
@@ -116,11 +117,29 @@ export class DealsService {
     if (!price) {
       throw new ValidationFailedException([{ path: 'body.price', message: 'This listing shows no price - enter what you paid' }]);
     }
+    const costs = request.costs ?? [];
+    costs.forEach((c, i) => {
+      if (c.amount.currency !== price.currency) {
+        throw new ValidationFailedException([{ path: `body.costs.${i}.amount.currency`, message: `Use ${price.currency}, like the price` }]);
+      }
+    });
+    const analysis = await this.prisma.dealAnalysis.findFirst({
+      where: { huntMatchId: id },
+      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      select: { economics: true, strength: true, confidence: true },
+    });
+    const expected = expectedSnapshot({
+      asking,
+      economics: (analysis?.economics as DealEconomics | null | undefined) ?? null,
+      strength: analysis?.strength ?? null,
+      confidence: analysis?.confidence ?? null,
+      capturedAt: now,
+    });
 
     await this.prisma.$transaction(async (tx) => {
       // The conditional status change serializes concurrent requests: only one records the purchase.
       if (!(await this.matching.markBought(tx, id, now))) return;
-      await this.outcomes.recordDealPurchase(tx, { userId, huntMatchId: id, listingId: listing.id, title: listing.title, price, purchasedAt });
+      await this.outcomes.recordDealPurchase(tx, { userId, huntMatchId: id, listingId: listing.id, title: listing.title, price, purchasedAt, costs, expected });
     });
     return this.get(userId, id);
   }

@@ -142,6 +142,35 @@ describe('createApiClient', () => {
     await expect(c.markDealBought(ID, { price: { amountMinor: 0, currency: 'ZAR' } })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
+  it('inventory: list defaults to holding; writes hit /inventory/:id/... with validated bodies', async () => {
+    const page = fakeFetch(200, { items: [], nextCursor: null });
+    await client(page).listInventory();
+    expect(page.mock.calls[0]![0]).toBe('http://api.test/inventory?status=holding&limit=50');
+
+    const calls: [string, string, unknown][] = [];
+    const fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push([String(url), init?.method ?? 'GET', init?.body ? JSON.parse(String(init.body)) : undefined]);
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    const c = createApiClient({ baseUrl: 'http://api.test', fetch: fetch as unknown as typeof globalThis.fetch });
+    const zar = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
+    const soldAt = '2026-10-01T10:00:00.000Z';
+    await Promise.allSettled([
+      c.updateInventoryItem(ID, { status: 'LISTED' }),
+      c.replacePurchaseCosts(ID, { costs: [{ category: 'TAX', amount: zar(100) }] }),
+      c.recordSale(ID, { price: zar(500), soldAt }),
+      c.undoSale(ID),
+    ]);
+    expect(calls).toEqual([
+      [`http://api.test/inventory/${ID}`, 'PATCH', { status: 'LISTED' }],
+      [`http://api.test/inventory/${ID}/purchase-costs`, 'PUT', { costs: [{ category: 'TAX', amount: zar(100) }] }],
+      [`http://api.test/inventory/${ID}/sale`, 'PUT', { price: zar(500), soldAt, marketplace: null, costs: [] }],
+      [`http://api.test/inventory/${ID}/sale`, 'DELETE', undefined],
+    ]);
+    await expect(c.recordSale(ID, { price: zar(0), soldAt })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(c.updateInventoryItem(ID, {})).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('notifications: inbox query, read actions and validated preference changes', async () => {
     const inbox = fakeFetch(200, { items: [], nextCursor: null, unreadCount: 3 });
     await expect(client(inbox).listAlerts({ unreadOnly: 'true' })).resolves.toMatchObject({ unreadCount: 3 });
