@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Hunt, HuntActivity, SourceHealth, SourceStatus } from '@rein-drop/contracts';
 import { dealCardView } from './deal-view.js';
 import { huntMonitoringHealth, marketplaceRows, monitoringLine } from './hunt-view.js';
-import { sourceBanner, sourceIssue } from './source-view.js';
+import { durationUntilText, sourceBanner, sourceIssue } from './source-view.js';
 
 const NOW = new Date('2026-10-08T12:00:00.000Z');
 const ago = (min: number) => new Date(NOW.getTime() - min * 60_000).toISOString();
@@ -46,6 +46,10 @@ describe('source banner (calm, says the others continue)', () => {
     const b = sourceBanner([src('ebay', { status: 'down' }), src('facebook', { status: 'degraded', reason: 'rate_limited' })], NOW)!;
     expect(b).toMatchObject({ tone: 'warning', title: 'Marketplaces are having trouble right now' });
     expect(b.message).toMatch(/your Hunts are safe/);
+  });
+
+  it('waits read naturally at any length', () => {
+    expect([5, 90, 47 * 60, 49 * 60, 80_000 * 60].map(durationUntilText)).toEqual(['in 5 min', 'in 2 h', 'in 47 h', 'in 2 days', 'in 3333 days']);
   });
 
   it('labels per state', () => {

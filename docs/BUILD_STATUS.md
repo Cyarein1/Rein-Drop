@@ -1,11 +1,59 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 35)_
+_Last updated: 2026-10-08 (step 36)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 36 - Polished product states with semantic mascot tokens (Build Prompt 33)
+
+**What was added**
+
+- design-tokens `PRODUCT_STATE_MASCOTS`: product state -> semantic mascot token (firstScan ->
+  working, noDealsYet -> waiting, reducedMonitoring -> afterHours, suggestion -> suggestion,
+  cancellation -> cancellation, plus welcome / confirmed / emptyInventory).
+- `MascotSlot` (web + mobile): approved art for a token, otherwise a NEUTRAL placeholder (dashed
+  soft circle + plain system icon, marked `data-asset-todo` / `testID asset-todo-*`). No art is
+  generated or invented. [`docs/ASSET_TODO.md`](ASSET_TODO.md) lists every missing pose with its
+  guide description, where it shows and its placeholder.
+- client-core `product-states.ts` + shared `ProductState` cards:
+  - initial Hunt working (first scan; per-marketplace progress; polite live region),
+  - no deals yet while healthy (never while a source is degraded; "Tune criteria", or "Broaden
+    criteria" after 24 h),
+  - Deals before the first deal (first scan / quiet-but-healthy instead of "nothing here"),
+  - reduced monitoring placeholder (Home `monitoring` field - always "normal" until quiet hours /
+    plan cadence are decided, D22 / D7),
+  - actionable plan suggestion (at the live-Hunt limit with drafts: pause or upgrade, nothing
+    lost) on the Hunts list and as Home's new `plan_limit` recommendation,
+  - cancellation flow placeholder (Settings > Plan & billing > Cancel plan: what would happen,
+    keep my plan, "not available yet - billing" (D2)).
+- Settings shows the real plan and live-Hunt use. Dev galleries (web `/dev/ui`, mobile Developer)
+  show every token and every state, including ones the API can't produce yet.
+- "Next check in ..." reads in days beyond 48 h.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (client-core 103 incl. 13 product-state
+  tests; api incl. the plan_limit rule).
+- `pnpm --filter api test:int` 46/46 (Deals test hunts now never polled by a running worker),
+  `test:e2e` 52/52, worker int 40/40.
+- Browser e2e (Edge 390x844, temporary data, restored): 20/20 product states (first scan +
+  working placeholder, no-deals-yet + waiting placeholder, Deals before first deal, plan
+  suggestion on Hunts and Home, Settings plan card, cancellation placeholder, galleries), and the
+  step 35 banners: 7/7 Facebook slow (calm info on Home / Hunts / Deals, Hunt not "healthy",
+  "Slow right now" row) and 2/2 eBay down (warning, never error). No console errors.
+- Fixed during testing: the web build failed on a per-request time in the prerendered gallery;
+  far-future waits read in days.
+
+**Not done / TODO**
+
+- Mascot art for working / waiting / afterHours / suggestion / cancellation / profit / success /
+  exceptionalDeal / analysis (ASSET_TODO.md). Sale Result and exceptional-deal banner still show
+  nothing (not yet switched to MascotSlot).
+- Reduced monitoring needs quiet hours / plan cadence (D22, D7); cancellation needs billing (D2).
+- Mobile not run on a device.
 
 ### Step 35 - Marketplace source health, degradation and per-source backoff (Build Prompt 32)
 
@@ -52,8 +100,7 @@ Rules in [decision 0009](decisions/0009-source-health.md).
   health rows are never touched by tests (in-memory health + a throwaway marketplace row).
 - `pnpm --filter api test:int` 46/46 (incl. `/marketplaces/health` vs the database rows);
   `test:e2e` 52/52.
-- Browser check of the banners: pending - the user's API on :4000 stopped (watch reload during
-  the schema change) and needs a restart.
+- Browser check of the banners: done in step 36 (9/9) after the user restarted the API.
 
 **Not done / TODO**
 
@@ -1698,7 +1745,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-32 (our steps 1-35 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-33 (our steps 1-36 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1715,5 +1762,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 33 in document order: Empty / waiting / after-hours / recommendation states.
+Build Prompt 34 in document order: Real eBay adapter.
 (Await the next prompt.)

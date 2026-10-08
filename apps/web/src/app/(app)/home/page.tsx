@@ -11,11 +11,12 @@ import {
   monitoringLine,
   profitView,
   recentView,
+  reducedMonitoringState,
   type HuntFormContext,
 } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import { ButtonLink, Card, EmptyState, Metric, Page, Spinner, SystemBanner } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Metric, Page, ProductState, Spinner, SystemBanner } from "@/components/ui";
 import { OnboardingRedirect } from "@/app/onboarding/OnboardingRedirect";
 import { SourceBanner } from "@/components/SourceBanner";
 import { DealCard } from "../deals/DealCard";
@@ -56,6 +57,7 @@ async function HomeLoader() {
   const context = huntFormContext(session.user.locale);
   const now = new Date(home.generatedAt);
   const anyHunts = home.hunts.live + home.hunts.paused + home.hunts.drafts > 0;
+  const reduced = reducedMonitoringState(home.monitoring, now, context);
 
   // Brand-new account: one welcoming step, not five empty sections.
   if (!anyHunts) {
@@ -74,6 +76,7 @@ async function HomeLoader() {
   return (
     <>
       <SourceBanner sources={home.sources} now={now} />
+      {reduced && <ProductState view={reduced} />}
       <Attention home={home} context={context} />
       <Hunts home={home} now={now} />
       <Profit home={home} context={context} />
@@ -232,13 +235,20 @@ function Recent({ home, context, now }: { home: Home; context: HuntFormContext; 
 function Recommendation({ home }: { home: Home }) {
   const rec = home.recommendation;
   if (!rec) return null;
+  // Something wrong = a calm warning banner; a setup step or suggestion = the suggestion state
+  // (thinking / idea mascot slot - the only place it appears on Home).
+  if (rec.kind === "issue") {
+    return (
+      <section aria-label="Recommendation" className={styles.section}>
+        <SystemBanner tone="warning" title={rec.title} message={rec.body} action={<ButtonLink href={homeTargetPath(rec.target)} variant="secondary">{rec.actionLabel}</ButtonLink>} />
+      </section>
+    );
+  }
   return (
     <section aria-label="Recommendation" className={styles.section}>
-      <SystemBanner
-        tone={rec.kind === "issue" ? "warning" : "info"}
-        title={rec.title}
-        message={rec.body}
-        action={<ButtonLink href={homeTargetPath(rec.target)} variant="secondary">{rec.actionLabel}</ButtonLink>}
+      <ProductState
+        headingLevel={2}
+        view={{ state: "suggestion", title: rec.title, body: rec.body, details: [], live: false, actions: [{ label: rec.actionLabel, path: homeTargetPath(rec.target), variant: "secondary" }] }}
       />
     </section>
   );

@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import type { Hunt, HuntActivity, HuntEvent } from "@rein-drop/api-client";
 import {
   ageText,
+  firstScanState,
   HUNT_ACTION_CONFIRM,
   HUNT_ACTION_LABEL,
   HUNT_EVENT_LABEL,
@@ -15,11 +15,11 @@ import {
   huntCriteria,
   marketplaceRows,
   monitoringLine,
+  noDealsYetState,
   type HuntDetailAction,
   type HuntFormContext,
 } from "@rein-drop/client-core";
-import { mascotAssets } from "@/brand/assets";
-import { Badge, Button, ButtonLink, Card, Metric, Spinner, SystemBanner } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Metric, ProductState, SystemBanner } from "@/components/ui";
 import { transitionHuntAction } from "./actions";
 import styles from "../hunts.module.css";
 
@@ -106,7 +106,9 @@ export function HuntDetail({
         return null;
     }
   };
-  const art = mascotAssets.working;
+  // Product states by semantic mascot token (approved art or a neutral placeholder).
+  const firstScan = firstScanState(hunt, activity, now);
+  const noDeals = noDealsYetState(hunt, activity, now);
 
   return (
     <div className={styles.detail}>
@@ -118,20 +120,14 @@ export function HuntDetail({
         <Badge tone={status.tone}>{status.label}</Badge>
       </div>
 
-      {activity.scanning ? (
-        <div className={styles.scanning} role="status">
-          {/* Approved "working" mascot only; none exists yet, so the normal loading UI. */}
-          {art ? <Image src={art} alt="" width={64} height={64} /> : <Spinner />}
-          <div>
-            <strong>{monitoring.text}</strong>
-            <p className={styles.meta}>Your first results usually appear within a few minutes. This page updates by itself.</p>
-          </div>
-        </div>
+      {firstScan ? (
+        <ProductState view={firstScan} />
       ) : (
         <p className={styles.monitoring} data-tone={monitoring.tone}>
           {monitoring.text}
         </p>
       )}
+      {noDeals && <ProductState view={noDeals} />}
 
       {notice && (
         <SystemBanner tone={notice.tone === "error" ? "error" : "success"} title={notice.tone === "error" ? "That didn't work" : notice.text} message={notice.tone === "error" ? notice.text : undefined} />

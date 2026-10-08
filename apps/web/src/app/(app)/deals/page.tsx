@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { DealStatusFilter, MarketplaceKey } from "@rein-drop/api-client";
-import { DEAL_FILTERS, huntFormContext } from "@rein-drop/client-core";
+import type { DealStatusFilter, Hunt, MarketplaceKey } from "@rein-drop/api-client";
+import { DEAL_FILTERS, dealsWaitingState, huntFormContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import { ButtonLink, Card, EmptyState, Page, SystemBanner } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Page, ProductState, SystemBanner } from "@/components/ui";
 import { DealFeed } from "./DealFeed";
 import { DealSelects } from "./DealSelects";
 import { SourceBanner } from "@/components/SourceBanner";
@@ -103,9 +103,11 @@ async function DealsLoader({ searchParams }: { searchParams: PageProps<"/deals">
         />
       </div>
       {page.items.length === 0 ? (
-        <Card>
-          <EmptyDeals status={filters.status} hasHunts={hunts.items.length > 0} filtered={filtered} />
-        </Card>
+        (await waitingState(api, hunts.items, filters.status, filtered)) ?? (
+          <Card>
+            <EmptyDeals status={filters.status} hasHunts={hunts.items.length > 0} filtered={filtered} />
+          </Card>
+        )
       ) : (
         <DealFeed
           // Remount when the filters change so "Show more" starts over.
@@ -117,6 +119,14 @@ async function DealsLoader({ searchParams }: { searchParams: PageProps<"/deals">
       )}
     </>
   );
+}
+
+/** Before any deal exists: first scan / healthy-but-nothing-yet (client-core dealsWaitingState). */
+async function waitingState(api: Awaited<ReturnType<typeof getServerApiClient>>, hunts: Hunt[], status: DealStatusFilter, filtered: boolean) {
+  if (filtered || (status !== "open" && status !== "all") || !hunts.some((h) => h.status === "LIVE")) return null;
+  const activity = await api.listHuntActivity().catch(() => null);
+  const view = activity ? dealsWaitingState(hunts, activity, new Date()) : null;
+  return view ? <ProductState view={view} /> : null;
 }
 
 function EmptyDeals({ status, hasHunts, filtered }: { status: DealStatusFilter; hasHunts: boolean; filtered: boolean }) {

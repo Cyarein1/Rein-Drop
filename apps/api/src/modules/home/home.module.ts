@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PlansModule } from '../plans/plans.module.js';
 import { DealsModule } from '../deals/deals.module.js';
 import { SellerProfileModule } from '../seller-profile/seller-profile.module.js';
 import { HomeController } from './home.controller.js';
@@ -9,7 +10,7 @@ import { HomeService } from './home.service.js';
  * activity and one recommendation, in priority order. Endpoint: GET /me/home.
  */
 @Module({
-  imports: [DealsModule, SellerProfileModule],
+  imports: [DealsModule, SellerProfileModule, PlansModule],
   controllers: [HomeController],
   providers: [HomeService],
 })

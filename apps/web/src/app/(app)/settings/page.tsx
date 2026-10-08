@@ -19,9 +19,7 @@ export default function SettingsPage() {
 
         <SellerSnapshotCard />
 
-        <Card title="Plan & billing">
-          <p style={{ color: "var(--rd-text-muted)" }}>Plans and pricing are not decided yet.</p>
-        </Card>
+        <PlanCard />
 
         <NotificationsCard />
 
@@ -40,6 +38,34 @@ export default function SettingsPage() {
         </Card>
       </Page>
     </Protected>
+  );
+}
+
+/** Current plan and its live-Hunt use; cancellation is a placeholder flow until billing exists (D2). */
+async function PlanCard() {
+  const api = await getServerApiClient();
+  const ent = await api.getEntitlements().catch(() => null);
+  const muted = { color: "var(--rd-text-muted)" };
+  if (!ent) {
+    return (
+      <Card title="Plan & billing">
+        <SystemBanner tone="error" title="Couldn't load your plan" message="Refresh the page to try again." />
+      </Card>
+    );
+  }
+  const limit = ent.entitlements.activeHunts.limit;
+  return (
+    <Card title="Plan & billing" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
+      <p>
+        {limit === null ? `${ent.usage.activeHunts} live Hunts (no limit)` : `${ent.usage.activeHunts} of ${limit} live ${limit === 1 ? "Hunt" : "Hunts"} in use`}
+      </p>
+      <p style={muted}>Prices and limits are placeholders until plans are final.</p>
+      <div>
+        <ButtonLink href="/settings/cancel" variant="text">
+          Cancel plan
+        </ButtonLink>
+      </div>
+    </Card>
   );
 }
 

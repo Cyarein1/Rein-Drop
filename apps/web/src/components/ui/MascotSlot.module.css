@@ -1,0 +1,32 @@
+.art {
+  flex: none;
+  height: auto;
+}
+
+.placeholder {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--rd-neutral-border);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-tone-neutral-bg);
+  color: var(--rd-text-muted);
+}
+
+/* "Working": the icon turns slowly - unless the person asked for less motion. */
+.spin svg {
+  animation: rd-turn 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin svg {
+    animation: none;
+  }
+}
+
+@keyframes rd-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}

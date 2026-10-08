@@ -11,10 +11,12 @@ import {
   monitoringLine,
   profitView,
   recentView,
+  reducedMonitoringState,
 } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { DealCard } from '@/components/DealCard';
+import { ProductState } from '@/components/ProductState';
 import { SourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Button, Card, EmptyState, font, LoadingState, Metric, Screen, SystemBanner } from '@/ui';
@@ -107,6 +109,7 @@ export default function HomeScreen() {
   const { home, loadedAt } = state;
   const anyHunts = home.hunts.live + home.hunts.paused + home.hunts.drafts > 0;
   const rec = home.recommendation;
+  const reduced = reducedMonitoringState(home.monitoring, loadedAt, context);
 
   // Brand-new account: one welcoming step, not five empty sections.
   if (!anyHunts) {
@@ -130,6 +133,7 @@ export default function HomeScreen() {
   return (
     <Screen description="Is Rein Drop working, and is anything worth your attention?">
       <SourceBanner sources={home.sources} now={loadedAt} />
+      {reduced && <ProductState view={reduced} />}
       {/* 1. Needs your attention */}
       <View style={styles.section}>
         <View style={styles.sectionHead}>
@@ -247,10 +251,22 @@ export default function HomeScreen() {
         </Card>
       )}
 
-      {/* 5. One recommendation ("thinking" mascot has no approved art: none shown) */}
-      {rec && (
+      {/* 5. One recommendation: a problem = calm warning; a setup step / suggestion = the
+          suggestion state (thinking / idea mascot slot - the only place it appears on Home). */}
+      {rec && rec.kind !== 'issue' && (
+        <ProductState
+          view={{ state: 'suggestion', title: rec.title, body: rec.body, details: [], live: false, actions: [] }}
+        >
+          <View style={{ alignSelf: 'flex-start' }}>
+            <Button variant="secondary" onPress={() => router.push(targetHref(rec.target))}>
+              {rec.actionLabel}
+            </Button>
+          </View>
+        </ProductState>
+      )}
+      {rec && rec.kind === 'issue' && (
         <SystemBanner
-          tone={rec.kind === 'issue' ? 'warning' : 'info'}
+          tone="warning"
           title={rec.title}
           message={rec.body}
           action={

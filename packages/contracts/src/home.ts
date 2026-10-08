@@ -34,6 +34,8 @@ export const homeRecommendationCodes = [
   'start_draft',
   'resume_hunt',
   'source_issue',
+  /** At the plan's live-Hunt limit with a draft waiting: pause one or upgrade. */
+  'plan_limit',
   'broaden_hunt',
   'tighten_hunt',
   'enable_push',
@@ -55,6 +57,19 @@ export const homeSchema = z.object({
   generatedAt: isoDateTimeSchema,
   /** Marketplace sources' health, so Home can say calmly when one is degraded and the rest continue. */
   sources: z.array(sourceHealthSchema),
+  /**
+   * How intensively Rein Drop is monitoring right now. 'reduced' = checking less often on purpose
+   * (quiet hours / plan cadence) - shown as a calm after-hours state, never as a problem.
+   * TODO(product): quiet hours and per-plan cadence are undecided (D22, D7); always 'normal' today.
+   */
+  monitoring: z.object({
+    mode: z.enum(['normal', 'reduced']),
+    reason: z.enum(['quiet_hours', 'plan_cadence']).nullable(),
+    /** Minutes between checks while reduced. */
+    checksEveryMinutes: z.number().int().positive().nullable(),
+    /** When normal monitoring resumes. */
+    resumesAt: isoDateTimeSchema.nullable(),
+  }),
   /** 1. What needs the user now. */
   attention: z.object({
     unreadAlerts: count,

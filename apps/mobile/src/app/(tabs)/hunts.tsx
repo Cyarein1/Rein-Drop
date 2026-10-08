@@ -9,14 +9,20 @@ import {
   joinList,
   MARKETPLACE_LABEL,
   monitoringLine,
+  planLimitState,
   type HuntListFilter,
+  type ProductStateView,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Badge, Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
-type State = { status: 'loading' } | { status: 'ready'; hunts: Hunt[]; activity: Map<string, HuntActivity> } | { status: 'error'; message: string };
+type State =
+  | { status: 'loading' }
+  | { status: 'ready'; hunts: Hunt[]; activity: Map<string, HuntActivity>; suggestion: ProductStateView | null }
+  | { status: 'error'; message: string };
 
 /** Hunts by state (Active / Paused / Draft / Archived), with monitoring and simple counts. */
 export default function HuntsScreen() {
@@ -28,8 +34,20 @@ export default function HuntsScreen() {
   const load = useCallback(() => {
     let cancelled = false;
     const api = getApiClient();
-    Promise.all([api.listHunts({ limit: 100, ...(filter === 'all' ? {} : { status: filter }) }), api.listHuntActivity()]).then(
-      ([page, activity]) => !cancelled && setState({ status: 'ready', hunts: page.items, activity: new Map(activity.map((a) => [a.huntId, a])) }),
+    Promise.all([
+      api.listHunts({ limit: 100, ...(filter === 'all' ? {} : { status: filter }) }),
+      api.listHuntActivity(),
+      // The plan suggestion needs every Hunt (drafts included), so only on the "All" view.
+      filter === 'all' ? api.getEntitlements().catch(() => null) : Promise.resolve(null),
+    ]).then(
+      ([page, activity, entitlements]) =>
+        !cancelled &&
+        setState({
+          status: 'ready',
+          hunts: page.items,
+          activity: new Map(activity.map((a) => [a.huntId, a])),
+          suggestion: entitlements ? planLimitState(entitlements, page.items) : null,
+        }),
       (err: unknown) => !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
     );
     return () => {
@@ -49,6 +67,7 @@ export default function HuntsScreen() {
   return (
     <Screen description="Everything Rein Drop is watching for you.">
       <LiveSourceBanner />
+      {state.status === 'ready' && state.suggestion && <ProductState view={state.suggestion} />}
       {createdHunt && (
         <SystemBanner tone="success" title="Hunt saved as a draft" message={`"${createdHunt.name}" is ready. Choose Start watching when you want monitoring to begin.`} />
       )}

@@ -9,6 +9,8 @@ export { Disclosure, type DisclosureProps } from "./Disclosure";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { LoadingState, Spinner, type LoadingStateProps } from "./LoadingState";
 export { Metric, type MetricProps } from "./Metric";
+export { MascotSlot } from "./MascotSlot";
 export { Page, type PageProps } from "./Page";
+export { ProductState } from "./ProductState";
 export { SystemBanner, type SystemBannerProps } from "./SystemBanner";
 export { TextInput, type TextInputProps } from "./TextInput";

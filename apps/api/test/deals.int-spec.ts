@@ -21,6 +21,8 @@ const SUBJECT = `int-test-${randomUUID().slice(0, 8)}`;
 const OTHER = `int-test-${randomUUID().slice(0, 8)}`;
 const PREFIX = `int-test-deals-${randomUUID().slice(0, 8)}-`;
 const HOUR = 3_600_000;
+// Far-future polls: a worker running alongside never searches these hunts (it would add real deals).
+const NEVER = new Date('2036-01-01T00:00:00Z');
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 
 describe('Deals (integration, real database)', () => {
@@ -114,7 +116,7 @@ describe('Deals (integration, real database)', () => {
           name,
           query: 'iPhone 13',
           status,
-          marketplaces: { create: [{ marketplaceId: market.ebay, lastPolledAt: new Date(), lastPollStatus: 'SUCCEEDED' }, { marketplaceId: market.facebook, lastPollStatus: 'FAILED', lastPolledAt: new Date() }] },
+          marketplaces: { create: [{ marketplaceId: market.ebay, lastPolledAt: new Date(), lastPollStatus: 'SUCCEEDED', nextPollAt: NEVER }, { marketplaceId: market.facebook, lastPollStatus: 'FAILED', lastPolledAt: new Date(), nextPollAt: NEVER }] },
         },
       });
     hunts.A = (await hunt(userId, 'Hunt A', 'LIVE')).id;

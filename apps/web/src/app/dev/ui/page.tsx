@@ -6,11 +6,15 @@ import {
   Card,
   EmptyState,
   LoadingState,
+  MascotSlot,
   Metric,
   Page,
+  ProductState,
   SystemBanner,
   TextInput,
 } from "@/components/ui";
+import { MASCOT_TOKENS } from "@rein-drop/design-tokens";
+import { productStateSamples } from "@rein-drop/client-core";
 
 export const metadata: Metadata = { title: "UI primitives - Rein Drop" };
 
@@ -25,6 +29,9 @@ const swatches = [
   ["Soft Orange", wash.orange],
   ["Soft Yellow", wash.yellow],
 ] as const;
+
+/** Fixed sample time: the gallery is prerendered, so its "now" must not change per request. */
+const GALLERY_NOW = new Date("2026-10-08T12:00:00.000Z");
 
 /** Development-only gallery of every primitive and variant (not product UI). */
 export default function UiGallery() {
@@ -128,6 +135,35 @@ export default function UiGallery() {
 
       <Card title="LoadingState">
         <LoadingState label="Loading deals…" />
+      </Card>
+
+      <Card title="Mascot tokens">
+        <p>Approved art where it exists; a dashed neutral placeholder otherwise (tracked in docs/ASSET_TODO.md).</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+          {MASCOT_TOKENS.map((t) => (
+            <figure key={t} style={{ margin: 0, display: "grid", justifyItems: "center", gap: 4 }}>
+              <MascotSlot token={t} size={64} />
+              <figcaption style={{ fontSize: 12 }}>{t}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Product states">
+        {productStateSamples(GALLERY_NOW).map((view) => (
+          <ProductState key={view.state + view.title} view={view} headingLevel={3}>
+            {"consequences" in view && (
+              <>
+                <ul>
+                  {view.consequences.map((c) => (
+                    <li key={c}>{c}</li>
+                  ))}
+                </ul>
+                <SystemBanner tone="info" title="Not available yet" message={view.unavailableReason} />
+              </>
+            )}
+          </ProductState>
+        ))}
       </Card>
     </Page>
   );

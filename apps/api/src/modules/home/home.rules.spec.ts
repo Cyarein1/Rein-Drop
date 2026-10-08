@@ -62,7 +62,7 @@ describe('homeRecommendation', () => {
     ...over,
   });
   const rec = (over: Partial<Parameters<typeof homeRecommendation>[0]> = {}) =>
-    homeRecommendation({ snapshot: 'complete', hunts: [hunt()], activePushDevices: 1, now: NOW, ...over });
+    homeRecommendation({ snapshot: 'complete', hunts: [hunt()], activePushDevices: 1, liveLimit: null, now: NOW, ...over });
 
   it('setup first: onboarding, first hunt, drafts, everything paused', () => {
     expect(rec({ snapshot: 'in_progress' })).toMatchObject({ code: 'finish_setup', actionLabel: 'Continue setup', target: { kind: 'onboarding' } });
@@ -79,6 +79,21 @@ describe('homeRecommendation', () => {
     // The source itself is down for everyone: Home's source banner says so; no duplicate recommendation.
     const sourceDown = activity({}, { marketplaces: [{ marketplace: 'facebook', lastCheckedAt: NOW.toISOString(), lastCheck: 'failed', failingChecks: 4, nextCheckAt: null, source: { status: 'down', reason: 'unavailable', nextAttemptAt: null } }] });
     expect(rec({ hunts: [hunt({ activity: sourceDown })] })?.code).not.toBe('source_issue');
+  });
+
+  it('at the plan limit with a draft waiting: pause or upgrade, nothing lost', () => {
+    const draft = hunt({ id: '00000000-0000-7000-8000-0000000000d1', status: 'DRAFT', name: 'PS5' });
+    expect(rec({ hunts: [hunt({ name: 'ps4' }), draft], liveLimit: 1 })).toEqual({
+      code: 'plan_limit',
+      kind: 'suggestion',
+      title: 'Your plan watches 1 Hunt at a time',
+      body: '"PS5" is saved and ready. Pause "ps4" to watch it instead, or upgrade to watch both. Nothing is lost either way.',
+      actionLabel: 'See options',
+      target: { kind: 'start_hunt', huntId: draft.id },
+    });
+    // Room left, or unlimited: no plan nudge.
+    expect(rec({ hunts: [hunt(), draft], liveLimit: 2 })?.code).not.toBe('plan_limit');
+    expect(rec({ hunts: [hunt(), draft], liveLimit: null })?.code).not.toBe('plan_limit');
   });
 
   it('then tuning, from the hunt\'s own numbers', () => {

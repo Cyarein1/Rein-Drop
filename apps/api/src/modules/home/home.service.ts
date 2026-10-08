@@ -5,6 +5,7 @@ import { PRISMA } from '../../database/database.module.js';
 import { loadSourceHealth } from '../marketplaces/source-health.js';
 import { DealsService } from '../deals/deals.service.js';
 import { loadHuntActivity } from '../hunts/hunt-activity.js';
+import { PlansService } from '../plans/plans.service.js';
 import { SellerSnapshotService } from '../seller-profile/seller-snapshot.service.js';
 import { profitSnapshot } from './profit.js';
 import { homeRecommendation } from './recommendation.js';
@@ -25,6 +26,7 @@ export class HomeService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly deals: DealsService,
     private readonly snapshot: SellerSnapshotService,
+    private readonly plans: PlansService,
   ) {}
 
   async get(userId: string, now: Date = new Date()): Promise<Home> {
@@ -84,6 +86,8 @@ export class HomeService {
     return {
       generatedAt: now.toISOString(),
       sources: await loadSourceHealth(this.prisma, now),
+      // TODO(product): quiet hours / per-plan cadence (D22, D7) - until decided, always normal.
+      monitoring: { mode: 'normal', reason: null, checksEveryMinutes: null, resumesAt: null },
       attention: { unreadAlerts, toReview: activity.reduce((sum, a) => sum + a.counts.toReview, 0), top: top.items },
       hunts: {
         live: live.length,
@@ -104,6 +108,7 @@ export class HomeService {
           activity: activityOf.get(h.id)!,
         })),
         activePushDevices: pushDevices,
+        liveLimit: (await this.plans.planForUser(userId)).entitlements.activeHunts.limit,
         now,
       }),
     };

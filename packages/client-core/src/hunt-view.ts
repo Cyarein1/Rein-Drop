@@ -12,7 +12,7 @@ import {
 import { ageText, joinList, MARKETPLACE_LABEL, type DealTone, type Labelled } from './deal-view.js';
 import { buildCreateHuntRequest, huntReview, type HuntFormContext, type HuntFormErrors, type HuntFormValues } from './hunt-form.js';
 import { moneyToInput } from './money.js';
-import { retryText, sourceIssue, type HuntMonitoringHealth } from './source-view.js';
+import { durationUntilText, retryText, sourceIssue, type HuntMonitoringHealth } from './source-view.js';
 
 /**
  * Hunts list / detail / edit view model, shared by web and mobile. "Active" is the user-facing
@@ -53,7 +53,7 @@ const minutesSince = (iso: string, now: Date) => Math.max(0, Math.floor((now.get
 function untilText(iso: string, now: Date): string {
   const minutes = Math.ceil((Date.parse(iso) - now.getTime()) / 60_000);
   if (minutes <= 0) return 'now';
-  return minutes < 60 ? `in ${minutes} min` : `in ${Math.round(minutes / 60)} h`;
+  return durationUntilText(minutes);
 }
 
 export interface MonitoringLine {

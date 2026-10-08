@@ -31,6 +31,8 @@ export interface RecommendationFacts {
   /** Non-archived hunts. */
   hunts: readonly RecommendationHunt[];
   activePushDevices: number;
+  /** The plan's live-Hunt limit (null = unlimited). */
+  liveLimit: number | null;
   now: Date;
 }
 
@@ -103,6 +105,20 @@ export function homeRecommendation(facts: RecommendationFacts, t = RECOMMENDATIO
         target: { kind: 'hunt', huntId: hunt.id },
       };
     }
+  }
+
+  // At the plan's live-Hunt limit with a draft waiting: an actionable choice, never a hard sell.
+  const waiting = newest(hunts.filter((h) => h.status === 'DRAFT'));
+  if (waiting && facts.liveLimit !== null && live.length > 0 && live.length >= facts.liveLimit) {
+    const busy = live.length === 1 ? `"${live[0]!.name}"` : 'a live Hunt';
+    return {
+      code: 'plan_limit',
+      kind: 'suggestion',
+      title: `Your plan watches ${facts.liveLimit} ${facts.liveLimit === 1 ? 'Hunt' : 'Hunts'} at a time`,
+      body: `"${waiting.name}" is saved and ready. Pause ${busy} to watch it instead, or upgrade to watch both. Nothing is lost either way.`,
+      actionLabel: 'See options',
+      target: { kind: 'start_hunt', huntId: waiting.id },
+    };
   }
 
   for (const hunt of live) {

@@ -51,6 +51,7 @@ export default function RootLayout() {
         <Stack.Screen name="analytics/products" options={{ title: 'Product analytics' }} />
         <Stack.Screen name="analytics/missed" options={{ title: 'Missed potential' }} />
         <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
+        <Stack.Screen name="cancel-plan" options={{ title: 'Cancel plan' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>
       <StatusBar style="dark" />

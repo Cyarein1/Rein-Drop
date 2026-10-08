@@ -2,10 +2,11 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import type { DealStatusFilter, DealSummary, MarketplaceKey } from '@rein-drop/api-client';
-import { DEAL_FILTERS, dealCardView, huntFormContext, MARKETPLACE_LABEL } from '@rein-drop/client-core';
+import { DEAL_FILTERS, dealCardView, dealsWaitingState, huntFormContext, MARKETPLACE_LABEL, type ProductStateView } from '@rein-drop/client-core';
 import { fontSize, roles } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { DealCard } from '@/components/DealCard';
+import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
@@ -16,7 +17,7 @@ type Source = '' | MarketplaceKey;
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; items: DealSummary[]; cursor: string | null; hunts: { id: string; name: string }[] };
+  | { status: 'ready'; items: DealSummary[]; cursor: string | null; hunts: { id: string; name: string }[]; waiting: ProductStateView | null };
 
 /** Ranked deal feed (strength first, then freshness), filtered by status, source and Hunt. */
 export default function DealsScreen() {
@@ -35,9 +36,14 @@ export default function DealsScreen() {
     let cancelled = false;
     const api = getApiClient();
     Promise.all([api.listDeals({ status: filter, marketplace: source || undefined, huntId: huntId || undefined, limit: PAGE_SIZE }), api.listHunts({ limit: 100 })]).then(
-      ([page, hunts]) =>
-        !cancelled &&
-        setState({ status: 'ready', items: page.items, cursor: page.nextCursor, hunts: hunts.items.map((h) => ({ id: h.id, name: h.name })) }),
+      async ([page, hunts]) => {
+        // No deals yet: say whether the first scan is running or everything is fine but quiet.
+        const unfiltered = !source && !huntId && (filter === 'open' || filter === 'all');
+        const wants = page.items.length === 0 && unfiltered && hunts.items.some((h) => h.status === 'LIVE');
+        const activity = wants ? await api.listHuntActivity().catch(() => null) : null;
+        const waiting = activity ? dealsWaitingState(hunts.items, activity, new Date()) : null;
+        if (!cancelled) setState({ status: 'ready', items: page.items, cursor: page.nextCursor, hunts: hunts.items.map((h) => ({ id: h.id, name: h.name })), waiting });
+      },
       (err: unknown) => !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
     );
     return () => {
@@ -95,7 +101,8 @@ export default function DealsScreen() {
           }
         />
       )}
-      {state.status === 'ready' && state.items.length === 0 && (
+      {state.status === 'ready' && state.items.length === 0 && state.waiting && <ProductState view={state.waiting} />}
+      {state.status === 'ready' && state.items.length === 0 && !state.waiting && (
         <Card>
           {hunts.length === 0 ? (
             <EmptyState

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { ApiError, type Hunt, type HuntActivity, type HuntEvent } from '@rein-drop/api-client';
 import {
   ageText,
+  firstScanState,
   HUNT_ACTION_CONFIRM,
   HUNT_ACTION_LABEL,
   HUNT_EVENT_LABEL,
@@ -13,12 +14,13 @@ import {
   huntFormContext,
   marketplaceRows,
   monitoringLine,
+  noDealsYetState,
   type HuntDetailAction,
 } from '@rein-drop/client-core';
-import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { useSession } from '@/auth/SessionProvider';
-import { mascotAssets } from '@/brand/assets';
+import { ProductState } from '@/components/ProductState';
 import { getApiClient } from '@/config/api';
 import { Badge, Button, Card, font, LoadingState, Metric, Screen, SystemBanner } from '@/ui';
 
@@ -98,7 +100,9 @@ function HuntDetail() {
   const status = HUNT_STATUS_LABEL[hunt.status];
   const monitoring = monitoringLine(hunt, activity, loadedAt);
   const criteria = huntCriteria(hunt, context);
-  const art = mascotAssets.working;
+  // Product states by semantic mascot token (approved art or a neutral placeholder).
+  const firstScan = firstScanState(hunt, activity, loadedAt);
+  const noDeals = noDealsYetState(hunt, activity, loadedAt);
 
   const run = async (action: Transition) => {
     setBusy(true);
@@ -166,18 +170,12 @@ function HuntDetail() {
       <View style={styles.heading}>
         <Badge tone={status.tone}>{status.label}</Badge>
       </View>
-      {scanning ? (
-        <View style={styles.scanning} accessibilityRole="progressbar" accessibilityLabel={monitoring.text}>
-          {/* Approved "working" mascot only; none exists yet, so the normal loading UI. */}
-          {art ? <Image source={art} style={styles.art} accessibilityIgnoresInvertColors /> : <ActivityIndicator color={roles.text} />}
-          <View style={styles.flex}>
-            <Text style={[styles.body, font('semibold')]}>{monitoring.text}</Text>
-            <Text style={[styles.muted, font('regular')]}>Your first results usually appear within a few minutes. This screen updates by itself.</Text>
-          </View>
-        </View>
+      {firstScan ? (
+        <ProductState view={firstScan} />
       ) : (
         <Text style={[styles.body, font('regular'), monitoring.tone === 'fresh' && styles.warn]}>{monitoring.text}</Text>
       )}
+      {noDeals && <ProductState view={noDeals} />}
       {notice && <SystemBanner tone={notice.error ? 'error' : 'success'} title={notice.error ? "That didn't work" : notice.text} message={notice.error ? notice.text : undefined} />}
       <View style={styles.actions}>{huntActions(hunt.status).map(button)}</View>
 
@@ -244,8 +242,6 @@ function HuntDetail() {
 
 const styles = StyleSheet.create({
   heading: { flexDirection: 'row' },
-  scanning: { flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4], borderWidth: size.borderWidth, borderColor: roles.border, borderRadius: radius.md, backgroundColor: tones.info.background },
-  art: { width: 56, height: 56 },
   flex: { flex: 1, gap: space[1] },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: space[5] },

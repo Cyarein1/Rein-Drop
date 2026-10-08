@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 35 (Build Prompt 32)._
+_Last updated: 2026-10-08, after step 36 (Build Prompt 33)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -100,6 +100,7 @@ These block or shape work; the code uses placeholders until you decide.
 - Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until
   approved art exists) - step 32.
 - Thinking / idea mascot asset for the analytics recommendation (slot wired, nothing yet) - step 34.
+- Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot.
 
 ### Plans and billing
 - Real checkout (D2) - step 17; prompt 39.
@@ -122,9 +123,10 @@ These block or shape work; the code uses placeholders until you decide.
 - CORS policy (only needed once a browser calls the API directly) - step 10.
 - UI translations (only English exists) - step 14.
 - App-store storefront country to refine mobile locale detection - step 14.
-- Empty / waiting / after-hours states - prompt 33.
+- Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
+- Cancellation flow is a placeholder (explains, keeps the plan; can't cancel) until billing exists (D2) - step 36.
+- Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
-- Browser check of the source banners - pending the user's API restart (step 35).
 - Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
 - Local MVP acceptance script + one-command reset / seed - prompt 41.
 
@@ -159,7 +161,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
+34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
@@ -205,4 +207,9 @@ These block or shape work; the code uses placeholders until you decide.
 | Analytics placeholder notice on web and mobile | Step 5 | Step 34 |
 | Source health / degraded UX: MarketplaceHealth, per-source backoff, calm banners, Hunts never falsely healthy | Step 18 | Step 35 |
 | Adapter `health()` was never called; slow / partial searches counted as clean successes | Step 18 | Step 35 |
+| Browser check of the source banners | Step 35 | Step 36 |
+| Product states: first scan, no deals yet while healthy, reduced monitoring, plan suggestion, cancellation placeholder; semantic mascot slots | Step 6 | Step 36 |
+| "Working" / "waiting" / "thinking" mascot slots rendered nothing - now neutral placeholders tracked in ASSET_TODO.md | Steps 26-34 | Step 36 |
+| Settings "Plan & billing" said plans weren't decided - now shows the plan and live-Hunt use | Step 16 | Step 36 |
+| Deals integration test hunts could be polled by a running worker | Step 25 | Step 36 |
 | Development sources had no latency simulation | Step 19 | Step 35 |

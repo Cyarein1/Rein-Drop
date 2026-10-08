@@ -24,3 +24,28 @@ export const MASCOT_TOKENS = [
 ] as const;
 
 export type MascotToken = (typeof MASCOT_TOKENS)[number];
+
+/**
+ * Product states -> mascot token. Screens ask for a STATE; this map picks the semantic token and
+ * each app maps tokens to approved files (or a neutral placeholder when none is approved yet -
+ * see docs/ASSET_TODO.md). Never reference image files from product code.
+ */
+export const PRODUCT_STATE_MASCOTS = {
+  /** Brand-new account, first welcome. */
+  welcome: 'welcome',
+  /** Something was saved / confirmed. */
+  confirmed: 'confirmed',
+  /** A Hunt's first scan is running. */
+  firstScan: 'working',
+  /** A Hunt is live and healthy but nothing has matched yet. */
+  noDealsYet: 'waiting',
+  /** Monitoring is intentionally reduced (quiet hours / plan cadence). */
+  reducedMonitoring: 'afterHours',
+  /** One actionable Hunt / plan suggestion. */
+  suggestion: 'suggestion',
+  /** Plan cancellation (soften, never guilt). */
+  cancellation: 'cancellation',
+  /** Inventory is empty (purchase tracking education). */
+  emptyInventory: 'inventory',
+} as const satisfies Record<string, MascotToken>;
+export type ProductState = keyof typeof PRODUCT_STATE_MASCOTS;

@@ -33,10 +33,15 @@ export function sourceIssue(source: SourceStatus): { label: string; phrase: stri
 }
 
 const minutesUntil = (iso: string, now: Date) => Math.max(1, Math.ceil((Date.parse(iso) - now.getTime()) / 60_000));
-/** "in 4 min" / "in 2 h". */
+/** "in 4 min" / "in 2 h" / "in 3 days" (shared by every "next check" / "tries again" text). */
+export function durationUntilText(minutes: number): string {
+  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 48 * 60) return `in ${Math.round(minutes / 60)} h`;
+  return `in ${Math.round(minutes / (24 * 60))} days`;
+}
+
 export function retryText(iso: string, now: Date): string {
-  const m = minutesUntil(iso, now);
-  return m < 60 ? `in ${m} min` : `in ${Math.round(m / 60)} h`;
+  return durationUntilText(minutesUntil(iso, now));
 }
 
 export interface SourceBanner {

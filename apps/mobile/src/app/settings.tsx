@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import type { NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
+import type { EntitlementEvaluation, NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
 import { huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
@@ -93,9 +93,13 @@ export default function SettingsScreen() {
         </Card>
       )}
 
-      <Card title="Plan & billing">
-        <Text style={[styles.muted, font('regular')]}>Plans and pricing are not decided yet.</Text>
-      </Card>
+      {sessionState.status === 'authenticated' ? (
+        <PlanCard />
+      ) : (
+        <Card title="Plan & billing">
+          <Text style={[styles.muted, font('regular')]}>Sign in to see your plan.</Text>
+        </Card>
+      )}
 
       {sessionState.status === 'authenticated' && (
         <Card title="Notifications on this phone">
@@ -335,3 +339,46 @@ const styles = StyleSheet.create({
   body: { color: roles.text, fontSize: fontSize.md },
   muted: { color: roles.textMuted, fontSize: fontSize.sm },
 });
+
+/** Current plan and its live-Hunt use; cancellation is a placeholder flow until billing exists (D2). */
+function PlanCard() {
+  const router = useRouter();
+  const [ent, setEnt] = useState<EntitlementEvaluation | null | 'error'>(null);
+  const load = useCallback(() => {
+    let cancelled = false;
+    getApiClient()
+      .getEntitlements()
+      .then(
+        (e) => !cancelled && setEnt(e),
+        () => !cancelled && setEnt('error'),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useFocusEffect(load);
+  if (ent === 'error') {
+    return (
+      <Card title="Plan & billing">
+        <SystemBanner tone="error" title="Couldn't load your plan" message="Pull down or reopen Settings to try again." />
+      </Card>
+    );
+  }
+  if (!ent) return <LoadingState label="Loading your plan…" />;
+  const limit = ent.entitlements.activeHunts.limit;
+  return (
+    <Card title="Plan & billing" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
+      <Text style={[styles.body, font('regular')]}>
+        {limit === null
+          ? `${ent.usage.activeHunts} live Hunts (no limit)`
+          : `${ent.usage.activeHunts} of ${limit} live ${limit === 1 ? 'Hunt' : 'Hunts'} in use`}
+      </Text>
+      <Text style={[styles.muted, font('regular')]}>Prices and limits are placeholders until plans are final.</Text>
+      <View style={{ alignSelf: 'flex-start' }}>
+        <Button variant="text" onPress={() => router.push('/cancel-plan')}>
+          Cancel plan
+        </Button>
+      </View>
+    </Card>
+  );
+}

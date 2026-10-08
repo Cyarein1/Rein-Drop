@@ -1,5 +1,9 @@
 import { StyleSheet, View } from 'react-native';
+import { MASCOT_TOKENS } from '@rein-drop/design-tokens';
+import { productStateSamples } from '@rein-drop/client-core';
 import { Wordmark } from '@/brand/Wordmark';
+import { ProductState } from '@/components/ProductState';
+import { MascotSlot } from '@/ui/MascotSlot';
 import { Badge, Button, Card, EmptyState, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
 
 /** Developer-only gallery of the mobile UI primitives (not product UI). */
@@ -62,6 +66,22 @@ export default function DevScreen() {
 
       <Card title="LoadingState">
         <LoadingState label="Loading deals…" />
+      </Card>
+
+      <Card title="Mascot tokens">
+        <View style={styles.row}>
+          {MASCOT_TOKENS.map((t) => (
+            <MascotSlot key={t} token={t} size={48} />
+          ))}
+        </View>
+      </Card>
+
+      <Card title="Product states">
+        {productStateSamples(new Date()).map((view) => (
+          <ProductState key={view.state + view.title} view={view}>
+            {'consequences' in view && <SystemBanner tone="info" title="Not available yet" message={[...view.consequences, view.unavailableReason].join(' ')} />}
+          </ProductState>
+        ))}
       </Card>
     </Screen>
   );

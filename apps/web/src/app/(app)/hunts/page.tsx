@@ -8,11 +8,12 @@ import {
   joinList,
   MARKETPLACE_LABEL,
   monitoringLine,
+  planLimitState,
   type HuntListFilter,
 } from "@rein-drop/client-core";
 import { getServerApiClient } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import { Badge, ButtonLink, Card, EmptyState, Page, Spinner, SystemBanner } from "@/components/ui";
+import { Badge, ButtonLink, Card, EmptyState, Page, ProductState, Spinner, SystemBanner } from "@/components/ui";
 import { SourceBanner } from "@/components/SourceBanner";
 import styles from "./hunts.module.css";
 
@@ -43,6 +44,8 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
   ]).catch(() => null);
   // Advisory: if it can't be loaded the page still works, just without the source status line.
   const health = await api.getSourceHealth().catch(() => null);
+  // The plan suggestion needs every Hunt (drafts included), so only on the "All" view.
+  const entitlements = filter === "all" ? await api.getEntitlements().catch(() => null) : null;
 
   const tabs = (
     <nav aria-label="Hunt status" className={styles.tabs}>
@@ -73,6 +76,7 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
     );
   }
   const [{ items }, activities] = result;
+  const suggestion = entitlements ? planLimitState(entitlements, items) : null;
   const activityOf = new Map(activities.map((a) => [a.huntId, a]));
   const created = typeof params.created === "string" ? items.find((h) => h.id === params.created) : undefined;
 
@@ -86,6 +90,7 @@ async function HuntList({ searchParams }: { searchParams: PageProps<"/hunts">["s
         />
       )}
       <SourceBanner sources={health?.items ?? null} now={new Date(health?.generatedAt ?? 0)} />
+      {suggestion && <ProductState view={suggestion} />}
       {tabs}
       {items.length === 0 ? (
         <Card>
