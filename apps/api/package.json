@@ -33,6 +33,7 @@
     "@rein-drop/db": "workspace:*",
     "@rein-drop/env": "workspace:*",
     "@rein-drop/scoring": "workspace:*",
+    "jose": "^6.2.12",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^4.6.5"

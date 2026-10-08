@@ -17,8 +17,10 @@
     "@rein-drop/brand-assets": "workspace:*",
     "@rein-drop/client-core": "workspace:*",
     "@rein-drop/design-tokens": "workspace:*",
+    "jose": "^6.2.12",
     "lucide-react": "^1.52.0",
     "next": "16.4.0",
+    "openid-client": "^6.8.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1"

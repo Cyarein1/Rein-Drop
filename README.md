@@ -90,7 +90,10 @@ Invalid environment configuration for api:
 |---|---|---|---|
 | `NODE_ENV` | api, worker | `development` | `development` \| `test` \| `production` |
 | `PORT` | api | `4000` | |
-| `AUTH_PROVIDER` | api, web | `dev` outside production | `dev` is development-only and refused in production; required in production (managed provider TBD) |
+| `AUTH_PROVIDER` | api, web | `dev` outside production | `dev` (development only, can't be enabled in production) or `entra` (Microsoft Entra External ID, decision 0013). Required in production. |
+| `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_REQUIRED_SCOPE` | api | -, -, -, `access_as_user` | Token verification for `entra` (identifiers, not secrets). |
+| `ENTRA_WEB_CLIENT_ID`, `ENTRA_WEB_CLIENT_SECRET`, `APP_BASE_URL`, `AUTH_SESSION_SECRET`, `AUTH_SESSION_MAX_AGE_HOURS` | web | `AUTH_SESSION_MAX_AGE_HOURS=168` | Web sign-in for `entra` (+ `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`). **Client secret and session secret are secrets.** |
+| `EXPO_PUBLIC_AUTH_PROVIDER`, `EXPO_PUBLIC_ENTRA_*` | mobile | `dev` in development, `entra` in release builds | Mobile sign-in (public client IDs only). |
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
 | `HUNT_POLL_INTERVAL_MINUTES` | worker | `15` (development only) | How often each LIVE hunt is searched per marketplace. Required in production (cost model TBD). |
 | `WORKER_SCHEDULER_INTERVAL_MS`, `WORKER_RUNNER_INTERVAL_MS`, `WORKER_JOBS_PER_TICK`, `WORKER_JOB_LEASE_MS`, `WORKER_JOB_MAX_ATTEMPTS`, `WORKER_SEARCH_MAX_PAGES` | worker | `30000`, `2000`, `5`, `120000`, `5`, `1` | Pipeline tuning - see `apps/worker/.env.example` |
@@ -225,8 +228,17 @@ it can be swapped in without touching features:
 - The API accepts it only from this machine or the private network (phones on your Wi-Fi yes,
   internet no).
 - **Cannot run in production:** the API refuses to start with `NODE_ENV=production` and
-  `AUTH_PROVIDER=dev` (or with no provider); production web/mobile builds refuse the dev
-  provider. Until a managed provider is added, production deliberately has no way to sign in.
+  `AUTH_PROVIDER=dev`; production web and release mobile builds don't contain the dev provider.
+
+**Microsoft Entra External ID (`AUTH_PROVIDER=entra`, production)** - decision
+[0013](docs/decisions/0013-entra-external-id-auth.md) has the tenant setup checklist:
+
+- Email + password sign-up / sign-in (with email verification and password reset) on the
+  tenant's hosted page; web uses `/auth/sign-in` -> `/auth/callback` (PKCE), mobile the system browser.
+- The API verifies the bearer access token (issuer, audience, signature, expiry, tenant, scope)
+  and maps the user's `oid` to a Rein Drop user (created on first sign-in, never linked by email).
+- Web sessions are encrypted httpOnly cookies, refreshed by the Proxy, ending after
+  `AUTH_SESSION_MAX_AGE_HOURS`; Settings -> Sign out ends the Entra session too.
 
 ## API conventions (apps/api)
 

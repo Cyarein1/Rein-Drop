@@ -1,12 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { entraProxy } from "@/auth/entra/proxy";
 import { getAuthSetup } from "@/auth/provider";
 
 /**
- * Optimistic, request-local route gate (Next.js Proxy). It never calls the API or
- * database; the real check is `verifySession()` in every protected page.
+ * Route gate for the app (Next.js Proxy). It never calls the API or database; the real check is
+ * `verifySession()` in every protected page. With Entra it also keeps the session cookies fresh
+ * (refreshing an expiring access token - the only Entra call made here) and ends expired sessions.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const setup = getAuthSetup();
+  if (setup.ok && setup.entra) return entraProxy(request, setup.entra);
   if (!setup.ok || !setup.provider.mightBeAuthenticated(request)) {
     const signIn = new URL("/sign-in", request.url);
     signIn.searchParams.set("next", request.nextUrl.pathname);
@@ -24,6 +27,7 @@ export const config = {
     "/deals/:path*",
     "/alerts/:path*",
     "/analytics/:path*",
+    "/inventory/:path*",
     "/settings/:path*",
   ],
 };

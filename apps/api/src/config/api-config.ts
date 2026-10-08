@@ -1,5 +1,6 @@
-﻿import { z } from 'zod';
-import { AUTH_PROVIDER_IDS, type AuthProviderId } from '@rein-drop/contracts';
+import { z } from 'zod';
+import { AUTH_PROVIDER_IDS, ENTRA_DEFAULT_SCOPE_NAME, type AuthProviderId } from '@rein-drop/contracts';
+import type { EntraApiConfig } from '../auth/entra-auth.provider.js';
 // Config is wiring (like the registry provider): it may name development marketplace scenarios.
 import {
   DEV_SCENARIOS,
@@ -32,6 +33,14 @@ const apiEnvSchema = z.object({
   AUTH_PROVIDER: z
     .enum(AUTH_PROVIDER_IDS, { error: `must be one of: ${AUTH_PROVIDER_IDS.join(', ')}` })
     .optional(),
+  // Microsoft Entra External ID (AUTH_PROVIDER=entra) - decision 0013. Identifiers, not secrets.
+  /** https://<tenant-subdomain>.ciamlogin.com */
+  ENTRA_AUTHORITY: z.url({ protocol: /^https$/, error: 'must be an https URL' }).optional(),
+  ENTRA_TENANT_ID: z.guid({ error: 'must be the directory (tenant) ID, a GUID' }).optional(),
+  /** Application (client) ID of the Rein Drop API app registration (the token audience). */
+  ENTRA_API_CLIENT_ID: z.guid({ error: 'must be the API application (client) ID, a GUID' }).optional(),
+  /** Delegated scope name the API exposes. */
+  ENTRA_REQUIRED_SCOPE: z.string().trim().regex(/^[\w.-]{1,100}$/, 'must be a scope name, e.g. access_as_user').optional(),
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
   // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
@@ -48,6 +57,8 @@ export interface ApiConfig {
   readonly databaseUrl: string;
   /** Which AuthProvider implementation authenticates requests. */
   readonly authProvider: AuthProviderId;
+  /** Entra External ID verification settings when authProvider is "entra", else null. */
+  readonly entra: EntraApiConfig | null;
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
   /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
@@ -69,9 +80,23 @@ export function loadApiConfig(
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
   const problems: string[] = [...ebay.problems, ...facebook.problems];
+  const authProvider: AuthProviderId = parsed.AUTH_PROVIDER ?? (parsed.NODE_ENV === 'production' ? 'entra' : 'dev');
+  let entra: EntraApiConfig | null = null;
+  if (authProvider === 'entra') {
+    for (const key of ['ENTRA_AUTHORITY', 'ENTRA_TENANT_ID', 'ENTRA_API_CLIENT_ID'] as const) {
+      if (!parsed[key]) problems.push(`${key}: required when AUTH_PROVIDER=entra`);
+    }
+    if (parsed.ENTRA_AUTHORITY && parsed.ENTRA_TENANT_ID && parsed.ENTRA_API_CLIENT_ID) {
+      entra = {
+        authority: parsed.ENTRA_AUTHORITY,
+        tenantId: parsed.ENTRA_TENANT_ID.toLowerCase(),
+        audience: parsed.ENTRA_API_CLIENT_ID.toLowerCase(),
+        requiredScope: parsed.ENTRA_REQUIRED_SCOPE ?? ENTRA_DEFAULT_SCOPE_NAME,
+      };
+    }
+  }
   if (parsed.NODE_ENV === 'production') {
-    // DEVELOPMENT-ONLY auth must never run in production. No managed provider exists
-    // yet (TBD), so production cannot start until one is added - by design.
+    // DEVELOPMENT-ONLY auth can never be enabled in production (the provider refuses too).
     if (parsed.AUTH_PROVIDER === 'dev') {
       problems.push('AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production');
     }
@@ -86,8 +111,9 @@ export function loadApiConfig(
     nodeEnv: parsed.NODE_ENV,
     port: parsed.PORT,
     databaseUrl: resolveDatabaseUrl(parsed),
-    // Safe default outside production only (production requires an explicit value above).
-    authProvider: parsed.AUTH_PROVIDER ?? 'dev',
+    // Development default is "dev"; production requires an explicit value (and never "dev").
+    authProvider,
+    entra: entra ? Object.freeze(entra) : null,
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',

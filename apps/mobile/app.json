@@ -39,7 +39,9 @@
         {
           "color": "#12233F"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

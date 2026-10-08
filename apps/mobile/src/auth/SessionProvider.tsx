@@ -16,6 +16,10 @@ export type SessionState =
 interface SessionContextValue {
   state: SessionState;
   refresh: () => void;
+  /** Interactive sign-in / sign-up; null when the provider signs in automatically (development). */
+  signIn: (() => Promise<void>) | null;
+  /** Forgets the session on this device; null for development auth. */
+  signOut: (() => Promise<void>) | null;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -64,7 +68,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAttempt((n) => n + 1);
   }, []);
 
-  return <SessionContext.Provider value={{ state, refresh }}>{children}</SessionContext.Provider>;
+  const provider = authSetup.ok ? authSetup.provider : null;
+  const signIn = useCallback(async () => {
+    if (!provider?.signIn) return;
+    try {
+      if ((await provider.signIn()) === 'signed_in') refresh();
+    } catch (err) {
+      setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
+    }
+  }, [provider, refresh]);
+  const signOut = useCallback(async () => {
+    if (!provider?.signOut) return;
+    await provider.signOut();
+    setState({ status: 'unauthenticated', reason: "You're signed out." });
+  }, [provider]);
+
+  return (
+    <SessionContext.Provider value={{ state, refresh, signIn: provider?.signIn ? signIn : null, signOut: provider?.signOut ? signOut : null }}>
+      {children}
+    </SessionContext.Provider>
+  );
 }
 
 /**

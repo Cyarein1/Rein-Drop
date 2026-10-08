@@ -16,7 +16,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 | # | Decision | Raised | Placeholder in use |
 |---|---|---|---|
-| D1 | Managed auth provider (sign-in, sign-out, accounts) | Step 7 | Development-only auth (`x-dev-auth-subject`) |
 | D2 | Billing provider (Stripe is the leading candidate) and mobile store billing | Step 16 | Fake development checkout, 404 in production |
 | D3 | Plan prices and limits (Free / Pro / Ultimate) | Step 16 | "Price TBD"; placeholder limits in the seed |
 | D4 | What non-resellers get after answering "no" | Step 12 | "Coming soon" screen |
@@ -45,6 +44,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D34 | Session length: how long a sign-in lasts (web + mobile), and whether mobile should stay signed in longer | Step 41 | 7 days absolute (AUTH_SESSION_MAX_AGE_HOURS / EXPO_PUBLIC_AUTH_SESSION_MAX_AGE_HOURS) |
+| D35 | Sign-in screens: Entra's hosted (brandable) page, or fully in-app email/password forms (Entra native authentication API) | Step 41 | Hosted page |
 | D33 | Which Foundry model(s) / deployment type (Standard vs provisioned) and region for each AI task, and the AI budget per analysis | Step 40 | None - set by FOUNDRY_DEPLOYMENT* in the environment |
 | D32 | Which diagnostics thresholds matter (acceptable cost per Hunt per day, freshness target, noise ratio) | Step 39 | None - the report shows raw numbers only |
 | D31 | Source health thresholds: slow > 5 s, down after 3 failures, cool-down 30 s doubling to 15 min, search timeout 30 s | Step 35 | As listed (decision 0009) |
@@ -53,10 +54,13 @@ These block or shape work; the code uses placeholders until you decide.
 ## 2. Not built yet (by area)
 
 ### Accounts and auth
-- Welcome + create-account / sign-in screens (Screenbook frames 01-02) - step 23, prompt 38.
-- Sign-out (web + mobile) - step 7, prompt 38.
+- Welcome screen (Screenbook frame 01); sign-in / create-account is the Entra hosted page (D35) - step 41.
 - Signed-out visitors on `/` should go to welcome / sign-in - step 10.
-- Web production mode can't sign in until D1 - step 10.
+- Create the Entra External ID tenant + three app registrations (checklist in decision 0013) and run the live tenant check - step 41.
+- Real sign-in not exercised end to end against a tenant (only a fake tenant in tests); mobile sign-in needs a device / development build with the registered redirect URI - step 41.
+- Brand the Entra hosted pages (logo, colours, copy) - step 41.
+- Account deletion and Entra-side email / name changes are not synced to the Rein Drop user - step 41.
+- Managed identity / Key Vault for the web client secret and session secret in Azure - step 41 (prompts 40 / 42).
 - Mobile session check only tests liveness, not `/ready` - step 2.
 
 ### Onboarding
@@ -174,7 +178,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
@@ -233,3 +236,8 @@ These block or shape work; the code uses placeholders until you decide.
 | Foundry AIProvider (models per task, credentials) | Step 22 | Step 40 (decision 0012) |
 | AI cost metadata (docs review) | Docs review | Step 40 (`costUsd` per task when pricing is configured) |
 | Diagnostics AI cost always unknown | Step 39 | Step 40 (sums reported `costUsd`) |
+| D1 Managed auth provider (sign-in, sign-out, accounts) | Step 7 | Step 41 (Microsoft Entra External ID, decision 0013) |
+| Sign-in / create-account screens (Screenbook 02) | Step 23 | Step 41 (web /sign-in + Entra hosted page; mobile sign-in gate) |
+| Sign-out (web + mobile) | Step 7 | Step 41 |
+| Web production mode can't sign in until D1 | Step 10 | Step 41 |
+| Web Proxy matcher missed /inventory | Step 32 | Step 41 |

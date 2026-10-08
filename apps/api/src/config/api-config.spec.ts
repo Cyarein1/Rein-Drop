@@ -1,4 +1,4 @@
-﻿import { EnvValidationError, LOCAL_DATABASE_URL } from '@rein-drop/env';
+import { EnvValidationError, LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { loadApiConfig } from './api-config.js';
 
 function problemsFor(env: Record<string, string | undefined>): string[] {
@@ -21,6 +21,7 @@ describe('loadApiConfig', () => {
       port: 4000,
       databaseUrl: LOCAL_DATABASE_URL,
       authProvider: 'dev',
+      entra: null,
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
       facebookApify: null,
@@ -38,6 +39,40 @@ describe('loadApiConfig', () => {
   it('requires an explicit auth provider in production (no default)', () => {
     expect(problemsFor({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app' })).toEqual([
       'AUTH_PROVIDER: is required when NODE_ENV=production',
+    ]);
+  });
+
+  const ENTRA = {
+    AUTH_PROVIDER: 'entra',
+    ENTRA_AUTHORITY: 'https://reindrop.ciamlogin.com',
+    ENTRA_TENANT_ID: '11111111-2222-3333-4444-555555555555',
+    ENTRA_API_CLIENT_ID: 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+  };
+
+  it('configures Microsoft Entra External ID (identifiers only, no secrets)', () => {
+    expect(loadApiConfig(ENTRA)).toMatchObject({
+      authProvider: 'entra',
+      entra: {
+        authority: 'https://reindrop.ciamlogin.com',
+        tenantId: '11111111-2222-3333-4444-555555555555',
+        audience: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        requiredScope: 'access_as_user',
+      },
+    });
+    expect(loadApiConfig({ ...ENTRA, ENTRA_REQUIRED_SCOPE: 'deals.read' }).entra?.requiredScope).toBe('deals.read');
+    // Production with Entra starts.
+    expect(loadApiConfig({ ...ENTRA, NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', ...EBAY }).authProvider).toBe('entra');
+  });
+
+  it('lists every missing or malformed Entra setting', () => {
+    expect(problemsFor({ AUTH_PROVIDER: 'entra' })).toEqual([
+      'ENTRA_AUTHORITY: required when AUTH_PROVIDER=entra',
+      'ENTRA_TENANT_ID: required when AUTH_PROVIDER=entra',
+      'ENTRA_API_CLIENT_ID: required when AUTH_PROVIDER=entra',
+    ]);
+    expect(problemsFor({ ...ENTRA, ENTRA_AUTHORITY: 'http://reindrop.ciamlogin.com', ENTRA_TENANT_ID: 'reindrop' })).toEqual([
+      'ENTRA_AUTHORITY: must be an https URL (got "http://reindrop.ciamlogin.com")',
+      'ENTRA_TENANT_ID: must be the directory (tenant) ID, a GUID (got "reindrop")',
     ]);
   });
 
@@ -61,6 +96,7 @@ describe('loadApiConfig', () => {
       port: 8080,
       databaseUrl: 'postgresql://u:p@db.example:5432/app',
       authProvider: 'dev',
+      entra: null,
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
       facebookApify: null,

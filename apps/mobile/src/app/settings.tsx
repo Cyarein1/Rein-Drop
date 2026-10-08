@@ -24,7 +24,7 @@ const SOURCE_LABEL = {
 
 /** Not gated: reachable when signed out so the API address and session state can be inspected. */
 export default function SettingsScreen() {
-  const { state: sessionState, refresh } = useSessionState();
+  const { state: sessionState, refresh, signOut } = useSessionState();
   const router = useRouter();
   const [check, setCheck] = useState<Check>({ state: 'idle' });
 
@@ -65,10 +65,11 @@ export default function SettingsScreen() {
                 Signed in automatically as the seeded local user (development only).
               </Text>
             )}
-            {/* TODO(auth): sign-out comes with the managed provider. */}
-            <Button variant="secondary" disabled>
-              Sign out
-            </Button>
+            {signOut && (
+              <Button variant="secondary" onPress={() => void signOut()}>
+                Sign out
+              </Button>
+            )}
           </>
         )}
         {(sessionState.status === 'unauthenticated' || sessionState.status === 'error') && (

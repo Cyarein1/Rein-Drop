@@ -12,7 +12,7 @@ import { useSessionState } from './SessionProvider';
  * Signed-out and error states always offer a next action (Retry / Settings).
  */
 export function SessionGate({ children }: { children: ReactNode }) {
-  const { state, refresh } = useSessionState();
+  const { state, refresh, signIn } = useSessionState();
   const router = useRouter();
 
   if (state.status === 'authenticated') return <>{children}</>;
@@ -37,14 +37,29 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Screen>
-          <SystemBanner tone="warning" title="You're not signed in" message={state.reason} />
-          {__DEV__ && (
+          {signIn ? (
+            <>
+              <SystemBanner tone="info" title="Sign in to Rein Drop" message={state.reason} />
+              <Text style={[styles.help, font('regular')]}>
+                {"You'll continue on a secure Microsoft page to sign in with your email and password - or to create your account if you're new."}
+              </Text>
+              <View style={styles.actions}>
+                <Button onPress={() => void signIn()}>Sign in with email</Button>
+                <Button variant="secondary" onPress={() => void signIn()}>
+                  Create an account
+                </Button>
+              </View>
+            </>
+          ) : (
+            <SystemBanner tone="warning" title="You're not signed in" message={state.reason} />
+          )}
+          {__DEV__ && !signIn && (
             <Text style={[styles.help, font('regular')]}>
               Development sign-in is automatic. Make sure the API is running and the development user exists
               (pnpm db:seed).
             </Text>
           )}
-          {actions}
+          {!signIn && actions}
         </Screen>
       </SafeAreaView>
     );

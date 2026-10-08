@@ -1,11 +1,73 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 40)_
+_Last updated: 2026-10-09 (step 41)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 41 - Managed auth: Microsoft Entra External ID (Build Prompt 38)
+
+Evaluated the options and chose **Microsoft Entra External ID** (Azure-aligned; Azure AD B2C closed
+to new customers on 1 May 2025; first 50,000 monthly active users free; email + password with
+verification and reset built in) - decision [0013](decisions/0013-entra-external-id-auth.md),
+resolving D1. Implemented behind the existing auth boundaries on API, web and mobile.
+
+**What was added**
+
+- Contracts: `AUTH_PROVIDER_IDS = dev | entra`; `entraDiscoveryUrl`, `entraApiScope`.
+- API: `EntraAuthProvider` (`jose`): bearer access token -> signature against the tenant's keys
+  (discovered, cached, rollover-safe), exact issuer, audience = API client ID, exp / nbf, tenant,
+  `access_as_user` scope. `oid` -> `User.authSubject` (authProvider `entra`); first sign-in creates
+  the user from `email` / `name`; an email belonging to another user is refused (no linking by
+  email); 503 when keys / database are unreachable. Config `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`,
+  `ENTRA_API_CLIENT_ID`, `ENTRA_REQUIRED_SCOPE`.
+- Web: `/auth/sign-in` (PKCE + state + nonce in an encrypted 10-minute cookie) -> Entra hosted
+  page (email + password, sign-up) -> `/auth/callback` (state / PKCE / ID-token checks via
+  `openid-client`) -> encrypted httpOnly session cookies (JWE; access token + absolute expiry;
+  refresh token in a second cookie). The Proxy refreshes access tokens near expiry and ends
+  sessions at `AUTH_SESSION_MAX_AGE_HOURS` (default 7 days) or when refresh is refused. Sign out
+  (POST `/auth/sign-out`) clears cookies and ends the Entra session. Real `/sign-in` page
+  (signed-out / expired / cancelled / failed notices); Settings -> Sign out. Proxy matcher now
+  includes `/inventory` (was missing since step 32).
+- Mobile: Entra provider (`expo-auth-session` PKCE in the system browser, `expo-secure-store`
+  for tokens, single-flight refresh, absolute expiry), sign-in screen in the session gate,
+  Settings -> Sign out. New dependencies: expo-auth-session, expo-secure-store, expo-web-browser,
+  expo-crypto (config plugins added to app.json).
+- client-core `token-session`: shared refresh / absolute-expiry rules (web + mobile).
+- **Dev auth can't be enabled in production**: API config + auth module + DevAuthProvider refuse
+  it; web and mobile production builds don't contain the dev provider.
+- `.env.example` (api, web, mobile), README auth section + env table.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54.
+- API unit: 13 Entra provider tests (real RS256 tokens from a test key: valid / expired / other
+  key / issuer / audience / tenant / no oid / alg none / tampered / missing scope; user creation,
+  missing email claim, email collision, parallel first sign-in, DB down -> 503, discovery failure
+  and wrong-tenant issuer -> 503), config tests; live tenant check skipped (no tenant).
+- API int 53/53 incl. new `entra-auth.int-spec.ts` (real API + PostgreSQL: first sign-in creates
+  the user, later requests map to it; missing / expired / foreign-tenant / under-scoped tokens and
+  the development header are refused; no account takeover by email; /health stays public);
+  e2e 52/52; worker int 40/40.
+- Web: 15 auth tests against a fake Entra tenant (PKCE S256 / state / nonce / scopes in the
+  authorize URL, code redemption, forged state / wrong verifier / replayed nonce refused, refresh
+  keeps the absolute expiry, end-session URL, wrong-tenant discovery refused; cookie encryption,
+  tampering / other secret / other purpose / expiry; open-redirect guard; Proxy: valid session
+  passes, no session -> sign-in with return path, expired -> cookies cleared, refresh updates the
+  request and sets httpOnly SameSite=Lax cookies, refused refresh ends the session).
+- Production web build: no development-auth identifiers in `.next/server` or `.next/static`;
+  session code server-only. Development mode unchanged (running dev server: /home, /sign-in,
+  /settings 200 with dev auth).
+- **Not run against a real tenant** (none exists yet) and mobile sign-in not tried on a device.
+
+**Not done / TODO**
+
+- Create the tenant + app registrations (checklist in decision 0013); brand the hosted pages.
+- D34 session length; D35 hosted page vs in-app forms (native auth).
+- Account deletion / Entra-side email changes not synced; secrets via Key Vault / managed identity
+  when deploying to Azure.
 
 ### Step 40 - Microsoft Foundry AIProvider (Build Prompt 37)
 

@@ -139,18 +139,18 @@ async function AccountCard() {
       action={session.isDevelopment ? <Badge tone="info">Development sign-in</Badge> : undefined}
     >
       <p>{session.user.email}</p>
-      {session.isDevelopment && (
+      {session.isDevelopment ? (
         <p style={{ color: "var(--rd-text-muted)", fontSize: 14 }}>
-          Signed in automatically as the seeded local user (development only). Real sign-in arrives
-          with the managed auth provider.
+          Signed in automatically as the seeded local user (development only) - there is nothing to sign out of.
         </p>
+      ) : (
+        // POST only, so a link or image can't sign anyone out.
+        <form action="/auth/sign-out" method="post">
+          <Button type="submit" variant="secondary">
+            Sign out
+          </Button>
+        </form>
       )}
-      <div>
-        {/* TODO(auth): sign-out comes with the managed provider. */}
-        <Button variant="secondary" disabled>
-          Sign out
-        </Button>
-      </div>
     </Card>
   );
 }
