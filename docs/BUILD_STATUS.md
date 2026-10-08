@@ -1,11 +1,52 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 38)_
+_Last updated: 2026-10-09 (step 39)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 39 - Internal ingestion diagnostics: economics and freshness (Build Prompt 36)
+
+Internal, development-only report per marketplace / provider (decision
+[0011](decisions/0011-ingestion-diagnostics.md)). Not customer analytics: system-wide, 404 in
+production, linked only from `/dev`.
+
+**What was added**
+
+- DB: `SearchRun.requestLatencyMs` (migration `..._search_run_request_latency`) - the slowest
+  source request per run, measured by the worker (failed runs too).
+- Contracts `diagnostics.ts`: query (`?hours=` 1-2160, default 24, or `?since=&until=`) and the
+  `IngestionDiagnostics` response (sources, totals, per-Hunt cost).
+- API `modules/diagnostics`: `GET /dev/diagnostics/ingestion` - PostgreSQL aggregates with
+  `GROUPING SETS` (per source + total): runs, requests, Hunts served; listings returned / new /
+  updated / duplicates / unreadable; candidate checks, matches, new matches, rejections + reasons;
+  AI analyses (completed / failed / alert-eligible / providers / tokens / duration); alerts;
+  request + run latency p50 / p95 / max; listing age at discovery; source cost (known, estimate
+  flag, unknown runs), cost per run / new match / alert / Hunt-day; AI cost = unknown (not reported).
+- API client `getIngestionDiagnostics`.
+- Web `/dev/diagnostics`: window picker (1 h / 24 h / 7 d / 30 d or since/until), the three
+  checkpoint answers (cost per Hunt per day, median listing age, returned -> alerted with filter
+  rates), a metric x source table, cost per Hunt, and how each number is counted.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (API mapper / window / production-404 unit
+  tests; web formatting tests).
+- API int 49/49 (new `diagnostics.int-spec.ts`: throwaway marketplace in a fixed 2021 window -
+  exact per-source and total numbers, percentiles, listing age, cost split between grouped Hunts,
+  window validation, 401), e2e 52/52, worker int 40/40 (runs store request latency).
+- Against the running local stack: the endpoint and page work; last 30 days = 118 development
+  runs for one LIVE Hunt ("ps4"), all returning 0 listings (the development catalogue has no match).
+  Page checked at 1280 px and 390 px (no horizontal page scroll).
+
+**Not done / TODO**
+
+- AI cost stays unknown until an AI provider reports usage / pricing is configured (prompt 37).
+- No admin role: before running anywhere shared, gate it to staff, not just "signed in".
+- Runs from before step 38 / 39 have no usage / latency (shown as unknown / no samples).
+- Mobile has no diagnostics view (web only, by design for an internal tool).
 
 ### Step 38 - Facebook development data provider: Apify Marketplace scraper (Build Prompt 35)
 

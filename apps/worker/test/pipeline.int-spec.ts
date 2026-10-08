@@ -134,6 +134,8 @@ describe('worker pipeline (integration, real database)', () => {
       expect(run.newListingCount + run.updatedListingCount + run.unreadableCount).toBe(run.resultCount);
       // Source usage is recorded on the run (development data: free).
       expect(run.sourceUsage).toMatchObject({ requests: run.pagesFetched, items: run.resultCount, costUsd: 0, costIsEstimate: false, details: { provider: 'dev' } });
+      // Worker-measured request latency, for the ingestion diagnostics.
+      expect(run.requestLatencyMs).toBeGreaterThanOrEqual(0);
       const raws = await prisma.rawListing.findMany({ where: { searchRunId: run.id } });
       expect(raws).toHaveLength(run.resultCount);
       expect(raws.every((r) => r.status === 'NORMALIZED' && r.listingId !== null && r.provider === 'dev')).toBe(true);

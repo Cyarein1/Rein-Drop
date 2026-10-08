@@ -45,6 +45,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D32 | Which diagnostics thresholds matter (acceptable cost per Hunt per day, freshness target, noise ratio) | Step 39 | None - the report shows raw numbers only |
 | D31 | Source health thresholds: slow > 5 s, down after 3 failures, cool-down 30 s doubling to 15 min, search timeout 30 s | Step 35 | As listed (decision 0009) |
 | D30 | Analytics recommendation thresholds (held 30+ days, 60% ignored with 5+ viewed, 3 missed) and their order | Step 34 | As listed (`ANALYTICS_RECOMMENDATION_RULES`) |
 
@@ -80,7 +81,10 @@ These block or shape work; the code uses placeholders until you decide.
 - Cost: Apify about USD 5 a day per Hunt at 20 results every 15 min - needs the cost model / cadence (D7, prompt 36) - step 38.
 - eBay live tests are skipped until eBay credentials are configured (set EBAY_CLIENT_ID / EBAY_CLIENT_SECRET to run them) - step 37.
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
-- Ingestion economics, latency and cost per request - docs review; prompt 36.
+- Diagnostics: AI cost unknown until an AI provider reports usage / pricing (prompt 37) - step 39.
+- Diagnostics are system-wide behind "signed in" only: add a staff / admin role before running them anywhere shared - step 39.
+- Diagnostics aggregate live without dedicated indexes on SearchRun.startedAt / Listing.firstSeenAt / DealAnalysis.createdAt - fine locally, revisit with volume - step 39.
+- Measure cost / freshness / noise with a controlled window of several Hunts (and Apify / eBay credentials) to decide D7 - step 39.
 
 ### Matching, analysis, scoring
 - Relevance is lexical (synonyms only via the AI); stopwords English only - step 21.
@@ -167,7 +171,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
+37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
@@ -221,3 +225,5 @@ These block or shape work; the code uses placeholders until you decide.
 | Facebook development data provider (Apify) documented and implemented behind FacebookDataProvider; dev provider kept | Step 18 | Step 38 |
 | Provider request / result / cost metadata not recorded - now SearchRun.sourceUsage | Docs review | Step 38 |
 | Development sources had no latency simulation | Step 19 | Step 35 |
+| Ingestion economics, latency and cost per request (docs review; prompt 36) | Docs review | Step 39 (`/dev/diagnostics`) |
+| Worker kept only the latest request latency (MarketplaceHealth) | Step 35 | Step 39 (`SearchRun.requestLatencyMs`) |

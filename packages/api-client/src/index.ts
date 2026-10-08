@@ -100,6 +100,10 @@ import {
   type ProductAnalytics,
   sourceHealthListSchema,
   type SourceHealthList,
+  ingestionDiagnosticsQuerySchema,
+  ingestionDiagnosticsSchema,
+  type IngestionDiagnostics,
+  type IngestionDiagnosticsQueryInput,
 } from '@rein-drop/contracts';
 import type { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
@@ -110,6 +114,7 @@ export {
   AUTH_PROVIDER_IDS,
   DEV_AUTH_HEADER,
   DEV_AUTH_SUBJECT,
+  DIAGNOSTICS_MAX_HOURS,
   detectedLocaleRequest,
   kmToUnit,
   PURCHASE_COST_CATEGORIES,
@@ -232,6 +237,9 @@ export interface ApiClient {
 
   /** Marketplace sources' health (healthy / degraded / down / not configured / unknown). */
   getSourceHealth(): Promise<SourceHealthList>;
+
+  /** DEVELOPMENT ONLY (404 in production): ingestion economics and freshness across every user's Hunts. */
+  getIngestionDiagnostics(query?: IngestionDiagnosticsQueryInput): Promise<IngestionDiagnostics>;
 }
 
 function analytics<T>(http: HttpOptions, view: string, query: AnalyticsQueryInput, response: z.ZodType<T>): Promise<T> {
@@ -425,5 +433,12 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getMissedPotential: async (query = {}) => analytics(http, 'missed', query, missedPotentialSchema),
 
     getSourceHealth: () => send(http, { method: 'GET', path: '/marketplaces/health', response: sourceHealthListSchema }),
+    getIngestionDiagnostics: async (query = {}) =>
+      send(http, {
+        method: 'GET',
+        path: '/dev/diagnostics/ingestion',
+        query: validateInput(ingestionDiagnosticsQuerySchema, query, 'query'),
+        response: ingestionDiagnosticsSchema,
+      }),
   };
 }

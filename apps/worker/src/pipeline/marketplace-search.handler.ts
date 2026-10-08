@@ -59,6 +59,9 @@ export function addUsage(total: SourceUsage | null, page: SourceUsage | undefine
   };
 }
 
+/** The slowest request's latency for diagnostics; null when no request was made. */
+const requestLatencyMs = (stats: FetchStats): number | null => (stats.latencyMs > 0 ? Math.round(stats.latencyMs) : null);
+
 /**
  * Runs one grouped marketplace search: fetch -> store RawListings -> normalize into Listings ->
  * deduplicate + match against each hunt (MatchStage) -> record SearchRun, per-hunt polling
@@ -160,6 +163,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
           status: 'FAILED',
           // What was spent before the failure still counts.
           sourceUsage: (stats.usage ?? undefined) as Prisma.InputJsonValue | undefined,
+          requestLatencyMs: requestLatencyMs(stats),
           errorCode: isMarketplaceError(err) ? err.code : 'INTERNAL',
           errorMessage: describe(err).slice(0, 2000),
           finishedAt: this.clock(),
@@ -318,7 +322,15 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     await this.prisma.$transaction([
       this.prisma.searchRun.update({
         where: { id: runId },
-        data: { status: 'SUCCEEDED', pagesFetched: stats.pages, resultCount, finishedAt: now, sourceUsage: (stats.usage ?? undefined) as Prisma.InputJsonValue | undefined, ...matches },
+        data: {
+          status: 'SUCCEEDED',
+          pagesFetched: stats.pages,
+          resultCount,
+          finishedAt: now,
+          sourceUsage: (stats.usage ?? undefined) as Prisma.InputJsonValue | undefined,
+          requestLatencyMs: requestLatencyMs(stats),
+          ...matches,
+        },
       }),
       // Slow or partial: it worked, but the Hunt must not look fully healthy.
       this.prisma.huntMarketplace.updateMany({

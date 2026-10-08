@@ -28,6 +28,9 @@ export default function DevHome() {
         <li>
           <Link href="/dev/notifications">Notification simulator log</Link>
         </li>
+        <li>
+          <Link href="/dev/diagnostics">Ingestion diagnostics (internal: cost, freshness, noise per source)</Link>
+        </li>
       </ul>
     </Page>
   );

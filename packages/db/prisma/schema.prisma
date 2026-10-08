@@ -330,6 +330,8 @@ model SearchRun {
   /// What the source requests cost (marketplace-core SourceUsage, summed over pages): requests,
   /// results, duration, cost in USD (estimate or billed) and provider details. Never on Hunts / Listings.
   sourceUsage         Json?
+  /// Slowest single source request in this run, ms, measured by the worker (failed runs too).
+  requestLatencyMs    Int?
   errorCode           String?
   errorMessage        String?
   startedAt           DateTime        @default(now()) @db.Timestamptz(3)

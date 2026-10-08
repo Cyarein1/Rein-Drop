@@ -140,7 +140,7 @@ Changing the schema: edit `packages/db/prisma/schema.prisma`, then
 ```powershell
 pnpm --filter api dev       # http://localhost:4000/health and /ready
 pnpm --filter worker dev    # logs a heartbeat
-pnpm --filter web dev       # http://localhost:3000 (app) - /dev for system status, /dev/ui for components
+pnpm --filter web dev       # http://localhost:3000 (app) - /dev for system status, /dev/ui for components, /dev/diagnostics for ingestion cost / freshness (internal)
 pnpm --filter mobile start  # scan the QR code with Expo Go
 ```
 

@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { UsageModule } from './usage/usage.module.js';
 import { EntitlementsModule } from './entitlements/entitlements.module.js';
 import { HomeModule } from './home/home.module.js';
+import { DiagnosticsModule } from './diagnostics/diagnostics.module.js';
 
 /** Domain modules, one per Rein Drop bounded context. Imported by AppModule. */
 export const DOMAIN_MODULES = [
@@ -34,4 +35,6 @@ export const DOMAIN_MODULES = [
   // Composition (no tables): plan + usage read endpoints; Home.
   EntitlementsModule,
   HomeModule,
+  // Development-only internal reporting (no tables).
+  DiagnosticsModule,
 ];
