@@ -11,6 +11,9 @@ function problemsFor(env: Record<string, string | undefined>): string[] {
   throw new Error('expected EnvValidationError');
 }
 
+// Production needs a real eBay source; these tests are about other variables.
+const EBAY = { EBAY_CLIENT_ID: 'test-id', EBAY_CLIENT_SECRET: 'test-secret' };
+
 describe('loadApiConfig', () => {
   it('uses local defaults when nothing is set (dev auth outside production)', () => {
     expect(loadApiConfig({})).toEqual({
@@ -19,12 +22,13 @@ describe('loadApiConfig', () => {
       databaseUrl: LOCAL_DATABASE_URL,
       authProvider: 'dev',
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
+      ebayApi: null,
     });
   });
 
   it('refuses dev auth in production', () => {
     expect(
-      problemsFor({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', AUTH_PROVIDER: 'dev' }),
+      problemsFor({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', AUTH_PROVIDER: 'dev', ...EBAY }),
     ).toEqual([
       'AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production',
     ]);
@@ -57,6 +61,7 @@ describe('loadApiConfig', () => {
       databaseUrl: 'postgresql://u:p@db.example:5432/app',
       authProvider: 'dev',
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
+      ebayApi: null,
     });
   });
 
@@ -75,6 +80,7 @@ describe('loadApiConfig', () => {
         DATABASE_URL: 'postgresql://u:p@db/app',
         AUTH_PROVIDER: 'dev',
         FACEBOOK_DEV_SCENARIO: 'normal',
+        ...EBAY,
       }),
     ).toEqual([
       'AUTH_PROVIDER: "dev" is a development-only provider and is not allowed when NODE_ENV=production',
@@ -113,5 +119,17 @@ describe('loadApiConfig', () => {
       'DATABASE_URL: is required when NODE_ENV=production',
       'AUTH_PROVIDER: is required when NODE_ENV=production',
     ]);
+  });
+
+  it('eBay: development source by default; the real Browse API with credentials (never in errors)', () => {
+    expect(loadApiConfig({}).ebayApi).toBeNull();
+    expect(loadApiConfig({ EBAY_SOURCE: 'api', ...EBAY, EBAY_ENVIRONMENT: 'sandbox' }).ebayApi).toEqual({
+      clientId: 'test-id',
+      clientSecret: 'test-secret',
+      environment: 'sandbox',
+      marketplaceId: 'EBAY_US',
+    });
+    expect(problemsFor({ EBAY_SOURCE: 'api', EBAY_CLIENT_ID: 'test-id' })).toEqual(['EBAY_CLIENT_SECRET: required when EBAY_SOURCE=api']);
+    expect(problemsFor({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', AUTH_PROVIDER: 'dev', EBAY_SOURCE: 'dev', EBAY_CLIENT_SECRET: 'shh' }).join(' ')).not.toContain('shh');
   });
 });

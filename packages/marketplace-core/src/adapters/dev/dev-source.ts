@@ -134,13 +134,8 @@ export function listingCurrency(requested: string): string {
   return requested in SYNTHETIC_PRICE_SCALE ? requested : 'USD';
 }
 
-export function currencyDigits(currency: string): number {
-  try {
-    return new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ?? 2;
-  } catch {
-    return 2;
-  }
-}
+import { currencyDigits } from '../money.js';
+export { currencyDigits };
 
 /** Asking prices people actually type: R 4 450, $245, $1 150. */
 function niceRound(amount: number): number {

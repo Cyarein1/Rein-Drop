@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 36 (Build Prompt 33)._
+_Last updated: 2026-10-08, after step 37 (Build Prompt 34)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -27,7 +27,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D9 | Margin definition: upside / resale price, or return on cost | Step 24 | Upside / resale price |
 | D10 | How old a listing may be and still alert | Step 24 | 48 hours |
 | D11 | Hunts with no max price and no target: should they ever alert before resale data exists? | Step 24 | No (feed only) |
-| D12 | Real eBay data source and terms; Facebook data provider | Step 18 | Development sources only (prompts 34-35) |
+| D12 | Real eBay data source and terms; Facebook data provider | Step 18 | eBay: Browse API built (decision 0010) - confirm licence / production keyset / quota; Facebook: development source only (prompt 35) |
 | D13 | Comparable-sales / resale price source | Step 22 | None - no estimates are made |
 | D14 | Push and email providers | Step 4 | None (prompts 24-25) |
 | D15 | Product analytics vendor (PostHog candidate) and which metrics | Step 4 | None (prompt 43) |
@@ -73,7 +73,9 @@ These block or shape work; the code uses placeholders until you decide.
   narrowed hunt keep their matches NEW instead of becoming unavailable - step 21.
 - Job retention (SUCCEEDED / DEAD rows grow forever) and lease renewal - step 20.
 - Development listings re-age every time the worker restarts - step 20.
-- Real marketplace adapters (D12) - step 18; prompts 34-35.
+- Real Facebook data provider (D12) - step 18; prompt 35.
+- eBay live tests are skipped until eBay credentials are configured (set EBAY_CLIENT_ID / EBAY_CLIENT_SECRET to run them) - step 37.
+- eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
 - Ingestion economics, latency and cost per request - docs review; prompt 36.
 
 ### Matching, analysis, scoring
@@ -161,7 +163,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
@@ -212,4 +213,5 @@ These block or shape work; the code uses placeholders until you decide.
 | "Working" / "waiting" / "thinking" mascot slots rendered nothing - now neutral placeholders tracked in ASSET_TODO.md | Steps 26-34 | Step 36 |
 | Settings "Plan & billing" said plans weren't decided - now shows the plan and live-Hunt use | Step 16 | Step 36 |
 | Deals integration test hunts could be polled by a running worker | Step 25 | Step 36 |
+| Real eBay adapter (Browse API, OAuth, rate / error handling, pagination, normalization) with mock mode kept | Step 18 | Step 37 |
 | Development sources had no latency simulation | Step 19 | Step 35 |

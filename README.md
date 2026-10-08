@@ -94,7 +94,11 @@ Invalid environment configuration for api:
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
 | `HUNT_POLL_INTERVAL_MINUTES` | worker | `15` (development only) | How often each LIVE hunt is searched per marketplace. Required in production (cost model TBD). |
 | `WORKER_SCHEDULER_INTERVAL_MS`, `WORKER_RUNNER_INTERVAL_MS`, `WORKER_JOBS_PER_TICK`, `WORKER_JOB_LEASE_MS`, `WORKER_JOB_MAX_ATTEMPTS`, `WORKER_SEARCH_MAX_PAGES` | worker | `30000`, `2000`, `5`, `120000`, `5`, `1` | Pipeline tuning - see `apps/worker/.env.example` |
-| `EBAY_DEV_SCENARIO`, `FACEBOOK_DEV_SCENARIO` | api, worker | `normal` | Development marketplace sources only: `normal` \| `empty` \| `degraded` \| `rate_limited` \| `unavailable` \| `not_configured` \| `invalid_response` \| `malformed_payloads`. Refused in production. |
+| `EBAY_DEV_SCENARIO`, `FACEBOOK_DEV_SCENARIO` | api, worker | `normal` | Development marketplace sources only: `normal` \| `empty` \| `degraded` \| `rate_limited` \| `unavailable` \| `not_configured` \| `invalid_response` \| `malformed_payloads` \| `slow` \| `flaky`. Refused in production. |
+| `EBAY_SOURCE` | api, worker | `dev` (`api` in production) | `dev` = development eBay source; `api` = the real eBay Browse API (decision 0010). |
+| `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET` | api, worker | - | eBay developer keyset, required for `EBAY_SOURCE=api`. **Secrets: untracked `.env` / secret store only - never commit.** |
+| `EBAY_ENVIRONMENT` | api, worker | `production` | `production` \| `sandbox` (must match the keyset). |
+| `EBAY_MARKETPLACE_ID` | api, worker | `EBAY_US` | eBay site, e.g. `EBAY_GB`, `EBAY_AU`. |
 | `WORKER_HEARTBEAT_MS` | worker | `60000` | Integer >= 1000 |
 | `API_BASE_URL` | web (server-side) | `http://localhost:4000` (via `.env.example`) | |
 | `EXPO_PUBLIC_API_BASE_URL` | mobile | `http://localhost:4000` (via `.env.example`) | Use your LAN IP on a physical phone |

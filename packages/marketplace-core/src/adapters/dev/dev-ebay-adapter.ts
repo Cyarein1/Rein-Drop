@@ -6,6 +6,7 @@ import type { NormalizedListing } from '../../listing.js';
 import type { NormalizeResult, RawListingRecord } from '../../raw-listing.js';
 import type { MarketplaceSearchCriteria, MarketplaceSearchResult, SearchOptions } from '../../search.js';
 import { abortedError, guardedSearch } from '../guard.js';
+import { decimalToMinor } from '../money.js';
 import {
   DEV_HOST,
   buildDevListing,
@@ -220,10 +221,4 @@ export class DevEbayAdapter implements MarketplaceAdapter {
   }
 }
 
-/** "249.5" -> 24950 (exact; no floating-point multiplication). Null if it has too many decimals. */
-export function decimalToMinor(value: string, currency: string): number | null {
-  const digits = currencyDigits(currency);
-  const [whole = '0', fraction = ''] = value.split('.');
-  if (fraction.length > digits) return null;
-  return Number(whole) * 10 ** digits + Number(fraction.padEnd(digits, '0') || '0');
-}
+export { decimalToMinor } from "../money.js";

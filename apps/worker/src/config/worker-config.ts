@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, type AIProviderId } from '@rein-drop/ai-core';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
-import { DEV_SCENARIOS, type DevScenario } from '@rein-drop/marketplace-core/adapters';
+import { DEV_SCENARIOS, ebayEnvShape, resolveEbaySource, type DevScenario, type EbayCredentials } from '@rein-drop/marketplace-core/adapters';
 import {
   databaseUrlSchema,
   EnvValidationError,
@@ -42,6 +42,8 @@ const workerEnvSchema = z.object({
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
   EBAY_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
+  // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
+  ...ebayEnvShape,
   FACEBOOK_DEV_LATENCY_MS: intSchema({ min: 0, max: 120_000, default: 0 }),
   /** Which AIProvider analyses matched listings. `mock` is deterministic and local-only. */
   /**
@@ -94,6 +96,8 @@ export interface WorkerConfig {
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
   /** Simulated latency of the development sources, ms. */
   readonly devMarketplaceLatencyMs: { readonly ebay: number; readonly facebook: number };
+  /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
+  readonly ebayApi: EbayCredentials | null;
 }
 
 export const WORKER_CONFIG = Symbol('WORKER_CONFIG');
@@ -105,17 +109,19 @@ export function loadWorkerConfig(
   const parsed = parseEnv('worker', workerEnvSchema, env, {
     requiredInProduction: ['DATABASE_URL', 'HUNT_POLL_INTERVAL_MINUTES', 'AI_PROVIDER', 'NOTIFICATION_DELIVERY', 'PUSH_PROVIDER'],
   });
+  const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
+  const problems = [...ebay.problems];
   if (parsed.NODE_ENV === 'production') {
     // The latency settings have defaults, so check whether they were set at all.
-    const problems = ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO', 'EBAY_DEV_LATENCY_MS', 'FACEBOOK_DEV_LATENCY_MS']
-      .filter((key) => env[key] !== undefined && env[key] !== '')
-      .map((key) => `${key}: development-only, not allowed when NODE_ENV=production`);
+    for (const key of ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO', 'EBAY_DEV_LATENCY_MS', 'FACEBOOK_DEV_LATENCY_MS']) {
+      if (env[key] !== undefined && env[key] !== '') problems.push(`${key}: development-only, not allowed when NODE_ENV=production`);
+    }
     // The mock produces believable but meaningless analyses: never in front of real users.
     if (parsed.PUSH_PROVIDER === 'simulator') problems.push('PUSH_PROVIDER: simulator is development-only, not allowed when NODE_ENV=production');
     if (parsed.NOTIFICATION_DELIVERY === 'simulator') problems.push('NOTIFICATION_DELIVERY: simulator is development-only, not allowed when NODE_ENV=production');
     if (parsed.AI_PROVIDER === 'mock') problems.push('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
-    if (problems.length > 0) throw new EnvValidationError('worker', problems);
   }
+  if (problems.length > 0) throw new EnvValidationError('worker', problems);
   return Object.freeze({
     nodeEnv: parsed.NODE_ENV,
     databaseUrl: resolveDatabaseUrl(parsed),
@@ -147,5 +153,6 @@ export function loadWorkerConfig(
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
     }),
     devMarketplaceLatencyMs: Object.freeze({ ebay: parsed.EBAY_DEV_LATENCY_MS, facebook: parsed.FACEBOOK_DEV_LATENCY_MS }),
+    ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
   });
 }

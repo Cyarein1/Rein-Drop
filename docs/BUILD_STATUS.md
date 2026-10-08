@@ -1,11 +1,58 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 36)_
+_Last updated: 2026-10-08 (step 37)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 37 - Real eBay source: Browse API adapter (Build Prompt 34)
+
+Details in [decision 0010](decisions/0010-ebay-browse-api.md). Mock mode (the development eBay
+source) is unchanged and remains the default outside production.
+
+**What was added**
+
+- marketplace-core `adapters/ebay/`:
+  - `EbayAdapter` (provider `ebay-browse`) on eBay's official Buy > Browse API v1 (endpoints,
+    fields and limits taken from eBay's published OpenAPI spec): search sorted `newlyListed`
+    with offset pagination (opaque cursor, <= 200 per page, never past the 10,000 window),
+    `conditionIds` and site-currency price filters, `fetchListing` (404 = gone);
+  - normalization: `itemId` source id (+ `legacyItemId`), `itemWebUrl`, price / current bid,
+    `itemCreationDate` freshness, SOLD / ENDED / ACTIVE, shipping as the buyer's cost, location,
+    images, seller feedback metadata;
+  - `EbayClient`: OAuth application token (client credentials), cached and refreshed once on
+    401; 429 -> RATE_LIMITED (Retry-After), 5xx / network -> UNAVAILABLE, bad credentials ->
+    NOT_CONFIGURED, 4xx -> UNSUPPORTED_CRITERIA, unreadable -> INVALID_RESPONSE; secrets never in
+    errors. `fetch` is injected (testable; no DOM / Node typings in the package);
+  - `resolveEbaySource` env helper shared by API and worker; shared `adapters/money.ts`.
+- Registry: the real adapter when credentials are configured, else the development source
+  (outside production).
+- Config (API + worker): `EBAY_SOURCE`, `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`,
+  `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`; production requires the real source. `.env.example`
+  placeholders only; README table updated.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54. marketplace-core 176 (+3 skipped): the shared
+  adapter contract suite and 19 eBay tests against a fake eBay server shaped like the spec
+  (token flow and reuse, sandbox host, query / filters, currency gating, pagination + 10,000 cap,
+  full normalization, auctions / free shipping / sold / ended, FAILED / SKIPPED, fetchListing,
+  429 / 5xx / network / 400 / 401 refresh / bad credentials without leaking the secret /
+  non-JSON, health without spending search quota) and 3 config tests.
+- Live tests (`ebay-adapter.live.spec.ts`: health, search + normalize + paging, re-read) are
+  **skipped** - no eBay credentials are configured on this machine.
+- API int 46/46, e2e 52/52, worker int 40/40; API / worker config tests updated. The running
+  app is unaffected (dev mode).
+
+**Not done / TODO**
+
+- D12: eBay licence / Buy API terms, production keyset, quota - the owner's call. To run the live
+  tests: set `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` (and `EBAY_ENVIRONMENT=sandbox` for a sandbox
+  keyset) in the shell or an untracked `.env`, then `pnpm --filter @rein-drop/marketplace-core test`.
+- The worker searches one page of up to 200 eBay results per Hunt check; watch the daily quota
+  (prompt 36, ingestion economics).
 
 ### Step 36 - Polished product states with semantic mascot tokens (Build Prompt 33)
 
@@ -1745,7 +1792,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-33 (our steps 1-36 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-34 (our steps 1-37 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1762,5 +1809,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 34 in document order: Real eBay adapter.
+Build Prompt 35 in document order: Facebook data provider (behind FacebookDataProvider).
 (Await the next prompt.)

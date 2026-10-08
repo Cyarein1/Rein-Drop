@@ -22,6 +22,7 @@ describe('loadWorkerConfig', () => {
       ai: { provider: 'mock' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
+      ebayApi: null,
     });
   });
 
@@ -38,6 +39,8 @@ describe('loadWorkerConfig', () => {
         AI_PROVIDER: 'foundry',
         NOTIFICATION_DELIVERY: 'disabled',
         PUSH_PROVIDER: 'none',
+        EBAY_CLIENT_ID: 'id',
+        EBAY_CLIENT_SECRET: 'secret',
         EBAY_DEV_LATENCY_MS: '3000',
       }),
     ).toThrow('EBAY_DEV_LATENCY_MS: development-only');

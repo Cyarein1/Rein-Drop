@@ -1,7 +1,7 @@
 ﻿import { z } from 'zod';
 import { AUTH_PROVIDER_IDS, type AuthProviderId } from '@rein-drop/contracts';
 // Config is wiring (like the registry provider): it may name development marketplace scenarios.
-import { DEV_SCENARIOS, type DevScenario } from '@rein-drop/marketplace-core/adapters';
+import { DEV_SCENARIOS, ebayEnvShape, resolveEbaySource, type DevScenario, type EbayCredentials } from '@rein-drop/marketplace-core/adapters';
 import {
   databaseUrlSchema,
   EnvValidationError,
@@ -25,6 +25,8 @@ const apiEnvSchema = z.object({
     .optional(),
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
+  // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
+  ...ebayEnvShape,
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -37,6 +39,8 @@ export interface ApiConfig {
   readonly authProvider: AuthProviderId;
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
+  /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
+  readonly ebayApi: EbayCredentials | null;
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -49,8 +53,9 @@ export function loadApiConfig(
     requiredInProduction: ['DATABASE_URL', 'AUTH_PROVIDER'],
   });
 
+  const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
+  const problems: string[] = [...ebay.problems];
   if (parsed.NODE_ENV === 'production') {
-    const problems: string[] = [];
     // DEVELOPMENT-ONLY auth must never run in production. No managed provider exists
     // yet (TBD), so production cannot start until one is added - by design.
     if (parsed.AUTH_PROVIDER === 'dev') {
@@ -60,8 +65,8 @@ export function loadApiConfig(
     for (const key of ['EBAY_DEV_SCENARIO', 'FACEBOOK_DEV_SCENARIO'] as const) {
       if (parsed[key] !== undefined) problems.push(`${key}: development-only, not allowed when NODE_ENV=production`);
     }
-    if (problems.length > 0) throw new EnvValidationError('api', problems);
   }
+  if (problems.length > 0) throw new EnvValidationError('api', problems);
 
   return Object.freeze({
     nodeEnv: parsed.NODE_ENV,
@@ -73,5 +78,6 @@ export function loadApiConfig(
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',
     }),
+    ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
   });
 }
