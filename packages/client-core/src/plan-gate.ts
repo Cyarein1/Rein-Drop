@@ -4,7 +4,9 @@ import {
   type Hunt,
   type Plan,
   type PlanEntitlements,
+  type PlanPricing,
 } from '@rein-drop/contracts';
+import { formatMoney } from './money.js';
 
 /**
  * Plan gate view model (App Flow Blueprint section 6), built ONLY from server data
@@ -28,10 +30,23 @@ export function describeEntitlements(e: PlanEntitlements): string[] {
   ];
 }
 
+const INTERVAL_LABEL = { day: 'day', week: 'week', month: 'month', year: 'year' } as const;
+
+/** "Free", "Price TBD", or the provider's price, e.g. "R 199,00 / month" - never a made-up price. */
+export function priceLabel(pricing: PlanPricing, localeTag: string): string {
+  if (pricing.status === 'free') return 'Free';
+  if (pricing.status === 'tbd') return 'Price TBD';
+  const unit = INTERVAL_LABEL[pricing.interval];
+  const per = pricing.intervalCount === 1 ? `/ ${unit}` : `every ${pricing.intervalCount} ${unit}s`;
+  return `${formatMoney(pricing.amount, localeTag)} ${per}`;
+}
+
 export interface PlanGateOption {
   plan: Plan;
   /** Pricing label - never a made-up price. */
   priceLabel: string;
+  /** Free, or a paid plan with a real price (a TBD plan can't be chosen). */
+  available: boolean;
   lines: string[];
   /** Why this plan cannot run the hunt right now (empty = it can). */
   reasons: ActivationBlockReason[];
@@ -49,12 +64,14 @@ export function planGateOptions(
   hunt: Pick<Hunt, 'marketplaces' | 'location' | 'priority'>,
   activeHuntsInUse: number,
   currentPlanCode: string | null,
+  localeTag = 'en',
 ): PlanGateOption[] {
   const options = plans.map((plan) => {
     const reasons = evaluateActivation(plan.entitlements, activeHuntsInUse, hunt);
     return {
       plan,
-      priceLabel: plan.pricing.status === 'free' ? 'Free' : 'Price TBD',
+      priceLabel: priceLabel(plan.pricing, localeTag),
+      available: plan.pricing.status !== 'tbd',
       lines: describeEntitlements(plan.entitlements),
       reasons,
       canRunHunt: reasons.length === 0,

@@ -5,6 +5,7 @@ import {
   ApiError,
   type ActivationBlock,
   type ActivationCheck,
+  type BillingInfo,
   type EntitlementEvaluation,
   type Hunt,
   type Plan,
@@ -28,11 +29,16 @@ interface Loaded {
   plans: Plan[];
   entitlements: EntitlementEvaluation;
   check: ActivationCheck;
+  billing: BillingInfo;
 }
 
 type GateView = { kind: 'quick' } | { kind: 'gate' } | { kind: 'confirm'; option: PlanGateOption } | { kind: 'live'; hunt: Hunt };
 
-/** Start watching: plan gate + DEVELOPMENT-ONLY fake billing confirmation (App Flow Blueprint sections 6-7). */
+/**
+ * Start watching: plan gate (App Flow Blueprint sections 6-7). Free works here; paid plans are bought
+ * on the web (Stripe) - native store billing is not built (decision 0014). Development builds keep
+ * the fake confirmation.
+ */
 export default function StartWatchingScreen() {
   return (
     <SessionGate>
@@ -54,11 +60,11 @@ function StartWatchingLoader() {
     Promise.resolve()
       .then(() => {
         const api = getApiClient();
-        return Promise.all([api.getHunt(id), api.listPlans(), api.getEntitlements(), api.checkHuntActivation(id)]);
+        return Promise.all([api.getHunt(id), api.listPlans(), api.getEntitlements(), api.checkHuntActivation(id), api.getBillingInfo()]);
       })
       .then(
-        ([hunt, plans, entitlements, check]) =>
-          !cancelled && setState({ status: 'ready', data: { hunt, plans, entitlements, check } }),
+        ([hunt, plans, entitlements, check, billing]) =>
+          !cancelled && setState({ status: 'ready', data: { hunt, plans, entitlements, check, billing } }),
         (err: unknown) =>
           !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
       );
@@ -99,7 +105,7 @@ function StartWatchingLoader() {
   return <PlanGate {...state.data} />;
 }
 
-function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
+function PlanGate({ hunt, plans, entitlements, check, billing }: Loaded) {
   const router = useRouter();
   const session = useSession();
   const context = huntFormContext(session.user.locale);
@@ -113,15 +119,16 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const options = planGateOptions(plans, hunt, entitlements.usage.activeHunts, entitlements.subscription?.planCode ?? null);
+  const options = planGateOptions(plans, hunt, entitlements.usage.activeHunts, entitlements.subscription?.planCode ?? null, context.localeTag);
 
-  const start = async (planCode?: string) => {
+  /** Free: no card. Development builds: the fake confirmation. Paid plans in Stripe mode never get here. */
+  const start = async (choice?: { planCode: string; free: boolean }) => {
     setBusy(true);
     setError(null);
     try {
       const api = getApiClient();
-      // DEVELOPMENT ONLY: fake billing confirmation. TODO(billing): real checkout - not integrated.
-      if (planCode) await api.confirmDevBilling(planCode);
+      if (choice?.free) await api.chooseFreePlan();
+      else if (choice) await api.confirmDevBilling(choice.planCode);
       setView({ kind: 'live', hunt: await api.transitionHunt(hunt.id, 'activate') });
     } catch (err) {
       if (err instanceof ApiError && err.activationBlock) {
@@ -129,7 +136,7 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
         setView({ kind: 'gate' });
       }
       setError(
-        err instanceof ApiError && err.status === 404 && planCode
+        err instanceof ApiError && err.status === 404 && choice
           ? "Billing isn't available yet."
           : err instanceof Error
             ? err.message
@@ -186,14 +193,27 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
 
   if (view.kind === 'confirm') {
     const { option } = view;
+    const free = option.plan.pricing.status === 'free';
+    // No in-app purchases: paid plans are bought on the web (native store billing isn't built).
+    const webOnly = !free && billing.mode === 'stripe';
     return (
       <Screen>
         <Stack.Screen options={{ title: 'Confirm plan' }} />
-        <SystemBanner
-          tone="warning"
-          title="Development billing - no card, no charge"
-          message="This stands in for real checkout while billing isn't built. Confirming records your plan choice only."
-        />
+        {free ? (
+          <SystemBanner tone="info" title="Free - no card, no charge" message="You can upgrade later if you need more live Hunts or marketplaces." />
+        ) : webOnly ? (
+          <SystemBanner
+            tone="info"
+            title="Paid plans are bought on the web"
+            message={`${option.plan.name} isn't sold in the app. Sign in to Rein Drop on the web to subscribe; your plan then applies here too.`}
+          />
+        ) : (
+          <SystemBanner
+            tone="warning"
+            title="Development billing - no card, no charge"
+            message="This stands in for real checkout in development. Confirming records your plan choice only."
+          />
+        )}
         <Card title={option.plan.name} action={<Badge tone="neutral">{option.priceLabel}</Badge>}>
           {option.lines.map((l) => (
             <Text key={l} style={[styles.line, font('regular')]}>
@@ -202,9 +222,11 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
           ))}
         </Card>
         {error && <SystemBanner tone="error" title="Couldn't start" message={error} />}
-        <Button onPress={() => start(option.plan.code)} loading={busy} fullWidth>
-          Confirm (development) and start
-        </Button>
+        {!webOnly && (
+          <Button onPress={() => start({ planCode: option.plan.code, free })} loading={busy} fullWidth>
+            {free ? 'Choose Free and start' : 'Confirm (development) and start'}
+          </Button>
+        )}
         <Button variant="secondary" onPress={() => setView({ kind: 'gate' })} disabled={busy} fullWidth>
           Back to plans
         </Button>
@@ -215,11 +237,13 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
   return (
     <Screen description={`Choose a plan to start watching “${hunt.name}”.`}>
       <Stack.Screen options={{ title: 'Choose a plan' }} />
-      <SystemBanner
-        tone="info"
-        title="Development data"
-        message="Plans, limits and prices are placeholders while pricing is decided. No payment is taken."
-      />
+      {billing.mode === 'development' && (
+        <SystemBanner
+          tone="info"
+          title="Development data"
+          message="Plans, limits and prices are placeholders while pricing is decided. No payment is taken."
+        />
+      )}
       {block && (
         <SystemBanner
           tone="warning"
@@ -265,7 +289,7 @@ function PlanGate({ hunt, plans, entitlements, check }: Loaded) {
           <Button
             variant={option.recommended ? 'primary' : 'secondary'}
             onPress={() => setView({ kind: 'confirm', option })}
-            disabled={!option.canRunHunt}
+            disabled={!option.canRunHunt || !option.available}
             fullWidth
           >
             {`Choose ${option.plan.name}`}

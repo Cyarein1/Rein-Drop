@@ -16,8 +16,8 @@ These block or shape work; the code uses placeholders until you decide.
 
 | # | Decision | Raised | Placeholder in use |
 |---|---|---|---|
-| D2 | Billing provider (Stripe is the leading candidate) and mobile store billing | Step 16 | Fake development checkout, 404 in production |
-| D3 | Plan prices and limits (Free / Pro / Ultimate) | Step 16 | "Price TBD"; placeholder limits in the seed |
+| D2 | Mobile store billing (App Store / Google Play) - web billing is Stripe (decision 0014) | Step 16 | Paid plans are bought on the web only; the app sells nothing |
+| D3 | Plan prices and limits (Free / Pro / Ultimate) | Step 16 | Prices: Stripe prices mapped by STRIPE_PRICE_IDS ("Price TBD" until set); placeholder limits in the seed |
 | D4 | What non-resellers get after answering "no" | Step 12 | "Coming soon" screen |
 | D5 | Seller Snapshot question 4 wording / options per category (Blueprint section 22) | Step 8 | Blueprint wording |
 | D6 | Facebook needs a location to go live - confirm | Step 13 | Required |
@@ -44,6 +44,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
 | D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
+| D36 | Grace for failed renewals: keep paid access while Stripe retries (PAST_DUE), and for how long | Step 42 | PAST_DUE keeps access until Stripe gives up (its retry settings) |
+| D37 | Collect payment details before activating even Free (App Flow Blueprint "billing details")? | Step 42 | No - Free needs no card (behaviour preserved) |
 | D34 | Session length: how long a sign-in lasts (web + mobile), and whether mobile should stay signed in longer | Step 41 | 7 days absolute (AUTH_SESSION_MAX_AGE_HOURS / EXPO_PUBLIC_AUTH_SESSION_MAX_AGE_HOURS) |
 | D35 | Sign-in screens: Entra's hosted (brandable) page, or fully in-app email/password forms (Entra native authentication API) | Step 41 | Hosted page |
 | D33 | Which Foundry model(s) / deployment type (Standard vs provisioned) and region for each AI task, and the AI budget per analysis | Step 40 | None - set by FOUNDRY_DEPLOYMENT* in the environment |
@@ -120,8 +122,14 @@ These block or shape work; the code uses placeholders until you decide.
 - Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot.
 
 ### Plans and billing
-- Real checkout (D2) - step 17; prompt 39.
-- Downgrade must never delete Hunts - docs review.
+- Downgrade must never delete Hunts - docs review (holds: hunts above the limit are paused, never deleted - step 42).
+- Stripe set-up for real: products / prices, Customer Portal configuration, webhook endpoint + secret, tax settings; test-mode run with the Stripe CLI - step 42.
+- Stripe integration not exercised against Stripe itself (tests use a fake Stripe API) - step 42.
+- Downgrade enforcement covers the live-Hunt limit only; marketplaces / priority no longer in the plan aren't enforced on running hunts - step 42.
+- After a downgrade the most recently started hunts are paused automatically; a "choose which stay live" screen isn't built - step 42.
+- Native store billing (D2) and in-app plan purchase on mobile - step 42.
+- Invoices / receipts and billing emails are Stripe's (Customer Portal); nothing in Rein Drop - step 42.
+- Failed BillingEvents aren't surfaced anywhere but logs (diagnostics / alerting) - step 42.
 
 ### Outcomes and analytics
 - Returns and write-offs (statuses exist, no endpoints) - step 31.
@@ -141,7 +149,6 @@ These block or shape work; the code uses placeholders until you decide.
 - UI translations (only English exists) - step 14.
 - App-store storefront country to refine mobile locale detection - step 14.
 - Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
-- Cancellation flow is a placeholder (explains, keeps the plan; can't cancel) until billing exists (D2) - step 36.
 - Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
 - Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
@@ -178,7 +185,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
+40 Production hardening - 41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
 ## Resolved
@@ -241,3 +248,7 @@ These block or shape work; the code uses placeholders until you decide.
 | Sign-out (web + mobile) | Step 7 | Step 41 |
 | Web production mode can't sign in until D1 | Step 10 | Step 41 |
 | Web Proxy matcher missed /inventory | Step 32 | Step 41 |
+| Real checkout (D2, web) - prompt 39 | Step 17 | Step 42 (Stripe, decision 0014) |
+| Cancellation flow placeholder (couldn't cancel) | Step 36 | Step 42 (Stripe portal; copy now matches what happens) |
+| Cancellation copy promised "you choose which stay live" (not built) and nothing enforced the Free limit after a downgrade | Step 36 | Step 42 (hunts above the limit pause automatically, copy corrected) |
+| Env errors could echo malformed secret-named values (only DATABASE_URL was masked) | Step 2 | Step 42 (SECRET / TOKEN / PASSWORD / *_KEY masked) |

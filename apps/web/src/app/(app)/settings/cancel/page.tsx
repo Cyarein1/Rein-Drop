@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cancellationState } from "@rein-drop/client-core";
-import { getServerApiClient } from "@/auth";
+import { cancellationState, huntFormContext } from "@rein-drop/client-core";
+import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
-import { Page, ProductState, SystemBanner } from "@/components/ui";
+import { Button, Page, ProductState, SystemBanner } from "@/components/ui";
+import { billingPortalFormAction } from "../../billing-actions";
 
 export const metadata: Metadata = { title: "Cancel plan" };
 
 /**
- * Cancellation flow - PLACEHOLDER until a billing provider exists (D2). Shows exactly what would
- * happen (nothing is deleted), offers to keep the plan, and says plainly that online cancellation
- * isn't available yet. Soft, never guilt-tripping (Mascot Usage Guide: plan cancellation).
+ * Cancellation (decision 0014): says exactly what happens (nothing is deleted, the plan lasts until
+ * the paid period ends, then Free limits apply), offers to keep the plan, and cancels in Stripe's
+ * billing portal. The plan only changes when Stripe confirms it. Soft, never guilt-tripping.
  */
 export default function CancelPlanPage() {
   return (
@@ -23,12 +24,40 @@ export default function CancelPlanPage() {
 }
 
 async function CancelLoader() {
-  const api = await getServerApiClient();
-  const ent = await api.getEntitlements().catch(() => null);
-  if (!ent) {
+  const [session, api] = await Promise.all([verifySession(), getServerApiClient()]);
+  const [ent, billing] = await Promise.all([api.getEntitlements(), api.getBillingInfo()]).catch(() => [null, null] as const);
+  if (!ent || !billing) {
     return <SystemBanner tone="error" title="Couldn't load your plan" message="Go back to Settings and try again." action={<Link href="/settings">Settings</Link>} />;
   }
-  const view = cancellationState({ name: ent.plan.name, isFree: ent.plan.code === "free" });
+  const sub = ent.subscription;
+  const paidUntil = sub?.currentPeriodEnd
+    ? new Intl.DateTimeFormat(huntFormContext(session.user.locale).localeTag, { dateStyle: "medium" }).format(new Date(sub.currentPeriodEnd))
+    : null;
+  if (sub?.provider === "stripe" && sub.cancelAtPeriodEnd) {
+    return (
+      <>
+        <Link href="/settings">← Settings</Link>
+        <SystemBanner
+          tone="info"
+          title={`${ent.plan.name} is already cancelled`}
+          message={`You keep it${paidUntil ? ` until ${paidUntil}` : " until the end of the paid period"}, then move to Free. Changed your mind? You can keep it in billing.`}
+          action={
+            <form action={billingPortalFormAction}>
+              <input type="hidden" name="flow" value="manage" />
+              <input type="hidden" name="returnPath" value="/settings" />
+              <Button type="submit" variant="secondary">
+                Open billing
+              </Button>
+            </form>
+          }
+        />
+      </>
+    );
+  }
+  const view = cancellationState(
+    { name: ent.plan.name, isFree: ent.plan.code === "free" },
+    { canCancelOnline: billing.mode === "stripe" && sub?.provider === "stripe", paidUntil },
+  );
   return (
     <>
       <Link href="/settings">← Settings</Link>
@@ -40,7 +69,16 @@ async function CancelLoader() {
             ))}
           </ul>
         )}
-        {view.consequences.length > 0 && <SystemBanner tone="info" title="Not available yet" message={view.unavailableReason} />}
+        {view.available && (
+          <form action={billingPortalFormAction}>
+            <input type="hidden" name="flow" value="cancel" />
+            <input type="hidden" name="returnPath" value="/settings" />
+            <Button type="submit" variant="secondary">
+              Cancel in billing
+            </Button>
+          </form>
+        )}
+        {view.unavailableReason && <SystemBanner tone="info" title="Not available here" message={view.unavailableReason} />}
       </ProductState>
     </>
   );

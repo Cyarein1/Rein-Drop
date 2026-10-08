@@ -94,6 +94,9 @@ Invalid environment configuration for api:
 | `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_REQUIRED_SCOPE` | api | -, -, -, `access_as_user` | Token verification for `entra` (identifiers, not secrets). |
 | `ENTRA_WEB_CLIENT_ID`, `ENTRA_WEB_CLIENT_SECRET`, `APP_BASE_URL`, `AUTH_SESSION_SECRET`, `AUTH_SESSION_MAX_AGE_HOURS` | web | `AUTH_SESSION_MAX_AGE_HOURS=168` | Web sign-in for `entra` (+ `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`). **Client secret and session secret are secrets.** |
 | `EXPO_PUBLIC_AUTH_PROVIDER`, `EXPO_PUBLIC_ENTRA_*` | mobile | `dev` in development, `entra` in release builds | Mobile sign-in (public client IDs only). |
+| `BILLING_PROVIDER` | api | `dev` outside production | `dev` (fake confirmation, refused in production) or `stripe` (decision 0014). |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | api | - | Required for `stripe`. **Secrets.** Test-mode keys locally. |
+| `STRIPE_PRICE_IDS`, `WEB_APP_URL` | api | - | Plan code -> Stripe price id (`pro=price_...,ultimate=price_...`; prices live in Stripe, never in code) and the web origin for return URLs. |
 | `DATABASE_URL` | api, worker, Prisma CLI (`packages/db`) | `postgresql://reindrop:reindrop@localhost:5432/reindrop` | Required in production (api/worker). Set it in each `.env` you use. |
 | `HUNT_POLL_INTERVAL_MINUTES` | worker | `15` (development only) | How often each LIVE hunt is searched per marketplace. Required in production (cost model TBD). |
 | `WORKER_SCHEDULER_INTERVAL_MS`, `WORKER_RUNNER_INTERVAL_MS`, `WORKER_JOBS_PER_TICK`, `WORKER_JOB_LEASE_MS`, `WORKER_JOB_MAX_ATTEMPTS`, `WORKER_SEARCH_MAX_PAGES` | worker | `30000`, `2000`, `5`, `120000`, `5`, `1` | Pipeline tuning - see `apps/worker/.env.example` |
@@ -239,6 +242,22 @@ it can be swapped in without touching features:
   and maps the user's `oid` to a Rein Drop user (created on first sign-in, never linked by email).
 - Web sessions are encrypted httpOnly cookies, refreshed by the Proxy, ending after
   `AUTH_SESSION_MAX_AGE_HOURS`; Settings -> Sign out ends the Entra session too.
+
+## Billing locally with Stripe test mode
+
+Paid plans use Stripe (decision [0014](docs/decisions/0014-stripe-web-billing.md)); Free never needs
+a card. Without Stripe settings the API keeps the development fake (`BILLING_PROVIDER=dev`).
+
+1. In the Stripe dashboard (test mode): create a product + recurring price per paid plan, and
+   enable the Customer Portal (allow switching between those prices and cancelling at period end).
+2. In `apps/api/.env`: `BILLING_PROVIDER=stripe`, `STRIPE_SECRET_KEY=sk_test_...`,
+   `STRIPE_PRICE_IDS=pro=price_...,ultimate=price_...`, `WEB_APP_URL=http://localhost:3000`.
+3. Forward webhooks with the Stripe CLI and copy the printed `whsec_...` into `STRIPE_WEBHOOK_SECRET`:
+   `stripe listen --forward-to localhost:4000/billing/webhooks/stripe`
+4. Restart the API, choose a paid plan on a Hunt's "Start watching" page and pay with the test card
+   `4242 4242 4242 4242`. The plan changes when the webhook arrives; Settings -> Manage billing
+   opens the portal (change plan / cancel). Events for customers that aren't Rein Drop users (e.g.
+   `stripe trigger` fixtures) are recorded and ignored.
 
 ## API conventions (apps/api)
 

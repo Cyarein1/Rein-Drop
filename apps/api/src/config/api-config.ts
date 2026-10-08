@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AUTH_PROVIDER_IDS, ENTRA_DEFAULT_SCOPE_NAME, type AuthProviderId } from '@rein-drop/contracts';
 import type { EntraApiConfig } from '../auth/entra-auth.provider.js';
+import { billingEnvShape, resolveBillingConfig, type BillingConfig } from '../modules/billing/billing-config.js';
 // Config is wiring (like the registry provider): it may name development marketplace scenarios.
 import {
   DEV_SCENARIOS,
@@ -43,6 +44,8 @@ const apiEnvSchema = z.object({
   ENTRA_REQUIRED_SCOPE: z.string().trim().regex(/^[\w.-]{1,100}$/, 'must be a scope name, e.g. access_as_user').optional(),
   EBAY_DEV_SCENARIO: devScenarioSchema,
   FACEBOOK_DEV_SCENARIO: devScenarioSchema,
+  // Web billing (decision 0014): dev | stripe. Secrets come from the environment only.
+  ...billingEnvShape,
   // Real eBay source (Browse API) - see resolveEbaySource. Secrets come from the environment only.
   ...ebayEnvShape,
   // Facebook data provider: dev (default) or the Apify development integration.
@@ -59,6 +62,8 @@ export interface ApiConfig {
   readonly authProvider: AuthProviderId;
   /** Entra External ID verification settings when authProvider is "entra", else null. */
   readonly entra: EntraApiConfig | null;
+  /** Web billing: Stripe settings, or the development fake. Holds secrets - never log it. */
+  readonly billing: BillingConfig;
   /** Behaviour of the development marketplace sources (ignored by real adapters). */
   readonly devMarketplaceScenarios: { readonly ebay: DevScenario; readonly facebook: DevScenario };
   /** Real eBay Browse API credentials, or null for the development eBay source. Never log this. */
@@ -79,7 +84,8 @@ export function loadApiConfig(
 
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
-  const problems: string[] = [...ebay.problems, ...facebook.problems];
+  const billing = resolveBillingConfig(parsed, parsed.NODE_ENV);
+  const problems: string[] = [...ebay.problems, ...facebook.problems, ...billing.problems];
   const authProvider: AuthProviderId = parsed.AUTH_PROVIDER ?? (parsed.NODE_ENV === 'production' ? 'entra' : 'dev');
   let entra: EntraApiConfig | null = null;
   if (authProvider === 'entra') {
@@ -114,6 +120,7 @@ export function loadApiConfig(
     // Development default is "dev"; production requires an explicit value (and never "dev").
     authProvider,
     entra: entra ? Object.freeze(entra) : null,
+    billing: Object.freeze(billing.billing ?? { provider: 'dev' }),
     devMarketplaceScenarios: Object.freeze({
       ebay: parsed.EBAY_DEV_SCENARIO ?? 'normal',
       facebook: parsed.FACEBOOK_DEV_SCENARIO ?? 'normal',

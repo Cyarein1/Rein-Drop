@@ -11,8 +11,15 @@ function problemsFor(env: Record<string, string | undefined>): string[] {
   throw new Error('expected EnvValidationError');
 }
 
-// Production needs a real eBay source; these tests are about other variables.
-const EBAY = { EBAY_CLIENT_ID: 'test-id', EBAY_CLIENT_SECRET: 'test-secret' };
+// Production needs a real eBay source and Stripe billing; these tests are about other variables.
+const EBAY = {
+  EBAY_CLIENT_ID: 'test-id',
+  EBAY_CLIENT_SECRET: 'test-secret',
+  STRIPE_SECRET_KEY: 'sk_test_123',
+  STRIPE_WEBHOOK_SECRET: 'whsec_123',
+  STRIPE_PRICE_IDS: 'pro=price_123',
+  WEB_APP_URL: 'https://app.example.com',
+};
 
 describe('loadApiConfig', () => {
   it('uses local defaults when nothing is set (dev auth outside production)', () => {
@@ -22,6 +29,7 @@ describe('loadApiConfig', () => {
       databaseUrl: LOCAL_DATABASE_URL,
       authProvider: 'dev',
       entra: null,
+      billing: { provider: 'dev' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
       facebookApify: null,
@@ -76,6 +84,13 @@ describe('loadApiConfig', () => {
     ]);
   });
 
+  it('never echoes a malformed secret back (Stripe keys)', () => {
+    const problems = problemsFor({ BILLING_PROVIDER: 'stripe', STRIPE_SECRET_KEY: 'pk_live_oops-public-key', STRIPE_WEBHOOK_SECRET: 'secret-value-123' }).join(' ');
+    expect(problems).toContain('STRIPE_SECRET_KEY: must be a Stripe secret');
+    expect(problems).not.toContain('pk_live_oops-public-key');
+    expect(problems).not.toContain('secret-value-123');
+  });
+
   it('rejects unknown auth providers', () => {
     expect(problemsFor({ AUTH_PROVIDER: 'magic' })[0]).toMatch(/^AUTH_PROVIDER: must be one of: dev/);
   });
@@ -97,6 +112,7 @@ describe('loadApiConfig', () => {
       databaseUrl: 'postgresql://u:p@db.example:5432/app',
       authProvider: 'dev',
       entra: null,
+      billing: { provider: 'dev' },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       ebayApi: null,
       facebookApify: null,

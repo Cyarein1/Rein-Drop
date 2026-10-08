@@ -3,17 +3,19 @@ import type { Plan } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient } from '@rein-drop/db';
 import { AppException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { BillingService } from '../billing/billing.service.js';
 import { SubscriptionsService } from '../billing/subscriptions.service.js';
 import { PLAN_INCLUDE, toPlan } from './plans.mapper.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
-/** Plans and what they entitle. Prices are not modelled (TBD). */
+/** Plans and what they entitle. Prices come from the billing provider (decision 0014), never from code. */
 @Injectable()
 export class PlansService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly subscriptions: SubscriptionsService,
+    private readonly billing: BillingService,
   ) {}
 
   /** Plans offered on the plan gate: active, not development-only, in display order. */
@@ -23,11 +25,14 @@ export class PlansService {
       include: PLAN_INCLUDE,
       orderBy: { sortOrder: 'asc' },
     });
-    return rows.map(toPlan);
+    return Promise.all(rows.map(async (row) => toPlan(row, await this.billing.pricing(row))));
   }
 
-  /** The user's current plan: their active subscription's plan, otherwise the free plan. */
-  async planForUser(userId: string, db: Db = this.prisma): Promise<Plan> {
+  /**
+   * The user's current plan: their active subscription's plan, otherwise the free plan.
+   * `withPricing` asks the billing provider for the price (not inside transactions / hot paths).
+   */
+  async planForUser(userId: string, db: Db = this.prisma, withPricing = false): Promise<Plan> {
     const planId = await this.subscriptions.activePlanId(userId, db);
     const row = planId
       ? await db.plan.findUnique({ where: { id: planId }, include: PLAN_INCLUDE })
@@ -39,6 +44,6 @@ export class PlansService {
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    return toPlan(row);
+    return withPricing ? toPlan(row, await this.billing.pricing(row)) : toPlan(row);
   }
 }

@@ -68,7 +68,7 @@ describe('Plans & entitlements (integration, real database)', () => {
     expect((await as(request(server).get('/me/entitlements')).expect(200)).body.subscription).toBeNull();
 
     const free = await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'free' }).expect(200);
-    expect(free.body.subscription).toEqual({ planCode: 'free', status: 'ACTIVE', provider: 'dev-fake', isDevelopment: true });
+    expect(free.body.subscription).toEqual({ planCode: 'free', status: 'ACTIVE', provider: 'dev-fake', isDevelopment: true, cancelAtPeriodEnd: false, currentPeriodEnd: null });
 
     await as(request(server).post('/billing/dev/confirm')).send({ planCode: 'pro' }).expect(200);
     const pro = await as(request(server).get('/me/entitlements')).expect(200);

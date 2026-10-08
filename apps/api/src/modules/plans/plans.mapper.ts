@@ -1,4 +1,4 @@
-import { ENTITLEMENT_KEYS as K, HUNT_PRIORITIES, type HuntPriority, type Plan, type PlanEntitlements } from '@rein-drop/contracts';
+import { ENTITLEMENT_KEYS as K, HUNT_PRIORITIES, type HuntPriority, type Plan, type PlanEntitlements, type PlanPricing } from '@rein-drop/contracts';
 import type { Prisma } from '@rein-drop/db';
 import { isMarketplaceId } from '@rein-drop/marketplace-core';
 
@@ -34,11 +34,12 @@ export function toEntitlements(rows: readonly EntitlementRow[]): PlanEntitlement
   };
 }
 
-export function toPlan(row: PlanRow): Plan {
+/** `pricing` comes from the billing provider (BillingService.pricing); a free plan is always free. */
+export function toPlan(row: PlanRow, pricing: PlanPricing = { status: 'tbd' }): Plan {
   return {
     code: row.code,
     name: row.name,
-    pricing: row.isFree ? { status: 'free' } : { status: 'tbd' },
+    pricing: row.isFree ? { status: 'free' } : pricing,
     limitsFinal: row.limitsFinal,
     entitlements: toEntitlements(row.entitlements),
   };

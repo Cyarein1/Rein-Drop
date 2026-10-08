@@ -65,6 +65,8 @@ export class EnvValidationError extends Error {
 
 /** Env vars whose values must never be echoed in error messages or logs. */
 const SENSITIVE_KEYS = new Set(['DATABASE_URL']);
+/** Never echo a value whose name says it is a secret (API keys, tokens, signing secrets). */
+const isSensitive = (key: string) => SENSITIVE_KEYS.has(key) || /SECRET|TOKEN|PASSWORD|_KEY$/.test(key);
 
 export interface ParseEnvOptions<Key extends string> {
   /** Keys that are optional in development but must be set when NODE_ENV=production. */
@@ -94,7 +96,7 @@ export function parseEnv<Shape extends z.ZodRawShape>(
     : result.error.issues.map((issue) => {
         const key = issue.path.map(String).join('.') || '(root)';
         const raw = input[key];
-        const got = raw === undefined || SENSITIVE_KEYS.has(key) ? '' : ` (got "${raw}")`;
+        const got = raw === undefined || isSensitive(key) ? '' : ` (got "${raw}")`;
         return `${key}: ${issue.message}${got}`;
       });
 

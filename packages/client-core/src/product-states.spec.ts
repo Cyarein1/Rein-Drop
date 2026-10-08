@@ -124,12 +124,18 @@ describe('plan suggestion', () => {
   });
 });
 
-describe('cancellation (placeholder)', () => {
-  it('reassuring and factual; cannot complete until billing exists', () => {
-    const paid = cancellationState({ name: 'Pro', isFree: false });
-    expect(paid).toMatchObject({ title: 'Cancel Pro?', available: false, actions: [{ label: 'Keep my plan', variant: 'primary' }] });
+describe('cancellation', () => {
+  it('a web-billed plan can be cancelled online; reassuring and factual about what happens', () => {
+    const paid = cancellationState({ name: 'Pro', isFree: false }, { canCancelOnline: true, paidUntil: '12 Nov 2026' });
+    expect(paid).toMatchObject({ title: 'Cancel Pro?', available: true, unavailableReason: null, actions: [{ label: 'Keep my plan', variant: 'primary' }] });
+    expect(paid.consequences[0]).toBe("You keep Pro until 12 Nov 2026 - the end of the period you've paid for. You won't be charged again.");
     expect(paid.consequences).toContain('Your Hunts are kept - nothing is ever deleted.');
-    expect(paid.unavailableReason).toMatch(/Nothing will be charged/);
-    expect(cancellationState({ name: 'Free', isFree: true })).toMatchObject({ title: "You're on the Free plan", consequences: [] });
+    expect(paid.consequences.join(' ')).toMatch(/paused, the most recently started first/);
+  });
+
+  it('says plainly when the plan cannot be cancelled here, and Free has nothing to cancel', () => {
+    const other = cancellationState({ name: 'Pro', isFree: false });
+    expect(other).toMatchObject({ available: false, unavailableReason: expect.stringMatching(/Nothing will be charged/) });
+    expect(cancellationState({ name: 'Free', isFree: true })).toMatchObject({ title: "You're on the Free plan", consequences: [], available: false, unavailableReason: null });
   });
 });

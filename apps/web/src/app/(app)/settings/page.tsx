@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { huntFormContext, snapshotAnswerRows } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
+import { billingPortalFormAction } from "../billing-actions";
 import { Protected } from "@/auth/Protected";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { PlaceholderNotice } from "../placeholder-notice";
@@ -9,10 +10,11 @@ import { NotificationSettings } from "./NotificationSettings";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
   return (
     <Protected>
       <Page title="Settings" width="narrow">
+        <BillingNotice searchParams={searchParams} />
         <PlaceholderNotice>Most settings sections are listed but not editable yet.</PlaceholderNotice>
 
         <AccountCard />
@@ -42,11 +44,17 @@ export default function SettingsPage() {
 }
 
 /** Current plan and its live-Hunt use; cancellation is a placeholder flow until billing exists (D2). */
+/** Shown after the billing portal couldn't be opened (?billing=unavailable). */
+async function BillingNotice({ searchParams }: { searchParams: PageProps<"/settings">["searchParams"] }) {
+  if ((await searchParams).billing !== "unavailable") return null;
+  return <SystemBanner tone="error" title="Couldn't open billing" message="Rein Drop couldn't reach the billing service. Please try again in a moment." />;
+}
+
 async function PlanCard() {
-  const api = await getServerApiClient();
-  const ent = await api.getEntitlements().catch(() => null);
+  const [session, api] = await Promise.all([verifySession(), getServerApiClient()]);
+  const [ent, billing] = await Promise.all([api.getEntitlements(), api.getBillingInfo()]).catch(() => [null, null] as const);
   const muted = { color: "var(--rd-text-muted)" };
-  if (!ent) {
+  if (!ent || !billing) {
     return (
       <Card title="Plan & billing">
         <SystemBanner tone="error" title="Couldn't load your plan" message="Refresh the page to try again." />
@@ -54,16 +62,39 @@ async function PlanCard() {
     );
   }
   const limit = ent.entitlements.activeHunts.limit;
+  const sub = ent.subscription;
+  const date = (iso: string) => new Intl.DateTimeFormat(huntFormContext(session.user.locale).localeTag, { dateStyle: "medium" }).format(new Date(iso));
+  const renewal =
+    sub?.provider === "stripe" && sub.currentPeriodEnd
+      ? sub.cancelAtPeriodEnd
+        ? `Cancelled - ends ${date(sub.currentPeriodEnd)}, then you move to Free.`
+        : sub.status === "PAST_DUE"
+          ? "Your last payment didn't go through - update your payment method in billing."
+          : `Renews ${date(sub.currentPeriodEnd)}.`
+      : null;
   return (
     <Card title="Plan & billing" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
       <p>
         {limit === null ? `${ent.usage.activeHunts} live Hunts (no limit)` : `${ent.usage.activeHunts} of ${limit} live ${limit === 1 ? "Hunt" : "Hunts"} in use`}
       </p>
-      <p style={muted}>Prices and limits are placeholders until plans are final.</p>
-      <div>
-        <ButtonLink href="/settings/cancel" variant="text">
-          Cancel plan
-        </ButtonLink>
+      {renewal && <p>{renewal}</p>}
+      {!ent.plan.limitsFinal && <p style={muted}>Limits are placeholders until plans are final.</p>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {billing.canManage && (
+          // Payment method, invoices, plan changes and cancellation live in Stripe's billing portal.
+          <form action={billingPortalFormAction}>
+            <input type="hidden" name="flow" value="manage" />
+            <input type="hidden" name="returnPath" value="/settings" />
+            <Button type="submit" variant="secondary">
+              Manage billing
+            </Button>
+          </form>
+        )}
+        {ent.plan.code !== "free" && (
+          <ButtonLink href="/settings/cancel" variant="text">
+            Cancel plan
+          </ButtonLink>
+        )}
       </div>
     </Card>
   );

@@ -19,7 +19,7 @@ export class EntitlementsController {
   async evaluate(@CurrentUser() user: Principal): Promise<EntitlementEvaluation> {
     const [subscription, plan, activeHunts] = await Promise.all([
       this.subscriptions.current(user.userId),
-      this.plans.planForUser(user.userId),
+      this.plans.planForUser(user.userId, undefined, true),
       this.hunts.countLive(user.userId),
     ]);
     const limit = plan.entitlements.activeHunts.limit;

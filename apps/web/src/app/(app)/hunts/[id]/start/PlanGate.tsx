@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-
-import { useState, useTransition } from "react";
-import type { ActivationBlock, ActivationCheck, EntitlementEvaluation, Hunt, Plan } from "@rein-drop/api-client";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import type { ActivationBlock, ActivationCheck, BillingInfo, EntitlementEvaluation, Hunt, Plan } from "@rein-drop/api-client";
 import {
   huntReview,
   planGateOptions,
@@ -11,7 +11,8 @@ import {
   type PlanGateOption,
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
-import { confirmPlanAndStart, startHunt } from "./actions";
+import { openBillingPortal } from "../../../billing-actions";
+import { chooseFreeAndStart, confirmPlanAndStart, goToCheckout, startHunt } from "./actions";
 import styles from "./PlanGate.module.css";
 
 export interface PlanGateProps {
@@ -20,22 +21,35 @@ export interface PlanGateProps {
   entitlements: EntitlementEvaluation;
   check: ActivationCheck;
   context: HuntFormContext;
+  billing: BillingInfo;
+  /** Back from Stripe Checkout (?checkout=success|cancelled). */
+  checkout: "success" | "cancelled" | null;
 }
 
 type View =
+  | { kind: "confirming" }
   | { kind: "quick" }
   | { kind: "gate" }
   | { kind: "confirm"; option: PlanGateOption }
   | { kind: "live"; hunt: Hunt };
 
 /**
- * Start watching (App Flow Blueprint sections 6-7). Plans, limits and the user's usage all
- * come from the server; pricing is shown as TBD and everything is marked as development data.
+ * Start watching (App Flow Blueprint sections 6-7). Plans, prices, limits and the user's usage all
+ * come from the server. Free needs no card; paid plans go through Stripe Checkout, and the plan
+ * changes only when Stripe confirms the payment (server-owned entitlements, decision 0014).
  */
-export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGateProps) {
+export function PlanGate({ hunt, plans, entitlements, check, context, billing, checkout }: PlanGateProps) {
   const hasPlan = entitlements.subscription !== null;
+  const paidByStripe = entitlements.subscription?.provider === "stripe";
+  const awaitingPayment = checkout === "success" && !paidByStripe;
   const [view, setView] = useState<View>(
-    hunt.status === "LIVE" ? { kind: "live", hunt } : hasPlan && check.canActivate ? { kind: "quick" } : { kind: "gate" },
+    hunt.status === "LIVE"
+      ? { kind: "live", hunt }
+      : awaitingPayment
+        ? { kind: "confirming" }
+        : hasPlan && check.canActivate
+          ? { kind: "quick" }
+          : { kind: "gate" },
   );
   const [block, setBlock] = useState<ActivationBlock | null>(
     hasPlan && !check.canActivate && check.reasons.length ? { planCode: check.planCode, reasons: check.reasons } : null,
@@ -48,6 +62,7 @@ export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGate
     hunt,
     entitlements.usage.activeHunts,
     entitlements.subscription?.planCode ?? null,
+    context.localeTag,
   );
 
   const handle = (action: () => ReturnType<typeof startHunt>) =>
@@ -64,6 +79,7 @@ export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGate
     });
 
   if (view.kind === "live") return <LiveView hunt={view.hunt} context={context} />;
+  if (view.kind === "confirming") return <ConfirmingPayment onGiveUp={() => setView({ kind: "gate" })} />;
 
   if (view.kind === "quick") {
     return (
@@ -91,13 +107,40 @@ export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGate
 
   if (view.kind === "confirm") {
     const { option } = view;
+    const isFree = option.plan.pricing.status === "free";
+    const stripe = billing.mode === "stripe";
+    const returnPath = "/hunts/" + hunt.id + "/start";
+    const confirm = isFree
+      ? { label: "Choose Free and start watching", run: () => chooseFreeAndStart(hunt.id) }
+      : !stripe
+        ? { label: "Confirm (development) and start watching", run: () => confirmPlanAndStart(hunt.id, option.plan.code) }
+        : paidByStripe
+          ? {
+              label: "Change plan in billing",
+              run: async () => ({ ok: false as const, block: null, message: (await openBillingPortal("change_plan", returnPath)).error }),
+            }
+          : { label: "Continue to secure checkout", run: () => goToCheckout(hunt.id, option.plan.code) };
     return (
       <Page title="Confirm your plan" width="narrow">
-        <SystemBanner
-          tone="warning"
-          title="Development billing - no card, no charge"
-          message="This stands in for real checkout while billing isn't built. Confirming records your plan choice only."
-        />
+        {isFree ? (
+          <SystemBanner tone="info" title="Free - no card, no charge" message="You can upgrade later if you need more live Hunts or marketplaces." />
+        ) : stripe ? (
+          <SystemBanner
+            tone="info"
+            title={paidByStripe ? "You already have a paid plan" : "Secure checkout by Stripe"}
+            message={
+              paidByStripe
+                ? "Plan changes happen in billing; your Hunts pick up the new plan as soon as it's confirmed."
+                : "You'll pay " + option.priceLabel + " on Stripe's checkout page and come back here to start watching. Cancel any time in Settings."
+            }
+          />
+        ) : (
+          <SystemBanner
+            tone="warning"
+            title="Development billing - no card, no charge"
+            message="This stands in for real checkout in development. Confirming records your plan choice only."
+          />
+        )}
         <Card title={option.plan.name} action={<Badge tone="neutral">{option.priceLabel}</Badge>}>
           <ul className={styles.lines}>
             {option.lines.map((l) => (
@@ -107,8 +150,8 @@ export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGate
         </Card>
         {error && <SystemBanner tone="error" title="Couldn't start" message={error} />}
         <div className={styles.actions}>
-          <Button onClick={() => handle(() => confirmPlanAndStart(hunt.id, option.plan.code))} loading={pending} fullWidth>
-            Confirm (development) and start watching
+          <Button onClick={() => handle(confirm.run)} loading={pending} fullWidth>
+            {confirm.label}
           </Button>
           <Button variant="secondary" onClick={() => setView({ kind: "gate" })} disabled={pending} fullWidth>
             Back to plans
@@ -120,11 +163,14 @@ export function PlanGate({ hunt, plans, entitlements, check, context }: PlanGate
 
   return (
     <Page title="Choose a plan to start watching" description={`For “${hunt.name}”`}>
-      <SystemBanner
-        tone="info"
-        title="Development data"
-        message="Plans, limits and prices are placeholders while pricing is decided. No payment is taken."
-      />
+      {checkout === "cancelled" && <SystemBanner tone="info" title="Checkout cancelled" message="You weren't charged. Choose a plan when you're ready." />}
+      {billing.mode === "development" && (
+        <SystemBanner
+          tone="info"
+          title="Development data"
+          message="Plans, limits and prices are placeholders while pricing is decided. No payment is taken."
+        />
+      )}
       {block && <BlockReasons block={block} />}
       {error && !block && <SystemBanner tone="error" title="Couldn't start" message={error} />}
 
@@ -178,12 +224,48 @@ function PlanCard({ option, onChoose }: { option: PlanGateOption; onChoose: () =
       <Button
         variant={option.recommended ? "primary" : "secondary"}
         onClick={onChoose}
-        disabled={!option.canRunHunt}
+        disabled={!option.canRunHunt || !option.available}
         fullWidth
       >
         Choose {plan.name}
       </Button>
     </Card>
+  );
+}
+
+/**
+ * Back from Stripe Checkout: the payment is confirmed by Stripe's webhook, usually within seconds.
+ * Re-reads the page every 2 s (up to a minute) until the plan shows up.
+ */
+function ConfirmingPayment({ onGiveUp }: { onGiveUp: () => void }) {
+  const router = useRouter();
+  const [tries, setTries] = useState(0);
+  const tooLong = tries >= 30;
+  useEffect(() => {
+    if (tooLong) return;
+    const timer = setTimeout(() => {
+      setTries((n) => n + 1);
+      router.refresh();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [tries, tooLong, router]);
+  return (
+    <Page title="Confirming your payment" width="narrow">
+      {tooLong ? (
+        <SystemBanner
+          tone="warning"
+          title="Still waiting for confirmation"
+          message="Stripe hasn't confirmed the payment yet. You won't be charged twice - check Settings in a few minutes."
+          action={
+            <Button variant="secondary" onClick={onGiveUp}>
+              Back to plans
+            </Button>
+          }
+        />
+      ) : (
+        <SystemBanner tone="info" title="Thanks - confirming with Stripe..." message="This usually takes a few seconds. Your Hunt starts right after." />
+      )}
+    </Page>
   );
 }
 

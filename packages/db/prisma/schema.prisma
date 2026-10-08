@@ -161,9 +161,24 @@ enum JobStatus {
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
+  /// Renewal payment failed; the provider is retrying (still entitled - decision 0014).
   PAST_DUE
   CANCELED
   EXPIRED
+  /// Checkout started but the first payment hasn't succeeded (not entitled).
+  INCOMPLETE
+  /// Paused at the provider (not entitled).
+  PAUSED
+}
+
+/// Processing state of one billing-provider webhook event.
+enum BillingEventStatus {
+  PROCESSING
+  PROCESSED
+  /// Valid but not relevant to Rein Drop (recorded so it is never re-processed).
+  IGNORED
+  /// Processing failed; a redelivery is processed again.
+  FAILED
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +217,7 @@ model User {
   sales                   Sale[]
   costs                   Cost[]
   subscriptions           Subscription[]
+  billingCustomers        BillingCustomer[]
   usageEvents             UsageEvent[]
 
   @@unique([authProvider, authSubject])
@@ -869,9 +885,13 @@ model Subscription {
   userId                 String             @db.Uuid
   planId                 String             @db.Uuid
   status                 SubscriptionStatus
-  /// TODO(billing): billing provider name and its subscription id, once chosen.
+  /// "stripe" | "free" (Free chosen, no payment) | "dev-fake" (development only).
   provider               String?
   providerSubscriptionId String?            @unique
+  /// The provider price the subscription is on (maps to the plan via configuration).
+  providerPriceId        String?
+  /// Ends at currentPeriodEnd instead of renewing (still entitled until then).
+  cancelAtPeriodEnd      Boolean            @default(false)
   currentPeriodStart     DateTime?          @db.Timestamptz(3)
   currentPeriodEnd       DateTime?          @db.Timestamptz(3)
   canceledAt             DateTime?          @db.Timestamptz(3)
@@ -882,6 +902,40 @@ model Subscription {
   plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@index([userId, status])
+}
+
+/// A user's customer record at a billing provider (e.g. Stripe customer id). One per provider.
+model BillingCustomer {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  userId             String   @db.Uuid
+  provider           String
+  providerCustomerId String
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, userId])
+  @@unique([provider, providerCustomerId])
+}
+
+/// Every verified billing webhook event, once (idempotency: a redelivered event is skipped
+/// unless it failed). Payloads are not stored - the subscription is re-read from the provider.
+model BillingEvent {
+  id              String             @id @default(uuid(7)) @db.Uuid
+  provider        String
+  providerEventId String
+  type            String
+  status          BillingEventStatus @default(PROCESSING)
+  /// Provider subscription the event was about, when known.
+  subjectId       String?
+  error           String?
+  attempts        Int                @default(1)
+  receivedAt      DateTime           @default(now()) @db.Timestamptz(3)
+  processedAt     DateTime?          @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+
+  @@unique([provider, providerEventId])
+  @@index([status, updatedAt])
 }
 
 /// Append-only record of metered usage, checked against Entitlement limits.

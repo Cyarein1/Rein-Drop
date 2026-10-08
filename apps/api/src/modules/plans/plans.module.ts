@@ -8,7 +8,7 @@ import { PlansService } from './plans.service.js';
  *
  * Owns: Plan, Entitlement
  * Seeded limits are PLACEHOLDERS (`limitsFinal: false`) until the cost model is done;
- * prices are not modelled. Endpoints: GET /plans.
+ * prices come from the billing provider (BillingService). Endpoints: GET /plans.
  * Exports PlansService (`planForUser`) - Hunts enforces it at activation.
  */
 @Module({

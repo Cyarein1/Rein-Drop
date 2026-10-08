@@ -169,18 +169,31 @@ export function planLimitState(entitlements: Pick<EntitlementEvaluation, 'usage'
 }
 
 // ---------------------------------------------------------------------------
-// Cancellation flow (placeholder until billing exists - D2)
+// Cancellation flow (web billing: the Stripe portal ends the plan at the period end)
 // ---------------------------------------------------------------------------
 
 export interface CancellationView extends ProductStateView {
-  /** What happens if they cancel - reassuring and factual. */
+  /** What happens if they cancel - reassuring and factual (only what the product really does). */
   consequences: string[];
-  /** The flow can't complete yet: billing isn't connected. */
-  available: false;
-  unavailableReason: string;
+  /** True when the plan can be cancelled online here (a web-billed paid plan). */
+  available: boolean;
+  /** Why it can't be cancelled here, when it can't. */
+  unavailableReason: string | null;
 }
 
-export function cancellationState(plan: { name: string; isFree: boolean }): CancellationView {
+export interface CancellationOptions {
+  /** A web-billed (Stripe) subscription the billing portal can cancel. */
+  canCancelOnline: boolean;
+  /** When the paid period ends, already formatted for the user (e.g. "12 Nov 2026"); null if unknown. */
+  paidUntil: string | null;
+  /** Where to cancel instead, when it can't be done here (e.g. "on the web"). */
+  elsewhere?: string;
+}
+
+export function cancellationState(
+  plan: { name: string; isFree: boolean },
+  options: CancellationOptions = { canCancelOnline: false, paidUntil: null },
+): CancellationView {
   return {
     state: 'cancellation',
     title: plan.isFree ? `You're on the ${plan.name} plan` : `Cancel ${plan.name}?`,
@@ -191,15 +204,20 @@ export function cancellationState(plan: { name: string; isFree: boolean }): Canc
     consequences: plan.isFree
       ? []
       : [
+          options.paidUntil
+            ? `You keep ${plan.name} until ${options.paidUntil} - the end of the period you've paid for. You won't be charged again.`
+            : `You keep ${plan.name} until the end of the period you've paid for. You won't be charged again.`,
           'Your Hunts are kept - nothing is ever deleted.',
-          'Live Hunts above the Free plan limit are paused; you choose which stay live.',
+          'After that you move to Free: live Hunts above its limit are paused, the most recently started first. You can resume them or upgrade again any time.',
           'Your inventory, sales and analytics stay exactly as they are.',
-          'You can come back to a paid plan at any time.',
         ],
     actions: [{ label: plan.isFree ? 'Back to Settings' : 'Keep my plan', path: '/settings', variant: 'primary' }],
     live: false,
-    available: false,
-    unavailableReason: 'Cancelling online isn’t available yet - billing is still being set up. Nothing will be charged in the meantime.',
+    available: !plan.isFree && options.canCancelOnline,
+    unavailableReason:
+      plan.isFree || options.canCancelOnline
+        ? null
+        : (options.elsewhere ?? 'This plan can’t be cancelled online here (it wasn’t bought through Rein Drop’s web checkout). Nothing will be charged.'),
   };
 }
 

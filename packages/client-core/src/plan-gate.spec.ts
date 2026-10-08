@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Plan, PlanEntitlements } from '@rein-drop/contracts';
-import { describeEntitlements, planGateOptions } from './index.js';
+import { describeEntitlements, planGateOptions, priceLabel } from './index.js';
 
 const ent = (overrides: Partial<PlanEntitlements> = {}): PlanEntitlements => ({
   activeHunts: { limit: 1 },
@@ -59,5 +59,19 @@ describe('planGateOptions', () => {
     const notReady = planGateOptions(PLANS, { ...hunt, marketplaces: ['facebook'] }, 0, null);
     expect(notReady.some((o) => o.recommended)).toBe(false);
     expect(notReady.every((o) => o.reasons.some((r) => r.code === 'NOT_READY'))).toBe(true);
+  });
+});
+
+describe('priceLabel', () => {
+  it('shows the provider price per interval, Free, or TBD - never an invented price', () => {
+    expect(priceLabel({ status: 'free' }, 'en-US')).toBe('Free');
+    expect(priceLabel({ status: 'tbd' }, 'en-US')).toBe('Price TBD');
+    expect(priceLabel({ status: 'priced', amount: { amountMinor: 1999, currency: 'USD' }, interval: 'month', intervalCount: 1 }, 'en-US')).toBe('$19.99 / month');
+    expect(priceLabel({ status: 'priced', amount: { amountMinor: 50000, currency: 'USD' }, interval: 'month', intervalCount: 3 }, 'en-US')).toBe('$500.00 every 3 months');
+  });
+
+  it('marks TBD plans unavailable', () => {
+    const options = planGateOptions(PLANS, { marketplaces: ['ebay'], location: null, priority: 'NORMAL' }, 0, null);
+    expect(options.map((o) => o.available)).toEqual([true, false, false]);
   });
 });

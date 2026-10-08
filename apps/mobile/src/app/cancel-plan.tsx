@@ -37,7 +37,20 @@ function CancelPlan() {
   }, []);
   useFocusEffect(load);
 
-  const view = ent && ent !== 'error' ? cancellationState({ name: ent.plan.name, isFree: ent.plan.code === 'free' }) : null;
+  // Paid plans are bought and cancelled on the web (Stripe billing portal) - no store billing in the app.
+  const view =
+    ent && ent !== 'error'
+      ? cancellationState(
+          { name: ent.plan.name, isFree: ent.plan.code === 'free' },
+          {
+            canCancelOnline: false,
+            paidUntil: ent.subscription?.currentPeriodEnd ? new Date(ent.subscription.currentPeriodEnd).toLocaleDateString() : null,
+            ...(ent.subscription?.provider === 'stripe'
+              ? { elsewhere: 'Your plan is billed on the web: sign in to Rein Drop on the web and open Settings -> Cancel plan. Nothing changes until you do.' }
+              : {}),
+          },
+        )
+      : null;
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Cancel plan' }} />
@@ -50,7 +63,7 @@ function CancelPlan() {
               • {c}
             </Text>
           ))}
-          {view.consequences.length > 0 && <SystemBanner tone="info" title="Not available yet" message={view.unavailableReason} />}
+          {view.unavailableReason && <SystemBanner tone="info" title="Cancel on the web" message={view.unavailableReason} />}
         </ProductState>
       )}
     </Screen>

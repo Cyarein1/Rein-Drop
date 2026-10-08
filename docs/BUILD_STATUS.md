@@ -1,11 +1,62 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 41)_
+_Last updated: 2026-10-09 (step 42)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 42 - Web billing with Stripe (Build Prompt 39)
+
+The owner approved Stripe for web billing (D2, web). Decision
+[0014](decisions/0014-stripe-web-billing.md). Free behaviour unchanged; native store billing not built.
+
+**What was added**
+
+- DB (migration `..._web_billing`): `BillingCustomer`, `BillingEvent` (idempotency, unique per
+  provider event), `Subscription.cancelAtPeriodEnd` / `providerPriceId`, statuses `INCOMPLETE`, `PAUSED`.
+- API billing module: `BillingProvider` + `StripeBillingProvider` (`stripe` 23, API 2026-09-30);
+  `GET /billing`, `POST /billing/checkout`, `POST /billing/portal` (manage / change plan / cancel),
+  `POST /billing/free`, `POST /billing/webhooks/stripe` (public, raw-body signature, idempotent,
+  re-reads the subscription from Stripe, 500 -> Stripe retries; foreign customers ignored); the
+  development fake kept. Config `BILLING_PROVIDER`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_PRICE_IDS` (plan -> price; prices never in code), `WEB_APP_URL`; production requires Stripe.
+  `main.ts` keeps raw bodies.
+- Entitlements: entitled = ACTIVE / TRIALING / PAST_DUE (grace, D36); summary adds
+  `cancelAtPeriodEnd`, `currentPeriodEnd`. Plans show Stripe prices (`pricing.status: priced`).
+- Hunts: `HuntPlanLimits` subscribes to plan changes and pauses LIVE hunts above the new limit
+  (newest first, system HuntEvent `reason: plan_limit`).
+- Env: values of SECRET / TOKEN / PASSWORD / *_KEY variables are never echoed in config errors.
+- Web: plan gate - Free (no card), Stripe Checkout redirect, "confirming your payment" wait on
+  return, cancelled notice, change plan via the portal; Settings plan card (renewal / cancelled /
+  past due, Manage billing); `/settings/cancel` cancels in the portal (copy matches what happens).
+- Mobile: Free via `/billing/free`; paid plans "bought on the web" (no in-app purchase); plan card
+  renewal info; cancel screen points to the web.
+- client-core: `priceLabel` ("R 199,00 / month"), `available` on plan options; cancellation model
+  with online / elsewhere states.
+- `.env.example`, README env table + "Billing locally with Stripe test mode" (Stripe CLI).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (Stripe provider against a fake Stripe API the
+  real SDK talks to: checkout / portal parameters, idempotent customer, item-level periods, prices,
+  signature checks incl. forged / tampered / replayed; config + secret masking; price labels;
+  cancellation copy).
+- API int 62/62 incl. new `billing.int-spec.ts` (checkpoint: subscribe / change / cancel events ->
+  correct Subscription + entitlements; nothing granted before the webhook; duplicates; late older
+  event; past due + scheduled cancellation keep access; forged / unsigned refused; failed event
+  retried; foreign customer ignored; downgrade pauses hunts above the Free limit; Free choice);
+  e2e 52/52; worker int 40/40.
+- Running local stack (development billing): `/billing` = development, `/plans` unchanged, webhook
+  route 404, `/settings` and `/settings/cancel` 200.
+- **Not run against Stripe itself** (no keys here): follow the README test-mode steps.
+
+**Not done / TODO**
+
+- Stripe account set-up (prices, portal, webhook), a test-mode run, tax.
+- D36 past-due grace, D37 card before Free; native store billing (D2 mobile).
+- Downgrade: marketplace / priority enforcement and a "choose which stay live" screen.
 
 ### Step 41 - Managed auth: Microsoft Entra External ID (Build Prompt 38)
 

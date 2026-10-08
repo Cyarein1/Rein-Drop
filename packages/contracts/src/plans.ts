@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import { marketplaceKeySchema, type MarketplaceKey } from './common.js';
+import { isoDateTimeSchema, marketplaceKeySchema, moneySchema, type MarketplaceKey } from './common.js';
 import { huntLiveReadinessProblems, huntPrioritySchema, type HuntPriority, type HuntLocation } from './hunts.js';
 
 /**
  * Plans and entitlements (App Flow Blueprint sections 6 and 14).
  *
- * Prices are NOT modelled: they are TBD until infrastructure economics are measured.
- * Seeded limits are placeholders too - every plan reports `limitsFinal: false` until the
- * product owner's cost calculations are done.
+ * Prices are never in code: paid plans are priced by the billing provider (Stripe prices mapped
+ * to plan codes by configuration, decision 0014) and show as TBD until configured. Seeded limits
+ * are placeholders too - every plan reports `limitsFinal: false` until the cost calculations are done.
  */
 
 /** Entitlement rows (Entitlement.key) and what they mean. */
@@ -40,11 +40,21 @@ export const planEntitlementsSchema = z.object({
 });
 export type PlanEntitlements = z.infer<typeof planEntitlementsSchema>;
 
+export const BILLING_INTERVALS = ['day', 'week', 'month', 'year'] as const;
+
 export const planPricingSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('free') }),
-  /** TODO(billing): real prices once decided (Stripe leading candidate). */
+  /** No price configured (or the provider is unreachable): can't be bought yet. */
   z.object({ status: z.literal('tbd') }),
+  /** The provider's current price - read from it, never stored in code. */
+  z.object({
+    status: z.literal('priced'),
+    amount: moneySchema,
+    interval: z.enum(BILLING_INTERVALS),
+    intervalCount: z.number().int().positive(),
+  }),
 ]);
+export type PlanPricing = z.infer<typeof planPricingSchema>;
 
 /** `GET /plans` item - the plan gate shows Free alongside paid plans. */
 export const planSchema = z.object({
@@ -58,18 +68,60 @@ export const planSchema = z.object({
 export type Plan = z.infer<typeof planSchema>;
 export const planListSchema = z.object({ items: z.array(planSchema) });
 
+export const SUBSCRIPTION_STATUSES = ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'EXPIRED', 'INCOMPLETE', 'PAUSED'] as const;
+
 /**
- * The user's current subscription. `provider: "dev-fake"` = created by the DEVELOPMENT-ONLY
- * fake billing confirmation (no real payment). TODO(billing): real provider (Stripe / app
- * stores) is not integrated.
+ * The user's current subscription. `provider`: "stripe" (paid, web), "free" (Free chosen - no
+ * payment), "dev-fake" (DEVELOPMENT-ONLY fake billing, no real payment).
  */
 export const subscriptionSummarySchema = z.object({
   planCode: z.string(),
-  status: z.enum(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'EXPIRED']),
+  status: z.enum(SUBSCRIPTION_STATUSES),
   provider: z.string().nullable(),
   isDevelopment: z.boolean(),
+  /** Ends at currentPeriodEnd instead of renewing (still on the plan until then). */
+  cancelAtPeriodEnd: z.boolean(),
+  /** Renewal / end date of a paid subscription; null for Free. */
+  currentPeriodEnd: isoDateTimeSchema.nullable(),
 });
 export type SubscriptionSummary = z.infer<typeof subscriptionSummarySchema>;
+
+// ---------------------------------------------------------------------------
+// Web billing (decision 0014). Native store billing is not built.
+// ---------------------------------------------------------------------------
+
+/** "stripe" = real web checkout; "development" = the fake confirmation (never in production). */
+export const BILLING_MODES = ['stripe', 'development'] as const;
+
+/** `GET /billing` - how plans are bought here, and whether the user has billing to manage. */
+export const billingInfoSchema = z.object({
+  mode: z.enum(BILLING_MODES),
+  /** True when the user has a provider customer (the Customer Portal can be opened). */
+  canManage: z.boolean(),
+});
+export type BillingInfo = z.infer<typeof billingInfoSchema>;
+
+/** A same-origin web path to come back to, e.g. "/hunts/<id>/start" (never a full URL). */
+export const billingReturnPathSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .regex(/^\/(?![/\\])[^\s]*$/, 'must be a path on this site, e.g. /settings');
+
+/** `POST /billing/checkout` - start paying for a plan; the browser goes to `url`. */
+export const billingCheckoutRequestSchema = z.object({ planCode: z.string().trim().min(1).max(50), returnPath: billingReturnPathSchema });
+export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
+export const billingRedirectSchema = z.object({ url: z.url() });
+export type BillingRedirect = z.infer<typeof billingRedirectSchema>;
+
+/** `POST /billing/portal` - manage payment method / invoices, change plan, or cancel. */
+export const BILLING_PORTAL_FLOWS = ['manage', 'change_plan', 'cancel'] as const;
+export const billingPortalRequestSchema = z.object({ returnPath: billingReturnPathSchema, flow: z.enum(BILLING_PORTAL_FLOWS).default('manage') });
+export type BillingPortalRequest = z.infer<typeof billingPortalRequestSchema>;
+export type BillingPortalRequestInput = z.input<typeof billingPortalRequestSchema>;
+
+/** `POST /billing/free` - choose the Free plan (no payment, no card). */
+export const chooseFreePlanResponseSchema = z.object({ subscription: subscriptionSummarySchema });
 
 /** `POST /billing/dev/confirm` (DEVELOPMENT ONLY - 404 in production). */
 export const devBillingConfirmRequestSchema = z.object({ planCode: z.string().trim().min(1).max(50) });

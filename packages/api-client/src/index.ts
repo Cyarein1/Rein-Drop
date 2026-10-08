@@ -26,6 +26,13 @@ import {
   activationCheckSchema,
   devBillingConfirmRequestSchema,
   devBillingConfirmResponseSchema,
+  billingInfoSchema,
+  billingCheckoutRequestSchema,
+  billingPortalRequestSchema,
+  billingRedirectSchema,
+  chooseFreePlanResponseSchema,
+  type BillingInfo,
+  type BillingPortalRequestInput,
   entitlementEvaluationSchema,
   planListSchema,
   updateUserLocaleRequestSchema,
@@ -115,6 +122,7 @@ export {
   DEV_AUTH_HEADER,
   DEV_AUTH_SUBJECT,
   DIAGNOSTICS_MAX_HOURS,
+  billingReturnPathSchema,
   ENTRA_DEFAULT_SCOPE_NAME,
   entraApiScope,
   entraDiscoveryUrl,
@@ -179,14 +187,19 @@ export interface ApiClient {
   /** The same for all of your hunts (one call for the list). */
   listHuntActivity(): Promise<HuntActivity[]>;
 
-  /** Plans for the plan gate (prices TBD; limits are placeholders while `limitsFinal` is false). */
+  /** Plans for the plan gate (paid prices come from Stripe; limits are placeholders while `limitsFinal` is false). */
   listPlans(): Promise<Plan[]>;
   /** The caller's plan, entitlements, usage and remaining allowance. */
   getEntitlements(): Promise<EntitlementEvaluation>;
-  /**
-   * DEVELOPMENT ONLY: fake billing confirmation for a plan (no payment). The API answers
-   * 404 in production. TODO(billing): real checkout is not integrated.
-   */
+  /** How plans are bought here (stripe | development) and whether there is billing to manage. */
+  getBillingInfo(): Promise<BillingInfo>;
+  /** Hosted Stripe Checkout URL for a paid plan. Nothing changes until Stripe confirms payment. */
+  startCheckout(planCode: string, returnPath: string): Promise<string>;
+  /** Hosted billing portal URL (payment method, invoices, change plan, cancel). */
+  openBillingPortal(request: BillingPortalRequestInput): Promise<string>;
+  /** Choose the Free plan - no card, no charge. */
+  chooseFreePlan(): Promise<SubscriptionSummary>;
+  /** DEVELOPMENT ONLY: fake billing confirmation for a plan (no payment). 404 in production. */
   confirmDevBilling(planCode: string): Promise<SubscriptionSummary>;
 
   /** Ranked feed (strength, then freshness). Default status filter: `open`. */
@@ -336,6 +349,19 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     listPlans: async () => (await send(http, { method: 'GET', path: '/plans', response: planListSchema })).items,
     getEntitlements: () =>
       send(http, { method: 'GET', path: '/me/entitlements', response: entitlementEvaluationSchema }),
+    getBillingInfo: () => send(http, { method: 'GET', path: '/billing', response: billingInfoSchema }),
+    startCheckout: async (planCode, returnPath) =>
+      (
+        await send(http, {
+          method: 'POST',
+          path: '/billing/checkout',
+          body: validateInput(billingCheckoutRequestSchema, { planCode, returnPath }, 'body'),
+          response: billingRedirectSchema,
+        })
+      ).url,
+    openBillingPortal: async (request) =>
+      (await send(http, { method: 'POST', path: '/billing/portal', body: validateInput(billingPortalRequestSchema, request, 'body'), response: billingRedirectSchema })).url,
+    chooseFreePlan: async () => (await send(http, { method: 'POST', path: '/billing/free', response: chooseFreePlanResponseSchema })).subscription,
     confirmDevBilling: async (planCode) =>
       (
         await send(http, {

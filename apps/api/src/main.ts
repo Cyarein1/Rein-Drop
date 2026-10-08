@@ -9,7 +9,8 @@ async function bootstrap() {
   // Fail fast with a readable list of problems before Nest starts.
   const config = loadConfigOrExit(() => loadApiConfig());
 
-  const app = await NestFactory.create(AppModule.forRoot(config));
+  // rawBody: billing webhooks verify their signature over the exact bytes received.
+  const app = await NestFactory.create(AppModule.forRoot(config), { rawBody: true });
   app.enableShutdownHooks();
   // TODO(api): CORS policy - only needed once a browser calls the API directly.
   await app.listen(config.port);

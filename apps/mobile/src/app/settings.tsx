@@ -374,12 +374,23 @@ function PlanCard() {
           ? `${ent.usage.activeHunts} live Hunts (no limit)`
           : `${ent.usage.activeHunts} of ${limit} live ${limit === 1 ? 'Hunt' : 'Hunts'} in use`}
       </Text>
-      <Text style={[styles.muted, font('regular')]}>Prices and limits are placeholders until plans are final.</Text>
-      <View style={{ alignSelf: 'flex-start' }}>
-        <Button variant="text" onPress={() => router.push('/cancel-plan')}>
-          Cancel plan
-        </Button>
-      </View>
+      {ent.subscription?.provider === 'stripe' && ent.subscription.currentPeriodEnd && (
+        <Text style={[styles.body, font('regular')]}>
+          {ent.subscription.cancelAtPeriodEnd
+            ? `Cancelled - ends ${new Date(ent.subscription.currentPeriodEnd).toLocaleDateString()}, then you move to Free.`
+            : ent.subscription.status === 'PAST_DUE'
+              ? "Your last payment didn't go through - update it on the web (Settings -> Manage billing)."
+              : `Renews ${new Date(ent.subscription.currentPeriodEnd).toLocaleDateString()}. Billing is managed on the web.`}
+        </Text>
+      )}
+      {!ent.plan.limitsFinal && <Text style={[styles.muted, font('regular')]}>Limits are placeholders until plans are final.</Text>}
+      {ent.plan.code !== 'free' && (
+        <View style={{ alignSelf: 'flex-start' }}>
+          <Button variant="text" onPress={() => router.push('/cancel-plan')}>
+            Cancel plan
+          </Button>
+        </View>
+      )}
     </Card>
   );
 }
