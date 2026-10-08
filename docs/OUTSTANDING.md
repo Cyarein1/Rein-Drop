@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 32 (Build Prompt 29)._
+_Last updated: 2026-10-08, after step 33 (Build Prompt 30)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -43,6 +43,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D20 | Ignore reasons: free text, or a fixed list of choices? | Step 25 | Optional free text (200 chars) |
 | D26 | Margin % on a sale: profit / sale price (and return % = profit / cost basis) - confirm both are wanted | Step 31 | Both shown (decision 0007) |
 | D27 | Multi-currency reselling (buy in USD, sell in ZAR): convert with FX, or keep "result unavailable"? | Step 31 | Unavailable, never converted |
+| D28 | What counts as "missed": which strengths, and do deals you ignored count? (Blueprint section 22 also open) | Step 33 | Strong / exceptional, never bought, ignored or gone (decision 0008) |
+| D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity |
 
 ## 2. Not built yet (by area)
 
@@ -104,7 +106,9 @@ These block or shape work; the code uses placeholders until you decide.
 - Returns and write-offs (statuses exist, no endpoints) - step 31.
 - Estimated upside doesn't subtract selling fees, so expected-vs-actual profit compares an
   estimate without fees to a result with fees - step 31 (with D13).
-- Analytics backend and screens (missed potential kept apart from P/L) - prompts 30-31.
+- Analytics screens (overview, Hunt funnel, products, marketplaces, missed potential) - prompt 31.
+- Home "spent" is purchase price only; Analytics "spent" includes purchase costs - align - step 33.
+- Analytics aggregate live on every request (no caching) - revisit with real data volumes - step 33.
 - Default sale / purchase day uses the rendering device's time zone; server and browser must agree
   until the user's time zone is known (with D24) - step 32.
 - Mobile date fields are typed (YYYY-MM-DD + Today / Yesterday); a native picker needs a new
@@ -150,7 +154,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-30 Analytics backend - 31 Analytics UI - 32 Source health and
+31 Analytics UI - 32 Source health and
 degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real eBay adapter -
 35 Facebook data provider - 36 Ingestion economics - 37 Microsoft Foundry - 38 Managed auth -
 39 Real billing (web beta) - 40 Production hardening - 41 Local MVP acceptance script -
@@ -191,3 +195,5 @@ degraded UX - 33 Empty / waiting / after-hours / recommendation states - 34 Real
 | Inventory and sale screens (Inventory, Mark sold, Sale result) on web + mobile | Step 5 | Step 32 |
 | Bought form said "Sale and profit tracking come later" | Step 26 | Step 32 |
 | Analytics placeholder said purchases and sales couldn't be logged | Step 5 | Step 32 |
+| Analytics backend: period overview, Hunt funnel, products, marketplaces, missed potential (SQL aggregates) | Step 5 | Step 33 |
+| Analytics module was a scaffold with "TODO(product): metrics to report" | Step 5 | Step 33 |

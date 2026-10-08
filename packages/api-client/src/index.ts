@@ -86,7 +86,20 @@ import {
   type RecordSaleRequestInput,
   type ReplacePurchaseCostsRequest,
   type UpdateInventoryItemRequest,
+  analyticsOverviewSchema,
+  analyticsQuerySchema,
+  huntAnalyticsSchema,
+  marketplaceAnalyticsSchema,
+  missedPotentialSchema,
+  productAnalyticsSchema,
+  type AnalyticsOverview,
+  type AnalyticsQueryInput,
+  type HuntAnalytics,
+  type MarketplaceAnalytics,
+  type MissedPotential,
+  type ProductAnalytics,
 } from '@rein-drop/contracts';
+import type { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
 export { ApiError } from './errors.js';
@@ -206,6 +219,18 @@ export interface ApiClient {
   recordSale(id: string, input: RecordSaleRequestInput): Promise<InventoryItem>;
   /** Undo the sale: the item is held again. */
   undoSale(id: string): Promise<InventoryItem>;
+
+  /** Period analytics (default: last 30 days). Realized results only; estimates are labelled. */
+  getAnalyticsOverview(query?: AnalyticsQueryInput): Promise<AnalyticsOverview>;
+  getHuntAnalytics(query?: AnalyticsQueryInput): Promise<HuntAnalytics>;
+  getProductAnalytics(query?: AnalyticsQueryInput): Promise<ProductAnalytics>;
+  getMarketplaceAnalytics(query?: AnalyticsQueryInput): Promise<MarketplaceAnalytics>;
+  /** Strong deals never bought - potential, never a loss. */
+  getMissedPotential(query?: AnalyticsQueryInput): Promise<MissedPotential>;
+}
+
+function analytics<T>(http: HttpOptions, view: string, query: AnalyticsQueryInput, response: z.ZodType<T>): Promise<T> {
+  return send(http, { method: 'GET', path: `/analytics/${view}`, query: validateInput(analyticsQuerySchema, query, 'query'), response });
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -387,5 +412,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         response: inventoryItemSchema,
       }),
     undoSale: (id) => send(http, { method: 'DELETE', path: `/inventory/${pathId(id)}/sale`, response: inventoryItemSchema }),
+
+    getAnalyticsOverview: async (query = {}) => analytics(http, 'overview', query, analyticsOverviewSchema),
+    getHuntAnalytics: async (query = {}) => analytics(http, 'hunts', query, huntAnalyticsSchema),
+    getProductAnalytics: async (query = {}) => analytics(http, 'products', query, productAnalyticsSchema),
+    getMarketplaceAnalytics: async (query = {}) => analytics(http, 'marketplaces', query, marketplaceAnalyticsSchema),
+    getMissedPotential: async (query = {}) => analytics(http, 'missed', query, missedPotentialSchema),
   };
 }

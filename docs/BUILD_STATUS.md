@@ -1,11 +1,48 @@
 # Build Status
 
-_Last updated: 2026-10-08 (step 32)_
+_Last updated: 2026-10-08 (step 33)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 33 - Period analytics backend (Build Prompt 30)
+
+Backend only; the analytics screens are Build Prompt 31. Definitions in
+[decision 0008](decisions/0008-period-analytics.md).
+
+**What was added**
+
+- Contracts `analytics.ts`: periods (7d / 30d default / 90d / 365d / all, rolling), per-currency
+  realized results (revenue, comparable / excluded sales, realized profit, margin), overview,
+  Hunt funnel, product performance, marketplace contribution, missed potential.
+- API `AnalyticsModule` (was a scaffold): `GET /analytics/{overview,hunts,products,marketplaces,missed}?period=`.
+  All aggregation in PostgreSQL (`analytics.sql.ts`: shared ledger CTEs + one query per view);
+  `analytics.mapper.ts` only shapes rows. No warehouse.
+- Migration `..._analytics_indexes`: `InventoryItem(userId, purchasedAt)`, `HuntMatch(huntId, matchedAt)`.
+- api-client: `getAnalyticsOverview`, `getHuntAnalytics`, `getProductAnalytics`,
+  `getMarketplaceAnalytics`, `getMissedPotential`.
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (contracts, api mapper unit tests, api-client).
+- `pnpm --filter api test:int` 45/45 incl. 7 new analytics tests on real Postgres: overview
+  (spend incl. purchase costs, revenue, realized profit 115 000 = the TypeScript formula, margin
+  17%, a USD-bought / ZAR-sold item counted but excluded from profit, holding snapshot), period
+  windows (7d / 90d incl. an earlier loss / all / invalid = 400), Hunt funnel with rates, products
+  (AI name, else title; losses last), marketplaces (sourced vs sold here, "other"), missed
+  potential (ignored + gone, estimate summed, weak / open / bought excluded, profit unchanged),
+  user isolation.
+- `pnpm --filter api test:e2e` 52/52; `pnpm --filter worker test:int` 32/32. No test data left.
+- The running API serves the endpoints; the user's account returns honest zeros (no matches yet).
+
+**Not done / TODO**
+
+- Analytics screens - Build Prompt 31 (the Analytics tab still shows the Inventory link).
+- D28 missed definition, D29 funnel by activity vs cohort, D24 period / time zone.
+- Home "spent" excludes purchase costs; Analytics includes them.
+- No caching: every request aggregates live (fine at MVP scale; revisit with real volumes).
 
 ### Step 32 - Inventory, Mark Sold and Sale Result screens (Build Prompt 29)
 
@@ -1568,7 +1605,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-29 (our steps 1-32 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-30 (our steps 1-33 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -1585,6 +1622,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 30 in document order: Analytics backend (realized profit, spend, margin by period /
-Hunt / product; missed potential kept apart from P/L).
+Build Prompt 31 in document order: Analytics screens (web + mobile) on the step 33 API.
 (Await the next prompt.)

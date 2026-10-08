@@ -515,6 +515,8 @@ model HuntMatch {
 
   @@unique([huntId, listingId])
   @@index([huntId, status])
+  /// Analytics: deals found in a period.
+  @@index([huntId, matchedAt])
   @@index([listingId])
 }
 
@@ -723,6 +725,8 @@ model InventoryItem {
   costs     Cost[]
 
   @@index([userId, status])
+  /// Analytics: purchases in a period.
+  @@index([userId, purchasedAt])
 }
 
 model Sale {

@@ -171,6 +171,30 @@ describe('createApiClient', () => {
     await expect(c.updateInventoryItem(ID, {})).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
+  it('analytics: each view hits /analytics/<view> with the period (default 30d), validated', async () => {
+    const urls: string[] = [];
+    const fetch = vi.fn(async (url: string | URL | Request) => {
+      urls.push(String(url));
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    const c = createApiClient({ baseUrl: 'http://api.test', fetch: fetch as unknown as typeof globalThis.fetch });
+    await Promise.allSettled([
+      c.getAnalyticsOverview(),
+      c.getHuntAnalytics({ period: '7d' }),
+      c.getProductAnalytics({ period: '90d' }),
+      c.getMarketplaceAnalytics({ period: '365d' }),
+      c.getMissedPotential({ period: 'all' }),
+    ]);
+    expect(urls).toEqual([
+      'http://api.test/analytics/overview?period=30d',
+      'http://api.test/analytics/hunts?period=7d',
+      'http://api.test/analytics/products?period=90d',
+      'http://api.test/analytics/marketplaces?period=365d',
+      'http://api.test/analytics/missed?period=all',
+    ]);
+    await expect(c.getAnalyticsOverview({ period: 'forever' as '7d' })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('notifications: inbox query, read actions and validated preference changes', async () => {
     const inbox = fakeFetch(200, { items: [], nextCursor: null, unreadCount: 3 });
     await expect(client(inbox).listAlerts({ unreadOnly: 'true' })).resolves.toMatchObject({ unreadCount: 3 });
