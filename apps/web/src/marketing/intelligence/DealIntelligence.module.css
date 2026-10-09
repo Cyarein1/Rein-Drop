@@ -1,0 +1,315 @@
+/* Deal intelligence (Landing 11). One oversized card, three notes. Green only on the upside figure. */
+.section {
+  padding: var(--rd-section-space-default) 0;
+  background: linear-gradient(180deg, var(--rd-color-canvas) 0%, var(--rd-wash-orange) 100%);
+  scroll-margin-top: 64px;
+}
+
+.section:focus {
+  outline: none;
+}
+
+.inner {
+  display: grid;
+  gap: var(--rd-space-10);
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: 0 var(--rd-gutter);
+}
+
+.header {
+  display: grid;
+  gap: var(--rd-space-3);
+  max-width: var(--rd-container-prose);
+}
+
+.eyebrow {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.lead {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+.composition {
+  display: grid;
+  gap: var(--rd-space-8);
+  align-items: start;
+}
+
+/* ---------- The card ---------- */
+.card {
+  display: grid;
+  gap: var(--rd-space-6);
+  margin: 0;
+  padding: clamp(20px, 3vw, 36px);
+  border-radius: var(--rd-radius-2xl);
+  background: var(--rd-color-canvas);
+  box-shadow: var(--rd-shadow-xl);
+  color: var(--rd-color-navy);
+}
+
+.label {
+  justify-self: start;
+  padding: 3px var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-yellow);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.top {
+  display: grid;
+  gap: var(--rd-space-5);
+}
+
+/* Placeholder, clearly not a real photo. */
+.photo {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--rd-space-2);
+  aspect-ratio: 4 / 3;
+  border-radius: var(--rd-radius-lg);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, rgb(18 35 63 / 0.035) 14px 28px),
+    var(--rd-wash-sky);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+}
+
+.identity {
+  display: grid;
+  gap: var(--rd-space-2);
+  align-content: center;
+  justify-items: start;
+}
+
+.strengthRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+}
+
+.strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px var(--rd-space-3);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-wash-yellow);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.strength::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rd-color-orange);
+}
+
+.product {
+  font-size: var(--rd-display-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.details {
+  color: var(--rd-neutral-text-muted);
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+/* ---------- Numbers: oversized callouts, not a table ---------- */
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: var(--rd-space-4) var(--rd-space-6);
+  margin: 0;
+  padding-top: var(--rd-space-5);
+  border-top: 1px solid var(--rd-neutral-border);
+}
+
+.numbers > div {
+  display: grid;
+  align-content: start;
+  gap: var(--rd-space-1);
+}
+
+.numbers dt {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.numbers dd {
+  margin: 0;
+  font-size: var(--rd-display-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.estimate {
+  padding: 1px var(--rd-space-2);
+  border-radius: var(--rd-radius-full);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+}
+
+/* The one green: potential upside, large and bold (3.1:1 passes AA-large), always labelled gross. */
+.upside dd {
+  color: var(--rd-color-green);
+}
+
+.beforeCosts {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+}
+
+.confidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-3) var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+  font-size: var(--rd-font-size-sm);
+}
+
+.marker {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+  font-size: 12px;
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+/* ---------- Notes ---------- */
+.notes {
+  display: grid;
+  gap: var(--rd-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--rd-space-4);
+  padding: var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+}
+
+.noteNumber {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.noteBody {
+  display: grid;
+  gap: var(--rd-space-2);
+  min-width: 0;
+}
+
+.noteTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.items {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--rd-neutral-text-muted);
+}
+
+.caution {
+  display: flex;
+  gap: var(--rd-space-2);
+  align-items: flex-start;
+  margin-top: var(--rd-space-1);
+  padding: var(--rd-space-2) var(--rd-space-3);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-red);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+}
+
+.caution svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--rd-color-loss-red);
+}
+
+.noteText {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-medium);
+}
+
+@media (min-width: 640px) {
+  .top {
+    grid-template-columns: minmax(0, 220px) 1fr;
+    align-items: center;
+  }
+}
+
+@media (min-width: 1000px) {
+  .composition {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}

@@ -48,6 +48,8 @@ apps/web/src/marketing/
   StoreBadges.tsx (+ css)    App Store / Google Play badges, coming soon -> waitlist (Landing 07)
   problem/                   ProblemSection (+ css), problem-story.ts copy (+ spec) (Landing 09)
   how-it-works/              HowItWorks (+ css), how-it-works-story.ts copy (+ spec) (Landing 10)
+  intelligence/              DealIntelligence (+ css), deal-showcase.ts example (+ spec) (Landing 11)
+  illustrative.ts            illustrative label, gross upside, USD formatting (shared) (Landing 11)
   sections/                  Marketplaces, Problem, HowItWorks, Demo, Intelligence,
                              Hunts, Alerts, Outcomes, Faq, FinalCta, Footer (planned, Landing 07-15)
   marketplaces.ts (+ spec)   marketplace roadmap data, statuses, proof rule (Landing 08)
@@ -57,7 +59,7 @@ apps/web/src/marketing/
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   brand-assets.generated.ts  GENERATED paths + sizes of the optimized brand images (Landing 04)
   landing-assets.ts (+ spec) landing meanings -> images; null = missing pose (Landing 04)
-apps/web/scripts/check-landing.mjs       real-browser landing check: nav, hero, gallery, problem, how it works (headless Chrome / Edge, screenshots) (Landing 06-10)
+apps/web/scripts/check-landing.mjs       real-browser landing check: nav, hero, gallery, problem, how it works, deal intelligence (headless Chrome / Edge, screenshots) (Landing 06-11)
 apps/web/scripts/build-brand-assets.mjs  generates public/assets/brand + brand-assets.generated.ts (Landing 04)
 apps/web/public/assets/brand/          GENERATED optimized Rein Drop images, stable URLs (Landing 04)
 apps/web/public/assets/third-party/    official third-party marks: stores/ badges (Landing 07), marketplaces/ (Landing 08)

@@ -1,11 +1,20 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 57 - Landing 10)_
+_Last updated: 2026-10-10 (step 58 - Landing 11)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 58 - Landing 11: deal intelligence showcase
+
+One editorial deal card (illustrative PS5 on eBay, labelled photo placeholder): asking $300,
+estimated resale $420 ("Estimate"), potential gross upside +$120 - the only green - with three
+numbered notes: why it was flagged, questions to ask (+ red-flag caution), and the costs that come
+before profit (named, never priced; never "net profit"). Verified: web tests 78/78, browser check
+135/135 (incl. one-green and no-net-profit checks by computed style / page text), screenshots
+reviewed. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 57 - Landing 10: how it works
 
@@ -2363,6 +2372,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 11 = step 58; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 12 = step 59; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

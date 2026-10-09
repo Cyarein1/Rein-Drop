@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hero } from "@/marketing/hero/Hero";
 import { HowItWorks } from "@/marketing/how-it-works/HowItWorks";
+import { DealIntelligence } from "@/marketing/intelligence/DealIntelligence";
 import { MarketplaceGallery } from "@/marketing/marketplaces/MarketplaceGallery";
 import { ProblemSection } from "@/marketing/problem/ProblemSection";
 import { SiteNav } from "@/marketing/nav/SiteNav";
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 
 /**
  * Landing page (docs/LANDING_BUILD_STATUS.md): navigation (Landing 06), hero (Landing 07),
- * marketplace gallery (Landing 08), problem (Landing 09), how it works (Landing 10), and the remaining section skeleton (Landing 02);
+ * marketplace gallery (Landing 08), problem (Landing 09), how it works (Landing 10), deal intelligence (Landing 11), and the remaining section skeleton (Landing 02);
  * each section is filled in by its own landing step. Sections are focusable (tabIndex -1) so in-page
  * links move keyboard / screen-reader focus to them, not just the scroll position.
  */
@@ -36,6 +37,8 @@ export default function LandingPage() {
             <ProblemSection key={section.id} />
           ) : section.id === "how-it-works" ? (
             <HowItWorks key={section.id} />
+          ) : section.id === "intelligence" ? (
+            <DealIntelligence key={section.id} />
           ) : (
             <section key={section.id} id={section.id} aria-labelledby={`${section.id}-heading`} tabIndex={-1} className={styles.section}>
               <h2 id={`${section.id}-heading`}>{section.label}</h2>

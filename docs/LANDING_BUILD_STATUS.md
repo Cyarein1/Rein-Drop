@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 10 = step 57)_
+_Last updated: 2026-10-10 (Landing 11 = step 58)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -407,4 +407,37 @@ Verified (commands run):
   undistorted, "you decide" note, no horizontal overflow; the hero's "See how it works" scrolls
   here (64 px below the top). Screenshots reviewed (1280, 375 steps).
 
-Next: **Landing 11** - deal intelligence showcase.
+Next: Landing 11 - deal intelligence showcase.
+
+### Landing 11 (step 58) - Deal intelligence showcase - done 2026-10-10
+
+- `src/marketing/intelligence/DealIntelligence.tsx` + css (server component; the nav's "Features"
+  target): eyebrow "Deal intelligence", **"Know why a deal is worth a closer look."**, lead.
+- One editorial composition: an oversized card ("Illustrative example - not a live listing") with a
+  **listing-photo placeholder** (striped wash + controller glyph, `role="img"` "Listing photo
+  placeholder" - no licensed photo exists, none invented), Strong deal, **PlayStation 5 - Disc
+  edition**, Good condition - 1 controller, official eBay wordmark; oversized figures - asking
+  **$300**, est. resale **$420** with an "Estimate" tag, **potential gross upside +$120** (the only
+  green, "Before fees, shipping, tax and repairs"); confidence in plain words ("Medium confidence -
+  a handful of similar sales to compare" - no percentage).
+- Three numbered notes (an ordered list; matching decorative markers on the card): **Why it was
+  flagged** (under your max, condition matches, below similar sold prices) - **Questions to ask the
+  seller** (disc drive, controller / cables, pickup or shipped) + "an unusually low price can also be
+  a red flag" - **Before you count it as profit** (selling fees, shipping, sales tax, repairs - named,
+  never priced; "the upside shown is gross ... Rein Drop tracks them when you sell").
+- `src/marketing/illustrative.ts`: the illustrative label + gross-upside / USD formatting shared by
+  the hero and this section (the hero module re-exports it).
+- `MarketplaceMark` used with the name hidden for wordmark logos (the eBay wordmark already spells it).
+
+Verified (commands run):
+- `pnpm --filter web test` 78/78 (4 new: gross upside = resale - asking = +$120; no "net profit",
+  no "%", no priced costs, "gross" in the cost note; the three notes + red-flag caution;
+  launch-target marketplace), typecheck, lint, build.
+- `node scripts/check-landing.mjs` on the production build: **135/135** - deal intelligence at
+  1280 / 1024 / 375 / 320 px: illustrative label, labelled photo placeholder, "Asking price / Est.
+  resale Estimate / Potential gross upside" with $300 / $420 / +$120 fully visible, **green used on
+  exactly one element (the upside) by computed colour**, "net profit" nowhere on the page, three
+  notes, side by side >= 1000 px else stacked, no horizontal overflow; nav **Features** scrolls here
+  and focuses the section. Screenshots (now taken after content above settles) reviewed.
+
+Next: **Landing 12** - Hunt customization and alerts.

@@ -5,7 +5,8 @@
 // CTAs, store badges, priority mascot) and the marketplace gallery (Landing 08: honest statuses,
 // expander by mouse and keyboard, official logos loaded undistorted) and the problem section
 // (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen) and how it
-// works (Landing 10: ordered steps, decorative connectors between them, mascot, "you decide"). Screenshots go to <outDir>. Until Playwright is added
+// works (Landing 10: ordered steps, decorative connectors between them, mascot, "you decide") and
+// deal intelligence (Landing 11: illustrative / estimate / gross labels, one green, no net profit). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -51,6 +52,11 @@ const key = async (k, shift = false) => {
 const viewport = async (width, height, mobile) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
 const load = async (url) => { await send("Page.navigate", { url }); await sleep(1500); };
 const results = [];
+/** Screenshot with `selector` at the top, after letting late-loading content above settle. */
+const shotAt = async (selector, name) => {
+  for (let i = 0; i < 2; i++) { await evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView()`); await sleep(500); }
+  await shot(name);
+};
 const check = (name, ok, detail = "") => { results.push(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` - ${detail}` : ""}`); };
 
 await send("Page.enable"); await send("Runtime.enable");
@@ -310,6 +316,44 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
   await shot(`how-${width}`);
   if (mobile) { await evaluate(`document.querySelectorAll('#how-it-works ol > li')[1].scrollIntoView()`); await sleep(300); await shot(`how-${width}-steps`); }
 }
+// ---- Deal intelligence (Landing 11) ----
+for (const [width, height, mobile] of [[1280, 900, false], [1024, 768, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  await evaluate(`document.getElementById('intelligence').scrollIntoView()`); await sleep(400);
+  const tag = `intelligence ${width}px`;
+  const di = await evaluate(`(() => {
+    const s = document.getElementById('intelligence');
+    const r = (el) => el.getBoundingClientRect();
+    const card = s.querySelector('figure');
+    const dts = [...card.querySelectorAll('dt')].map((d) => d.textContent);
+    const dds = [...card.querySelectorAll('dd')];
+    const GREEN = 'rgb(22, 166, 106)';
+    const green = [...s.querySelectorAll('*')].filter((el) => { const c = getComputedStyle(el); return c.color === GREEN || c.backgroundColor === GREEN; }).map((el) => el.tagName + ':' + el.textContent.trim().slice(0, 12));
+    return {
+      label: card.querySelector('figcaption').textContent,
+      photo: s.querySelector('[role="img"]')?.getAttribute('aria-label'),
+      dts, numbers: dds.map((d) => d.textContent),
+      numbersOk: dds.every((d) => d.scrollWidth <= d.clientWidth + 1 && r(d).right <= innerWidth),
+      green,
+      netProfit: /net profit/i.test(document.body.textContent),
+      notes: [...s.querySelectorAll('ol > li h3')].map((h) => h.textContent),
+      layout: r(card).right <= r(s.querySelector('ol')).left ? 'side-by-side' : r(card).bottom <= r(s.querySelector('ol')).top ? 'stacked' : 'other',
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  })()`);
+  check(`${tag}: labelled illustrative; photo is a labelled placeholder`, di.label.startsWith("Illustrative example") && di.photo === "Listing photo placeholder", `${di.label} / ${di.photo}`);
+  check(`${tag}: asking / Estimate-tagged resale / gross upside, numbers fully visible`, di.dts.join("|") === "Asking price|Est. resale Estimate|Potential gross upside 3" && di.numbers.join(",") === "$300,$420,+$120" && di.numbersOk, JSON.stringify({ dts: di.dts, numbers: di.numbers, ok: di.numbersOk }));
+  check(`${tag}: green used once (the upside), no "net profit" anywhere`, di.green.length === 1 && di.green[0] === "DD:+$120" && !di.netProfit, JSON.stringify(di.green));
+  check(`${tag}: three notes; ${width >= 1000 ? "side by side" : "stacked"}; no horizontal overflow`, di.notes.join("|") === "Why it was flagged|Questions to ask the seller|Before you count it as profit" && di.layout === (width >= 1000 ? "side-by-side" : "stacked") && !di.overflowX, JSON.stringify({ layout: di.layout, overflowX: di.overflowX }));
+  await shotAt("#intelligence", `intelligence-${width}`);
+  if (mobile) { await shotAt("#intelligence figure", `intelligence-${width}-card`); await shotAt("#intelligence ol", `intelligence-${width}-notes`); }
+}
+// Nav "Features" lands on deal intelligence.
+await viewport(1280, 800, false); await load(`${base}/`);
+await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#intelligence"]').click()`); await sleep(1200);
+const features = await evaluate(`({ hash: location.hash, focus: document.activeElement.id, top: Math.round(document.getElementById('intelligence').getBoundingClientRect().top) })`);
+check("nav 'Features' scrolls to deal intelligence and focuses it", features.hash === "#intelligence" && features.focus === "intelligence" && features.top >= 0 && features.top <= 96, JSON.stringify(features));
 // The hero's "See how it works" lands here (scroll + focus).
 await viewport(1280, 800, false); await load(`${base}/`);
 await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('See how it works')).click()`); await sleep(1200);
