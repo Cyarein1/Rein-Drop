@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isoDateTimeSchema, moneySchema } from './common.js';
+import { isoDateTimeSchema, moneyInputSchema, moneySchema } from './common.js';
 
 /**
  * Seller Snapshot - the five progressive onboarding questions
@@ -162,7 +162,7 @@ const uniqueList = <T extends z.ZodType>(item: T, message: string) =>
 
 const otherText = z.string().trim().min(1).max(OTHER_TEXT_MAX_LENGTH);
 
-const positiveMoney = moneySchema.refine((m) => m.amountMinor > 0, 'Amount must be greater than 0');
+const positiveMoney = moneyInputSchema.refine((m) => m.amountMinor > 0, 'Amount must be greater than 0');
 
 /** Q4 answer. The optional target only exists where it makes sense for the criterion. */
 export const dealRuleSchema = z.discriminatedUnion('criterion', [

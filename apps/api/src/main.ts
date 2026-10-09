@@ -1,7 +1,8 @@
-import { Logger } from '@nestjs/common';
+import { ConsoleLogger, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { loadConfigOrExit, loadDotEnvFile, redactUrl } from '@rein-drop/env';
 import { AppModule } from './app.module.js';
+import { configureHttp } from './common/http/security.js';
 import { loadApiConfig } from './config/api-config.js';
 
 async function bootstrap() {
@@ -10,9 +11,14 @@ async function bootstrap() {
   const config = loadConfigOrExit(() => loadApiConfig());
 
   // rawBody: billing webhooks verify their signature over the exact bytes received.
-  const app = await NestFactory.create(AppModule.forRoot(config), { rawBody: true });
+  // Structured logs in production: one JSON object per line (timestamp, level, context, message).
+  const app = await NestFactory.create(AppModule.forRoot(config), {
+    rawBody: true,
+    logger: new ConsoleLogger({ json: config.logFormat === 'json', colors: config.logFormat !== 'json' }),
+  });
+  // Body limits, proxy trust, no X-Powered-By. CORS stays off: no browser calls the API directly.
+  configureHttp(app, { trustProxyHops: config.trustProxyHops });
   app.enableShutdownHooks();
-  // TODO(api): CORS policy - only needed once a browser calls the API directly.
   await app.listen(config.port);
 
   Logger.log(

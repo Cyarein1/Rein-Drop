@@ -52,6 +52,9 @@ const ACTION_EVENT: Record<HuntAction, HuntEventType> = {
  * with its HuntEvent, so history is never out of step with the hunt. Hunts are
  * never deleted.
  */
+
+/** Most hunt-history events returned (a hunt edited daily for years stays a bounded response). */
+const HUNT_EVENTS_MAX = 500;
 @Injectable()
 export class HuntsService {
   constructor(
@@ -249,11 +252,11 @@ export class HuntsService {
     });
   }
 
-  /** The hunt's history, oldest first. */
+  /** The hunt's history, oldest first - the most recent HUNT_EVENTS_MAX events (bounded response). */
   async events(userId: string, huntId: string): Promise<HuntEvent[]> {
     const row = await this.findOwned(this.prisma, userId, huntId);
-    const events = await this.prisma.huntEvent.findMany({ where: { huntId: row.id }, orderBy: { createdAt: 'asc' } });
-    return events.map(toHuntEvent);
+    const events = await this.prisma.huntEvent.findMany({ where: { huntId: row.id }, orderBy: { createdAt: 'desc' }, take: HUNT_EVENTS_MAX });
+    return events.reverse().map(toHuntEvent);
   }
 
   // -------------------------------------------------------------------------

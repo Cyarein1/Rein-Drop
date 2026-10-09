@@ -10,7 +10,13 @@ export interface LoadingStateProps {
 /** Inline loading state. Plain spinner - no mascot (Mascot Usage Guide, section 7). */
 export function LoadingState({ label = 'Loading…' }: LoadingStateProps) {
   return (
-    <View style={styles.container} accessibilityRole="progressbar" accessibilityLabel={label} accessibilityLiveRegion="polite">
+    <View
+      style={styles.container}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityState={{ busy: true }}
+      accessibilityLiveRegion="polite"
+    >
       <ActivityIndicator size="large" color={roles.text} />
       <Text style={[styles.label, font('regular')]}>{label}</Text>
     </View>

@@ -69,6 +69,8 @@ const workerEnvSchema = z.object({
   /** Only needed if 'enhanced push security' is on for the Expo project. Secret. */
   EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
   NOTIFICATION_DELIVERY: z.enum(['simulator', 'disabled'], { error: 'must be one of: simulator, disabled' }).optional(),
+  /** json = one JSON object per log line (default in production); text = readable. */
+  LOG_FORMAT: z.enum(['json', 'text'], { error: 'must be one of: json, text' }).optional(),
   AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
   // Microsoft Foundry (AI_PROVIDER=foundry) - see resolveFoundryConfig. Secrets come from the environment only.
   ...foundryEnvShape,
@@ -79,6 +81,7 @@ export interface WorkerConfig {
   readonly nodeEnv: NodeEnv;
   readonly databaseUrl: string;
   readonly heartbeatMs: number;
+  readonly logFormat: 'json' | 'text';
   readonly pipeline: {
     readonly pollIntervalMs: number;
     readonly schedulerIntervalMs: number;
@@ -150,6 +153,7 @@ export function loadWorkerConfig(
     nodeEnv: parsed.NODE_ENV,
     databaseUrl: resolveDatabaseUrl(parsed),
     heartbeatMs: parsed.WORKER_HEARTBEAT_MS,
+    logFormat: parsed.LOG_FORMAT ?? (parsed.NODE_ENV === 'production' ? 'json' : 'text'),
     pipeline: Object.freeze({
       pollIntervalMs: parsed.HUNT_POLL_INTERVAL_MINUTES * 60_000,
       schedulerIntervalMs: parsed.WORKER_SCHEDULER_INTERVAL_MS,

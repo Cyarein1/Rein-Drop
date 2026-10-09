@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { ActivationBlock, ActivationCheck, BillingInfo, EntitlementEvaluation, Hunt, Plan } from "@rein-drop/api-client";
 import {
   huntReview,
@@ -64,6 +64,20 @@ export function PlanGate({ hunt, plans, entitlements, check, context, billing, c
     entitlements.subscription?.planCode ?? null,
     context.localeTag,
   );
+
+  // Each step replaces the whole page: move focus to its heading so screen readers announce it.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const heading = document.querySelector<HTMLElement>("#main-content h1");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+  }, [view.kind]);
 
   const handle = (action: () => ReturnType<typeof startHunt>) =>
     startTransition(async () => {
@@ -212,7 +226,7 @@ function PlanCard({ option, onChoose }: { option: PlanGateOption; onChoose: () =
         ))}
       </ul>
       {option.reasons.length > 0 && (
-        <div className={styles.cannot}>
+        <div className={styles.cannot} id={`cannot-${plan.code}`}>
           <p className={styles.cannotTitle}>Can&apos;t run this Hunt:</p>
           <ul className={styles.lines}>
             {option.reasons.map((r) => (
@@ -225,6 +239,7 @@ function PlanCard({ option, onChoose }: { option: PlanGateOption; onChoose: () =
         variant={option.recommended ? "primary" : "secondary"}
         onClick={onChoose}
         disabled={!option.canRunHunt || !option.available}
+        aria-describedby={option.reasons.length > 0 ? `cannot-${plan.code}` : undefined}
         fullWidth
       >
         Choose {plan.name}
@@ -251,19 +266,21 @@ function ConfirmingPayment({ onGiveUp }: { onGiveUp: () => void }) {
   }, [tries, tooLong, router]);
   return (
     <Page title="Confirming your payment" width="narrow">
-      {tooLong ? (
-        <SystemBanner
-          tone="warning"
-          title="Still waiting for confirmation"
-          message="Stripe hasn't confirmed the payment yet. You won't be charged twice - check Settings in a few minutes."
-          action={
-            <Button variant="secondary" onClick={onGiveUp}>
-              Back to plans
-            </Button>
-          }
-        />
-      ) : (
-        <SystemBanner tone="info" title="Thanks - confirming with Stripe..." message="This usually takes a few seconds. Your Hunt starts right after." />
+      {/* One live region that stays mounted: screen readers announce the text change. */}
+      <div role="status" aria-live="polite" className={styles.lines}>
+        <p>
+          <strong>{tooLong ? "Still waiting for confirmation" : "Thanks - confirming with Stripe..."}</strong>
+        </p>
+        <p>
+          {tooLong
+            ? "Stripe hasn't confirmed the payment yet. You won't be charged twice - check Settings in a few minutes."
+            : "This usually takes a few seconds. Your Hunt starts right after."}
+        </p>
+      </div>
+      {tooLong && (
+        <Button variant="secondary" onClick={onGiveUp}>
+          Back to plans
+        </Button>
       )}
     </Page>
   );

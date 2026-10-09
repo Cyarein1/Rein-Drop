@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import {
   ApiError,
   type ActivationBlock,
@@ -118,6 +118,11 @@ function PlanGate({ hunt, plans, entitlements, check, billing }: Loaded) {
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // The success screen only changes the header: say it out loud.
+  useEffect(() => {
+    if (view.kind === 'live') AccessibilityInfo.announceForAccessibility(`Your Hunt ${view.hunt.name} is live`);
+  }, [view]);
 
   const options = planGateOptions(plans, hunt, entitlements.usage.activeHunts, entitlements.subscription?.planCode ?? null, context.localeTag);
 

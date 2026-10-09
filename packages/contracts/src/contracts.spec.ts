@@ -98,3 +98,13 @@ describe('deals', () => {
     expect(markDealBoughtRequestSchema.safeParse({ price: { amountMinor: 350_000, currency: 'ZAR' }, purchasedAt: NOW }).success).toBe(true);
   });
 });
+
+describe('money inputs (hardening)', () => {
+  it('rejects amounts the database cannot store, and negatives, with a clear 400', async () => {
+    const { moneyInputSchema, MAX_AMOUNT_MINOR, markDealBoughtRequestSchema: bought } = await import('./index.js');
+    expect(moneyInputSchema.safeParse({ amountMinor: MAX_AMOUNT_MINOR, currency: 'ZAR' }).success).toBe(true);
+    expect(moneyInputSchema.safeParse({ amountMinor: MAX_AMOUNT_MINOR + 1, currency: 'ZAR' }).success).toBe(false);
+    expect(moneyInputSchema.safeParse({ amountMinor: -1, currency: 'ZAR' }).success).toBe(false);
+    expect(bought.safeParse({ price: { amountMinor: 9e15, currency: 'ZAR' } }).success).toBe(false);
+  });
+});

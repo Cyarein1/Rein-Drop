@@ -1,11 +1,51 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 42)_
+_Last updated: 2026-10-09 (step 43)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 43 - Hardening pass (Build Prompt 40)
+
+Scoped review of validation, authorization, rate limiting, secrets, CORS, error leakage, webhook
+verification, idempotency, DB indexes / slow queries, retention, backups, dependencies, accessible
+UI states and structured logging. Report: [security/hardening-2026-10.md](security/hardening-2026-10.md);
+retention + backups: [operations/data-lifecycle.md](operations/data-lifecycle.md). No new architecture.
+
+**What changed**
+
+- API: per-user rate limiting (`@nestjs/throttler`, `RateLimitGuard` after the AuthGuard;
+  `RATE_LIMIT_PER_MINUTE`, 20/min on billing writes, webhook exempt, `TRUST_PROXY_HOPS`);
+  security headers middleware; explicit 100 kB body limits; no `X-Powered-By`; CORS off (by
+  design, tested); JSON logs (`LOG_FORMAT`) with structured request lines; inventory cursor
+  ownership check; hunt history capped at 500 events.
+- Contracts: `moneyInputSchema` (0..2,147,483,647) on every request amount.
+- Env: secret-named values never echoed in config errors.
+- DB migration `..._hardening_indexes`: 8 indexes (alerts, matches, saved deals, inventory, sales).
+- Worker: `LOG_FORMAT` JSON logs.
+- Web: security headers + baseline CSP, no `X-Powered-By`; accessible loading buttons, password
+  toggle names, plan-gate focus and live region, described disabled buttons.
+- Mobile: iOS announcements for errors / successes and "Hunt is live", busy loading state,
+  error + hint in field hints.
+- Dependencies: `mysql2` override (patched); remaining advisories are build tooling (documented).
+
+**What works (verified)**
+
+- `pnpm turbo run build typecheck lint test`: 54/54 (contracts money bounds; config incl. rate
+  limit / logging; production web build with the new headers).
+- New `security.e2e-spec.ts` (6): route inventory - only 3 reviewed public routes, every other
+  route 401 without credentials; security headers, no framework banner, no CORS (incl. preflight);
+  413 oversized body, 400 out-of-range money; no internal details on failure; per-user rate limit
+  (429 RATE_LIMITED + Retry-After, other users unaffected); webhook never throttled.
+- API int 62/62 (incl. foreign inventory cursor -> 400), e2e 58/58, worker int 40/40.
+- `pnpm audit`: 5 advisories, none in API / worker runtime.
+
+**Not done / TODO**
+
+- Retention jobs and backup drills (D38); shared rate-limit store for several instances; strict
+  nonce CSP; worker N+1 batching when measured (all in OUTSTANDING).
 
 ### Step 42 - Web billing with Stripe (Build Prompt 39)
 

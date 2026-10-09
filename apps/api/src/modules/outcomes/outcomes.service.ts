@@ -86,6 +86,11 @@ export class OutcomesService {
   async list(userId: string, query: ListInventoryQuery): Promise<Page<InventoryItem>> {
     const status =
       query.status === 'holding' ? { in: [...HOLDING_STATUSES] } : query.status === 'sold' ? { equals: 'SOLD' as const } : undefined;
+    // The cursor must be one of the caller's own items: Prisma positions the page by the cursor
+    // row, so another user's id would leak when that item was bought.
+    if (query.cursor && !(await this.prisma.inventoryItem.findFirst({ where: { id: query.cursor, userId }, select: { id: true } }))) {
+      throw invalid('cursor', 'Unknown cursor');
+    }
     const rows = await this.prisma.inventoryItem.findMany({
       where: { userId, ...(status ? { status } : {}) },
       include: ITEM_INCLUDE,

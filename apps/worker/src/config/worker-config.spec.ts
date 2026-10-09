@@ -7,6 +7,7 @@ describe('loadWorkerConfig', () => {
       nodeEnv: 'development',
       databaseUrl: LOCAL_DATABASE_URL,
       heartbeatMs: 60_000,
+      logFormat: 'text',
       pipeline: {
         pollIntervalMs: 15 * 60_000,
         schedulerIntervalMs: 30_000,

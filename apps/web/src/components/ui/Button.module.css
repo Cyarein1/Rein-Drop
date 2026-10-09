@@ -15,7 +15,8 @@
   transition: background-color 120ms ease, border-color 120ms ease, filter 120ms ease;
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -33,7 +34,7 @@
   background: var(--rd-action);
   color: var(--rd-on-action);
 }
-.primary:not(:disabled):hover {
+.primary:not(:disabled):not([aria-disabled="true"]):hover {
   filter: brightness(0.95);
 }
 
@@ -42,7 +43,7 @@
   color: var(--rd-text);
   border-color: var(--rd-text);
 }
-.secondary:not(:disabled):hover {
+.secondary:not(:disabled):not([aria-disabled="true"]):hover {
   background: var(--rd-surface-secondary);
 }
 
@@ -53,7 +54,7 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.text:not(:disabled):hover {
+.text:not(:disabled):not([aria-disabled="true"]):hover {
   background: var(--rd-neutral-surface-subtle);
 }
 
@@ -62,6 +63,6 @@
   color: var(--rd-on-destructive);
   border-color: var(--rd-destructive);
 }
-.destructive:not(:disabled):hover {
+.destructive:not(:disabled):not([aria-disabled="true"]):hover {
   filter: brightness(0.97);
 }

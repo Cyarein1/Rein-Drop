@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Logger } from '@nestjs/common';
+import { ConsoleLogger, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { loadConfigOrExit, loadDotEnvFile, redactUrl } from '@rein-drop/env';
 import { loadWorkerConfig } from './config/worker-config.js';
@@ -11,7 +11,10 @@ async function bootstrap() {
   const config = loadConfigOrExit(() => loadWorkerConfig());
 
   // Standalone application context: Nest DI and lifecycle hooks, no HTTP server.
-  const app = await NestFactory.createApplicationContext(WorkerModule.forRoot(config));
+  // Structured logs in production: one JSON object per line.
+  const app = await NestFactory.createApplicationContext(WorkerModule.forRoot(config), {
+    logger: new ConsoleLogger({ json: config.logFormat === 'json', colors: config.logFormat !== 'json' }),
+  });
   app.enableShutdownHooks();
 
   Logger.log(

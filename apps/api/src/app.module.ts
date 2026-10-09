@@ -1,4 +1,5 @@
 import { DynamicModule, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { SecurityHeadersMiddleware } from './common/http/security.js';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module.js';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter.js';
@@ -30,6 +31,6 @@ export class AppModule implements NestModule {
   }
 
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestLoggingMiddleware).forRoutes('*');
+    consumer.apply(SecurityHeadersMiddleware, RequestLoggingMiddleware).forRoutes('*');
   }
 }

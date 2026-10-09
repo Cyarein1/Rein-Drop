@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema, pageQuerySchema, pageSchema } from './common.js';
+import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneyInputSchema, moneySchema, pageQuerySchema, pageSchema } from './common.js';
 import { listingDetailSchema, listingStatusSchema, listingSummarySchema } from './listings.js';
 import { sourceStatusSchema } from './marketplace-health.js';
 import { boughtCostsSchema } from './outcomes.js';
@@ -268,7 +268,7 @@ export type IgnoreDealRequest = z.infer<typeof ignoreDealRequestSchema>;
  */
 export const markDealBoughtRequestSchema = z
   .object({
-    price: moneySchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] }).optional(),
+    price: moneyInputSchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] }).optional(),
     purchasedAt: isoDateTimeSchema.optional(),
     /** Optional purchase costs (tax, shipping to you, repair, ...), in the purchase price's currency. */
     costs: boughtCostsSchema.optional(),

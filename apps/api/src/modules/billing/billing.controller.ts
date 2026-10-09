@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   billingCheckoutRequestSchema,
   billingPortalRequestSchema,
@@ -8,6 +9,7 @@ import {
 } from '@rein-drop/contracts';
 import type { Principal } from '../../auth/auth.types.js';
 import { CurrentUser } from '../../auth/decorators.js';
+import { STRICT_LIMIT } from '../../common/rate-limit/rate-limit.guard.js';
 import { createZodDto } from '../../common/validation/zod-validation.pipe.js';
 import { BillingService } from './billing.service.js';
 import { SubscriptionsService } from './subscriptions.service.js';
@@ -33,6 +35,7 @@ export class BillingController {
   }
 
   /** Hosted checkout for a paid plan; the client sends the browser to `url`. */
+  @Throttle(STRICT_LIMIT)
   @Post('checkout')
   @HttpCode(HttpStatus.OK)
   async checkout(@CurrentUser() user: Principal, @Body() body: CheckoutDto): Promise<BillingRedirect> {
@@ -40,6 +43,7 @@ export class BillingController {
   }
 
   /** Hosted billing portal: payment method, invoices, change plan, cancel. */
+  @Throttle(STRICT_LIMIT)
   @Post('portal')
   @HttpCode(HttpStatus.OK)
   async portal(@CurrentUser() user: Principal, @Body() body: PortalDto): Promise<BillingRedirect> {
@@ -47,6 +51,7 @@ export class BillingController {
   }
 
   /** Choose the Free plan (no card, no charge) - works in every billing mode. */
+  @Throttle(STRICT_LIMIT)
   @Post('free')
   @HttpCode(HttpStatus.OK)
   async free(@CurrentUser() user: Principal): Promise<{ subscription: SubscriptionSummary }> {

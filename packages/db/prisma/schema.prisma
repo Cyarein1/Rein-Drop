@@ -581,6 +581,8 @@ model HuntMatch {
   /// Analytics: deals found in a period.
   @@index([huntId, matchedAt])
   @@index([listingId])
+  /// Matches a search run produced (counted after every run) - hardening 2026-10.
+  @@index([firstSearchRunId])
 }
 
 /// AI evaluation of a listing, optionally in the context of a hunt match.
@@ -675,6 +677,13 @@ model Alert {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+  /// Inbox pages sort by id (uuid7, time-ordered) - hardening 2026-10.
+  @@index([userId, id])
+  /// Per-hunt alert counts (analytics funnel, hunt activity).
+  @@index([huntId, createdAt])
+  /// Foreign keys (SetNull on delete would otherwise scan).
+  @@index([huntMatchId])
+  @@index([dealAnalysisId])
 }
 
 /// One channel's attempt to deliver an Alert. PENDING rows are the outbox the worker sends from.
@@ -753,6 +762,8 @@ model SavedDeal {
   huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
 
   @@unique([userId, listingId])
+  /// Joined from HuntMatch (analytics funnel) - hardening 2026-10.
+  @@index([huntMatchId])
 }
 
 // ---------------------------------------------------------------------------
@@ -790,6 +801,8 @@ model InventoryItem {
   @@index([userId, status])
   /// Analytics: purchases in a period.
   @@index([userId, purchasedAt])
+  /// Foreign key (SetNull when a listing is removed) - hardening 2026-10.
+  @@index([listingId])
 }
 
 model Sale {
@@ -810,6 +823,8 @@ model Sale {
   costs         Cost[]
 
   @@index([userId, soldAt])
+  /// Foreign key - hardening 2026-10.
+  @@index([marketplaceId])
 }
 
 /// A cost of buying (inventoryItemId set, saleId null) or of selling (saleId set, inventoryItemId

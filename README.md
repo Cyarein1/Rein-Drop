@@ -94,6 +94,8 @@ Invalid environment configuration for api:
 | `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_REQUIRED_SCOPE` | api | -, -, -, `access_as_user` | Token verification for `entra` (identifiers, not secrets). |
 | `ENTRA_WEB_CLIENT_ID`, `ENTRA_WEB_CLIENT_SECRET`, `APP_BASE_URL`, `AUTH_SESSION_SECRET`, `AUTH_SESSION_MAX_AGE_HOURS` | web | `AUTH_SESSION_MAX_AGE_HOURS=168` | Web sign-in for `entra` (+ `ENTRA_AUTHORITY`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`). **Client secret and session secret are secrets.** |
 | `EXPO_PUBLIC_AUTH_PROVIDER`, `EXPO_PUBLIC_ENTRA_*` | mobile | `dev` in development, `entra` in release builds | Mobile sign-in (public client IDs only). |
+| `RATE_LIMIT_PER_MINUTE`, `TRUST_PROXY_HOPS` | api | `600`, `0` | Per-user request limit; trusted proxies for client IPs (docs/security/hardening-2026-10.md). |
+| `LOG_FORMAT` | api, worker | `json` in production, `text` otherwise | Structured JSON log lines in production. |
 | `BILLING_PROVIDER` | api | `dev` outside production | `dev` (fake confirmation, refused in production) or `stripe` (decision 0014). |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | api | - | Required for `stripe`. **Secrets.** Test-mode keys locally. |
 | `STRIPE_PRICE_IDS`, `WEB_APP_URL` | api | - | Plan code -> Stripe price id (`pro=price_...,ultimate=price_...`; prices live in Stripe, never in code) and the web origin for return URLs. |

@@ -5,6 +5,7 @@ import {
   isoDateTimeSchema,
   marketplaceKeySchema,
   moneySchema,
+  moneyInputSchema,
   pageQuerySchema,
   pageSchema,
   type MarketplaceKey,
@@ -82,7 +83,7 @@ const huntConditions = z
   .array(huntConditionSchema)
   .refine((list) => new Set(list).size === list.length, 'Conditions must not repeat');
 
-const positiveMoney = moneySchema.refine((m) => m.amountMinor > 0, 'Amount must be greater than 0');
+const positiveMoney = moneyInputSchema.refine((m) => m.amountMinor > 0, 'Amount must be greater than 0');
 
 /** Optional target economics: a dollar profit or a margin, not both. */
 export const huntTargetSchema = z.discriminatedUnion('kind', [

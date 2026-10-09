@@ -263,5 +263,9 @@ describe('Outcomes ledger (integration, real database)', () => {
     await as(request(server()).put(`/inventory/${estimatedId}/sale`), OTHER).send({ price: ZAR(1), soldAt: new Date().toISOString() }).expect(404);
     expect((await list()).items.length).toBeGreaterThan(0);
     expect((await as(request(server()).get('/inventory?status=all'), OTHER).expect(200)).body.items).toEqual([]);
+    // Someone else's item can't be used as a page cursor either (it would reveal when it was bought).
+    const res = await as(request(server()).get(`/inventory?status=all&cursor=${estimatedId}`), OTHER).expect(400);
+    expect(res.body).toMatchObject({ code: 'VALIDATION_FAILED', details: [{ path: 'cursor' }] });
+    await as(request(server()).get(`/inventory?status=all&cursor=${estimatedId}`)).expect(200);
   });
 });

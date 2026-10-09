@@ -46,6 +46,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D29 | Hunt funnel: activity in the period (each event by its date) or a cohort of deals found in the period? | Step 33 | Activity (so "alerts bought" over 100% is hidden - step 34) |
 | D36 | Grace for failed renewals: keep paid access while Stripe retries (PAST_DUE), and for how long | Step 42 | PAST_DUE keeps access until Stripe gives up (its retry settings) |
 | D37 | Collect payment details before activating even Free (App Flow Blueprint "billing details")? | Step 42 | No - Free needs no card (behaviour preserved) |
+| D38 | Data retention periods (jobs, raw listings, search runs, analyses, deliveries, billing events, logs) and backup RPO / RTO | Step 43 | Nothing deleted; Azure PITR planned (docs/operations/data-lifecycle.md) |
 | D34 | Session length: how long a sign-in lasts (web + mobile), and whether mobile should stay signed in longer | Step 41 | 7 days absolute (AUTH_SESSION_MAX_AGE_HOURS / EXPO_PUBLIC_AUTH_SESSION_MAX_AGE_HOURS) |
 | D35 | Sign-in screens: Entra's hosted (brandable) page, or fully in-app email/password forms (Entra native authentication API) | Step 41 | Hosted page |
 | D33 | Which Foundry model(s) / deployment type (Standard vs provisioned) and region for each AI task, and the AI budget per analysis | Step 40 | None - set by FOUNDRY_DEPLOYMENT* in the environment |
@@ -145,7 +146,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ### Platform and API
 - OpenAPI spec (Tech Architecture locks "REST + OpenAPI") - docs review.
-- CORS policy (only needed once a browser calls the API directly) - step 10.
 - UI translations (only English exists) - step 14.
 - App-store storefront country to refine mobile locale detection - step 14.
 - Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
@@ -153,6 +153,19 @@ These block or shape work; the code uses placeholders until you decide.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
 - Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
 - Local MVP acceptance script + one-command reset / seed - prompt 41.
+
+### Security and operations (hardening pass, step 43)
+- Rate-limit counters are in memory per API instance; several instances need a shared store (Azure Cache for Redis) - step 43.
+- Web CSP is a baseline (framing, plugins, base, form targets); a strict script nonce CSP needs per-request rendering (conflicts with Cache Components) - step 43.
+- Worker N+1 loops (match stage per pair, duplicate resolution per key, normalization per raw record, analysis enqueue per match, outbox per delivery) - batch when measured - step 43.
+- Deals feed ranks all of a user's matches per page; store the latest score on HuntMatch when it gets slow - step 43.
+- Retention jobs and backup drills (D38, docs/operations/data-lifecycle.md) - step 43.
+- Dependency advisories left in build tooling: deepmerge-ts (Prisma CLI), node-forge / braces / uuid (Expo CLI, Metro), decode-uri-component (expo-router) - re-audit on upgrades - step 43.
+- Push token re-registration moves the token to the new account (shared phones) - accepted risk, documented - step 43.
+- POST /hunts has no idempotency key (double submit could create two drafts) - step 43.
+- Dynamic success / info banners elsewhere in the web app should move to persistent live regions - step 43.
+- Server error logs include stacks (Prisma messages may contain query arguments) - revisit with log retention - step 43.
+- Hunt-activity integration test occasionally fails in the full run (a running worker can poll its LIVE hunts) - step 36/43.
 
 ### Brand and assets
 - Confirm font sizes, spacing and neutral greys in the high-fidelity design pass - step 6.
@@ -185,7 +198,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-40 Production hardening - 41 Local MVP acceptance script -
+41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
 ## Resolved
@@ -252,3 +265,9 @@ These block or shape work; the code uses placeholders until you decide.
 | Cancellation flow placeholder (couldn't cancel) | Step 36 | Step 42 (Stripe portal; copy now matches what happens) |
 | Cancellation copy promised "you choose which stay live" (not built) and nothing enforced the Free limit after a downgrade | Step 36 | Step 42 (hunts above the limit pause automatically, copy corrected) |
 | Env errors could echo malformed secret-named values (only DATABASE_URL was masked) | Step 2 | Step 42 (SECRET / TOKEN / PASSWORD / *_KEY masked) |
+| CORS policy (decided: off - no browser calls the API; tested) | Step 10 | Step 43 |
+| No rate limiting | Docs review | Step 43 (per-user throttling) |
+| Inventory cursor accepted another user's item id | Step 31 | Step 43 |
+| Money inputs larger than the database columns caused 500s | Step 13 | Step 43 |
+| Missing indexes on alert / match / saved-deal / inventory / sale foreign keys and lookups | Step 43 review | Step 43 |
+| mysql2 advisory (Prisma CLI) | Step 43 audit | Step 43 (override) |

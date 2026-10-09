@@ -17,6 +17,19 @@ export const moneySchema = z.object({
 });
 export type Money = z.infer<typeof moneySchema>;
 
+/** Largest amount (minor units) the database stores: amounts are 32-bit integer columns. */
+export const MAX_AMOUNT_MINOR = 2_147_483_647;
+
+/**
+ * Money the client sends: non-negative and within what the database can store, so an absurd
+ * amount is a 400 with a clear message instead of a database error. Responses use `moneySchema`
+ * (totals and differences may be larger or negative).
+ */
+export const moneyInputSchema = z.object({
+  amountMinor: z.number().int().min(0, 'Must not be negative').max(MAX_AMOUNT_MINOR, 'Amount is too large'),
+  currency: currencySchema,
+});
+
 /** Marketplace key (`ebay` | `facebook`), from @rein-drop/marketplace-core. */
 export const marketplaceKeySchema = z.enum(MARKETPLACE_IDS);
 export type MarketplaceKey = z.infer<typeof marketplaceKeySchema>;

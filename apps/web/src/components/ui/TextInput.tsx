@@ -72,6 +72,7 @@ export function TextInput({
             className={styles.toggle}
             onClick={() => setShowPassword((v) => !v)}
             aria-pressed={showPassword}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? "Hide" : "Show"}
           </button>

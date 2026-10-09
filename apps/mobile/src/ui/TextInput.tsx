@@ -44,7 +44,8 @@ export function TextInput({ label, kind = 'text', hint, error, currency, ...rest
         )}
         <RNTextInput
           accessibilityLabel={label}
-          accessibilityHint={error ?? hint}
+          // The error first, then the hint - never one hiding the other (aria-invalid is ignored by React Native).
+          accessibilityHint={[error && `Error: ${error}`, hint].filter(Boolean).join('. ') || undefined}
           aria-invalid={!!error}
           placeholderTextColor={roles.textDisabled}
           secureTextEntry={kind === 'password' && !showPassword}

@@ -16,6 +16,7 @@ import {
 import {
   databaseUrlSchema,
   EnvValidationError,
+  intSchema,
   nodeEnvSchema,
   parseEnv,
   portSchema,
@@ -30,6 +31,12 @@ const devScenarioSchema = z
 const apiEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema,
   PORT: portSchema(4000),
+  /** Requests per signed-in user (or anonymous IP) per minute, across the API. */
+  RATE_LIMIT_PER_MINUTE: intSchema({ min: 10, max: 100_000, default: 600 }),
+  /** Reverse proxies in front of the API (Azure front door / app gateway): 0 = trust none. */
+  TRUST_PROXY_HOPS: intSchema({ min: 0, max: 5, default: 0 }),
+  /** json = one JSON object per log line (default in production); text = readable (development). */
+  LOG_FORMAT: z.enum(['json', 'text'], { error: 'must be one of: json, text' }).optional(),
   DATABASE_URL: databaseUrlSchema.optional(),
   AUTH_PROVIDER: z
     .enum(AUTH_PROVIDER_IDS, { error: `must be one of: ${AUTH_PROVIDER_IDS.join(', ')}` })
@@ -60,6 +67,9 @@ export interface ApiConfig {
   readonly databaseUrl: string;
   /** Which AuthProvider implementation authenticates requests. */
   readonly authProvider: AuthProviderId;
+  readonly rateLimitPerMinute: number;
+  readonly trustProxyHops: number;
+  readonly logFormat: 'json' | 'text';
   /** Entra External ID verification settings when authProvider is "entra", else null. */
   readonly entra: EntraApiConfig | null;
   /** Web billing: Stripe settings, or the development fake. Holds secrets - never log it. */
@@ -119,6 +129,9 @@ export function loadApiConfig(
     databaseUrl: resolveDatabaseUrl(parsed),
     // Development default is "dev"; production requires an explicit value (and never "dev").
     authProvider,
+    rateLimitPerMinute: parsed.RATE_LIMIT_PER_MINUTE,
+    trustProxyHops: parsed.TRUST_PROXY_HOPS,
+    logFormat: parsed.LOG_FORMAT ?? (parsed.NODE_ENV === 'production' ? 'json' : 'text'),
     entra: entra ? Object.freeze(entra) : null,
     billing: Object.freeze(billing.billing ?? { provider: 'dev' }),
     devMarketplaceScenarios: Object.freeze({

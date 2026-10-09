@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { bannerToneColors, fontSize, radius, space, tones, type BannerTone } from '@rein-drop/design-tokens';
 import { font } from './fonts';
 
@@ -21,11 +21,16 @@ const TONE_LABEL: Record<BannerTone, string> = {
 
 export function SystemBanner({ tone = 'info', title, message, action }: SystemBannerProps) {
   const t = tones[bannerToneColors[tone]];
+  const spoken = `${TONE_LABEL[tone]}: ${title}${message ? `. ${message}` : ''}`;
+  // Live regions are Android-only: announce errors and successes explicitly (iOS too).
+  useEffect(() => {
+    if (tone === 'error' || tone === 'success') AccessibilityInfo.announceForAccessibility(spoken);
+  }, [tone, spoken]);
   return (
     <View
       accessibilityRole={tone === 'error' ? 'alert' : 'summary'}
       accessibilityLiveRegion={tone === 'error' ? 'assertive' : 'polite'}
-      accessibilityLabel={`${TONE_LABEL[tone]}: ${title}${message ? `. ${message}` : ''}`}
+      accessibilityLabel={spoken}
       style={[styles.banner, { backgroundColor: t.background, borderLeftColor: t.accent }]}
     >
       <Text style={[styles.title, font('semibold'), { color: t.foreground }]}>{title}</Text>

@@ -1,4 +1,5 @@
 import { Controller, Headers, HttpCode, HttpStatus, Post, Req, type RawBodyRequest } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../../auth/decorators.js';
 import { AppException } from '../../common/errors/app.exception.js';
@@ -15,6 +16,8 @@ export class BillingWebhooksController {
   constructor(private readonly billing: BillingService) {}
 
   @Public()
+  // Stripe sends bursts (and retries); the signature, not a rate limit, protects this route.
+  @SkipThrottle()
   @Post('stripe')
   @HttpCode(HttpStatus.OK)
   async stripe(

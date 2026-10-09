@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema, type Money } from './common.js';
+import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneyInputSchema, moneySchema, type Money } from './common.js';
 
 /**
  * The reselling ledger: what was bought, what it cost, what it sold for, and the REALIZED result.
@@ -29,7 +29,7 @@ export type InventoryStatus = z.infer<typeof inventoryStatusSchema>;
 /** Holding = bought and not sold yet. TODO(outcomes): returns and write-offs. */
 export const HOLDING_STATUSES = ['IN_STOCK', 'LISTED'] as const;
 
-const positiveMoney = moneySchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] });
+const positiveMoney = moneyInputSchema.refine((m) => m.amountMinor > 0, { message: 'Must be more than zero', path: ['amountMinor'] });
 const MAX_COSTS = 10;
 
 /** Every cost must be in the same currency as the price it belongs to. */
