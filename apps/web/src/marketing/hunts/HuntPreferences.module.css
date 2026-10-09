@@ -1,0 +1,298 @@
+/* Make the Hunt yours (Landing 12). Copy + list on one side, an app-screen illustration on the other. */
+.section {
+  padding: var(--rd-section-space-default) 0;
+  scroll-margin-top: 64px;
+}
+
+.section:focus {
+  outline: none;
+}
+
+.inner {
+  display: grid;
+  gap: var(--rd-space-10);
+  align-items: center;
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: 0 var(--rd-gutter);
+}
+
+.copy {
+  display: grid;
+  gap: var(--rd-space-4);
+  justify-items: start;
+}
+
+.eyebrow {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.lead {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+.list {
+  display: grid;
+  gap: var(--rd-space-3);
+  margin: var(--rd-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--rd-color-navy);
+}
+
+.list li {
+  display: flex;
+  gap: var(--rd-space-3);
+  align-items: flex-start;
+}
+
+.list strong {
+  display: block;
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.listIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-orange);
+  color: var(--rd-color-navy);
+}
+
+.listText {
+  display: block;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  min-height: 48px;
+  margin-top: var(--rd-space-2);
+  padding: 0 var(--rd-space-5);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-bold);
+  text-decoration: none;
+  box-shadow: var(--rd-shadow-cta);
+}
+
+/* ---------- The illustrated screen ---------- */
+.figure {
+  display: grid;
+  gap: var(--rd-space-3);
+  justify-items: center;
+  margin: 0;
+}
+
+.caption {
+  padding: 3px var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-yellow);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+/* A phone-like frame: reads as a screenshot of the app, not a form on this page. */
+.screen {
+  width: min(100%, 360px);
+  padding: 10px;
+  border-radius: 34px;
+  background: var(--rd-color-navy);
+  box-shadow: var(--rd-shadow-xl);
+  cursor: default;
+  user-select: none;
+}
+
+.screenInner {
+  display: grid;
+  gap: var(--rd-space-4);
+  padding: var(--rd-space-5) var(--rd-space-4) var(--rd-space-5);
+  border-radius: 26px;
+  background: var(--rd-color-canvas);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+}
+
+.screenTop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rd-space-2);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.group {
+  display: grid;
+  gap: var(--rd-space-2);
+}
+
+.label {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.value {
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.input {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  min-height: 40px;
+  padding: 0 var(--rd-space-3);
+  border-radius: var(--rd-radius-sm);
+  box-shadow: inset 0 0 0 1.5px var(--rd-neutral-border);
+}
+
+.push {
+  margin-left: auto;
+}
+
+.track {
+  position: relative;
+  display: block;
+  height: 6px;
+  margin: 8px 0;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-neutral-border);
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-orange);
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--rd-color-canvas);
+  box-shadow: 0 0 0 3px var(--rd-color-orange), var(--rd-shadow-sm);
+  transform: translate(-50%, -50%);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.segment,
+.segmentOn {
+  padding: 6px 0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.segment {
+  color: var(--rd-neutral-text-muted);
+}
+
+.segmentOn {
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+}
+
+.chip {
+  justify-self: start;
+  padding: 3px var(--rd-space-2);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-wash-sky);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.sourceOn,
+.sourceOff {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.sourceOn {
+  box-shadow: inset 0 0 0 1.5px var(--rd-color-navy);
+}
+
+.sourceOff {
+  color: var(--rd-neutral-text-muted);
+  border: 1px dashed var(--rd-neutral-border);
+}
+
+/* Part of the screenshot - deliberately muted so it never looks like a button on this page
+   (the page's real action is the orange "Join early access" link beside it). */
+.screenButton {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-neutral-surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+  color: var(--rd-neutral-text-muted);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.screenTag {
+  margin-left: var(--rd-space-1);
+  padding: 1px var(--rd-space-2);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-wash-yellow);
+  font-size: 11px;
+  font-weight: var(--rd-font-weight-semibold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+@media (min-width: 900px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--rd-space-12);
+  }
+}

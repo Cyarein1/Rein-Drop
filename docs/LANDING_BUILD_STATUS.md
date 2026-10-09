@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 11 = step 58)_
+_Last updated: 2026-10-10 (Landing 12 = step 59)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -440,4 +440,40 @@ Verified (commands run):
   notes, side by side >= 1000 px else stacked, no horizontal overflow; nav **Features** scrolls here
   and focuses the section. Screenshots (now taken after content above settles) reviewed.
 
-Next: **Landing 12** - Hunt customization and alerts.
+Next: Landing 12 - Hunt customization and alerts.
+
+### Landing 12 (step 59) - Hunt customization and alerts - done 2026-10-10
+
+Two sections (anchors `#hunts` and `#alerts`), server components:
+
+- **`HuntPreferences`** - **"Your budget. Your area. Your kind of flip."**, a lead, and a plain list
+  (Product, Budget, Condition, Location, Marketplaces) beside an **app-screen illustration** of the
+  Hunt form: iPhone 13 Pro, max $400 slider, Any / New / **Used** + "Good or better", "Within 25
+  miles of your ZIP code", eBay + Facebook (official marks) selected, OfferUp / Craigslist "soon".
+  It is one `role="img"` with a summary ("... It is a picture, not a working form"), captioned
+  **"Example Hunt - illustration, not a working form"**, tagged "Illustration" inside the frame, and
+  contains **no inputs, buttons or links**; its "Start watching" is a muted part of the screenshot.
+  The only action: **"Join early access to create your first Hunt"** -> waitlist.
+- **`AlertsSection`** - **"Get a heads-up when something worth checking drops."**, a phone
+  lock-screen illustration (no clock, no "now"; an "Illustration" label) with one Rein Drop
+  notification (the deal-intelligence PS5 example), and only what the product does: **Push
+  notifications** (the app), **In-app alerts** (inbox), **You choose** (per-type settings), **One
+  alert per deal**. No email (not built - D14), no speed promise; caveat: "They're a heads-up to
+  look, not advice to buy." No mascot (no approved phone pose).
+- Copy in `hunts/hunts-story.ts` and `alerts/alerts-story.ts` (+ a shared spec).
+
+Verified (commands run):
+- `pnpm --filter web test` 83/83 (5 new: both headlines; never claims a Hunt is created, label
+  says "not a working form", the only action is joining early access; product / budget / condition
+  / location / sources with launch targets only; alerts: no email / SMS, no instant / never-miss /
+  timestamps, "not advice to buy"), typecheck, lint, build.
+- `node scripts/check-landing.mjs` on the production build: **150/150** - at 1280 / 375 / 320 px:
+  both headlines and the illustration label; **zero focusable / interactive elements inside either
+  illustration**; the hunts section's only link is the waitlist CTA; marks loaded; alerts points,
+  no "email", no clock / "now" / "ago", caveat; side by side vs stacked; no horizontal overflow.
+  (The check now waits for smooth scrolling to finish after link clicks - the longer page made the
+  old fixed wait too short.)
+- Screenshots reviewed (1280 hunts + alerts, 375 screen + points); after review the illustrated
+  "Start watching" was muted and an in-frame "Illustration" tag added so it can't pass for a button.
+
+Next: **Landing 13** - after the flip, FAQ, closing CTA and footer.

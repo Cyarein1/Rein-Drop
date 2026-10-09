@@ -6,7 +6,8 @@
 // expander by mouse and keyboard, official logos loaded undistorted) and the problem section
 // (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen) and how it
 // works (Landing 10: ordered steps, decorative connectors between them, mascot, "you decide") and
-// deal intelligence (Landing 11: illustrative / estimate / gross labels, one green, no net profit). Screenshots go to <outDir>. Until Playwright is added
+// deal intelligence (Landing 11: illustrative / estimate / gross labels, one green, no net profit) and
+// hunts + alerts (Landing 12: illustration with no fake controls; push + in-app only, no timestamps). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -52,6 +53,9 @@ const key = async (k, shift = false) => {
 const viewport = async (width, height, mobile) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
 const load = async (url) => { await send("Page.navigate", { url }); await sleep(1500); };
 const results = [];
+/** After an in-page link: wait until smooth scrolling has stopped (scrollY stable for 300 ms, max 5 s). */
+const settleScroll = () => evaluate(`(async () => { let last = -1, stable = 0; const start = Date.now();
+  while (Date.now() - start < 5000) { await new Promise((r) => setTimeout(r, 100)); if (scrollY === last) { if ((stable += 100) >= 300) return; } else { stable = 0; last = scrollY; } } })()`);
 /** Screenshot with `selector` at the top, after letting late-loading content above settle. */
 const shotAt = async (selector, name) => {
   for (let i = 0; i < 2; i++) { await evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView()`); await sleep(500); }
@@ -84,7 +88,7 @@ await evaluate(`window.scrollTo(0, 700)`); await sleep(400);
 const afterScroll = await evaluate(`({ scrolled: document.querySelector('header').hasAttribute('data-scrolled'), top: document.querySelector('header').getBoundingClientRect().top })`);
 check("desktop: bar turns solid after scrolling and stays at the top", afterScroll.scrolled && afterScroll.top === 0, JSON.stringify(afterScroll));
 await shot("desktop-scrolled");
-await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#faq"]').click()`); await sleep(1200);
+await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#faq"]').click()`); await settleScroll();
 const faq = await evaluate(`({ hash: location.hash, focus: document.activeElement.id, top: Math.round(document.getElementById('faq').getBoundingClientRect().top), atBottom: Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight })`);
 // Below the bar - or as far as the page can scroll (the skeleton's last sections are short).
 check("desktop: FAQ link scrolls below the bar and focuses the section", faq.hash === "#faq" && faq.focus === "faq" && faq.top >= 64 && (faq.top <= 96 || faq.atBottom), JSON.stringify(faq));
@@ -138,7 +142,7 @@ s = await evaluate(`(() => { const b = document.querySelector('button[aria-contr
 check("Escape closes and returns focus to the menu button", s.expanded === "false" && s.focusIsButton && s.panelHidden && s.overflow === "", JSON.stringify(s));
 // A link closes the menu and lands on its section.
 await evaluate(`document.querySelector('button[aria-controls]').click()`); await sleep(250);
-await evaluate(`[...document.getElementById(document.querySelector('button[aria-controls]').getAttribute('aria-controls')).querySelectorAll('a')].find(a => a.textContent === 'Marketplaces').click()`); await sleep(1200);
+await evaluate(`[...document.getElementById(document.querySelector('button[aria-controls]').getAttribute('aria-controls')).querySelectorAll('a')].find(a => a.textContent === 'Marketplaces').click()`); await settleScroll();
 s = await evaluate(`({ expanded: document.querySelector('button[aria-controls]').getAttribute('aria-expanded'), hash: location.hash, focus: document.activeElement.id, top: Math.round(document.getElementById('marketplaces').getBoundingClientRect().top) })`);
 check("menu link: closes, scrolls below the bar, focuses the section", s.expanded === "false" && s.hash === "#marketplaces" && s.focus === "marketplaces" && s.top >= 64 && s.top <= 96, JSON.stringify(s));
 // Clicking outside (on the bar, not a control) closes; widening to desktop closes.
@@ -349,14 +353,52 @@ for (const [width, height, mobile] of [[1280, 900, false], [1024, 768, false], [
   await shotAt("#intelligence", `intelligence-${width}`);
   if (mobile) { await shotAt("#intelligence figure", `intelligence-${width}-card`); await shotAt("#intelligence ol", `intelligence-${width}-notes`); }
 }
+// ---- Hunts + alerts (Landing 12) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  await evaluate(`document.getElementById('hunts').scrollIntoView()`); await sleep(400);
+  const tag = `hunts+alerts ${width}px`;
+  const ha = await evaluate(`(() => {
+    const r = (el) => el.getBoundingClientRect();
+    const h = document.getElementById('hunts'), a = document.getElementById('alerts');
+    const shot = h.querySelector('[role="img"]'), phone = a.querySelector('[role="img"]');
+    const interactive = 'input, button, select, textarea, a[href], [tabindex]:not([tabindex="-1"]), [contenteditable]';
+    const marks = [...shot.querySelectorAll('img')];
+    return {
+      huntsHeading: h.querySelector('h2').textContent,
+      caption: h.querySelector('figcaption').textContent,
+      shotLabel: (shot.getAttribute('aria-label') || '').includes('not a working form'),
+      controlsInsideIllustration: shot.querySelectorAll(interactive).length + phone.querySelectorAll(interactive).length,
+      huntsLinks: [...h.querySelectorAll('a')].map((x) => x.textContent.trim() + '>' + x.getAttribute('href')),
+      marks: marks.length > 0 && marks.every((i) => i.complete && i.naturalWidth > 0),
+      alertsHeading: a.querySelector('h2').textContent,
+      phoneLabel: (phone.getAttribute('aria-label') || '').startsWith('Illustration:'),
+      email: /e-?mail/i.test(a.textContent),
+      clock: /\b\d{1,2}:\d{2}\b|\bnow\b|\bago\b/i.test(a.textContent),
+      points: [...a.querySelectorAll('ul > li strong')].map((s) => s.textContent),
+      caveat: a.textContent.includes('not advice to buy'),
+      huntsLayout: r(h.querySelector('div > div')).right <= r(h.querySelector('figure')).left ? 'side' : 'stacked',
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  })()`);
+  check(`${tag}: hunts copy + 'illustration, not a working form' label`, ha.huntsHeading === "Your budget. Your area. Your kind of flip." && ha.caption === "Example Hunt - illustration, not a working form" && ha.shotLabel, `${ha.huntsHeading} / ${ha.caption}`);
+  check(`${tag}: no controls inside the illustrations; the only hunts action is the waitlist link`, ha.controlsInsideIllustration === 0 && ha.huntsLinks.length === 1 && ha.huntsLinks[0] === "Join early access to create your first Hunt>#waitlist", JSON.stringify({ controls: ha.controlsInsideIllustration, links: ha.huntsLinks }));
+  check(`${tag}: official marks loaded in the illustration`, ha.marks);
+  check(`${tag}: alerts copy, phone summarised, push + in-app points, no email, no clock / 'now'`, ha.alertsHeading === "Get a heads-up when something worth checking drops." && ha.phoneLabel && ha.points.join("|") === "Push notifications|In-app alerts|You choose|One alert per deal" && !ha.email && !ha.clock && ha.caveat, JSON.stringify({ email: ha.email, clock: ha.clock, points: ha.points }));
+  check(`${tag}: ${mobile ? "stacked" : "side by side"}; no horizontal overflow`, ha.huntsLayout === (mobile ? "stacked" : "side") && !ha.overflowX, JSON.stringify({ layout: ha.huntsLayout, overflowX: ha.overflowX }));
+  await shotAt("#hunts", `hunts-${width}`);
+  await shotAt("#alerts", `alerts-${width}`);
+  if (mobile) { await shotAt("#hunts figure", `hunts-${width}-screen`); await shotAt("#alerts ul", `alerts-${width}-points`); }
+}
 // Nav "Features" lands on deal intelligence.
 await viewport(1280, 800, false); await load(`${base}/`);
-await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#intelligence"]').click()`); await sleep(1200);
+await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#intelligence"]').click()`); await settleScroll();
 const features = await evaluate(`({ hash: location.hash, focus: document.activeElement.id, top: Math.round(document.getElementById('intelligence').getBoundingClientRect().top) })`);
 check("nav 'Features' scrolls to deal intelligence and focuses it", features.hash === "#intelligence" && features.focus === "intelligence" && features.top >= 0 && features.top <= 96, JSON.stringify(features));
 // The hero's "See how it works" lands here (scroll + focus).
 await viewport(1280, 800, false); await load(`${base}/`);
-await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('See how it works')).click()`); await sleep(1200);
+await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('See how it works')).click()`); await settleScroll();
 const landed = await evaluate(`({ hash: location.hash, top: Math.round(document.getElementById('how-it-works').getBoundingClientRect().top) })`);
 check("hero 'See how it works' scrolls to the section", landed.hash === "#how-it-works" && landed.top >= 0 && landed.top <= 96, JSON.stringify(landed));
 // Hero card shows the official Facebook mark.

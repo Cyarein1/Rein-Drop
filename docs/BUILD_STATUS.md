@@ -1,11 +1,21 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 58 - Landing 11)_
+_Last updated: 2026-10-10 (step 59 - Landing 12)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 59 - Landing 12: Hunt customization and alerts
+
+"Your budget. Your area. Your kind of flip." with an app-screen illustration of the Hunt form
+(product, budget, condition, location, sources) that contains no real controls and is labelled
+"illustration, not a working form" - the only action is joining early access; and "Get a heads-up
+when something worth checking drops." with a phone notification illustration and only real channels
+(push in the app, in-app inbox, per-type choice, one alert per deal; no email, no speed promise).
+Verified: web tests 83/83, browser check 150/150 (incl. zero controls inside illustrations).
+Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 58 - Landing 11: deal intelligence showcase
 
@@ -2372,6 +2382,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 12 = step 59; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 13 = step 60; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)
