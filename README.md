@@ -4,6 +4,7 @@ AI-powered reseller sourcing platform. TypeScript monorepo (pnpm workspaces + Tu
 a modular-monolith API, separate background worker, web app and mobile app.
 
 Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
+End-to-end demo / acceptance run: [docs/LOCAL_MVP_ACCEPTANCE.md](docs/LOCAL_MVP_ACCEPTANCE.md) (`pnpm db:reset-demo` for a clean database).
 
 ## Ports
 

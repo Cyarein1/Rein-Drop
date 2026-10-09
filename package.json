@@ -21,6 +21,7 @@
     "db:status": "pnpm --filter @rein-drop/db db:status",
     "db:seed": "pnpm --filter @rein-drop/db db:seed",
     "db:reset": "pnpm --filter @rein-drop/db db:reset",
+    "db:reset-demo": "pnpm --filter @rein-drop/db db:reset-demo",
     "db:studio": "pnpm --filter @rein-drop/db db:studio"
   },
   "packageManager": "pnpm@12.9.1",

@@ -1,11 +1,42 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 43)_
+_Last updated: 2026-10-09 (step 44)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 44 - Local MVP acceptance sequence + one-command demo reset (Build Prompt 41)
+
+**What was added**
+
+- [`docs/LOCAL_MVP_ACCEPTANCE.md`](LOCAL_MVP_ACCEPTANCE.md): an exact manual sequence with the
+  expected result of every step - reset, start the stack, sign in, Seller Snapshot, create a Hunt
+  (Nintendo Switch OLED, Cape Town, max R 4 000, eBay + Facebook), plan gate (Free), activate,
+  worker searches both marketplaces (dev or real, as configured), match / analyse / alert
+  (inbox + notification simulator), open the deal, Bought, Sold, realized P/L + Analytics,
+  pause / resume, source degradation (`FACEBOOK_DEV_SCENARIO=unavailable`) and recovery; a
+  configuration table for real providers, troubleshooting and a sign-off sheet.
+- `pnpm db:reset-demo` (packages/db/prisma/reset-demo.ts): `prisma migrate reset --force` +
+  `prisma db seed` in one command; refuses `NODE_ENV=production` and non-local databases unless
+  `--allow-remote`; runs the Prisma CLI without a shell. README links the guide.
+
+**What works (verified)**
+
+- `pnpm db:reset-demo` run (with your consent) against a throwaway database `reindrop_reset_check`
+  in the local Docker Postgres: 22 migrations applied, 2 marketplaces, 3 plans, the development
+  user with an empty profile, no Hunts; the throwaway database was dropped afterwards and the real
+  development database was untouched (row counts before / after). Refusals checked for a remote
+  host and NODE_ENV=production. The shell-free Prisma launch checked with `migrate status`.
+- Every label, route, log line and expected banner in the guide was checked against the code
+  (create-Hunt fields, plan gate, deal actions, Mark sold, source banner copy, scheduler log).
+- **Not done here:** the full manual sequence itself (it would add data to your development
+  database) - run it with the guide and fill in the sign-off sheet.
+
+**Not done / TODO**
+
+- Run the sequence on a real phone and with the real providers.
 
 ### Step 43 - Hardening pass (Build Prompt 40)
 

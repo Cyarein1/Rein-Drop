@@ -152,7 +152,8 @@ These block or shape work; the code uses placeholders until you decide.
 - Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
 - Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
-- Local MVP acceptance script + one-command reset / seed - prompt 41.
+- Acceptance run on a real device (mobile) and with real providers (eBay API, Apify, Foundry, Entra, Stripe) - docs/LOCAL_MVP_ACCEPTANCE.md "Configurations" - step 44.
+- The acceptance sequence is manual (no browser automation script) - step 44.
 
 ### Security and operations (hardening pass, step 43)
 - Rate-limit counters are in memory per API instance; several instances need a shared store (Azure Cache for Redis) - step 43.
@@ -198,7 +199,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-41 Local MVP acceptance script -
 42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
 ## Resolved
@@ -271,3 +271,4 @@ These block or shape work; the code uses placeholders until you decide.
 | Money inputs larger than the database columns caused 500s | Step 13 | Step 43 |
 | Missing indexes on alert / match / saved-deal / inventory / sale foreign keys and lookups | Step 43 review | Step 43 |
 | mysql2 advisory (Prisma CLI) | Step 43 audit | Step 43 (override) |
+| Local MVP acceptance script + one-command reset / seed (prompt 41) | Step 10 | Step 44 (docs/LOCAL_MVP_ACCEPTANCE.md, `pnpm db:reset-demo`) |
