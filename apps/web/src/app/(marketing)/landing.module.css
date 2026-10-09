@@ -1,0 +1,60 @@
+/* Landing skeleton (Landing 02) - structure only; the real design arrives section by section. */
+.skipLink {
+  position: absolute;
+  left: var(--rd-space-4);
+  top: -100px;
+  z-index: 100;
+  padding: var(--rd-space-3) var(--rd-space-4);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.skipLink:focus {
+  top: var(--rd-space-2);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-4);
+  max-width: var(--rd-page-max-width);
+  margin: 0 auto;
+  padding: var(--rd-space-4);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-4);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.nav a {
+  text-decoration: none;
+}
+
+.main {
+  max-width: var(--rd-page-max-width);
+  margin: 0 auto;
+  padding: 0 var(--rd-space-4) var(--rd-space-12);
+}
+
+.section {
+  /* Anchor targets stay clear of a future sticky header. */
+  scroll-margin-top: var(--rd-space-12);
+  padding: var(--rd-space-10) 0;
+  border-top: 1px solid var(--rd-neutral-border);
+}
+
+.section:first-child {
+  border-top: 0;
+}
+
+.placeholder {
+  margin-top: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+}

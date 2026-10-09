@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-09 (Landing 01 = step 48)_
+_Last updated: 2026-10-09 (Landing 02 = step 49)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -127,4 +127,29 @@ real sign-up when onboarding is ready (later).
 - Commands run: inspection only (`cat`, `ls`, `grep`); no build or test needed for docs.
 - Blockers: none. Owner input needed later: Gate A design approval (the mockup is inspiration
   only), official logo / badge files if you prefer specific versions, store URLs when published.
-- Next: **Landing 02** - marketing route skeleton.
+- Next: Landing 02 - marketing route skeleton.
+
+### Landing 02 (step 49) - Marketing route skeleton - done 2026-10-09
+
+- `(marketing)` route group: `layout.tsx` (no AppShell, no session read) and `page.tsx` - `/` now
+  renders the landing skeleton: skip link, placeholder header (wordmark, section links, **Sign in**,
+  Join early access) and 11 semantic `<section>`s with the build plan's ids, each labelled by its
+  heading (`h1` "You flip it. We find it." in the hero, `h2` elsewhere). No final design.
+- `src/marketing/sections.ts`: the section ids / labels in narrative order (+ spec).
+- Removed `src/app/page.tsx` (the `/` -> `/home` redirect).
+- Signed-in redirect (decision L-D1) in the Proxy, so the page stays static: matcher now includes
+  `/`; `entraLandingProxy` sends a session that hasn't ended (valid or needing a refresh) to `/home`
+  and shows the landing to everyone else - missing / tampered / ended sessions, never a sign-in
+  redirect, cookies untouched. With development auth (signed in on every request) `/` always shows
+  the landing; the app is at `/home`. No `/app` route exists or was added.
+- Docs: LOCAL_MVP_ACCEPTANCE (sign in at `/home`), README dev line, file map.
+
+Verified (commands run):
+- `pnpm --filter web test` (incl. 3 new landing-proxy tests + 2 section tests), `pnpm --filter web typecheck`, `pnpm --filter web lint`.
+- `pnpm --filter web build`: `/` is **static (○)**; every product route unchanged.
+- Production server on port 3100 (not 3000), Entra configured with dummy values: `/` 200 with all
+  11 anchors, the `h1` and title; `/` with a junk session cookie 200 (no redirect); `/home` 307 to
+  `/sign-in?next=/home`; `/sign-in` 200; security headers present. Server stopped afterwards.
+- Not checked in a browser by a person yet.
+
+Next: **Landing 03** - brand tokens and typography.

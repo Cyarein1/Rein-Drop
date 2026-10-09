@@ -1,11 +1,20 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 48 - Landing 01)_
+_Last updated: 2026-10-09 (step 49 - Landing 02)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 49 - Landing 02: marketing route skeleton
+
+`/` is now the public landing page (skeleton: 11 anchored sections, placeholder header with Sign
+in) in a `(marketing)` route group; the old `/` -> `/home` redirect is gone. Signed-in redirect in
+the Proxy (`entraLandingProxy`: a session that hasn't ended -> `/home`; never a sign-in redirect),
+so `/` builds as a static page. Development auth always sees the landing; the app is at `/home`
+(acceptance guide updated). Verified: web tests / typecheck / lint / build (`/` static), production
+server smoke test on port 3100. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 48 - Landing 01: landing page audit and boundaries
 
@@ -2290,6 +2299,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 02 = step 49). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 03 = step 50). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

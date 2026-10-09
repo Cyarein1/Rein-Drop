@@ -63,7 +63,8 @@ worker's start time, so a fresh start gives fresh "just listed" deals.
 
 ## 3. Sign in
 
-Open http://localhost:3000.
+Open http://localhost:3000/home. (http://localhost:3000 itself is the public landing page since step 49; with
+Entra, a signed-in visitor there is sent to `/home`.)
 
 - **Development (default, `AUTH_PROVIDER=dev`)**: you are signed in automatically as
   `dev@reindrop.local`. Settings -> Account shows the **Development sign-in** badge.

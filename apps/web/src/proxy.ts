@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { entraProxy } from "@/auth/entra/proxy";
+import { entraLandingProxy, entraProxy } from "@/auth/entra/proxy";
 import { getAuthSetup } from "@/auth/provider";
 
 /**
@@ -9,6 +9,11 @@ import { getAuthSetup } from "@/auth/provider";
  */
 export async function proxy(request: NextRequest) {
   const setup = getAuthSetup();
+  if (request.nextUrl.pathname === "/") {
+    // Public landing page: never a sign-in redirect. A real (Entra) session goes to the app; the
+    // development provider "might be signed in" on every request, so it always shows the landing.
+    return setup.ok && setup.entra ? entraLandingProxy(request, setup.entra) : NextResponse.next();
+  }
   if (setup.ok && setup.entra) return entraProxy(request, setup.entra);
   if (!setup.ok || !setup.provider.mightBeAuthenticated(request)) {
     const signIn = new URL("/sign-in", request.url);
@@ -18,9 +23,13 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-/** Application routes only - public pages (/sign-in, /dev), assets and images are excluded. */
+/**
+ * The landing page (`/`, signed-in redirect only) and the application routes. Other public pages
+ * (/sign-in, /dev, later /privacy and /terms), assets and images are excluded.
+ */
 export const config = {
   matcher: [
+    "/",
     "/home/:path*",
     "/onboarding/:path*",
     "/hunts/:path*",

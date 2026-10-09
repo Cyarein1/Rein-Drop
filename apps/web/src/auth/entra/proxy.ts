@@ -35,6 +35,18 @@ export async function entraProxy(request: NextRequest, config: EntraWebConfig, n
   }
 }
 
+/**
+ * The public landing page (`/`): someone with a session that hasn't ended goes to the app
+ * (`/home`, whose proxy run refreshes the access token if needed); everyone else - including a
+ * missing, tampered or ended session - sees the landing page. Never sends anyone to sign-in and
+ * never touches cookies, so the landing page itself stays static. Local decrypt only, no network.
+ */
+export async function entraLandingProxy(request: NextRequest, config: EntraWebConfig, now = Date.now()): Promise<NextResponse> {
+  const session = await unseal<WebSession>("session", request.cookies.get(SESSION_COOKIE)?.value, config.sessionSecret);
+  if (sessionState(session, now) !== "expired") return NextResponse.redirect(new URL("/home", request.url));
+  return NextResponse.next();
+}
+
 function toSignIn(request: NextRequest, reason: "expired" | null): NextResponse {
   const url = new URL("/sign-in", request.url);
   url.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);

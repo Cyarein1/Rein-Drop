@@ -4,7 +4,7 @@ import { readEntraWebConfig } from "./config";
 import { sealTokens } from "./cookies";
 import { API_CLIENT, CONFIG, fakeEntra, METADATA, TENANT, WEB_CLIENT } from "./fake-entra.test-helper";
 import { entraConfiguration, finishSignIn, refreshSession, signOutUrl, startSignIn } from "./oidc";
-import { entraProxy } from "./proxy";
+import { entraLandingProxy, entraProxy } from "./proxy";
 import { REFRESH_COOKIE, safeNextPath, seal, SESSION_COOKIE, sessionState, unseal, type WebSession } from "./session";
 
 const NOW = 1_800_000_000_000;
@@ -184,5 +184,36 @@ describe("entraProxy (session upkeep before protected pages)", () => {
     const sealed = await sealTokens(CONFIG, { session: session({ accessTokenExpiresAt: NOW - 1 }), refreshToken: "refresh-1" }, NOW);
     const res = await entraProxy(request({ [SESSION_COOKIE]: sealed.session, [REFRESH_COOKIE]: sealed.refresh! }), CONFIG, NOW);
     expect(new URL(res.headers.get("location")!).searchParams.get("reason")).toBe("expired");
+  });
+});
+
+describe("entraLandingProxy (public landing page at /)", () => {
+  const landing = (cookies: Record<string, string> = {}) => {
+    const req = new NextRequest("http://localhost:3000/?utm_source=test");
+    for (const [k, v] of Object.entries(cookies)) req.cookies.set(k, v);
+    return req;
+  };
+  const location = (res: Response) => res.headers.get("location");
+
+  it("shows the landing page to visitors without a session - never a sign-in redirect", async () => {
+    const res = await entraLandingProxy(landing(), CONFIG, NOW);
+    expect(location(res)).toBeNull();
+    expect(res.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("sends a signed-in visitor to the app, also when the access token needs a refresh", async () => {
+    const valid = await sealTokens(CONFIG, { session: session(), refreshToken: "r" }, NOW);
+    expect(new URL(location(await entraLandingProxy(landing({ [SESSION_COOKIE]: valid.session }), CONFIG, NOW))!).pathname).toBe("/home");
+    const expiring = await sealTokens(CONFIG, { session: session({ accessTokenExpiresAt: NOW + 1000 }), refreshToken: "r" }, NOW);
+    expect(new URL(location(await entraLandingProxy(landing({ [SESSION_COOKIE]: expiring.session }), CONFIG, NOW))!).pathname).toBe("/home");
+  });
+
+  it("shows the landing page for an ended or tampered session, without touching cookies", async () => {
+    const ended = await sealTokens(CONFIG, { session: session({ expiresAt: NOW - 1 }), refreshToken: "r" }, NOW - 10_000);
+    for (const value of [ended.session, "not-a-sealed-cookie"]) {
+      const res = await entraLandingProxy(landing({ [SESSION_COOKIE]: value }), CONFIG, NOW);
+      expect(location(res)).toBeNull();
+      expect(res.headers.getSetCookie()).toEqual([]);
+    }
   });
 });

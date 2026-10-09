@@ -8,8 +8,8 @@ file is for. Status: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md). Planned
 
 | File | Today | Landing impact |
 |---|---|---|
-| `apps/web/src/app/page.tsx` | `/` -> `redirect("/home")` | **Replaced** by the marketing route group's page (Landing 02) |
-| `apps/web/src/proxy.ts` | Auth gate; matcher = product routes only | Add `/`: signed-in (session cookie present) -> `/home`; signed-out passes through (Landing 02) |
+| ~~`apps/web/src/app/page.tsx`~~ | ~~`/` -> `redirect("/home")`~~ | **Removed in Landing 02** - `/` is `(marketing)/page.tsx` |
+| `apps/web/src/proxy.ts` + `src/auth/entra/proxy.ts` | Auth gate | **Landing 02**: matcher includes `/`; `entraLandingProxy` sends a session that hasn't ended to `/home`, everyone else (and dev auth) sees the landing |
 | `apps/web/src/app/layout.tsx` | Root layout: `--rd-*` tokens, Inter, globals | Shared by the landing; site-wide metadata (title template, description) reviewed in Landing 22 |
 | `apps/web/src/app/globals.css` | Base styles, focus ring, global reduced-motion rule, `.visually-hidden` | Reused; no landing-specific rules here |
 | `apps/web/src/app/(app)/layout.tsx` | AppShell for product pages | Untouched - the landing never renders the AppShell |
@@ -31,13 +31,15 @@ file is for. Status: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md). Planned
 
 ```
 apps/web/src/app/(marketing)/
-  layout.tsx                 marketing layout (no AppShell)              (planned, Landing 02)
-  page.tsx                   the landing page at /                       (planned, Landing 02)
+  layout.tsx                 marketing layout (no AppShell)              (Landing 02)
+  page.tsx                   the landing page at / (skeleton)            (Landing 02)
+  landing.module.css         skeleton styles                             (Landing 02)
   privacy/page.tsx           privacy notice draft - "requires legal review" (planned, Landing 20)
   terms/page.tsx             terms draft - "requires legal review"       (planned, Landing 20)
   actions.ts                 server action: waitlist -> API              (planned, Landing 20)
 apps/web/src/app/sitemap.ts, robots.ts, opengraph-image.*                (planned, Landing 22)
 apps/web/src/marketing/
+  sections.ts (+ spec)       section ids / labels, narrative order       (Landing 02)
   components/                Section, Container, PrimaryCTA, SecondaryCTA, Eyebrow, SectionHeading,
                              MarketplaceTile, DealMetric, DealCardShell, FAQItem, WaitlistFormShell,
                              StoreBadge (+ *.module.css)                   (planned, Landing 05)
