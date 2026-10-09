@@ -33,6 +33,7 @@
     "@rein-drop/contracts": "workspace:*",
     "@rein-drop/db": "workspace:*",
     "@rein-drop/env": "workspace:*",
+    "@rein-drop/marketplace-core": "workspace:*",
     "@rein-drop/scoring": "workspace:*",
     "jose": "^6.2.12",
     "reflect-metadata": "^0.2.2",

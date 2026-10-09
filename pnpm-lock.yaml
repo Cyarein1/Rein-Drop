@@ -202,6 +202,9 @@ importers:
       '@rein-drop/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@rein-drop/marketplace-core':
+        specifier: workspace:*
+        version: link:../../packages/marketplace-core
       '@rein-drop/scoring':
         specifier: workspace:*
         version: link:../../packages/scoring
@@ -230,9 +233,6 @@ importers:
       '@nestjs/testing':
         specifier: ^12.0.1
         version: 12.1.2(@nestjs/common@12.1.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.1.2)(@nestjs/platform-express@12.1.2)
-      '@rein-drop/marketplace-core':
-        specifier: workspace:*
-        version: link:../../packages/marketplace-core
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6

@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-08, after step 38 (Build Prompt 35)._
+_Last updated: 2026-10-09, after step 45 (Build Prompt 42)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -52,6 +52,8 @@ These block or shape work; the code uses placeholders until you decide.
 | D33 | Which Foundry model(s) / deployment type (Standard vs provisioned) and region for each AI task, and the AI budget per analysis | Step 40 | None - set by FOUNDRY_DEPLOYMENT* in the environment |
 | D32 | Which diagnostics thresholds matter (acceptable cost per Hunt per day, freshness target, noise ratio) | Step 39 | None - the report shows raw numbers only |
 | D31 | Source health thresholds: slow > 5 s, down after 3 failures, cool-down 30 s doubling to 15 min, search timeout 30 s | Step 35 | As listed (decision 0009) |
+| D39 | Monthly Azure budget amount and alert recipients; which database option for the beta (free-account B1MS, external PostgreSQL, or paid B1ms) | Step 45 | None - `amount` has no default; `deployPostgres=false` |
+| D40 | Azure region for the beta (latency to users, data residency, price) | Step 45 | Resource group's region |
 | D30 | Analytics recommendation thresholds (held 30+ days, 60% ignored with 5+ viewed, 3 missed) and their order | Step 34 | As listed (`ANALYTICS_RECOMMENDATION_RULES`) |
 
 ## 2. Not built yet (by area)
@@ -151,7 +153,7 @@ These block or shape work; the code uses placeholders until you decide.
 - Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
 - Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
-- Production hardening, Azure deployment, beta telemetry, MVP freeze - prompts 40-44.
+- Beta telemetry, MVP freeze - prompts 43-44.
 - Acceptance run on a real device (mobile) and with real providers (eBay API, Apify, Foundry, Entra, Stripe) - docs/LOCAL_MVP_ACCEPTANCE.md "Configurations" - step 44.
 - The acceptance sequence is manual (no browser automation script) - step 44.
 
@@ -167,6 +169,20 @@ These block or shape work; the code uses placeholders until you decide.
 - Dynamic success / info banners elsewhere in the web app should move to persistent live regions - step 43.
 - Server error logs include stacks (Prisma messages may contain query arguments) - revisit with log retention - step 43.
 - Hunt-activity integration test occasionally fails in the full run (a running worker can poll its LIVE hunts) - step 36/43.
+
+### Azure beta (step 45, decision 0015)
+- First real deployment + acceptance run on Azure (runbook docs/azure/BETA_DEPLOYMENT.md) - not done by the agent by design - step 45.
+- Move the database to Azure Database for PostgreSQL Flexible Server (dump / restore, PITR drills with D38); the free-account B1MS ends after 12 months - step 45.
+- Private networking (VNet-integrated environment, private endpoints for Key Vault / PostgreSQL) instead of public access + `AllowAzureServices` - step 45.
+- Worker always on (exceeds the Container Apps free grant): consider a scheduled Container Apps job or KEDA-driven scaling - step 45.
+- CI/CD pipeline (GitHub Actions with OIDC federation, image build + push, migration job, deploy) - deployment is manual today - step 45.
+- Migrate image is 3.5 GB (reuses the whole build stage); a slim stage with only Prisma + migrations - step 45.
+- Custom domains + managed certificates for web / API (Entra redirect URIs and the Stripe webhook change with them) - step 45.
+- Shared rate-limit store before the API's `maxReplicas` goes above 1 (see Security and operations) - step 45.
+- Azure template uses PostgreSQL 17; local development uses 18 - align when creating the server - step 45.
+- `EXPO_ACCESS_TOKEN` (only needed with Expo enhanced push security) is not wired into the worker app - add a Key Vault secret if enabled - step 45.
+- Facebook source not configured in the beta until D12 is decided - step 45.
+- Application Insights / OpenTelemetry not set up (prompt 43) - step 45.
 
 ### Brand and assets
 - Confirm font sizes, spacing and neutral greys in the high-fidelity design pass - step 6.
@@ -199,7 +215,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-42 First Azure deployment - 43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
+43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
 
 ## Resolved
 
@@ -272,3 +288,5 @@ These block or shape work; the code uses placeholders until you decide.
 | Missing indexes on alert / match / saved-deal / inventory / sale foreign keys and lookups | Step 43 review | Step 43 |
 | mysql2 advisory (Prisma CLI) | Step 43 audit | Step 43 (override) |
 | Local MVP acceptance script + one-command reset / seed (prompt 41) | Step 10 | Step 44 (docs/LOCAL_MVP_ACCEPTANCE.md, `pnpm db:reset-demo`) |
+| Azure deployment (infrastructure as code, images, runbook, budget) - prompt 42 | Plan | Step 45 (decision 0015; not deployed) |
+| API used `@rein-drop/marketplace-core` without declaring it (broke the production image) | Step 45 (found) | Step 45 |

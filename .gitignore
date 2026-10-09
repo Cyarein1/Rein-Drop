@@ -41,3 +41,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Azure beta parameters (environment-specific; template: infra/beta.example.bicepparam)
+infra/*.bicepparam
+!infra/*.example.bicepparam

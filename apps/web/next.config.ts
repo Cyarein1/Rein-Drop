@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 /**
@@ -17,6 +19,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Self-contained server for the container image (Dockerfile target "web"); traced from the
+  // monorepo root so workspace packages are included.
+  output: "standalone",
+  outputFileTracingRoot: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."),
   cacheComponents: true,
   partialPrefetching: true,
   // Don't advertise the framework.

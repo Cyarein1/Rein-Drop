@@ -1,11 +1,62 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 44)_
+_Last updated: 2026-10-09 (step 45)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 45 - Azure beta infrastructure (Bicep) + deployment runbook (Build Prompt 42)
+
+Decision [0015](decisions/0015-azure-beta-hosting.md); runbook
+[azure/BETA_DEPLOYMENT.md](azure/BETA_DEPLOYMENT.md). **Nothing was deployed or provisioned** -
+templates, images and documentation only.
+
+**What was added**
+
+- `Dockerfile` (targets `api`, `worker`, `web`, `migrate`; one pnpm/turbo build stage, `pnpm deploy
+  --prod` for api / worker, Next.js standalone for web, non-root `node` user) + `.dockerignore`.
+- `apps/web/next.config.ts`: `output: "standalone"` with the monorepo as tracing root.
+- `infra/` Bicep: `main.bicep` (resource group, two phases: `deployApps=false` foundation, then
+  `true` for apps + migration job), modules `foundation` (Log Analytics with 0.2 GB/day cap,
+  user-assigned managed identity, Key Vault RBAC + purge protection, Secrets User / Officer roles),
+  `environment` (Container Apps, Consumption profile), `container-app` (Key Vault secret
+  references, liveness / readiness probes, scale), `migrate-job` (manual `prisma migrate deploy`),
+  optional `postgres` (B1ms, off by default); `budget.bicep` (subscription scope, actual 50/80/100 %
+  + forecast 100 %); `beta.example.bicepparam` (identifiers only). Filled-in `infra/*.bicepparam`
+  files are git-ignored.
+- Scale: API 0-1 (in-memory rate limits), web 0-2, worker 1 always (0.25 vCPU / 0.5 GiB).
+  Images from ghcr.io (no Container Registry), no PostgreSQL by default (bring a TLS connection
+  string), no Dedicated profile / Front Door / VNet / Redis.
+- Runbook: prerequisites, build + push to GHCR, two-phase deploy, Key Vault secret names and
+  commands, migration job, seeding, Entra redirect + Stripe webhook wiring, checks, releases,
+  database options (free-account B1MS / external / paid B1ms) + future migration to Azure
+  PostgreSQL, cost drivers (free grant, always-on worker, log cap - no invented prices), Cost
+  Management budget (portal + Bicep) and what to switch off when it fires, teardown, and the
+  Static Web Apps vs Container Apps evaluation.
+- Fix found by the container smoke test: `apps/api` imported `@rein-drop/marketplace-core` without
+  declaring it (worked only through the workspace layout) - added to its dependencies.
+
+**What works (verified)**
+
+- `az bicep build` of `main.bicep` and `budget.bicep`, `az bicep lint` of every module, and
+  `az bicep build-params` of the example: no errors, no warnings.
+- `docker build` of all four targets (api 834 MB, worker 815 MB, web 313 MB, migrate 3.5 GB).
+- Containers run locally in production mode (ports 4100 / 3100, not yours): API `/health` ok,
+  `/ready` database up, `/me` and `/dev/diagnostics/ingestion` 401, JSON logs; worker starts its
+  pipeline with production config and masks the database password (pointed at a non-existent
+  database so it couldn't touch your Hunts); web serves `/sign-in`, redirects protected pages to
+  sign-in, sends the security headers; the migrate image applied all 22 migrations to a throwaway
+  database (`reindrop_migrate_check`, dropped afterwards).
+- `pnpm turbo run build typecheck lint test --force`: 54/54 (incl. the standalone web build).
+
+**Not done / TODO**
+
+- Not deployed: the first real deployment, Entra / Stripe wiring and an acceptance run on Azure
+  are for you to run with the runbook. Budget amount is your decision.
+- CI/CD pipeline, slimmer migrate image, worker as a scheduled job, custom domains, private
+  networking, move to Azure PostgreSQL (OUTSTANDING).
 
 ### Step 44 - Local MVP acceptance sequence + one-command demo reset (Build Prompt 41)
 
@@ -2123,7 +2174,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-35 (our steps 1-38 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-42 (our steps 1-45 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -2140,5 +2191,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 36 in document order: Ingestion economics (latency, cost per request, polling cadence) - search runs now record sourceUsage.
+Build Prompt 43 in document order: Beta telemetry (product analytics vendor D15).
 (Await the next prompt.)
