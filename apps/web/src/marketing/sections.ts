@@ -21,3 +21,14 @@ export type LandingSectionId = (typeof LANDING_SECTIONS)[number]["id"];
 
 /** `/#id` link to a section. */
 export const sectionHref = (id: LandingSectionId) => `/#${id}`;
+
+/** Top navigation, in order (Landing 06). "Features" opens on the deal-intelligence story. */
+export const NAV_LINKS = [
+  { label: "How it works", section: "how-it-works" },
+  { label: "Features", section: "intelligence" },
+  { label: "Marketplaces", section: "marketplaces" },
+  { label: "FAQ", section: "faq" },
+] as const satisfies readonly { label: string; section: LandingSectionId }[];
+
+/** The one primary action before launch: every "Join early access" goes to the waitlist section. */
+export const PRIMARY_CTA = { label: "Join early access", section: "waitlist" } as const satisfies { label: string; section: LandingSectionId };

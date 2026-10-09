@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Screenshots from scripts/check-landing-nav.mjs.
+    ".browser-check/**",
   ]),
 ]);
 

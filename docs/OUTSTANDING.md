@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-09, after step 51 (Landing 04)._
+_Last updated: 2026-10-10, after step 53 (Landing 06)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05-24 (steps 52-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 07-24 (steps 54-71) per the scoped plan - step 48.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
 - Official logo / badge files (eBay, Facebook Marketplace, gallery marketplaces, App Store, Google Play) from each brand kit; trademark review before public launch (decision L-D6) - step 48.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
@@ -112,6 +112,8 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable - step 50.
 - Six landing mascot poses have no approved art (thinking, searching, phone / alert, planning, surprised / exceptional, celebration) - neutral visuals until approved; see docs/LANDING_ASSETS.md - step 51.
 - The landing mockup shows a deer / reindeer mascot; the approved mascot is the orange droplet - confirm which character the landing uses (only approved art is used) - step 51.
+- Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
+- Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 

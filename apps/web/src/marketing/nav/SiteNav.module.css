@@ -1,0 +1,214 @@
+/* Landing navigation (Landing 06). Desktop breakpoint 900px = DESKTOP_NAV_QUERY in menu-focus.ts. */
+.bar {
+  --nav-height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+/* Subtle once scrolled: frosted white, hairline, faint navy shadow. */
+.bar[data-scrolled] {
+  background: rgb(255 255 255 / 0.9);
+  border-bottom-color: var(--rd-neutral-border);
+  box-shadow: var(--rd-shadow-sm);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+}
+
+/* Open menu: solid, so the panel never shows content through it. */
+.bar[data-open] {
+  background: var(--rd-color-canvas);
+  border-bottom-color: var(--rd-neutral-border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-6);
+  height: var(--nav-height);
+  max-width: var(--rd-container-wide);
+  margin: 0 auto;
+  padding: 0 var(--rd-gutter);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: var(--rd-touch-target);
+  border-radius: var(--rd-radius-sm);
+}
+
+.brand img {
+  display: block;
+  height: 30px;
+  width: auto;
+}
+
+/* ---------- Desktop links ---------- */
+.desktopNav {
+  display: none;
+}
+
+.links {
+  display: flex;
+  gap: var(--rd-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--rd-space-3);
+  border-radius: var(--rd-radius-full);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.link:hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+/* ---------- Actions ---------- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  margin-left: auto;
+}
+
+.signIn {
+  display: none;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--rd-space-3);
+  border-radius: var(--rd-radius-full);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+  text-decoration: none;
+}
+
+.signIn:hover {
+  color: var(--rd-color-navy);
+}
+
+/* Navy text on orange (5.5:1) - white on orange fails contrast. */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--rd-space-4);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: var(--rd-shadow-cta);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.cta:hover {
+  transform: translateY(-1px);
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--rd-touch-target);
+  height: var(--rd-touch-target);
+  margin-right: calc(var(--rd-space-2) * -1);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  background: transparent;
+  color: var(--rd-color-navy);
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+/* ---------- Mobile panel ---------- */
+.panel {
+  position: fixed;
+  inset: var(--nav-height) 0 0;
+  overflow-y: auto;
+  padding: var(--rd-space-4) var(--rd-gutter) var(--rd-space-10);
+  background: var(--rd-color-canvas);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.panelLinks {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panelLink {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  border-bottom: 1px solid var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-semibold);
+  text-decoration: none;
+}
+
+/* Very narrow phones: the bar keeps logo + CTA + menu without overlap. */
+@media (max-width: 359px) {
+  .inner {
+    gap: var(--rd-space-3);
+  }
+
+  .brand img {
+    height: 24px;
+  }
+
+  .cta {
+    padding: 0 var(--rd-space-3);
+  }
+}
+
+@media (min-width: 900px) {
+  .desktopNav {
+    display: block;
+  }
+
+  .signIn {
+    display: inline-flex;
+  }
+
+  .cta {
+    min-height: 44px;
+    padding: 0 var(--rd-space-5);
+  }
+
+  .menuButton,
+  .panel {
+    display: none;
+  }
+}

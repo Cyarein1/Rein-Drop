@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local browser-check output (scripts/check-landing-nav.mjs)
+.browser-check/

@@ -43,14 +43,16 @@ apps/web/src/marketing/
   components/                Section, Container, PrimaryCTA, SecondaryCTA, Eyebrow, SectionHeading,
                              MarketplaceTile, DealMetric, DealCardShell, FAQItem, WaitlistFormShell,
                              StoreBadge (+ *.module.css)                   (planned, Landing 05)
-  sections/                  Nav, Hero, Marketplaces, Problem, HowItWorks, Demo, Intelligence,
-                             Hunts, Alerts, Outcomes, Faq, FinalCta, Footer (planned, Landing 06-15)
+  nav/                       SiteNav (+ css), menu-focus.ts keyboard / scroll rules (+ spec) (Landing 06)
+  sections/                  Hero, Marketplaces, Problem, HowItWorks, Demo, Intelligence,
+                             Hunts, Alerts, Outcomes, Faq, FinalCta, Footer (planned, Landing 07-15)
   marketplaces.ts            gallery data + status enum                  (planned, Landing 08)
   store-links.ts             App Store / Google Play URLs from config    (planned, Landing 07)
   demo/                      fixtures + finite-state model + tests       (planned, Landing 14)
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   brand-assets.generated.ts  GENERATED paths + sizes of the optimized brand images (Landing 04)
   landing-assets.ts (+ spec) landing meanings -> images; null = missing pose (Landing 04)
+apps/web/scripts/check-landing-nav.mjs   real-browser nav check (headless Chrome / Edge, screenshots) (Landing 06)
 apps/web/scripts/build-brand-assets.mjs  generates public/assets/brand + brand-assets.generated.ts (Landing 04)
 apps/web/public/assets/brand/          GENERATED optimized Rein Drop images, stable URLs (Landing 04)
 apps/web/public/assets/third-party/    official third-party logos / store badges (planned, Landing 07 / 08)

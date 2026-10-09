@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-09 (Landing 04 = step 51)_
+_Last updated: 2026-10-10 (Landing 06 = step 53)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -221,4 +221,48 @@ Verified (commands run):
 - `docker build --target web` + container on port 3100: `/assets/brand/mascot/holding-box.webp`
   200 image/webp; `/_next/image` 200 (sharp works in the Linux image; 26-54 KB variants); `/` 200.
 
-Next: **Landing 05** - reusable marketing primitives.
+Next: Landing 05 - reusable marketing primitives.
+
+### Landing 05 (step 52) - Marketing primitives - not received yet
+
+The owner sent Landing 06 next; step 52 stays reserved for Landing 05 if it comes. The navigation
+was built self-contained (no primitives needed).
+
+### Landing 06 (step 53) - Navigation and mobile menu - done 2026-10-10
+
+- `src/marketing/nav/SiteNav.tsx` (client component) + `SiteNav.module.css`, replacing the
+  skeleton header:
+  - **Sticky but quiet**: transparent at the top; after 8 px of scroll a frosted white bar with a
+    hairline and the navy `--rd-shadow-sm` (rAF-throttled passive scroll listener).
+  - Approved wordmark (`landingImages.wordmark`, 30 px high, never stretched) -> back to top.
+  - Links: How it works (`#how-it-works`), **Features (`#intelligence`, the deal-intelligence
+    story)**, Marketplaces, FAQ; quiet **Sign in** (`/sign-in` - existing beta users need a way
+    into the app); orange **Join early access** (navy text, CTA glow) -> `#waitlist` for now.
+  - **Below 900 px**: wordmark + Join early access + a 48 px menu button (`aria-expanded`,
+    `aria-controls`, "Open menu" / "Close menu"). The panel: focus moves to the first link; Tab /
+    Shift+Tab wrap inside [button, links]; Escape or the button closes and returns focus to the
+    button; following a link, clicking outside or widening to desktop closes it; the page behind
+    doesn't scroll while it is open. 320 px: compact sizes, no overlap.
+  - In-page links also move focus to the target section (sections are `tabIndex={-1}`), so
+    keyboard and screen-reader users land where the page scrolled.
+- `src/marketing/nav/menu-focus.ts`: the keyboard / scroll rules as pure functions (+ spec);
+  `sections.ts`: `NAV_LINKS`, `PRIMARY_CTA`.
+- Landing page: anchors stop 80 px below the top (clear of the bar); smooth scrolling only with
+  `prefers-reduced-motion: no-preference` and only on the landing page.
+- `scripts/check-landing-nav.mjs`: a real-browser check (headless Chrome / Edge over the DevTools
+  protocol, no new dependency) with screenshots in `.browser-check/` (git- and lint-ignored) -
+  the nav's browser test until Playwright arrives in the landing QA steps.
+
+Verified (commands run):
+- `pnpm --filter web test` 56/56 (7 new: menu keyboard rules, nav items -> real sections, CTA ->
+  waitlist, scroll threshold), typecheck, lint, build.
+- `node scripts/check-landing-nav.mjs` against the production build on port 3100: **23/23** -
+  desktop links / Sign in / CTA, sticky + transparent -> solid on scroll, wordmark ratio, no
+  horizontal overflow at 1280 / 375 / 320 px, FAQ link focus + offset, smooth vs reduced motion,
+  menu open state (aria, focus, scroll lock, items), Tab wrap both ways, Escape -> focus back,
+  link closes + lands 80 px down + focuses the section, outside click (on a non-control spot)
+  closes, widening closes, skip link first. Screenshots reviewed (desktop scrolled, 375 open,
+  320 closed).
+- Not yet: a screen reader pass by a person.
+
+Next: **Landing 07** - hero (or Landing 05 if it is sent).

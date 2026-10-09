@@ -1,11 +1,21 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 51 - Landing 04)_
+_Last updated: 2026-10-10 (step 53 - Landing 06)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 53 - Landing 06: navigation and mobile menu
+
+(Step 52 is reserved for Landing 05, marketing primitives, not sent yet.) Sticky-but-subtle landing
+nav: approved wordmark, How it works / Features / Marketplaces / FAQ, quiet Sign in, orange Join
+early access -> waitlist; below 900 px a menu with aria-expanded / controls, focus to the first
+link, Tab wrap, Escape / outside click / link / resize close, focus back to the button, scroll
+lock; in-page links focus their section; smooth scroll only without reduced motion. Verified: web
+tests 56/56 and a real-browser check (`scripts/check-landing-nav.mjs`, headless Chrome) 23/23 on
+the production build, screenshots reviewed. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 51 - Landing 04: asset register and mascot mapping
 
@@ -2317,6 +2327,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 05 = step 52). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 07 = step 54; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)
