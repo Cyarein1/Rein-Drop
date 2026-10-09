@@ -34,8 +34,8 @@ apps/web/src/app/(marketing)/
   layout.tsx                 marketing layout (no AppShell)              (Landing 02)
   page.tsx                   the landing page at / (skeleton)            (Landing 02)
   landing.module.css         skeleton styles                             (Landing 02)
-  privacy/page.tsx           privacy notice draft - "requires legal review" (planned, Landing 20)
-  terms/page.tsx             terms draft - "requires legal review"       (planned, Landing 20)
+  privacy/page.tsx           placeholder now (Landing 13); draft text "requires legal review" (Landing 20)
+  terms/page.tsx             placeholder now (Landing 13); draft text "requires legal review" (Landing 20)
   actions.ts                 server action: waitlist -> API              (planned, Landing 20)
 apps/web/src/app/sitemap.ts, robots.ts, opengraph-image.*                (planned, Landing 22)
 apps/web/src/marketing/
@@ -52,6 +52,12 @@ apps/web/src/marketing/
   illustrative.ts            illustrative label, gross upside, USD formatting (shared) (Landing 11)
   hunts/                     HuntPreferences (+ css), hunts-story.ts, hunts-alerts spec (Landing 12)
   alerts/                    AlertsSection (+ css), alerts-story.ts (Landing 12)
+  outcomes/                  OutcomesSection (+ css), outcomes-story.ts (Landing 13)
+  faq/                       FaqSection (+ css), faq.ts, landing13 spec (Landing 13)
+  closing/                   ClosingCta (+ css) - the #waitlist target (Landing 13; form in 20)
+  footer/                    SiteFooter, LegalPlaceholder (+ css) (Landing 13)
+  demo/                      DemoPlaceholder - TEMPORARY until Landing 14-15
+  site-config.ts             CONTACT_EMAIL (never invented), legal links (Landing 13)
   sections/                  Marketplaces, Problem, HowItWorks, Demo, Intelligence,
                              Hunts, Alerts, Outcomes, Faq, FinalCta, Footer (planned, Landing 07-15)
   marketplaces.ts (+ spec)   marketplace roadmap data, statuses, proof rule (Landing 08)
@@ -61,7 +67,7 @@ apps/web/src/marketing/
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   brand-assets.generated.ts  GENERATED paths + sizes of the optimized brand images (Landing 04)
   landing-assets.ts (+ spec) landing meanings -> images; null = missing pose (Landing 04)
-apps/web/scripts/check-landing.mjs       real-browser landing check: nav, hero, gallery, problem, how it works, deal intelligence, hunts + alerts (headless Chrome / Edge, screenshots) (Landing 06-12)
+apps/web/scripts/check-landing.mjs       real-browser landing check: whole landing page + legal placeholders (headless Chrome / Edge, screenshots) (Landing 06-13)
 apps/web/scripts/build-brand-assets.mjs  generates public/assets/brand + brand-assets.generated.ts (Landing 04)
 apps/web/public/assets/brand/          GENERATED optimized Rein Drop images, stable URLs (Landing 04)
 apps/web/public/assets/third-party/    official third-party marks: stores/ badges (Landing 07), marketplaces/ (Landing 08)

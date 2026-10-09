@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-10, after step 59 (Landing 12)._
+_Last updated: 2026-10-10, after step 60 (Landing 13)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 13-24 (steps 60-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 14-24 (steps 61-71) per the scoped plan - step 48.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
 - Marketplace marks: replace site-icon downloads with brand / press-kit files where available - especially low-resolution Craigslist (57 px), Mercari (64), Depop and Amazon (48) and the four with no file (OfferUp, Swappa, Etsy, GOAT - text fallback); trademark review before public launch (decision L-D6) - step 55.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
@@ -118,6 +118,9 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
 - Deal intelligence uses a listing-photo placeholder; a licensed product photo (or approved illustration) would make it richer - step 58.
 - Alerts section lists push + in-app only; add email to the landing copy only once an email provider exists (D14) - step 59.
+- Public contact address for the landing footer (`CONTACT_EMAIL`) - the owner's decision; shows "Contact details coming soon - needs review" until set - step 60.
+- Landing closing CTA shows the email form disabled until the waitlist is wired (Landing 18-20); `/privacy` and `/terms` are placeholders until the drafts (Landing 20) and legal review - step 60.
+- `#demo` is a temporary placeholder until the interactive demo (Landing 14-15) - step 60.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 

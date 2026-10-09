@@ -7,7 +7,8 @@
 // (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen) and how it
 // works (Landing 10: ordered steps, decorative connectors between them, mascot, "you decide") and
 // deal intelligence (Landing 11: illustrative / estimate / gross labels, one green, no net profit) and
-// hunts + alerts (Landing 12: illustration with no fake controls; push + in-app only, no timestamps). Screenshots go to <outDir>. Until Playwright is added
+// hunts + alerts (Landing 12: illustration with no fake controls; push + in-app only, no timestamps) and
+// outcomes / FAQ / closing CTA / footer / legal placeholders (Landing 13; no dead in-page links). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -375,7 +376,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
       alertsHeading: a.querySelector('h2').textContent,
       phoneLabel: (phone.getAttribute('aria-label') || '').startsWith('Illustration:'),
       email: /e-?mail/i.test(a.textContent),
-      clock: /\b\d{1,2}:\d{2}\b|\bnow\b|\bago\b/i.test(a.textContent),
+      alertsText: a.textContent,
       points: [...a.querySelectorAll('ul > li strong')].map((s) => s.textContent),
       caveat: a.textContent.includes('not advice to buy'),
       huntsLayout: r(h.querySelector('div > div')).right <= r(h.querySelector('figure')).left ? 'side' : 'stacked',
@@ -385,11 +386,78 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
   check(`${tag}: hunts copy + 'illustration, not a working form' label`, ha.huntsHeading === "Your budget. Your area. Your kind of flip." && ha.caption === "Example Hunt - illustration, not a working form" && ha.shotLabel, `${ha.huntsHeading} / ${ha.caption}`);
   check(`${tag}: no controls inside the illustrations; the only hunts action is the waitlist link`, ha.controlsInsideIllustration === 0 && ha.huntsLinks.length === 1 && ha.huntsLinks[0] === "Join early access to create your first Hunt>#waitlist", JSON.stringify({ controls: ha.controlsInsideIllustration, links: ha.huntsLinks }));
   check(`${tag}: official marks loaded in the illustration`, ha.marks);
-  check(`${tag}: alerts copy, phone summarised, push + in-app points, no email, no clock / 'now'`, ha.alertsHeading === "Get a heads-up when something worth checking drops." && ha.phoneLabel && ha.points.join("|") === "Push notifications|In-app alerts|You choose|One alert per deal" && !ha.email && !ha.clock && ha.caveat, JSON.stringify({ email: ha.email, clock: ha.clock, points: ha.points }));
+  // Tested here in Node: a regex inside the page template would lose its backslashes.
+  const clock = /\b\d{1,2}:\d{2}\b|\bnow\b|\bago\b/i.test(ha.alertsText);
+  check(`${tag}: alerts copy, phone summarised, push + in-app points, no email, no clock / 'now'`, ha.alertsHeading === "Get a heads-up when something worth checking drops." && ha.phoneLabel && ha.points.join("|") === "Push notifications|In-app alerts|You choose|One alert per deal" && !ha.email && !clock && ha.caveat, JSON.stringify({ email: ha.email, clock, points: ha.points }));
   check(`${tag}: ${mobile ? "stacked" : "side by side"}; no horizontal overflow`, ha.huntsLayout === (mobile ? "stacked" : "side") && !ha.overflowX, JSON.stringify({ layout: ha.huntsLayout, overflowX: ha.overflowX }));
   await shotAt("#hunts", `hunts-${width}`);
   await shotAt("#alerts", `alerts-${width}`);
   if (mobile) { await shotAt("#hunts figure", `hunts-${width}-screen`); await shotAt("#alerts ul", `alerts-${width}-points`); }
+}
+// ---- Outcomes, FAQ, closing CTA, footer (Landing 13) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  const tag = `landing13 ${width}px`;
+  const l = await evaluate(`(() => {
+    const r = (el) => el.getBoundingClientRect();
+    const o = document.getElementById('outcomes'), f = document.getElementById('faq'), w = document.getElementById('waitlist'), foot = document.querySelector('footer');
+    const GREEN = 'rgb(22, 166, 106)';
+    const greens = [...o.querySelectorAll('*')].filter((el) => getComputedStyle(el).color === GREEN);
+    const result = o.querySelector('ol > li:last-child');
+    const ids = new Set([...document.querySelectorAll('[id]')].map((el) => el.id));
+    const inPage = [...document.querySelectorAll('a[href^="#"], a[href^="/#"]')].map((a) => a.getAttribute('href').split('#')[1]);
+    const details = [...f.querySelectorAll('details')];
+    const input = w.querySelector('input'), button = w.querySelector('button');
+    return {
+      cards: [...o.querySelectorAll('ol > li h3')].map((h) => h.textContent),
+      label: o.textContent.includes('Illustrative example'),
+      profit: result.textContent.includes('+$63'),
+      outcomesText: o.textContent,
+      greensInResult: greens.length > 0 && greens.every((el) => result.contains(el)),
+      faq: details.map((d) => d.querySelector('h3').textContent), firstOpen: details[0].open, othersClosed: details.slice(1).every((d) => !d.open),
+      faqText: f.textContent,
+      waitHeading: w.querySelector('h2').textContent,
+      formDisabled: input.disabled && button.disabled && w.textContent.includes('Sign-up opens here soon'),
+      inputLabelled: !!document.querySelector('label[for="' + input.id + '"]'),
+      contrast: getComputedStyle(w.querySelector('h2')).color + ' on ' + getComputedStyle(w.firstElementChild).backgroundColor,
+      waitBadges: [...w.querySelectorAll('[data-store]')].map((a) => a.getAttribute('href')),
+      footLegal: [...foot.querySelectorAll('a[href^="/privacy"], a[href^="/terms"]')].map((a) => a.getAttribute('href')),
+      footReview: (foot.textContent.match(/Draft - needs legal review/g) || []).length,
+      footContact: foot.textContent.includes('Contact details coming soon') && foot.textContent.includes('Needs review'),
+      footTrademark: foot.textContent.includes('not affiliated with or endorsed by them'),
+      footText: foot.textContent,
+      deadLinks: inPage.filter((id) => !ids.has(id)),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  })()`);
+  // Text checks run here in Node (regexes inside the page template would lose their backslashes).
+  const outcomes = l.outcomesText.replace(/\s+/g, " ");
+  const compare = /Estimated upside when you found it: \+\$120 \(gross, before costs\)/.test(outcomes) && /What you actually made: \+\$63/.test(outcomes);
+  check(`${tag}: Bought -> Sold -> Actual profit, illustrative, estimate (+$120 gross) vs actual (+$63)`, l.cards.join("|") === "Bought|Sold|Actual profit" && l.label && l.profit && compare, JSON.stringify({ cards: l.cards, compare }));
+  check(`${tag}: outcomes green only on the result`, l.greensInResult);
+  const faqClean = !/\b20\d\d\b|\$\d/.test(l.faqText);
+  check(`${tag}: FAQ has the 7 questions, first open, no dates or prices`, l.faq.length === 7 && l.faq[0] === "What is a Hunt?" && l.firstOpen && l.othersClosed && faqClean, l.faq.join(" | "));
+  check(`${tag}: waitlist CTA - white on navy, form shown disabled with a note, labelled input, badges -> waitlist`, l.waitHeading === "Spend less time searching. More time flipping." && l.formDisabled && l.inputLabelled && l.contrast === "rgb(255, 255, 255) on rgb(18, 35, 63)" && l.waitBadges.length === 2 && l.waitBadges.every((h) => h === "#waitlist"), JSON.stringify({ contrast: l.contrast, badges: l.waitBadges }));
+  check(`${tag}: footer - legal drafts marked for review, contact placeholder marked, trademark line, no pricing`, l.footLegal.join(",") === "/privacy,/terms" && l.footReview === 2 && l.footContact && l.footTrademark && !/\$\d/.test(l.footText), JSON.stringify({ legal: l.footLegal, review: l.footReview }));
+  check(`${tag}: no dead in-page links; no horizontal overflow`, l.deadLinks.length === 0 && !l.overflowX, JSON.stringify({ dead: l.deadLinks, overflowX: l.overflowX }));
+  await shotAt("#outcomes", `outcomes-${width}`);
+  await shotAt("#faq", `faq-${width}`);
+  await shotAt("#waitlist", `waitlist-${width}`);
+  await shotAt("footer", `footer-${width}`);
+}
+// FAQ opens with the keyboard.
+await viewport(1280, 900, false); await load(`${base}/`);
+await evaluate(`document.querySelectorAll('#faq summary')[2].focus()`);
+await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: String.fromCharCode(13) });
+await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+await sleep(300);
+check("FAQ: Enter opens a question", await evaluate(`document.querySelectorAll('#faq details')[2].open`));
+// Legal placeholders exist, say they're drafts and stay out of search.
+for (const path of ["/privacy", "/terms"]) {
+  await load(`${base}${path}`);
+  const lp = await evaluate(`({ status: document.querySelector('main p')?.textContent, robots: document.querySelector('meta[name="robots"]')?.getAttribute('content'), h1: document.querySelector('h1')?.textContent, footer: !!document.querySelector('footer') })`);
+  check(`${path}: placeholder marked "Draft - requires legal review", noindex, with footer`, lp.status === "Draft - requires legal review" && /noindex/.test(lp.robots || "") && !!lp.h1 && lp.footer, JSON.stringify(lp));
 }
 // Nav "Features" lands on deal intelligence.
 await viewport(1280, 800, false); await load(`${base}/`);

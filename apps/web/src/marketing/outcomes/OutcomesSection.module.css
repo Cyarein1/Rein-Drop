@@ -1,0 +1,181 @@
+/* After the flip (Landing 13). Green only on the realized result. */
+.section {
+  padding: var(--rd-section-space-default) 0;
+  scroll-margin-top: 64px;
+}
+
+.section:focus {
+  outline: none;
+}
+
+.inner {
+  display: grid;
+  gap: var(--rd-space-6);
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: 0 var(--rd-gutter);
+}
+
+.header {
+  display: grid;
+  gap: var(--rd-space-3);
+  max-width: var(--rd-container-prose);
+  margin-bottom: var(--rd-space-4);
+}
+
+.eyebrow {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.lead {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+.label {
+  justify-self: start;
+  padding: 3px var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-yellow);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.flow {
+  display: grid;
+  gap: var(--rd-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card,
+.result {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-6);
+  border-radius: var(--rd-radius-xl);
+  color: var(--rd-color-navy);
+}
+
+.card {
+  background: var(--rd-color-canvas);
+  box-shadow: var(--rd-shadow-md), inset 0 0 0 1px var(--rd-neutral-border);
+}
+
+.result {
+  background: var(--rd-wash-green);
+  box-shadow: inset 0 0 0 2px rgb(22 166 106 / 0.45);
+}
+
+.icon,
+.iconResult {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-sky);
+}
+
+.iconResult {
+  background: var(--rd-color-canvas);
+  color: var(--rd-color-green);
+}
+
+.cardTitle {
+  margin-top: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.amount,
+.profit {
+  font-size: var(--rd-display-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* The one strong green result - large and bold (AA-large). */
+.profit {
+  color: var(--rd-color-green);
+  font-size: var(--rd-display-xl);
+}
+
+.costs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.resultNote {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-medium);
+}
+
+/* Decorative arrow to the next card: below on phones, to the right on desktop. */
+.arrow {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--rd-space-8) * -1 + 2px);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+  transform: translate(-50%, 0) rotate(90deg);
+}
+
+.compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2) var(--rd-space-8);
+  padding: var(--rd-space-4) var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-neutral-surface-subtle);
+  color: var(--rd-color-navy);
+}
+
+.muted {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+@media (min-width: 900px) {
+  .flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .arrow {
+    left: auto;
+    right: calc(var(--rd-space-8) * -1 + 2px);
+    top: 50%;
+    bottom: auto;
+    transform: translate(0, -50%);
+  }
+}

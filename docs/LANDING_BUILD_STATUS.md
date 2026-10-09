@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 12 = step 59)_
+_Last updated: 2026-10-10 (Landing 13 = step 60)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -476,4 +476,53 @@ Verified (commands run):
 - Screenshots reviewed (1280 hunts + alerts, 375 screen + points); after review the illustrated
   "Start watching" was muted and an in-frame "Illustration" tag added so it can't pass for a button.
 
-Next: **Landing 13** - after the flip, FAQ, closing CTA and footer.
+Next: Landing 13 - after the flip, FAQ, closing CTA and footer.
+
+### Landing 13 (step 60) - After the flip, FAQ, closing CTA, footer - done 2026-10-10
+
+The static landing page is complete (the interactive demo comes in Landing 14-15).
+
+- **`OutcomesSection` (#outcomes)** - "The deal isn't done until it's sold." Bought **$300** (+ cleaning
+  kit $8) -> Sold **$415** (- selling fees $31, - shipping $13) -> **Actual profit +$63** (the one
+  strong green result), labelled "Illustrative example - PlayStation 5 - Disc edition", then
+  "Estimated upside when you found it: +$120 (gross, before costs) / What you actually made: +$63".
+  Uses the app ledger's realized-profit formula (`outcomes-story.ts`). No celebration mascot (no
+  approved pose).
+- **`FaqSection` (#faq)** - seven native `<details>` (first open): What is a Hunt? / Which
+  marketplaces (launch targets, not live yet, no affiliation) / How quickly (can't promise instant or
+  catch everything) / Are estimates guaranteed (No - gross, before costs) / Does Rein Drop buy for me
+  (No) / What will it cost (pricing isn't final) / When can I try it (early access being prepared;
+  web first, apps coming soon). No dates, prices or testimonials (`faq.ts`).
+- **`ClosingCta` (#waitlist)** - the target of every "Join early access": white on navy (15.7:1),
+  "Spend less time searching. More time flipping.", the approved **delivery-dash mascot**, store
+  badges (dark), and the email form **shown disabled** with "Sign-up opens here soon - the form is
+  being connected" (labelled input; wired in Landing 20 - nothing pretends to submit).
+- **`SiteFooter`** - wordmark + line, section links, **Contact** from `CONTACT_EMAIL` (validated;
+  never invented - until set: "Contact details coming soon" + **Needs review**), **Legal**: Privacy
+  and Terms each tagged **"Draft - needs legal review"**, the trademark / non-affiliation line, and
+  "Examples on this page are illustrative". "(c) Rein Drop" without a year (reading the clock while
+  prerendering is avoided under Cache Components).
+- **`/privacy`, `/terms`** - placeholder pages ("Draft - requires legal review", `noindex`, with the
+  footer) so legal links never 404; the drafts are written in Landing 20.
+- Page: a typed section -> component map (`Record<LandingSectionId, ...>`), so a section without a
+  component is a type error - it caught `demo`, which now has a clearly temporary
+  `DemoPlaceholder` until Landing 14-15. Skeleton placeholder styles removed.
+
+Verified (commands run):
+- `pnpm --filter web test` 88/88 (5 new: realized profit = (415 - 31 - 13) - (300 + 8) = +$63 <
+  estimated +$120 gross; all seven FAQ topics; no dates / prices / guarantees, "No." answers for
+  buying and estimates; contact address never invented; legal routes), typecheck, lint, build
+  (`/privacy`, `/terms` static).
+- `node scripts/check-landing.mjs` on the production build: **171/171** - at 1280 / 375 / 320 px:
+  outcomes cards + estimate-vs-actual text, green only inside the result card, the 7 FAQ questions
+  (first open, no dates / prices), waitlist white-on-navy by computed colour, disabled form + note +
+  labelled input, badges -> waitlist, footer legal links / review tags / contact placeholder /
+  trademark / no pricing, **no dead in-page links on the whole page**, no horizontal overflow;
+  Enter opens a FAQ item; `/privacy` and `/terms` render the draft notice, `noindex`, footer.
+- **Check-script fix:** regexes written inside the browser-side template strings lose their
+  backslashes - two earlier checks (Landing 12 "no clock / now / ago" and this step's "no dates /
+  prices") were silently not testing. All text regexes now run in Node, the script was audited
+  (no backslashes left in page templates), and each regex was proven to catch a violation.
+- Screenshots reviewed: outcomes 1280, waitlist 1280, FAQ 375, footer 375.
+
+Next: **Landing 14** - deterministic Hunt demo model.

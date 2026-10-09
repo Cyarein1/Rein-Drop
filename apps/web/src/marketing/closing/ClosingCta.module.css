@@ -1,0 +1,129 @@
+/* Closing CTA (Landing 13). Navy band - the page's highest-contrast moment. */
+.section {
+  padding: var(--rd-section-space-compact) var(--rd-gutter);
+  scroll-margin-top: 64px;
+}
+
+.section:focus {
+  outline: none;
+}
+
+.band {
+  display: grid;
+  gap: var(--rd-space-6);
+  align-items: center;
+  max-width: var(--rd-container-wide);
+  margin: 0 auto;
+  padding: clamp(28px, 5vw, 64px);
+  overflow: hidden;
+  border-radius: var(--rd-radius-2xl);
+  background:
+    radial-gradient(60% 80% at 90% 60%, rgb(255 107 53 / 0.35), transparent 70%),
+    var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+}
+
+.copy {
+  display: grid;
+  gap: var(--rd-space-4);
+  justify-items: start;
+}
+
+.eyebrow {
+  color: var(--rd-color-yellow);
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.lead {
+  max-width: 34rem;
+  color: rgb(255 255 255 / 0.85);
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+  width: min(100%, 520px);
+  margin-top: var(--rd-space-2);
+  padding: 6px;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-canvas);
+}
+
+.input {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--rd-space-4);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  background: transparent;
+  color: var(--rd-color-navy);
+  font: inherit;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.button {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 var(--rd-space-6);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  font: inherit;
+  font-weight: var(--rd-font-weight-bold);
+}
+
+/* Not connected yet: visibly inactive. */
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  color: rgb(255 255 255 / 0.8);
+  font-size: var(--rd-font-size-sm);
+}
+
+.visual {
+  display: grid;
+  place-items: center;
+}
+
+.mascot {
+  width: min(70vw, 360px);
+  height: auto;
+}
+
+/* Narrow phones: the button drops under the field, both full width. */
+@media (max-width: 420px) {
+  .form {
+    border-radius: var(--rd-radius-lg);
+  }
+
+  .button {
+    flex: 1 1 100%;
+  }
+}
+
+@media (min-width: 900px) {
+  .band {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}

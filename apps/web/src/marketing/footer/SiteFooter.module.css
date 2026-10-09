@@ -1,0 +1,74 @@
+/* Footer (Landing 13). */
+.footer {
+  margin-top: var(--rd-section-space-compact);
+  border-top: 1px solid var(--rd-neutral-border);
+  background: var(--rd-color-canvas);
+  color: var(--rd-color-navy);
+}
+
+.inner {
+  display: grid;
+  gap: var(--rd-space-8);
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: var(--rd-space-12) var(--rd-gutter) var(--rd-space-10);
+}
+
+.brand {
+  display: grid;
+  gap: var(--rd-space-2);
+  justify-items: start;
+  color: var(--rd-neutral-text-muted);
+}
+
+.brand img {
+  height: 28px;
+  width: auto;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--rd-space-8);
+}
+
+.columnTitle {
+  margin-bottom: var(--rd-space-3);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.columns ul {
+  display: grid;
+  gap: var(--rd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--rd-neutral-text-muted);
+}
+
+.columns a {
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-medium);
+}
+
+/* Clearly marks placeholders that must be reviewed before a public launch. */
+.review {
+  display: inline-block;
+  margin-left: var(--rd-space-1);
+  padding: 0 var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-yellow);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.fineprint {
+  max-width: var(--rd-container-prose);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  line-height: 1.6;
+}

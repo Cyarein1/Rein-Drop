@@ -1,4 +1,4 @@
-/* Landing skeleton (Landing 02) - structure only; the real design arrives section by section. */
+/* Landing page shell: skip link, full-width main, smooth in-page scrolling. Sections style themselves. */
 .skipLink {
   position: absolute;
   left: var(--rd-space-4);
@@ -17,28 +17,7 @@
 
 /* Full width: each section sets its own background and inner width (the hero's wash runs edge to edge). */
 .main {
-  padding-bottom: var(--rd-space-12);
-}
-
-/* Placeholder sections (until their landing step designs them). */
-.section {
-  max-width: var(--rd-page-max-width);
-  margin: 0 auto;
-  padding-inline: var(--rd-gutter);
-  /* Anchor targets land below the sticky navigation (64px bar + breathing room). */
-  scroll-margin-top: 80px;
-  padding-block: var(--rd-space-10);
-  border-top: 1px solid var(--rd-neutral-border);
-}
-
-/* Focus target for in-page links (tabIndex -1): the heading is announced, no ring around the section. */
-.section:focus {
-  outline: none;
-}
-
-.placeholder {
-  margin-top: var(--rd-space-2);
-  color: var(--rd-neutral-text-muted);
+  display: block;
 }
 
 /* Smooth in-page scrolling on the landing page only, and only when motion is welcome. */

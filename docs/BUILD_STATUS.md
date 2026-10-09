@@ -1,11 +1,23 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 59 - Landing 12)_
+_Last updated: 2026-10-10 (step 60 - Landing 13)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 60 - Landing 13: after the flip, FAQ, closing CTA, footer
+
+Static landing page complete: Bought -> Sold -> Actual profit (+$63 vs the +$120 gross estimate,
+illustrative), a seven-question FAQ (Hunt, launch targets, timing, estimates, pricing not final,
+availability, Rein Drop never buys), a white-on-navy closing CTA (#waitlist) with the approved
+mascot, store badges and the email form shown disabled until Landing 20, and a footer with contact
+(configured, never invented - "needs review" until set), Privacy / Terms marked "draft - needs legal
+review" (placeholder pages, noindex) and the trademark line. Typed section map caught the missing
+demo (temporary placeholder). Verified: web tests 88/88, browser check 171/171 (incl. no dead
+in-page links); fixed two check-script regexes that had silently stopped testing. Details:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 59 - Landing 12: Hunt customization and alerts
 
@@ -2382,6 +2394,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 13 = step 60; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 14 = step 61; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)
