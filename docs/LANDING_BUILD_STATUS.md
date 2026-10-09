@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 09 = step 56)_
+_Last updated: 2026-10-10 (Landing 10 = step 57)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -375,4 +375,36 @@ Verified (commands run):
   marketplace row on phones - now it overlaps only the card's bottom padding).
 - Screenshots reviewed: 1280, 375 (after card), 320.
 
-Next: **Landing 10** - how it works.
+Next: Landing 10 - how it works.
+
+### Landing 10 (step 57) - How it works - done 2026-10-10
+
+- `src/marketing/how-it-works/HowItWorks.tsx` + css (server component): eyebrow "How Rein Drop
+  works", **"A smarter way to source inventory."**, lead ending "the buying decision stays yours".
+- Three connected steps as a real **ordered list** (`<ol>`; visible numbers; "Step n of 3:" for
+  screen readers): **Tell us what you want** -> **Rein Drop keeps looking** -> **You check
+  promising deals**. Each has a UI fragment on its own wash (sky / orange / green), `role="img"`
+  with an "Illustration: ..." summary:
+  1. a Hunt being set up (iPhone 13 Pro, max $400, Used / Good or better, eBay + Facebook marks);
+  2. the approved **running-with-box mascot** (the one mascot moment - "Hunt begins / working" in
+     the spec) above "Checked" rows for both marketplaces and "Over your max price - skipped";
+  3. a flagged deal: Strong deal, why (under your max, condition matches), what to ask (battery
+     health), and the reseller's own buttons - Save / Not for me / I bought it.
+- Connectors are decorative (`aria-hidden`): dashed orange arrows across the gaps on desktop, a
+  dashed line + chevron between stacked steps on phones.
+- **"You stay in charge"** note: "Rein Drop never buys anything for you and can't promise a bargain.
+  Check the listing and the seller yourself, then make the call." No check frequency is stated
+  (cadence per plan is still D7).
+- `how-it-works-story.ts` holds the copy (+ spec).
+
+Verified (commands run):
+- `pnpm --filter web test` 74/74 (4 new: the three steps in order; "you decide whether to buy" +
+  "never buys anything for you", nothing suggesting buying on your behalf; no speed / frequency /
+  bargain promises; every illustration summarised), typecheck, lint, build.
+- `node scripts/check-landing.mjs` on the production build: **118/118** - how it works at 1280 /
+  375 / 320 px: ordered list with "Step n of 3" titles, row vs column layout, two decorative
+  connectors **located between the steps**, illustrations summarised, running mascot loaded
+  undistorted, "you decide" note, no horizontal overflow; the hero's "See how it works" scrolls
+  here (64 px below the top). Screenshots reviewed (1280, 375 steps).
+
+Next: **Landing 11** - deal intelligence showcase.

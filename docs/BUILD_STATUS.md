@@ -1,11 +1,19 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 56 - Landing 09)_
+_Last updated: 2026-10-10 (step 57 - Landing 10)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 57 - Landing 10: how it works
+
+Three connected steps (ordered list, decorative connectors): Tell us what you want -> Rein Drop
+keeps looking (approved running mascot) -> You check promising deals (why flagged, what to ask,
+your own Save / Not for me / I bought it), plus "You stay in charge - Rein Drop never buys anything
+for you". Verified: web tests 74/74, browser check 118/118 (incl. connector placement and the hero
+CTA landing here), screenshots reviewed. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 56 - Landing 09: problem section
 
@@ -2355,6 +2363,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 10 = step 57; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 11 = step 58; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

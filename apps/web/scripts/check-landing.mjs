@@ -4,7 +4,8 @@
 // (Landing 07: layout at 320-1440 px, the sample card never clipped and labelled illustrative,
 // CTAs, store badges, priority mascot) and the marketplace gallery (Landing 08: honest statuses,
 // expander by mouse and keyboard, official logos loaded undistorted) and the problem section
-// (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen). Screenshots go to <outDir>. Until Playwright is added
+// (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen) and how it
+// works (Landing 10: ordered steps, decorative connectors between them, mascot, "you decide"). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -275,6 +276,45 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
   await shot(`problem-${width}`);
   if (mobile) { await evaluate(`document.querySelectorAll('#problem article')[1].scrollIntoView()`); await sleep(300); await shot(`problem-${width}-after`); }
 }
+// ---- How it works (Landing 10) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  await evaluate(`document.getElementById('how-it-works').scrollIntoView()`); await sleep(300);
+  await evaluate(`(async () => { const i = document.querySelector('#how-it-works img[src*="running-box"]'); i.scrollIntoView({ block: 'center' }); const s = Date.now(); while (!i.complete && Date.now() - s < 5000) await new Promise((r) => setTimeout(r, 100)); })()`);
+  const tag = `how-it-works ${width}px`;
+  const hw = await evaluate(`(() => {
+    const s = document.getElementById('how-it-works');
+    const r = (el) => el.getBoundingClientRect();
+    const steps = [...s.querySelectorAll('ol > li')];
+    const connectors = [...s.querySelectorAll('ol > li > span[aria-hidden="true"]')];
+    const between = connectors.map((c, i) => { const a = r(steps[i]), b = r(steps[i + 1]), k = r(c);
+      return ${mobile} ? (k.top >= a.bottom - 1 && k.bottom <= b.top + 12) : (k.left >= a.right - 12 && k.right <= b.left + 12); });
+    const img = s.querySelector('img[src*="running-box"]');
+    return {
+      list: s.querySelector('ol') !== null && steps.length,
+      titles: steps.map((li) => li.querySelector('h3').textContent),
+      connectors: connectors.length, between,
+      layout: steps.length === 3 && Math.abs(r(steps[0]).top - r(steps[2]).top) < 2 ? 'row' : r(steps[0]).bottom <= r(steps[1]).top ? 'column' : 'other',
+      figures: [...s.querySelectorAll('figure[role="img"]')].map((f) => (f.getAttribute('aria-label') || '').startsWith('Illustration:')),
+      mascot: img && { src: img.currentSrc.includes('running-box'), ok: img.complete && img.naturalWidth > 0, ratio: +(r(img).width / r(img).height).toFixed(2) },
+      decide: s.querySelector('aside').textContent.includes('never buys anything for you'),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  })()`);
+  check(`${tag}: ordered list of the three steps with "Step n of 3" for screen readers`, hw.list === 3 && hw.titles.join("|") === "Step 1 of 3: Tell us what you want|Step 2 of 3: Rein Drop keeps looking|Step 3 of 3: You check promising deals", hw.titles.join("|"));
+  check(`${tag}: ${mobile ? "column" : "row"} layout; 2 decorative connectors sitting between the steps`, hw.layout === (mobile ? "column" : "row") && hw.connectors === 2 && hw.between.every(Boolean), JSON.stringify({ layout: hw.layout, connectors: hw.connectors, between: hw.between }));
+  check(`${tag}: illustrations summarised; approved running mascot loaded undistorted`, hw.figures.length === 3 && hw.figures.every(Boolean) && hw.mascot && hw.mascot.src && hw.mascot.ok && Math.abs(hw.mascot.ratio - 1024 / 957) < 0.03, JSON.stringify(hw.mascot));
+  check(`${tag}: "you decide" note; no horizontal overflow`, hw.decide && !hw.overflowX);
+  await evaluate(`document.getElementById('how-it-works').scrollIntoView()`); await sleep(400);
+  await shot(`how-${width}`);
+  if (mobile) { await evaluate(`document.querySelectorAll('#how-it-works ol > li')[1].scrollIntoView()`); await sleep(300); await shot(`how-${width}-steps`); }
+}
+// The hero's "See how it works" lands here (scroll + focus).
+await viewport(1280, 800, false); await load(`${base}/`);
+await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('See how it works')).click()`); await sleep(1200);
+const landed = await evaluate(`({ hash: location.hash, top: Math.round(document.getElementById('how-it-works').getBoundingClientRect().top) })`);
+check("hero 'See how it works' scrolls to the section", landed.hash === "#how-it-works" && landed.top >= 0 && landed.top <= 96, JSON.stringify(landed));
 // Hero card shows the official Facebook mark.
 await viewport(1280, 800, false); await load(`${base}/`);
 const heroMark = await evaluate(`(() => { const i = document.querySelector('#hero figure img'); return i && { src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, text: document.querySelector('#hero figure').textContent.includes('Facebook Marketplace') }; })()`);

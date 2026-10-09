@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-10, after step 56 (Landing 09)._
+_Last updated: 2026-10-10, after step 57 (Landing 10)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 10-24 (steps 57-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 11-24 (steps 58-71) per the scoped plan - step 48.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
 - Marketplace marks: replace site-icon downloads with brand / press-kit files where available - especially low-resolution Craigslist (57 px), Mercari (64), Depop and Amazon (48) and the four with no file (OfferUp, Swappa, Etsy, GOAT - text fallback); trademark review before public launch (decision L-D6) - step 55.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
