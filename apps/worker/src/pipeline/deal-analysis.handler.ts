@@ -13,6 +13,7 @@ import {
   type KnownCost,
   type ScoringPolicy,
 } from '@rein-drop/scoring';
+import { NoopProductEventProvider, ProductEvents } from '@rein-drop/telemetry';
 import type { Clock, LeasedJob } from '../queue/job-queue.js';
 import { RetryableJobError, type JobHandler } from '../queue/job-runner.js';
 import { writeDealAlert } from '../notifications/alert-writer.js';
@@ -51,6 +52,7 @@ export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
     private readonly registry: MarketplaceRegistry,
     private readonly policy: ScoringPolicy = DEFAULT_SCORING_POLICY,
     private readonly clock: Clock = () => new Date(),
+    private readonly events: ProductEvents = new ProductEvents(new NoopProductEventProvider(), { source: 'worker' }),
   ) {}
 
   async handle(job: LeasedJob<AnalysisJobPayload>): Promise<void> {
@@ -162,20 +164,20 @@ export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
       alertKind: eligibility.kind,
       completedAt: now,
     };
-    await this.prisma.$transaction(async (tx) => {
+    const alerted = await this.prisma.$transaction(async (tx) => {
       const analysis = await tx.dealAnalysis.upsert({
         where: key,
         create: { listingId: listing.id, huntMatchId: match.id, inputHash, ...data },
         update: data,
         select: { id: true },
       });
-      if (!eligibility.eligible || !eligibility.kind) return;
+      if (!eligibility.eligible || !eligibility.kind) return null;
       // The user may have ignored / bought it while the AI was running: only a still-NEW match alerts.
       const current = await tx.huntMatch.findUnique({ where: { id: match.id }, select: { status: true } });
-      if (current?.status !== 'NEW') return;
+      if (current?.status !== 'NEW') return null;
       // Same transaction as the analysis: the alert exists exactly when its eligible analysis does.
       // writeDealAlert is idempotent per match, so re-analysis never alerts twice.
-      await writeDealAlert(tx, {
+      const written = await writeDealAlert(tx, {
         userId: hunt.userId,
         huntId: hunt.id,
         huntMatchId: match.id,
@@ -187,7 +189,12 @@ export class DealAnalysisHandler implements JobHandler<AnalysisJobPayload> {
           .join(' - '),
         now,
       });
+      return written ? eligibility.kind : null;
     });
+    // After commit, once per deal (null when this deal already had its alert). Ids only - never the title.
+    if (alerted && isMarketplaceId(listing.marketplace.key)) {
+      this.events.track('deal_alerted', hunt.userId, { dealId: match.id, huntId: hunt.id, kind: alerted, marketplace: listing.marketplace.key });
+    }
     return record.status === 'COMPLETED' ? 'analyzed' : 'failed';
   }
 

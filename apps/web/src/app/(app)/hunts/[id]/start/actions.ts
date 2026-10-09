@@ -51,6 +51,16 @@ export async function confirmPlanAndStart(huntId: string, planCode: string): Pro
   return startHunt(huntId);
 }
 
+/** Product event: the plan comparison was shown. Best effort - never affects the page. */
+export async function trackPlanViewed(): Promise<void> {
+  try {
+    const api = await getServerApiClient();
+    await api.trackEvent({ name: "plan_viewed", properties: { context: "hunt_activation" } });
+  } catch {
+    // Telemetry must never surface to the user.
+  }
+}
+
 /** Activates with the plan the user already has. Blocks come back as structured reasons. */
 export async function startHunt(huntId: string): Promise<StartWatchingResult> {
   const api = await getServerApiClient();

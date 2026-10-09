@@ -11,8 +11,10 @@ import type {
 } from '@rein-drop/contracts';
 import { HOLDING_STATUSES } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient } from '@rein-drop/db';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import { AppException, ValidationFailedException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import { toInventoryItem, type InventoryRow } from './ledger.js';
 
 type Tx = Prisma.TransactionClient;
@@ -56,7 +58,10 @@ export interface DealPurchase {
 export class OutcomesService {
   private readonly clock = () => new Date();
 
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
+  ) {}
 
   /**
    * One InventoryItem per deal (unique huntMatchId), created with its purchase costs and the
@@ -188,7 +193,17 @@ export class OutcomesService {
       }
       await tx.inventoryItem.update({ where: { id }, data: { status: 'SOLD' } });
     });
-    return this.get(userId, id);
+    const sold = await this.get(userId, id);
+    // A new sale only - correcting a recorded sale is not another one. Direction, never amounts.
+    if (!item.sale) {
+      this.events.track('sale_recorded', userId, {
+        inventoryItemId: id,
+        fromDeal: sold.dealId !== null,
+        result: saleDirection(sold.result),
+        daysHeld: sold.daysHeld,
+      });
+    }
+    return sold;
   }
 
   /** Undo a sale: the item is held again (In stock) and has no realized result. Idempotent. */
@@ -243,3 +258,10 @@ export class OutcomesService {
 const notFound = () => new AppException('NOT_FOUND', 'Inventory item not found', HttpStatus.NOT_FOUND);
 const conflict = (message: string) => new AppException('CONFLICT', message, HttpStatus.CONFLICT);
 const invalid = (path: string, message: string) => new ValidationFailedException([{ path, message }]);
+
+/** Profit / loss direction of a realized result (product events never carry amounts). */
+function saleDirection(result: InventoryItem['result']): 'profit' | 'loss' | 'break_even' | 'unavailable' {
+  if (!result || result.status !== 'ok') return 'unavailable';
+  const profit = result.realizedProfit.amountMinor;
+  return profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'break_even';
+}

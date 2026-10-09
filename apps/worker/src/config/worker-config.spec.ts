@@ -25,6 +25,7 @@ describe('loadWorkerConfig', () => {
       devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
       ebayApi: null,
       facebookApify: null,
+      productEvents: 'log',
     });
   });
 

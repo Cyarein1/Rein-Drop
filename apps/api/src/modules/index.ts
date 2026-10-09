@@ -15,9 +15,12 @@ import { UsageModule } from './usage/usage.module.js';
 import { EntitlementsModule } from './entitlements/entitlements.module.js';
 import { HomeModule } from './home/home.module.js';
 import { DiagnosticsModule } from './diagnostics/diagnostics.module.js';
+import { TelemetryModule } from './telemetry/telemetry.module.js';
 
 /** Domain modules, one per Rein Drop bounded context. Imported by AppModule. */
 export const DOMAIN_MODULES = [
+  // Cross-cutting (global, no tables): product events recorded by the modules below.
+  TelemetryModule,
   UsersModule,
   SellerProfileModule,
   HuntsModule,

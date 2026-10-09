@@ -1,11 +1,55 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 45)_
+_Last updated: 2026-10-09 (step 46)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 46 - Product events behind a provider abstraction (Build Prompt 43)
+
+Decision [0016](decisions/0016-product-events.md); catalog, privacy rules and queries in
+[telemetry/product-events.md](telemetry/product-events.md). No vendor is approved yet (D15), so
+events go to a structured log line (the prompt's "local logger first").
+
+**What was added**
+
+- Contracts `product-events.ts`: the 13 events (onboarding_started / completed, hunt_created /
+  activated, deal_alerted / opened / saved / ignored / bought, sale_recorded, plan_viewed /
+  selected, cancellation), each with a strict property schema - ids, enums and booleans only; no
+  listing content, money, free text or personal data. `POST /telemetry/events` body schema
+  (client events: `plan_viewed` only).
+- New package `@rein-drop/telemetry`: `ProductEventProvider` (log | none | memory for tests),
+  `ProductEvents.track()` (validates against the catalog, drops and warns by path on anything
+  else, never throws or waits), `PRODUCT_EVENTS_PROVIDER` env shape (default `log`).
+- API: global `TelemetryModule` + `POST /telemetry/events` (signed in, 60/min, 204). Events
+  recorded after commit and only on real state changes in Seller Snapshot, Hunts, Deals, Outcomes
+  and Billing (`plan_selected` on Free / checkout / development choice; `cancellation` from the
+  stored-vs-Stripe change in verified webhooks, so redeliveries never count twice).
+- Worker: `deal_alerted` after the alert transaction commits (once per deal).
+- Web + mobile: Start watching reports `plan_viewed` once when the plan comparison is shown
+  (best effort). api-client `trackEvent()`; `send()` now accepts 204 No Content.
+- `.env.example` (api, worker): `PRODUCT_EVENTS_PROVIDER`.
+
+**What works (verified)**
+
+- Contracts: every event accepts its documented properties and rejects titles, URLs, email,
+  money and free text; clients can't send server events (29 tests).
+- Telemetry package (6): envelope, drop-without-echo, provider failures swallowed, log line format.
+- API int `product-events.int-spec.ts` (6): onboarding once each, hunt created / activated (not on
+  a repeated activation or resume), deal opened (first / again), saved / ignored / bought once,
+  sale once (a correction isn't another), client endpoint 400 / 401 rules, and no listing title,
+  URL, price, ignore reason, query, email or subject in any of the run's 11 events.
+- API int `billing.int-spec.ts` (+1): plan_selected x3 (refused requests not counted),
+  cancellation scheduled once and ended once across redeliveries, no Stripe ids / prices / email.
+- Worker int `alerts.int-spec.ts`: one `deal_alerted` per alert, none after re-runs / re-analysis.
+- api-client: `trackEvent` validates before sending and handles 204.
+- Full suites and `pnpm turbo run build typecheck lint test`: see the step 46 summary.
+
+**Not done / TODO**
+
+- Vendor provider (D15) and pseudonymised ids for it; dashboards (only a KQL example).
 
 ### Step 45 - Azure beta infrastructure (Bicep) + deployment runbook (Build Prompt 42)
 
@@ -2174,7 +2218,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-42 (our steps 1-45 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-43 (our steps 1-46 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -2191,5 +2235,5 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 43 in document order: Beta telemetry (product analytics vendor D15).
+Build Prompt 44 in document order: MVP freeze + post-MVP backlog.
 (Await the next prompt.)

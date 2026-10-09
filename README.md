@@ -7,6 +7,7 @@ Current progress and next step: [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 End-to-end demo / acceptance run: [docs/LOCAL_MVP_ACCEPTANCE.md](docs/LOCAL_MVP_ACCEPTANCE.md) (`pnpm db:reset-demo` for a clean database).
 Azure beta hosting (Bicep in `infra/`, `Dockerfile`, budget): [docs/azure/BETA_DEPLOYMENT.md](docs/azure/BETA_DEPLOYMENT.md) -
 nothing deploys automatically.
+Product events (beta telemetry): [docs/telemetry/product-events.md](docs/telemetry/product-events.md).
 
 ## Ports
 

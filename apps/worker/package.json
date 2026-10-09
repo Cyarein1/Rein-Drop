@@ -24,6 +24,7 @@
     "@rein-drop/marketplace-core": "workspace:*",
     "@rein-drop/matching": "workspace:*",
     "@rein-drop/scoring": "workspace:*",
+    "@rein-drop/telemetry": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^4.6.5"

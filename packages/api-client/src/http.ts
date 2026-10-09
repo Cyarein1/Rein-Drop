@@ -51,10 +51,13 @@ export async function send<T>(http: HttpOptions, spec: RequestSpec<T>): Promise<
   }
 
   let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    throw new ApiError(`${spec.method} ${spec.path} returned a non-JSON response`, response.status);
+  // 204 No Content has no body (the response schema is z.undefined()).
+  if (response.status !== 204) {
+    try {
+      body = await response.json();
+    } catch {
+      throw new ApiError(`${spec.method} ${spec.path} returned a non-JSON response`, response.status);
+    }
   }
 
   if (!response.ok && !spec.acceptStatuses?.includes(response.status)) {

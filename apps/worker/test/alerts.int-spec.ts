@@ -11,6 +11,7 @@ import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
 import { LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
 import { DevEbayAdapter, DevFacebookDataProvider, FacebookAdapter } from '@rein-drop/marketplace-core/adapters';
+import { MemoryProductEventProvider, ProductEvents } from '@rein-drop/telemetry';
 import { NotificationDispatcher } from '../src/notifications/notification-dispatcher.js';
 import { ExpoPushProvider } from '../src/notifications/push/expo-push-provider.js';
 import { PushNotificationSender } from '../src/notifications/push/push-sender.js';
@@ -39,6 +40,8 @@ describe('alerts and notification deliveries (integration, real database)', () =
   /** Push off, email on (deal alerts). */
   let bob: string;
   const hunts: string[] = [];
+  /** Product events the analysis handler recorded. */
+  const tracked = new MemoryProductEventProvider();
 
   const registry = () =>
     new MarketplaceRegistry([
@@ -57,7 +60,7 @@ describe('alerts and notification deliveries (integration, real database)', () =
     const search = new MarketplaceSearchHandler(prisma, registry(), { maxPages: 1, analysis: { queue, queueName: ANALYSIS_QUEUE, maxAttempts: 3 } }, clock);
     await scheduler.scheduleDue();
     await drain(new JobRunner(queue, [search], { queue: SEARCH_QUEUE, maxJobs: 10, leaseMs: 60_000 }, clock));
-    const analysis = new DealAnalysisHandler(prisma, createMockAIProvider(), registry(), undefined, clock);
+    const analysis = new DealAnalysisHandler(prisma, createMockAIProvider(), registry(), undefined, clock, new ProductEvents(tracked, { source: 'worker', clock }));
     await drain(new JobRunner(queue, [analysis], { queue: ANALYSIS_QUEUE, maxJobs: 50, leaseMs: 60_000 }, clock));
   }
   const alertsOf = (userId: string) => prisma.alert.findMany({ where: { userId }, include: { deliveries: true }, orderBy: { createdAt: 'asc' } });
@@ -137,6 +140,13 @@ describe('alerts and notification deliveries (integration, real database)', () =
       expect(byChannel.PUSH).toMatchObject({ status: 'PENDING', attempts: 0 });
       expect(byChannel.EMAIL).toMatchObject({ status: 'SKIPPED', reason: 'disabled_by_preference' });
     }
+    // One deal_alerted per alert, identified by internal ids only (no title, price or URL).
+    const events = tracked.named('deal_alerted', alice);
+    expect(events.map((e) => e.properties.dealId).sort()).toEqual(alerts.map((a) => a.huntMatchId).sort());
+    for (const e of events) {
+      expect(e).toMatchObject({ source: 'worker', properties: { huntId: hunts[0], kind: 'deal' } });
+      expect(Object.keys(e.properties).sort()).toEqual(['dealId', 'huntId', 'kind', 'marketplace']);
+    }
   });
 
   it('respects preferences: push off -> skipped, email on -> queued; marketing consent changes nothing', async () => {
@@ -162,6 +172,8 @@ describe('alerts and notification deliveries (integration, real database)', () =
     await runWorker();
     expect(await prisma.dealAnalysis.count({ where: { huntMatch: { huntId: { in: hunts } } } })).toBeGreaterThan(analysesBefore);
     expect(await prisma.alert.count({ where: { userId: { in: [alice, bob] } } })).toBe(before);
+    // ...and no repeated deal_alerted either.
+    expect(tracked.events.filter((e) => e.name === 'deal_alerted')).toHaveLength(before);
   });
 
   it('the outbox delivers each pending push / email once through the simulator', async () => {

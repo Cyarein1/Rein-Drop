@@ -1,9 +1,11 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import type { BillingCheckoutRequest, BillingInfo, BillingPortalRequest, PlanPricing } from '@rein-drop/contracts';
-import { Prisma, type PrismaClient } from '@rein-drop/db';
+import { Prisma, type PrismaClient, type SubscriptionStatus } from '@rein-drop/db';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import { AppException } from '../../common/errors/app.exception.js';
 import { API_CONFIG, type ApiConfig } from '../../config/api-config.js';
 import { PRISMA } from '../../database/database.module.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import type { BillingConfig } from './billing-config.js';
 import { BILLING_PROVIDER, type BillingProvider, type BillingWebhookEvent, type ProviderSubscription } from './billing-provider.js';
 import { DEV_FAKE_PROVIDER, ENTITLED_STATUSES, FREE_PROVIDER, STRIPE_PROVIDER, SubscriptionsService } from './subscriptions.service.js';
@@ -34,6 +36,7 @@ export class BillingService {
     @Inject(API_CONFIG) private readonly config: ApiConfig,
     @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider | null,
     private readonly subscriptions: SubscriptionsService,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
   ) {}
 
   private stripe(): { provider: BillingProvider; config: StripeConfig } {
@@ -97,7 +100,7 @@ export class BillingService {
     const customerId = await this.customerFor(provider, user);
     const back = `${config.webAppUrl}${request.returnPath}`;
     const join = back.includes('?') ? '&' : '?';
-    return provider.createCheckout({
+    const url = await provider.createCheckout({
       customerId,
       priceId,
       userId: user.userId,
@@ -105,6 +108,9 @@ export class BillingService {
       successUrl: `${back}${join}checkout=success`,
       cancelUrl: `${back}${join}checkout=cancelled`,
     });
+    // The choice, not the payment: the plan itself only changes when the webhook confirms it.
+    this.events.track('plan_selected', user.userId, { planCode: plan.code, method: 'checkout' });
+    return url;
   }
 
   /** The hosted portal: payment method, invoices, change plan, cancel. */
@@ -207,11 +213,12 @@ export class BillingService {
     const { config } = this.stripe();
     if (!sub) {
       // Gone at the provider: end it here too.
-      const existing = await this.prisma.subscription.findUnique({ where: { providerSubscriptionId: subscriptionId }, select: { userId: true } });
+      const existing = await this.prisma.subscription.findUnique({ where: { providerSubscriptionId: subscriptionId }, select: { userId: true, status: true, cancelAtPeriodEnd: true, plan: { select: { code: true } } } });
       await this.prisma.subscription.updateMany({
         where: { provider: STRIPE_PROVIDER, providerSubscriptionId: subscriptionId },
         data: { status: 'EXPIRED', currentPeriodEnd: new Date() },
       });
+      if (existing) this.trackCancellation(existing.userId, existing, { status: 'EXPIRED', cancelAtPeriodEnd: existing.cancelAtPeriodEnd }, existing.plan.code);
       return existing?.userId ?? null;
     }
     const userId = await this.userFor(sub);
@@ -233,7 +240,11 @@ export class BillingService {
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
       canceledAt: sub.canceledAt,
     };
-    await this.prisma.$transaction(async (tx) => {
+    const before = await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.subscription.findUnique({
+        where: { providerSubscriptionId: sub.id },
+        select: { status: true, cancelAtPeriodEnd: true, plan: { select: { code: true } } },
+      });
       await tx.subscription.upsert({ where: { providerSubscriptionId: sub.id }, create: { ...data, providerSubscriptionId: sub.id }, update: data });
       // A paid plan replaces the Free / development choice (one current subscription per user).
       if ((ENTITLED_STATUSES as string[]).includes(sub.status)) {
@@ -242,8 +253,29 @@ export class BillingService {
           data: { status: 'CANCELED', canceledAt: new Date() },
         });
       }
+      return previous;
     });
+    if (before) this.trackCancellation(userId, before, sub, before.plan.code);
     return userId;
+  }
+
+  /**
+   * cancellation from the CHANGE between the stored and the provider's state, so redelivered or
+   * duplicate webhooks never count it twice: "scheduled" when cancel-at-period-end is switched on,
+   * "ended" when an entitled subscription stops being entitled by cancellation / expiry.
+   */
+  private trackCancellation(
+    userId: string,
+    before: { status: SubscriptionStatus; cancelAtPeriodEnd: boolean },
+    after: { status: SubscriptionStatus; cancelAtPeriodEnd: boolean },
+    planCode: string,
+  ) {
+    const entitled = (s: SubscriptionStatus) => ENTITLED_STATUSES.includes(s);
+    if (entitled(before.status) && (after.status === 'CANCELED' || after.status === 'EXPIRED')) {
+      this.events.track('cancellation', userId, { planCode, kind: 'ended' });
+    } else if (!before.cancelAtPeriodEnd && after.cancelAtPeriodEnd && entitled(after.status)) {
+      this.events.track('cancellation', userId, { planCode, kind: 'scheduled' });
+    }
   }
 
   /** The Rein Drop user behind a provider subscription: by customer, else the checkout metadata; null if none. */

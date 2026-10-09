@@ -1,9 +1,11 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { SubscriptionSummary } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient, SubscriptionStatus } from '@rein-drop/db';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import { AppException } from '../../common/errors/app.exception.js';
 import { API_CONFIG, type ApiConfig } from '../../config/api-config.js';
 import { PRISMA } from '../../database/database.module.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -35,6 +37,7 @@ export class SubscriptionsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(API_CONFIG) private readonly config: ApiConfig,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
   ) {}
 
   /** Plan id of the user's current subscription, or null (= free plan). */
@@ -80,7 +83,9 @@ export class SubscriptionsService {
    * current - that is ended in the billing portal, after which the user is on Free automatically.
    */
   async chooseFree(userId: string): Promise<SubscriptionSummary> {
-    return this.prisma.$transaction(async (tx) => {
+    let before: SubscriptionSummary | null = null;
+    const summary = await this.prisma.$transaction(async (tx) => {
+      before = await this.current(userId, tx);
       if (await this.currentPaid(userId, tx)) {
         throw new AppException('CONFLICT', 'You have a paid plan. Cancel it in billing to move to Free - you keep it until the period ends.', HttpStatus.CONFLICT);
       }
@@ -99,6 +104,8 @@ export class SubscriptionsService {
       });
       return (await this.current(userId, tx))!;
     });
+    this.trackSelection(userId, before, summary, 'free');
+    return summary;
   }
 
   /**
@@ -110,7 +117,9 @@ export class SubscriptionsService {
     if (this.config.nodeEnv === 'production' || process.env.NODE_ENV === 'production') {
       throw new AppException('NOT_FOUND', 'Not found', HttpStatus.NOT_FOUND);
     }
-    return this.prisma.$transaction(async (tx) => {
+    let before: SubscriptionSummary | null = null;
+    const summary = await this.prisma.$transaction(async (tx) => {
+      before = await this.current(userId, tx);
       const plan = await tx.plan.findFirst({
         where: { code: planCode, isActive: true, isDevelopmentOnly: false },
       });
@@ -138,5 +147,13 @@ export class SubscriptionsService {
       if (!summary) throw new Error('Development subscription was not created');
       return summary;
     });
+    this.trackSelection(userId, before, summary, 'development');
+    return summary;
+  }
+
+  /** plan_selected when the choice changed something (choosing the plan you're already on is not counted). */
+  private trackSelection(userId: string, before: SubscriptionSummary | null, after: SubscriptionSummary, method: 'free' | 'development') {
+    if (before && before.planCode === after.planCode && before.provider === after.provider) return;
+    this.events.track('plan_selected', userId, { planCode: after.planCode, method });
   }
 }

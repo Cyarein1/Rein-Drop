@@ -23,6 +23,7 @@ import {
   resolveDatabaseUrl,
   type NodeEnv,
 } from '@rein-drop/env';
+import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 
 const devScenarioSchema = z
   .enum(DEV_SCENARIOS, { error: `must be one of: ${DEV_SCENARIOS.join(', ')}` })
@@ -57,6 +58,8 @@ const apiEnvSchema = z.object({
   ...ebayEnvShape,
   // Facebook data provider: dev (default) or the Apify development integration.
   ...facebookEnvShape,
+  // Product events (beta telemetry): log (default) | none.
+  ...productEventsEnvShape,
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -80,6 +83,8 @@ export interface ApiConfig {
   readonly ebayApi: EbayCredentials | null;
   /** Apify development Facebook provider config, or null for the development provider. Never log this. */
   readonly facebookApify: ApifyMarketplaceConfig | null;
+  /** Where product events go (log line by default; a vendor once D15 is decided). */
+  readonly productEvents: ProductEventProviderId;
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -140,5 +145,6 @@ export function loadApiConfig(
     }),
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
+    productEvents: resolveProductEventProviderId(parsed),
   });
 }

@@ -111,8 +111,10 @@ import {
   ingestionDiagnosticsSchema,
   type IngestionDiagnostics,
   type IngestionDiagnosticsQueryInput,
+  clientProductEventRequestSchema,
+  type ClientProductEventRequest,
 } from '@rein-drop/contracts';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
 
 export { ApiError } from './errors.js';
@@ -201,6 +203,12 @@ export interface ApiClient {
   chooseFreePlan(): Promise<SubscriptionSummary>;
   /** DEVELOPMENT ONLY: fake billing confirmation for a plan (no payment). 404 in production. */
   confirmDevBilling(planCode: string): Promise<SubscriptionSummary>;
+
+  /**
+   * Reports a product event only the app can see (today: the plan gate was shown). Everything else
+   * is recorded by the server. Callers should treat it as best effort and ignore failures.
+   */
+  trackEvent(event: ClientProductEventRequest): Promise<void>;
 
   /** Ranked feed (strength, then freshness). Default status filter: `open`. */
   listDeals(query?: ListDealsQueryInput): Promise<Page<DealSummary>>;
@@ -362,6 +370,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     openBillingPortal: async (request) =>
       (await send(http, { method: 'POST', path: '/billing/portal', body: validateInput(billingPortalRequestSchema, request, 'body'), response: billingRedirectSchema })).url,
     chooseFreePlan: async () => (await send(http, { method: 'POST', path: '/billing/free', response: chooseFreePlanResponseSchema })).subscription,
+    trackEvent: async (event) =>
+      await send(http, { method: 'POST', path: '/telemetry/events', body: validateInput(clientProductEventRequestSchema, event, 'body'), response: z.undefined() }),
     confirmDevBilling: async (planCode) =>
       (
         await send(http, {

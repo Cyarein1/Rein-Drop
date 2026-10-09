@@ -6,8 +6,10 @@ import {
   type UpdateSellerSnapshotRequest,
 } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import { AppException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import { hasProfileAnswers, toSellerSnapshot, toSnapshotColumns } from './seller-snapshot.mapper.js';
 
 /**
@@ -16,7 +18,10 @@ import { hasProfileAnswers, toSellerSnapshot, toSnapshotColumns } from './seller
  */
 @Injectable()
 export class SellerSnapshotService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
+  ) {}
 
   /** Read-only: a user without a profile gets an empty snapshot (nothing is created). */
   async get(userId: string): Promise<SellerSnapshot> {
@@ -31,9 +36,9 @@ export class SellerSnapshotService {
    */
   async update(userId: string, answers: UpdateSellerSnapshotRequest): Promise<SellerSnapshot> {
     const data = toSnapshotColumns(answers);
-    return this.prisma.$transaction(async (tx) => {
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.sellerProfile.findUnique({ where: { userId }, select: { isReseller: true } });
       if (hasProfileAnswers(answers)) {
-        const existing = await tx.sellerProfile.findUnique({ where: { userId }, select: { isReseller: true } });
         const isReseller = answers.isReseller ?? existing?.isReseller ?? null;
         if (isReseller !== true) {
           throw new AppException(
@@ -50,11 +55,17 @@ export class SellerSnapshotService {
         update: data,
       });
       // Completed = a reseller answered all five. Stamped once; later edits keep the original time.
+      let completedNow = false;
       if (!row.snapshotCompletedAt && toSellerSnapshot(row).status === 'complete') {
         row = await tx.sellerProfile.update({ where: { userId }, data: { snapshotCompletedAt: new Date() } });
+        completedNow = true;
       }
-      return toSellerSnapshot(row);
+      return { snapshot: toSellerSnapshot(row), startedNow: !existing, completedNow };
     });
+    // After commit: started = the profile was created by this save; completed = stamped by it.
+    if (saved.startedNow) this.events.track('onboarding_started', userId, {});
+    if (saved.completedNow) this.events.track('onboarding_completed', userId, {});
+    return saved.snapshot;
   }
 
   /** Saves all five answers at once (PUT). Saving the full snapshot means the user is a reseller. */

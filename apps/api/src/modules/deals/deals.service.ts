@@ -1,13 +1,15 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { DealDetail, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, MarketplaceKey, Money, Page } from '@rein-drop/contracts';
+import type { DealDetail, DealStrength, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, MarketplaceKey, Money, Page } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
 import { feedRank, type DealEconomics } from '@rein-drop/scoring';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import { AppException, ValidationFailedException } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
 import { sourceStatusByKey } from '../marketplaces/source-health.js';
 import { MatchingService } from '../matching/matching.service.js';
 import { expectedSnapshot } from '../outcomes/ledger.js';
 import { OutcomesService } from '../outcomes/outcomes.service.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import { decodeCursor, encodeCursor, queryFeedPage } from './deals.feed.js';
 import { toDealDetail, toDealSummary, type DealRow } from './deals.mapper.js';
 
@@ -28,6 +30,7 @@ export class DealsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly matching: MatchingService,
     private readonly outcomes: OutcomesService,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
   ) {}
 
   async list(userId: string, query: ListDealsQuery): Promise<Page<DealSummary>> {
@@ -59,7 +62,9 @@ export class DealsService {
   /** The user opened it: NEW -> SEEN. */
   async markSeen(userId: string, id: string): Promise<DealDetail> {
     await this.owned(userId, id);
-    await this.matching.markSeen(this.prisma, id, this.clock());
+    const firstOpen = await this.matching.markSeen(this.prisma, id, this.clock());
+    // The apps call this every time the deal detail opens.
+    this.events.track('deal_opened', userId, { dealId: id, firstOpen });
     return this.get(userId, id);
   }
 
@@ -67,14 +72,16 @@ export class DealsService {
   async save(userId: string, id: string): Promise<DealDetail> {
     const match = await this.owned(userId, id);
     if (match.status === 'BOUGHT') throw conflict('This deal is already marked as bought');
-    await this.prisma.$transaction(async (tx) => {
+    const newlySaved = await this.prisma.$transaction(async (tx) => {
       await this.matching.unignore(tx, id);
-      await tx.savedDeal.upsert({
-        where: { userId_listingId: { userId, listingId: match.listingId } },
-        create: { userId, listingId: match.listingId, huntMatchId: id },
-        update: {},
+      // ON CONFLICT DO NOTHING: saving again is a no-op (and not a new deal_saved).
+      const { count } = await tx.savedDeal.createMany({
+        data: [{ userId, listingId: match.listingId, huntMatchId: id }],
+        skipDuplicates: true,
       });
+      return count === 1;
     });
+    if (newlySaved) this.events.track('deal_saved', userId, { dealId: id });
     return this.get(userId, id);
   }
 
@@ -92,6 +99,8 @@ export class DealsService {
       if (!(await this.matching.ignore(tx, id, request.reason ?? null, this.clock()))) throw conflict('A bought deal cannot be ignored');
       await tx.savedDeal.deleteMany({ where: { userId, listingId: match.listingId } });
     });
+    // Counted when it becomes ignored (repeating Ignore only updates the reason). The reason text is never sent.
+    if (match.status !== 'DISMISSED') this.events.track('deal_ignored', userId, { dealId: id, hasReason: !!request.reason });
     return this.get(userId, id);
   }
 
@@ -107,7 +116,7 @@ export class DealsService {
    */
   async markBought(userId: string, id: string, request: MarkDealBoughtRequest): Promise<DealDetail> {
     await this.owned(userId, id);
-    const listing = await this.prisma.listing.findFirstOrThrow({ where: { huntMatches: { some: { id } } } });
+    const listing = await this.prisma.listing.findFirstOrThrow({ where: { huntMatches: { some: { id } } }, include: { marketplace: { select: { key: true } } } });
     const now = this.clock();
     const purchasedAt = request.purchasedAt ? new Date(request.purchasedAt) : now;
     if (purchasedAt.getTime() > now.getTime() + PURCHASE_CLOCK_SKEW_MS) {
@@ -137,11 +146,19 @@ export class DealsService {
       capturedAt: now,
     });
 
-    await this.prisma.$transaction(async (tx) => {
+    const recorded = await this.prisma.$transaction(async (tx) => {
       // The conditional status change serializes concurrent requests: only one records the purchase.
-      if (!(await this.matching.markBought(tx, id, now))) return;
+      if (!(await this.matching.markBought(tx, id, now))) return false;
       await this.outcomes.recordDealPurchase(tx, { userId, huntMatchId: id, listingId: listing.id, title: listing.title, price, purchasedAt, costs, expected });
+      return true;
     });
+    if (recorded) {
+      this.events.track('deal_bought', userId, {
+        dealId: id,
+        marketplace: listing.marketplace.key as MarketplaceKey,
+        strength: (analysis?.strength as DealStrength | null | undefined) ?? null,
+      });
+    }
     return this.get(userId, id);
   }
 

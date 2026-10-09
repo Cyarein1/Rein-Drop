@@ -1,8 +1,9 @@
-import { Inject, Injectable, Module, OnApplicationShutdown } from '@nestjs/common';
+import { Inject, Injectable, Logger, Module, OnApplicationShutdown } from '@nestjs/common';
 import { createAIProvider, type AIProvider } from '@rein-drop/ai-core';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
 import { DEFAULT_SCORING_POLICY } from '@rein-drop/scoring';
+import { createProductEventProvider, ProductEvents } from '@rein-drop/telemetry';
 import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { CLOCK, JOB_QUEUE, type Clock, type JobQueue } from '../queue/job-queue.js';
 import { JobRunner } from '../queue/job-runner.js';
@@ -19,13 +20,25 @@ import { SEARCH_QUEUE } from './search-plan.js';
 
 export const PRISMA = Symbol('PRISMA');
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
+export const PRODUCT_EVENTS = Symbol('PRODUCT_EVENTS');
 
 @Injectable()
 class PrismaLifecycle implements OnApplicationShutdown {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    @Inject(PRODUCT_EVENTS) private readonly events: ProductEvents,
+  ) {}
   async onApplicationShutdown() {
+    await this.events.shutdown();
     await this.prisma.$disconnect();
   }
+}
+
+/** Product events recorded by the worker (deal_alerted). Same provider choice as the API. */
+function createProductEvents(c: WorkerConfig): ProductEvents {
+  const logger = new Logger('ProductEvents');
+  const provider = createProductEventProvider(c.productEvents, (entry) => logger.log(entry), c.logFormat);
+  return new ProductEvents(provider, { source: 'worker', onProblem: (message) => logger.warn(message) });
 }
 
 /**
@@ -36,6 +49,7 @@ class PrismaLifecycle implements OnApplicationShutdown {
   providers: [
     { provide: CLOCK, useValue: (() => new Date()) satisfies Clock },
     { provide: PRISMA, inject: [WORKER_CONFIG], useFactory: (c: WorkerConfig) => createPrismaClient(c.databaseUrl) },
+    { provide: PRODUCT_EVENTS, inject: [WORKER_CONFIG], useFactory: createProductEvents },
     PrismaLifecycle,
     { provide: MarketplaceRegistry, inject: [WORKER_CONFIG], useFactory: createWorkerMarketplaceRegistry },
     // Fails at startup when the configured provider isn't available (e.g. foundry: NOT_CONFIGURED).
@@ -70,9 +84,9 @@ class PrismaLifecycle implements OnApplicationShutdown {
     },
     {
       provide: DealAnalysisHandler,
-      inject: [PRISMA, AI_PROVIDER, MarketplaceRegistry, CLOCK],
-      useFactory: (p: PrismaClient, ai: AIProvider, r: MarketplaceRegistry, clock: Clock) =>
-        new DealAnalysisHandler(p, ai, r, DEFAULT_SCORING_POLICY, clock),
+      inject: [PRISMA, AI_PROVIDER, MarketplaceRegistry, CLOCK, PRODUCT_EVENTS],
+      useFactory: (p: PrismaClient, ai: AIProvider, r: MarketplaceRegistry, clock: Clock, events: ProductEvents) =>
+        new DealAnalysisHandler(p, ai, r, DEFAULT_SCORING_POLICY, clock, events),
     },
     {
       provide: JobRunner,

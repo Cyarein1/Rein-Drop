@@ -17,6 +17,7 @@ import {
   type UpdateHuntRequest,
 } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient } from '@rein-drop/db';
+import type { ProductEvents } from '@rein-drop/telemetry';
 import {
   ActivationBlockedException,
   AppException,
@@ -24,6 +25,7 @@ import {
 } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
 import { PlansService } from '../plans/plans.service.js';
+import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import { loadHuntActivity } from './hunt-activity.js';
 import {
   criteriaOf,
@@ -60,6 +62,7 @@ export class HuntsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly plans: PlansService,
+    @Inject(PRODUCT_EVENTS) private readonly productEvents: ProductEvents,
   ) {}
 
   /** Newest first. Without a status filter, archived hunts are left out. */
@@ -89,7 +92,7 @@ export class HuntsService {
   /** Creates a DRAFT. Activation is a separate step (plan gate goes there later). */
   async create(userId: string, request: CreateHuntRequest): Promise<Hunt> {
     const criteria: HuntCriteria = { ...request, name: request.name ?? defaultHuntName(request.query) };
-    return this.prisma.$transaction(async (tx) => {
+    const hunt = await this.prisma.$transaction(async (tx) => {
       const marketplaceIds = await this.resolveMarketplaces(tx, criteria.marketplaces);
       const row = await tx.hunt.create({
         data: {
@@ -102,6 +105,13 @@ export class HuntsService {
       });
       return toHunt(row);
     });
+    this.productEvents.track('hunt_created', userId, {
+      huntId: hunt.id,
+      marketplaces: [...criteria.marketplaces],
+      hasMaxPrice: criteria.maxPrice !== null,
+      hasTarget: criteria.target !== null,
+    });
+    return hunt;
   }
 
   /**
@@ -162,7 +172,8 @@ export class HuntsService {
    */
   async transition(userId: string, huntId: string, action: HuntAction): Promise<Hunt> {
     const { from } = HUNT_TRANSITIONS[action];
-    return this.prisma.$transaction(async (tx) => {
+    let activatedOnPlan: string | null = null;
+    const hunt = await this.prisma.$transaction(async (tx) => {
       const row = await this.findOwned(tx, userId, huntId);
       if (!from.includes(row.status)) {
         throw new AppException(
@@ -180,6 +191,7 @@ export class HuntsService {
           // The hunt is left untouched: a draft stays a draft (Blueprint section 14).
           throw new ActivationBlockedException({ planCode: check.planCode, reasons: check.reasons });
         }
+        if (action === 'activate') activatedOnPlan = check.planCode;
         // TODO(plan-gate): the plan-selection / payment step (Blueprint section 6) comes before
         // activation in the product flow; limits are placeholders until the cost model is done.
       }
@@ -205,6 +217,9 @@ export class HuntsService {
       });
       return toHunt(await tx.hunt.findUniqueOrThrow({ where: { id: row.id }, include: HUNT_INCLUDE }));
     });
+    // Activation is DRAFT -> LIVE only, so this is each hunt's first go-live (resume is not counted).
+    if (activatedOnPlan) this.productEvents.track('hunt_activated', userId, { huntId: hunt.id, planCode: activatedOnPlan });
+    return hunt;
   }
 
   /**

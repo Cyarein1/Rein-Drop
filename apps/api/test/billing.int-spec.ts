@@ -13,10 +13,12 @@ import type { App } from 'supertest/types.js';
 import { DEV_AUTH_HEADER, type BillingInfo, type EntitlementEvaluation, type Plan } from '@rein-drop/contracts';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
 import { LOCAL_DATABASE_URL } from '@rein-drop/env';
+import { MemoryProductEventProvider } from '@rein-drop/telemetry';
 import { AppModule } from './../src/app.module.js';
 import { loadApiConfig } from './../src/config/api-config.js';
 import { BILLING_PROVIDER } from './../src/modules/billing/billing-provider.js';
 import { fakeStripe, PRICES } from './../src/modules/billing/fake-stripe.test-helper.js';
+import { PRODUCT_EVENT_PROVIDER } from './../src/modules/telemetry/telemetry.module.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? LOCAL_DATABASE_URL;
 const SUBJECT = `int-test-${randomUUID().slice(0, 8)}`;
@@ -29,6 +31,7 @@ describe('Web billing with Stripe (integration, real database)', () => {
   let prisma: PrismaClient;
   let userId: string;
   const stripe = fakeStripe();
+  const tracked = new MemoryProductEventProvider();
   const evt = (name: string) => `evt_${RUN}_${name}`;
   const subId = `sub_${RUN}`;
 
@@ -57,6 +60,8 @@ describe('Web billing with Stripe (integration, real database)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(config)] })
       .overrideProvider(BILLING_PROVIDER)
       .useValue(stripe.provider)
+      .overrideProvider(PRODUCT_EVENT_PROVIDER)
+      .useValue(tracked)
       .compile();
     app = moduleRef.createNestApplication({ logger: false, rawBody: true });
     await app.init();
@@ -198,5 +203,23 @@ describe('Web billing with Stripe (integration, real database)', () => {
     expect(await prisma.hunt.count({ where: { userId, status: 'LIVE' } })).toBe(1);
     await post('/billing/free').expect(200);
     expect((await entitlements()).subscription).toMatchObject({ planCode: 'free', provider: 'free' });
+  });
+
+  it('records plan_selected for each choice and each cancellation exactly once, whatever Stripe redelivers', async () => {
+    const billing = tracked.events.filter((e) => e.distinctId === userId && (e.name === 'plan_selected' || e.name === 'cancellation'));
+    expect(billing.map((e) => [e.name, e.properties])).toEqual([
+      ['plan_selected', { planCode: 'free', method: 'free' }],
+      // Two checkouts were started; the refused requests (Free, open redirect, unknown plan, already paid) are not choices.
+      ['plan_selected', { planCode: 'pro', method: 'checkout' }],
+      ['plan_selected', { planCode: 'pro', method: 'checkout' }],
+      // Past due is not a cancellation; the scheduled one is counted once although later events repeat it.
+      ['cancellation', { planCode: 'ultimate', kind: 'scheduled' }],
+      // The deletion (and its redelivery) ends it once.
+      ['cancellation', { planCode: 'ultimate', kind: 'ended' }],
+      ['plan_selected', { planCode: 'free', method: 'free' }],
+    ]);
+    // Billing events never carry Stripe ids, prices or the email.
+    const sent = JSON.stringify(tracked.events);
+    for (const secret of [subId, PRICES.pro, PRICES.ultimate, `${SUBJECT}@reindrop.test`, 'cus_']) expect(sent).not.toContain(secret);
   });
 });

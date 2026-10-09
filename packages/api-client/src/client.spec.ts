@@ -111,6 +111,16 @@ describe('createApiClient', () => {
     expect(fetch.mock.calls[0]![1]?.method).toBe('POST');
   });
 
+  it('trackEvent posts a catalog-shaped screen event and accepts 204 No Content', async () => {
+    const fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(null, { status: 204 }));
+    await expect(client(fetch).trackEvent({ name: 'plan_viewed', properties: { context: 'hunt_activation' } })).resolves.toBeUndefined();
+    expect(fetch.mock.calls[0]![0]).toBe('http://api.test/telemetry/events');
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ name: 'plan_viewed', properties: { context: 'hunt_activation' } });
+    // Anything outside the catalog is refused before it leaves the device.
+    await expect(client(fetch).trackEvent({ name: 'plan_viewed', properties: { context: 'hunt_activation', title: 'x' } } as never)).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('deals: feed query defaults to open; actions hit /deals/:id/<action> with validated bodies', async () => {
     const feed = fakeFetch(200, { items: [], nextCursor: null });
     await client(feed).listDeals({ marketplace: 'ebay' });

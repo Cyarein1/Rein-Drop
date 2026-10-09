@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, foundryEnvShape, foundryWorstCaseMs, resolveFoundryConfig, type AIProviderId, type FoundryConfig } from '@rein-drop/ai-core';
+import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
 import {
   DEV_SCENARIOS,
@@ -74,6 +75,8 @@ const workerEnvSchema = z.object({
   AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
   // Microsoft Foundry (AI_PROVIDER=foundry) - see resolveFoundryConfig. Secrets come from the environment only.
   ...foundryEnvShape,
+  // Product events (beta telemetry): log (default) | none.
+  ...productEventsEnvShape,
 });
 
 /** Validated, typed worker configuration. Inject with `@Inject(WORKER_CONFIG)`. */
@@ -116,6 +119,8 @@ export interface WorkerConfig {
   readonly ebayApi: EbayCredentials | null;
   /** Apify development Facebook provider config, or null for the development provider. Never log this. */
   readonly facebookApify: ApifyMarketplaceConfig | null;
+  /** Where product events go (log line by default; a vendor once D15 is decided). */
+  readonly productEvents: ProductEventProviderId;
 }
 
 export const WORKER_CONFIG = Symbol('WORKER_CONFIG');
@@ -183,5 +188,6 @@ export function loadWorkerConfig(
     devMarketplaceLatencyMs: Object.freeze({ ebay: parsed.EBAY_DEV_LATENCY_MS, facebook: parsed.FACEBOOK_DEV_LATENCY_MS }),
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
+    productEvents: resolveProductEventProviderId(parsed),
   });
 }

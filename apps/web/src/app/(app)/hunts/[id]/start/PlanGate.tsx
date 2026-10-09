@@ -12,7 +12,7 @@ import {
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { openBillingPortal } from "../../../billing-actions";
-import { chooseFreeAndStart, confirmPlanAndStart, goToCheckout, startHunt } from "./actions";
+import { chooseFreeAndStart, confirmPlanAndStart, goToCheckout, startHunt, trackPlanViewed } from "./actions";
 import styles from "./PlanGate.module.css";
 
 export interface PlanGateProps {
@@ -64,6 +64,14 @@ export function PlanGate({ hunt, plans, entitlements, check, context, billing, c
     entitlements.subscription?.planCode ?? null,
     context.localeTag,
   );
+
+  // Product event: the plan comparison was shown (once per visit, not on every re-render).
+  const planViewTracked = useRef(false);
+  useEffect(() => {
+    if (view.kind !== "gate" || planViewTracked.current) return;
+    planViewTracked.current = true;
+    void trackPlanViewed();
+  }, [view.kind]);
 
   // Each step replaces the whole page: move focus to its heading so screen readers announce it.
   const firstRender = useRef(true);

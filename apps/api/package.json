@@ -35,6 +35,7 @@
     "@rein-drop/env": "workspace:*",
     "@rein-drop/marketplace-core": "workspace:*",
     "@rein-drop/scoring": "workspace:*",
+    "@rein-drop/telemetry": "workspace:*",
     "jose": "^6.2.12",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

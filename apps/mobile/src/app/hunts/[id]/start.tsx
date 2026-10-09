@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import {
@@ -118,6 +118,14 @@ function PlanGate({ hunt, plans, entitlements, check, billing }: Loaded) {
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Product event: the plan comparison was shown (once per visit). Best effort - failures are ignored.
+  const planViewTracked = useRef(false);
+  useEffect(() => {
+    if (view.kind !== 'gate' || planViewTracked.current) return;
+    planViewTracked.current = true;
+    getApiClient().trackEvent({ name: 'plan_viewed', properties: { context: 'hunt_activation' } }).catch(() => undefined);
+  }, [view.kind]);
 
   // The success screen only changes the header: say it out loud.
   useEffect(() => {

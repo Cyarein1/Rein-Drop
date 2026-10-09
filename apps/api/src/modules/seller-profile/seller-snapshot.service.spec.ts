@@ -1,12 +1,14 @@
+import { MemoryProductEventProvider, ProductEvents } from '@rein-drop/telemetry';
 import { AppException } from '../../common/errors/app.exception.js';
 import { createFakeSellerProfilePrisma } from './fake-prisma.js';
 import { SellerSnapshotService } from './seller-snapshot.service.js';
 
-const USER = 'user-1';
+const USER = '01920000-0000-7000-8000-000000000001';
 
 function setup() {
   const fake = createFakeSellerProfilePrisma();
-  return { ...fake, service: new SellerSnapshotService(fake.prisma) };
+  const tracked = new MemoryProductEventProvider();
+  return { ...fake, tracked, service: new SellerSnapshotService(fake.prisma, new ProductEvents(tracked, { source: 'api' })) };
 }
 
 describe('SellerSnapshotService', () => {
@@ -42,6 +44,26 @@ describe('SellerSnapshotService', () => {
     const edited = await service.update(USER, { stage: 'full_time' });
     expect(edited.completedAt).toBe(five.completedAt);
     expect(await service.get(USER)).toEqual(edited);
+  });
+
+  it('records onboarding_started on the first save and onboarding_completed once, with no answers in the events', async () => {
+    const { service, tracked } = setup();
+    await service.update(USER, { isReseller: true });
+    await service.update(USER, { categories: ['phones_tablets'] });
+    await service.update(USER, { stage: 'side_income' });
+    await service.update(USER, { sources: ['ebay'] });
+    await service.update(USER, { dealRule: { criterion: 'min_margin', targetPercent: 30 } });
+    expect(tracked.events.map((e) => e.name)).toEqual(['onboarding_started']);
+    await service.update(USER, { improvementGoal: 'stop_checking_marketplaces' });
+    await service.update(USER, { stage: 'full_time' }); // a later edit is not another completion
+    expect(tracked.events.map((e) => e.name)).toEqual(['onboarding_started', 'onboarding_completed']);
+    expect(tracked.events.every((e) => e.distinctId === USER && Object.keys(e.properties).length === 0)).toBe(true);
+  });
+
+  it('records nothing for a refused save', async () => {
+    const { service, tracked } = setup();
+    await service.update(USER, { stage: 'side_income' }).catch(() => undefined);
+    expect(tracked.events).toEqual([]);
   });
 
   it('accepts the gate and the first answer in one request', async () => {

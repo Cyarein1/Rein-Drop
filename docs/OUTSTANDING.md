@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-09, after step 45 (Build Prompt 42)._
+_Last updated: 2026-10-09, after step 46 (Build Prompt 43)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -29,7 +29,7 @@ These block or shape work; the code uses placeholders until you decide.
 | D12 | Real eBay data source and terms; Facebook data provider | Step 18 | eBay: Browse API built (decision 0010) - confirm licence / production keyset / quota; Facebook: Apify Marketplace scraper as a DEVELOPMENT provider (docs/providers/facebook-apify.md) - scraped public pages, Meta terms restrict this; legal review needed before any production source |
 | D13 | Comparable-sales / resale price source | Step 22 | None - no estimates are made |
 | D14 | Push and email providers | Step 4 | None (prompts 24-25) |
-| D15 | Product analytics vendor (PostHog candidate) and which metrics | Step 4 | None (prompt 43) |
+| D15 | Product analytics vendor (PostHog candidate), whether user ids are pseudonymised before they leave Rein Drop, and which funnels / metrics matter | Step 4 | Product events as structured log lines (`PRODUCT_EVENTS_PROVIDER=log`, decision 0016); 13 events, no dashboards |
 | D16 | Seller profile location / budget preferences | Step 3 | Not stored |
 | D17 | Inventory quantity / lots | Step 3 | One row per physical item |
 | D18 | Whether "Save" and "Watch" are one action; what marks a deal "Missed" (Blueprint section 22) | Docs review | Save = watch (one action, step 25); "Missed" not built |
@@ -153,7 +153,7 @@ These block or shape work; the code uses placeholders until you decide.
 - Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
 - Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
 - Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
-- Beta telemetry, MVP freeze - prompts 43-44.
+- MVP freeze - prompt 44.
 - Acceptance run on a real device (mobile) and with real providers (eBay API, Apify, Foundry, Entra, Stripe) - docs/LOCAL_MVP_ACCEPTANCE.md "Configurations" - step 44.
 - The acceptance sequence is manual (no browser automation script) - step 44.
 
@@ -182,7 +182,15 @@ These block or shape work; the code uses placeholders until you decide.
 - Azure template uses PostgreSQL 17; local development uses 18 - align when creating the server - step 45.
 - `EXPO_ACCESS_TOKEN` (only needed with Expo enhanced push security) is not wired into the worker app - add a Key Vault secret if enabled - step 45.
 - Facebook source not configured in the beta until D12 is decided - step 45.
-- Application Insights / OpenTelemetry not set up (prompt 43) - step 45.
+- Application Insights / OpenTelemetry (traces, metrics) not set up - product events are log lines only (step 46) - step 45.
+
+### Product events (step 46, decision 0016)
+- Vendor ProductEventProvider (after D15): background batching, flush on shutdown, SDK auto-capture (IP / geo / person profiles) off, key from Key Vault - step 46.
+- Saved Log Analytics queries / a simple funnel workbook for the beta (only a KQL example exists) - step 46.
+- Events live 30 days in Log Analytics (0.2 GB/day cap) - export or vendor for longer analysis - step 46.
+- `deal_opened` relies on the apps calling `POST /deals/:id/seen` on every open - step 46.
+- Not instrumented: alert / push opened, pause / resume / archive, Home / Analytics views, purchase edits, undo sale - add when a question needs them - step 46.
+- Two concurrent first Seller Snapshot saves could both record `onboarding_started` (accepted) - step 46.
 
 ### Brand and assets
 - Confirm font sizes, spacing and neutral greys in the high-fidelity design pass - step 6.
@@ -215,7 +223,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-43 Beta telemetry - 44 MVP freeze + post-MVP backlog.
+44 MVP freeze + post-MVP backlog.
 
 ## Resolved
 
@@ -290,3 +298,4 @@ These block or shape work; the code uses placeholders until you decide.
 | Local MVP acceptance script + one-command reset / seed (prompt 41) | Step 10 | Step 44 (docs/LOCAL_MVP_ACCEPTANCE.md, `pnpm db:reset-demo`) |
 | Azure deployment (infrastructure as code, images, runbook, budget) - prompt 42 | Plan | Step 45 (decision 0015; not deployed) |
 | API used `@rein-drop/marketplace-core` without declaring it (broke the production image) | Step 45 (found) | Step 45 |
+| Beta telemetry: product events behind a provider abstraction - prompt 43 | Plan | Step 46 (decision 0016; log provider until D15) |

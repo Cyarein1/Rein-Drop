@@ -26,3 +26,4 @@ export * from './outcomes.js';
 export * from './analytics.js';
 export * from './marketplace-health.js';
 export * from './diagnostics.js';
+export * from './product-events.js';
