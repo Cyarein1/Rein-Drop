@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-09, after step 47 (Build Prompt 44 - MVP freeze)._
+_Last updated: 2026-10-09, after step 48 (Landing 01)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -102,6 +102,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 ### Brand and assets
 - App icon + splash still Expo defaults; brand icon awaits store approval - step 9. Web has no
   `favicon.ico` either (404 in the browser console) - step 32.
+
+### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
+- Landing 02-24 (steps 49-71) per the scoped plan - step 48.
+- Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
+- Official logo / badge files (eBay, Facebook Marketplace, gallery marketplaces, App Store, Google Play) from each brand kit; trademark review before public launch (decision L-D6) - step 48.
+- Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
+- Verify production image optimization (`sharp` install scripts are denied in pnpm-workspace.yaml) - step 48.
+- Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 
 ## 3. Built but not yet verified by a person
 

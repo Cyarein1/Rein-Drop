@@ -1,11 +1,27 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 47 - MVP freeze)_
+_Last updated: 2026-10-09 (step 48 - Landing 01)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 48 - Landing 01: landing page audit and boundaries
+
+Start of the marketing landing-page track (24 owner prompts, Landing NN = step 47 + NN), a
+deliberate addition after the MVP freeze that adds no product features. Status and plan:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md); file map: [LANDING_FILE_MAP.md](LANDING_FILE_MAP.md).
+
+- Audited the workspace, `apps/web` (routes, proxy, layouts, CSP, styles, brand usage), design
+  tokens, brand assets, mobile config and the bundled Next.js 16.4 docs. Monorepo exists - no
+  prerequisite missing.
+- Recorded the agreed decisions L-D1..L-D9 (`/` = landing with signed-in -> `/home`; CSS Modules +
+  tokens, no Tailwind; waitlist in the NestJS API; no pricing; approved mascots only; real logos
+  with a non-affiliation line; store badges "coming soon"; honest statuses; anonymous analytics)
+  and seven audit risks (signed-in redirect must keep `/` static, `sharp` denied, no display type
+  sizes, logo home, cold start, legal before emails, no Playwright).
+- No code or UI changed; nothing to build or test.
 
 ### Step 47 - MVP freeze, post-MVP backlog, release checklist, known limitations (Build Prompt 44)
 
@@ -2274,6 +2290,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done. Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 02 = step 49). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)
