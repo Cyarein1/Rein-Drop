@@ -211,3 +211,50 @@
   border-radius: var(--rd-radius-sm);
   background: var(--rd-wash-sky);
 }
+
+/* ---------- Images ---------- */
+.assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--rd-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asset {
+  display: grid;
+  gap: var(--rd-space-1);
+  align-content: start;
+}
+
+.assetStage,
+.assetStageDark,
+.assetMissing {
+  display: grid;
+  place-items: center;
+  height: 200px;
+  padding: var(--rd-space-4);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-wash-orange);
+}
+
+.assetStageDark {
+  background: var(--rd-color-navy);
+}
+
+.assetMissing {
+  background: var(--rd-neutral-surface-subtle);
+  border: 2px dashed var(--rd-neutral-border);
+  color: var(--rd-neutral-text-muted);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+/* Fit inside the stage without stretching (aspect ratio kept). */
+.assetImage {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}

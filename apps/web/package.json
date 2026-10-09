@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "assets:brand": "node scripts/build-brand-assets.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

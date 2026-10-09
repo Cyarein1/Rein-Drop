@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
   brand,
@@ -13,6 +14,7 @@ import {
   space,
   wash,
 } from "@rein-drop/design-tokens";
+import { landingImages, missingLandingImages, type LandingImageUse } from "@/marketing/landing-assets";
 import styles from "./style-reference.module.css";
 
 export const metadata: Metadata = { title: "Landing style reference", robots: { index: false, follow: false } };
@@ -155,6 +157,40 @@ export default function LandingStyleReference() {
             <li key={k} className={styles.tile} style={{ boxShadow: v }}>
               <code>--rd-shadow-{k}</code>
               <span className={styles.note}>{k === "cta" ? "Primary CTA only" : "Navy-tinted"}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className={styles.block} aria-labelledby="images">
+        <h2 id="images" className={styles.displayMd}>Images (Landing 04)</h2>
+        <p className={styles.note}>
+          Optimized copies in <code>public/assets/brand</code>, generated from <code>packages/brand-assets</code>. Shown at their real aspect
+          ratio on a soft wash to check transparency. Register: docs/LANDING_ASSETS.md.
+        </p>
+        <ul className={styles.assets}>
+          {(Object.keys(landingImages) as LandingImageUse[])
+            .filter((use) => landingImages[use] !== null)
+            .map((use) => {
+              const image = landingImages[use]!;
+              const dark = use === "wordmarkOnDark" || use === "lockupOnDark";
+              return (
+                <li key={use} className={styles.asset}>
+                  <div className={dark ? styles.assetStageDark : styles.assetStage}>
+                    <Image src={image.src} width={image.width} height={image.height} alt="" sizes="240px" className={styles.assetImage} />
+                  </div>
+                  <code>{use}</code>
+                  <span className={styles.note}>
+                    {image.src.replace("/assets/brand/", "")} · {image.width}x{image.height} · {Math.round(image.bytes / 1024)} KB
+                  </span>
+                </li>
+              );
+            })}
+          {missingLandingImages.map((use) => (
+            <li key={use} className={styles.asset}>
+              <div className={styles.assetMissing}>No approved art</div>
+              <code>{use}</code>
+              <span className={styles.note}>TODO - neutral visual until approved</span>
             </li>
           ))}
         </ul>

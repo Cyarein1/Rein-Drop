@@ -54,10 +54,17 @@ Tokens without an approved asset map to `null` and render nothing (no placeholde
    no code change.
 4. Update the table above.
 
+## Web derivatives (landing page)
+
+`apps/web/public/assets/brand/` holds **generated**, optimized copies of these files (trimmed
+WebP / palette PNG icons) for the landing page - `pnpm --filter web assets:brand`, register in
+`docs/LANDING_ASSETS.md`. They are outputs, not sources: replace or add art **here**, then
+re-run the script. They are the only copies allowed outside this package.
+
 ## TODO
 
-- Optimized sizes: originals are 1-2 MB, ~1200-2000 px. Next.js resizes on the web; for mobile,
-  export @1x/@2x/@3x before shipping a release build.
+- Optimized sizes: originals are 1-2 MB, ~1200-2000 px. Web: done for the landing page
+  (derivatives above). Mobile: export @1x/@2x/@3x before shipping a release build.
 - Wire `app-icon/app-icon-mascot.png` into `apps/mobile/app.json` (icon + adaptive icon) once the
   icon is confirmed for store use.
 - SVG versions of the wordmarks, if available, would scale better than PNG.

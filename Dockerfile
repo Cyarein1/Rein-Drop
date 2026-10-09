@@ -45,6 +45,8 @@ FROM runtime AS web
 ENV PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone /app
 COPY --from=build --chown=node:node /repo/apps/web/.next/static /app/apps/web/.next/static
+# Static files served at stable URLs (e.g. /assets/brand/*) - the standalone server doesn't copy them.
+COPY --from=build --chown=node:node /repo/apps/web/public /app/apps/web/public
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
 

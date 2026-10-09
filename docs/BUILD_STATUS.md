@@ -1,11 +1,21 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 50 - Landing 03)_
+_Last updated: 2026-10-09 (step 51 - Landing 04)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 51 - Landing 04: asset register and mascot mapping
+
+Generated optimized copies of the 11 approved brand originals (`pnpm --filter web assets:brand` ->
+`apps/web/public/assets/brand/`, 898 KB from 12.6 MB, trimmed WebP + palette PNG icons, sizes in a
+generated module); landing meanings mapped (`landing-assets.ts`: 5 approved poses + logos; 6 poses
+missing as TODOs); register [LANDING_ASSETS.md](LANDING_ASSETS.md) incl. third-party marks (TODO,
+official files). Dockerfile copies `public/`. Verified: 49 web tests, build, container serves the
+files and the image optimizer works (sharp). Found: the mockup's deer mascot isn't an approved
+asset - the approved mascot is the orange droplet. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 50 - Landing 03: brand tokens and typography
 
@@ -2307,6 +2317,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 04 = step 51). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 05 = step 52). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

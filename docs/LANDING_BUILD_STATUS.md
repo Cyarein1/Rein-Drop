@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-09 (Landing 03 = step 50)_
+_Last updated: 2026-10-09 (Landing 04 = step 51)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -70,13 +70,13 @@ this list wins.
 1. **Signed-in redirect on `/`** must not make the landing page dynamic for everyone: do it in
    `src/proxy.ts` (add `/` to the matcher, redirect to `/home` only when a session cookie is
    present, never send signed-out visitors to sign-in) so the page stays prerenderable.
-2. **Image optimization**: `pnpm-workspace.yaml` denies `sharp` install scripts. Next's image
-   optimizer in production needs a working `sharp`; verify the standalone container serves
-   optimized images (Landing 04 / 23), or pre-optimize WebP copies of the large PNGs.
+2. ~~**Image optimization**: `sharp` install scripts are denied~~ **Resolved in Landing 04**: sharp
+   ships prebuilt binaries; the production container's optimizer works, and the landing uses
+   pre-optimized WebP copies anyway.
 3. **Type scale** has no display sizes for a marketing hero (max 36 px) - add marketing display
    tokens in Landing 03 without changing the app's scale.
-4. **Third-party logos** need a home and a register: proposed `apps/web/src/marketing/logos/` with
-   a source / usage table (decided in Landing 04 / 08).
+4. **Third-party logos**: home decided in Landing 04 - `apps/web/public/assets/third-party/`, register
+   in [LANDING_ASSETS.md](LANDING_ASSETS.md); files arrive in Landing 07 / 08.
 5. **Cold start**: the web app scales to zero on Azure (decision 0015) - the first visitor after a
    quiet period waits several seconds. Launch decision (Landing 24): `minReplicas: 1` for web.
 6. **Legal before real emails**: privacy notice, terms, contact route and trademark review -
@@ -186,4 +186,39 @@ Verified (commands run):
 Found: the existing `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are
 **not** gated and are served by production builds (logged in OUTSTANDING; out of this step's scope).
 
-Next: **Landing 04** - asset register and mascot mapping.
+Next: Landing 04 - asset register and mascot mapping.
+
+### Landing 04 (step 51) - Asset register and mascot mapping - done 2026-10-09
+
+- Inspected every supplied file: the 11 approved originals (all already in `packages/brand-assets`,
+  1:1 with `Downloads/ReinDrop/branding assets`) - **5 standalone mascot poses** (wave, thumbs-up,
+  holding box, running with box, delivery dash), 3 mascot lock-ups / 3D wordmark, 2 flat
+  wordmarks, the app icon. All transparent; wordmarks carry ~25% empty canvas. There are no
+  "first 10" poses - the missing ones are TODOs. No third-party logos supplied.
+- **Finding:** the approved mascot is the round orange droplet character; the landing mockup shows
+  a deer / reindeer - not an approved asset, not used (flagged to the owner).
+- `apps/web/scripts/build-brand-assets.mjs` (`pnpm --filter web assets:brand`, uses the sharp that
+  ships with Next): trims transparent edges, resizes, WebP q86 / palette PNG icons ->
+  `public/assets/brand/{mascot,logo,icon}/` (14 files, **898 KB from 12.6 MB**) and
+  `src/marketing/brand-assets.generated.ts` (paths + intrinsic sizes).
+- `src/marketing/landing-assets.ts`: meanings -> images (heroMascot = holding box, huntWorkingMascot
+  = running box, closingMascot = delivery dash, welcomeMascot = wave, confirmedMascot = thumbs-up,
+  wordmark / wordmarkOnDark / lockup / lockupOnDark / appIcon); six poses `null` (thinking,
+  searching, alert, planning, exceptional, celebration). Product mascot tokens unchanged.
+- [LANDING_ASSETS.md](LANDING_ASSETS.md): register of Rein Drop assets, missing poses, third-party
+  marks (TODO, official files only, `public/assets/third-party/`), never-production files.
+- `/dev/landing` shows every mapped image (next/image, real aspect ratio, on a wash / navy stage)
+  and the missing ones as placeholders.
+- `Dockerfile`: the web image now copies `apps/web/public` (the standalone server doesn't).
+- `packages/brand-assets/README.md`: derivatives documented as generated outputs.
+
+Verified (commands run):
+- `pnpm --filter web assets:brand` (sizes above); visual contact sheet of the outputs: transparency
+  kept, nothing clipped or stretched, palette icons without visible banding.
+- `pnpm --filter web test` 49/49 (18 new: every generated file exists with the recorded bytes and
+  header size, comes from an approved original, is under 150 KB; no concept / mockup sources;
+  missing-pose list), typecheck, lint, build.
+- `docker build --target web` + container on port 3100: `/assets/brand/mascot/holding-box.webp`
+  200 image/webp; `/_next/image` 200 (sharp works in the Linux image; 26-54 KB variants); `/` 200.
+
+Next: **Landing 05** - reusable marketing primitives.
