@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-09, after step 46 (Build Prompt 43)._
+_Last updated: 2026-10-09, after step 47 (Build Prompt 44 - MVP freeze)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -58,32 +58,15 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 2. Not built yet (by area)
 
+Since the MVP freeze (step 47) this section holds only what the release still needs; everything
+nonessential moved to [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) (listed under Resolved with its
+backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 ### Accounts and auth
-- Welcome screen (Screenbook frame 01); sign-in / create-account is the Entra hosted page (D35) - step 41.
-- Signed-out visitors on `/` should go to welcome / sign-in - step 10.
 - Create the Entra External ID tenant + three app registrations (checklist in decision 0013) and run the live tenant check - step 41.
 - Real sign-in not exercised end to end against a tenant (only a fake tenant in tests); mobile sign-in needs a device / development build with the registered redirect URI - step 41.
-- Brand the Entra hosted pages (logo, colours, copy) - step 41.
-- Account deletion and Entra-side email / name changes are not synced to the Rein Drop user - step 41.
-- Managed identity / Key Vault for the web client secret and session secret in Azure - step 41 (prompts 40 / 42).
-- Mobile session check only tests liveness, not `/ready` - step 2.
-
-### Onboarding
-- Non-reseller experience (D4) - step 12.
-
-### Hunts
-- Hot Hunt (paid priority) purchase flow - deliberately not built yet (prompt 26); priority shows as Normal - step 29.
-- Per-period Hunt performance (counts are all-time today) - step 29; prompts 30-31.
-- Editing a hunt doesn't re-evaluate existing matches immediately, and a LIVE edit doesn't reset
-  the next poll - steps 20, 21.
-- Geocoding with Azure Maps (decision 0001): location is free text; distance is never verified
-  for sources that can't filter by radius - steps 13, 14, 21.
 
 ### Monitoring worker
-- Listing refresh job (via `fetchListing`): sold / removed listings and listings filtered out by a
-  narrowed hunt keep their matches NEW instead of becoming unavailable - step 21.
-- Job retention (SUCCEEDED / DEAD rows grow forever) and lease renewal - step 20.
-- Development listings re-age every time the worker restarts - step 20.
 - Production Facebook data source (D12) - the Apify provider is development-only and refused in production - step 38.
 - Apify live tests are skipped until APIFY_TOKEN + FACEBOOK_APIFY_CURRENCY are set (each live run costs about USD 0.013) - step 38.
 - Apify provider limits: city slug guessed from free text, no radius / price / condition push-down, no posting time (freshness = first seen), no single-listing refresh - step 38.
@@ -91,114 +74,34 @@ These block or shape work; the code uses placeholders until you decide.
 - Cost: Apify about USD 5 a day per Hunt at 20 results every 15 min - needs the cost model / cadence (D7, prompt 36) - step 38.
 - eBay live tests are skipped until eBay credentials are configured (set EBAY_CLIENT_ID / EBAY_CLIENT_SECRET to run them) - step 37.
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
-- Diagnostics are system-wide behind "signed in" only: add a staff / admin role before running them anywhere shared - step 39.
-- Diagnostics aggregate live without dedicated indexes on SearchRun.startedAt / Listing.firstSeenAt / DealAnalysis.createdAt - fine locally, revisit with volume - step 39.
 - Measure cost / freshness / noise with a controlled window of several Hunts (and Apify / eBay credentials) to decide D7 - step 39.
 
 ### Matching, analysis, scoring
-- Relevance is lexical (synonyms only via the AI); stopwords English only - step 21.
 - Foundry live test skipped until FOUNDRY_ENDPOINT / FOUNDRY_API_KEY / FOUNDRY_DEPLOYMENT are set; the prompts are unproven on a real model (watch INVALID_OUTPUT / UNGROUNDED_OUTPUT rates) - step 40.
-- Foundry auth is the resource key only; managed identity (Entra ID, keyless) needs @azure/identity wiring - step 40 (prompts 40 / 42).
 - AI cost appears only with FOUNDRY_PRICE_INPUT_PER_1M_USD / FOUNDRY_PRICE_OUTPUT_PER_1M_USD from your Azure price sheet - step 40.
-- Output that fails validation (schema / grounding) is stored as FAILED and never re-asked; consider one repair attempt - step 40.
-- Golden test datasets for AI quality (docs review) - step 40.
-- Mock AI text is English only - step 22.
-- Seller facts and comparable sales as AI evidence (schemas only allow "not available") - step 22 (D13).
-- Resale estimates / upside (needs D13); auctions are scored on their current bid - step 24.
-- Changing an AI prompt version alone doesn't trigger re-analysis - step 24.
-- Unchanged open matches are re-analysed once a day (watch cost once Foundry is used) - step 24.
 
 ### Deals and alerts
-- "Suppress similar noise" after Ignore (Blueprint section 10): reasons are stored, not used - step 25.
-- Saved deals aren't specially refreshed when the source listing changes (Blueprint section 10) - step 25.
-- Undo a Bought entirely (delete the item, reopen the deal) - step 25; editing it is done (step 31).
-- Listing images on deal cards / detail (dev image URLs are fake; real image hosts need allowlisting) - step 26.
-- The AI explanation doesn't receive comparables, so with an estimate it can contradict the economics ("estimated in a later step") - step 26 (with D13).
 - Real push on a phone: EAS project id + development build (D23) - step 28.
-- Expo push receipts (errors reported after the ticket), badge counts - step 28.
-- Email provider for notifications - step 27 (D14).
-- Operational alerts (source degraded long enough to matter) and the weekly insight are not generated - step 27; prompt 32.
-- Exceptional-deal mascot asset (only if approved artwork exists) - prompt 23.
-- Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until
-  approved art exists) - step 32.
-- Thinking / idea mascot asset for the analytics recommendation (slot wired, nothing yet) - step 34.
-- Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot.
 
 ### Plans and billing
-- Downgrade must never delete Hunts - docs review (holds: hunts above the limit are paused, never deleted - step 42).
 - Stripe set-up for real: products / prices, Customer Portal configuration, webhook endpoint + secret, tax settings; test-mode run with the Stripe CLI - step 42.
 - Stripe integration not exercised against Stripe itself (tests use a fake Stripe API) - step 42.
-- Downgrade enforcement covers the live-Hunt limit only; marketplaces / priority no longer in the plan aren't enforced on running hunts - step 42.
-- After a downgrade the most recently started hunts are paused automatically; a "choose which stay live" screen isn't built - step 42.
-- Native store billing (D2) and in-app plan purchase on mobile - step 42.
-- Invoices / receipts and billing emails are Stripe's (Customer Portal); nothing in Rein Drop - step 42.
-- Failed BillingEvents aren't surfaced anywhere but logs (diagnostics / alerting) - step 42.
-
-### Outcomes and analytics
-- Returns and write-offs (statuses exist, no endpoints) - step 31.
-- Estimated upside doesn't subtract selling fees, so expected-vs-actual profit compares an
-  estimate without fees to a result with fees - step 31 (with D13).
-- Profit-over-time chart (needs time buckets from the API) - step 34.
-- Home "spent" is purchase price only; Analytics "spent" includes purchase costs - align - step 33.
-- Analytics aggregate live on every request (no caching) - revisit with real data volumes - step 33.
-- Default sale / purchase day uses the rendering device's time zone; server and browser must agree
-  until the user's time zone is known (with D24) - step 32.
-- Mobile date fields are typed (YYYY-MM-DD + Today / Yesterday); a native picker needs a new
-  dependency - step 32.
 
 ### Platform and API
-- OpenAPI spec (Tech Architecture locks "REST + OpenAPI") - docs review.
-- UI translations (only English exists) - step 14.
-- App-store storefront country to refine mobile locale detection - step 14.
-- Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) - step 36.
-- Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) - step 36.
-- Backoff has no jitter (fine for one local worker; add with several workers / real APIs) - step 35.
-- MVP freeze - prompt 44.
 - Acceptance run on a real device (mobile) and with real providers (eBay API, Apify, Foundry, Entra, Stripe) - docs/LOCAL_MVP_ACCEPTANCE.md "Configurations" - step 44.
-- The acceptance sequence is manual (no browser automation script) - step 44.
 
 ### Security and operations (hardening pass, step 43)
-- Rate-limit counters are in memory per API instance; several instances need a shared store (Azure Cache for Redis) - step 43.
-- Web CSP is a baseline (framing, plugins, base, form targets); a strict script nonce CSP needs per-request rendering (conflicts with Cache Components) - step 43.
-- Worker N+1 loops (match stage per pair, duplicate resolution per key, normalization per raw record, analysis enqueue per match, outbox per delivery) - batch when measured - step 43.
-- Deals feed ranks all of a user's matches per page; store the latest score on HuntMatch when it gets slow - step 43.
 - Retention jobs and backup drills (D38, docs/operations/data-lifecycle.md) - step 43.
 - Dependency advisories left in build tooling: deepmerge-ts (Prisma CLI), node-forge / braces / uuid (Expo CLI, Metro), decode-uri-component (expo-router) - re-audit on upgrades - step 43.
-- Push token re-registration moves the token to the new account (shared phones) - accepted risk, documented - step 43.
-- POST /hunts has no idempotency key (double submit could create two drafts) - step 43.
-- Dynamic success / info banners elsewhere in the web app should move to persistent live regions - step 43.
-- Server error logs include stacks (Prisma messages may contain query arguments) - revisit with log retention - step 43.
-- Hunt-activity integration test occasionally fails in the full run (a running worker can poll its LIVE hunts) - step 36/43.
 
 ### Azure beta (step 45, decision 0015)
 - First real deployment + acceptance run on Azure (runbook docs/azure/BETA_DEPLOYMENT.md) - not done by the agent by design - step 45.
-- Move the database to Azure Database for PostgreSQL Flexible Server (dump / restore, PITR drills with D38); the free-account B1MS ends after 12 months - step 45.
-- Private networking (VNet-integrated environment, private endpoints for Key Vault / PostgreSQL) instead of public access + `AllowAzureServices` - step 45.
-- Worker always on (exceeds the Container Apps free grant): consider a scheduled Container Apps job or KEDA-driven scaling - step 45.
-- CI/CD pipeline (GitHub Actions with OIDC federation, image build + push, migration job, deploy) - deployment is manual today - step 45.
-- Migrate image is 3.5 GB (reuses the whole build stage); a slim stage with only Prisma + migrations - step 45.
-- Custom domains + managed certificates for web / API (Entra redirect URIs and the Stripe webhook change with them) - step 45.
-- Shared rate-limit store before the API's `maxReplicas` goes above 1 (see Security and operations) - step 45.
 - Azure template uses PostgreSQL 17; local development uses 18 - align when creating the server - step 45.
-- `EXPO_ACCESS_TOKEN` (only needed with Expo enhanced push security) is not wired into the worker app - add a Key Vault secret if enabled - step 45.
 - Facebook source not configured in the beta until D12 is decided - step 45.
-- Application Insights / OpenTelemetry (traces, metrics) not set up - product events are log lines only (step 46) - step 45.
-
-### Product events (step 46, decision 0016)
-- Vendor ProductEventProvider (after D15): background batching, flush on shutdown, SDK auto-capture (IP / geo / person profiles) off, key from Key Vault - step 46.
-- Saved Log Analytics queries / a simple funnel workbook for the beta (only a KQL example exists) - step 46.
-- Events live 30 days in Log Analytics (0.2 GB/day cap) - export or vendor for longer analysis - step 46.
-- `deal_opened` relies on the apps calling `POST /deals/:id/seen` on every open - step 46.
-- Not instrumented: alert / push opened, pause / resume / archive, Home / Analytics views, purchase edits, undo sale - add when a question needs them - step 46.
-- Two concurrent first Seller Snapshot saves could both record `onboarding_started` (accepted) - step 46.
 
 ### Brand and assets
-- Confirm font sizes, spacing and neutral greys in the high-fidelity design pass - step 6.
-- Optimised @1x/@2x/@3x mascot PNGs for mobile (originals are 1-2 MB) - step 6.
 - App icon + splash still Expo defaults; brand icon awaits store approval - step 9. Web has no
   `favicon.ico` either (404 in the browser console) - step 32.
-- SVG wordmarks, if available - step 6.
-- Mobile tab bar has no orange active indicator like web - step 9.
 
 ## 3. Built but not yet verified by a person
 
@@ -211,9 +114,6 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 4. Housekeeping
 
-- Stale code comments (the work they mention is done):
-  - `packages/marketplace-core/src/raw-listing.ts` says RawListing has no `provider` column (added in step 20).
-  - `docs/BUILD_STATUS.md` known issue "Worker does not use the database yet" (it does since step 20).
 - `pnpm-workspace.yaml` `minimumReleaseAgeExclude` list can be removed once those versions age.
 - Peer-dependency warnings (`tsconfck` wants TS 5; `@types/react-dom` vs `@types/react`).
 - Prisma 8 is an RC - stay on 7.10 until stable.
@@ -223,7 +123,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 ## 5. Remaining Build Prompts (planned)
 
-44 MVP freeze + post-MVP backlog.
+None - Build Prompts 01-44 are done. Next: the release checklist, then the backlog by priority.
 
 ## Resolved
 
@@ -299,3 +199,90 @@ These block or shape work; the code uses placeholders until you decide.
 | Azure deployment (infrastructure as code, images, runbook, budget) - prompt 42 | Plan | Step 45 (decision 0015; not deployed) |
 | API used `@rein-drop/marketplace-core` without declaring it (broke the production image) | Step 45 (found) | Step 45 |
 | Beta telemetry: product events behind a provider abstraction - prompt 43 | Plan | Step 46 (decision 0016; log provider until D15) |
+| Welcome screen (Screenbook frame 01); sign-in / create-account is the Entra hosted page (D35) | step 41 | Step 47 - moved to post-MVP backlog B-10 |
+| Signed-out visitors on `/` should go to welcome / sign-in | step 10 | Step 45 smoke test: `/` -> `/home` -> sign-in; the welcome screen itself is B-10 |
+| Brand the Entra hosted pages (logo, colours, copy) | step 41 | Step 47 - moved to post-MVP backlog B-10 |
+| Account deletion and Entra-side email / name changes are not synced to the Rein Drop user | step 41 | Step 47 - moved to post-MVP backlog B-34 |
+| Managed identity / Key Vault for the web client secret and session secret in Azure | step 41 (prompts 40 / 42) | Step 45: Key Vault references via the user-assigned managed identity (decision 0015) |
+| Mobile session check only tests liveness, not `/ready` | step 2 | Step 47 - moved to post-MVP backlog B-34 |
+| Non-reseller experience (D4) | step 12 | Step 47 - moved to post-MVP backlog B-12 |
+| Hot Hunt (paid priority) purchase flow - deliberately not built yet (prompt 26); priority shows as Normal | step 29 | Step 47 - moved to post-MVP backlog B-02 |
+| Per-period Hunt performance (counts are all-time today) | prompts 30-31 | Step 47 - moved to post-MVP backlog B-22 |
+| Editing a hunt doesn't re-evaluate existing matches immediately, and a LIVE edit doesn't reset the next poll | steps 20, 21 | Step 47 - moved to post-MVP backlog B-36 |
+| Geocoding with Azure Maps (decision 0001): location is free text; distance is never verified for sources that can't filter by radius | steps 13, 14, 21 | Step 47 - moved to post-MVP backlog B-20 |
+| Listing refresh job (via `fetchListing`): sold / removed listings and listings filtered out by a narrowed hunt keep their matches NEW instead of becoming unavailable | step 21 | Step 47 - moved to post-MVP backlog B-36 |
+| Job retention (SUCCEEDED / DEAD rows grow forever) and lease renewal | step 20 | Step 47 - moved to post-MVP backlog B-37 |
+| Development listings re-age every time the worker restarts | step 20 | Step 47 - moved to post-MVP backlog B-35 |
+| Diagnostics are system-wide behind "signed in" only: add a staff / admin role before running them anywhere shared | step 39 | Step 47 - moved to post-MVP backlog B-34 |
+| Diagnostics aggregate live without dedicated indexes on SearchRun.startedAt / Listing.firstSeenAt / DealAnalysis.createdAt - fine locally, revisit with volume | step 39 | Step 47 - moved to post-MVP backlog B-33 |
+| Relevance is lexical (synonyms only via the AI); stopwords English only | step 21 | Step 47 - moved to post-MVP backlog B-07 |
+| Foundry auth is the resource key only; managed identity (Entra ID, keyless) needs @azure/identity wiring | step 40 (prompts 40 / 42) | Step 47 - moved to post-MVP backlog B-24 |
+| Output that fails validation (schema / grounding) is stored as FAILED and never re-asked; consider one repair attempt | step 40 | Step 47 - moved to post-MVP backlog B-24 |
+| Golden test datasets for AI quality (docs review) | step 40 | Step 47 - moved to post-MVP backlog B-24 |
+| Mock AI text is English only | step 22 | Step 47 - moved to post-MVP backlog B-24 |
+| Seller facts and comparable sales as AI evidence (schemas only allow "not available") | step 22 (D13) | Step 47 - moved to post-MVP backlog B-18 |
+| Resale estimates / upside (needs D13); auctions are scored on their current bid | step 24 | Step 47 - moved to post-MVP backlog B-18 |
+| Changing an AI prompt version alone doesn't trigger re-analysis | step 24 | Step 47 - moved to post-MVP backlog B-24 |
+| Unchanged open matches are re-analysed once a day (watch cost once Foundry is used) | step 24 | Step 47 - moved to post-MVP backlog B-33 |
+| "Suppress similar noise" after Ignore (Blueprint section 10): reasons are stored, not used | step 25 | Step 47 - moved to post-MVP backlog B-17 |
+| Saved deals aren't specially refreshed when the source listing changes (Blueprint section 10) | step 25 | Step 47 - moved to post-MVP backlog B-17 |
+| Undo a Bought entirely (delete the item, reopen the deal) | earlier | Step 47 - moved to post-MVP backlog B-17 |
+| Listing images on deal cards / detail (dev image URLs are fake; real image hosts need allowlisting) | step 26 | Step 47 - moved to post-MVP backlog B-22 |
+| The AI explanation doesn't receive comparables, so with an estimate it can contradict the economics ("estimated in a later step") | step 26 (with D13) | Step 47 - moved to post-MVP backlog B-18 |
+| Expo push receipts (errors reported after the ticket), badge counts | step 28 | Step 47 - moved to post-MVP backlog B-16 |
+| Email provider for notifications | step 27 (D14) | Step 47 - moved to post-MVP backlog B-16 |
+| Operational alerts (source degraded long enough to matter) and the weekly insight are not generated | prompt 32 | Step 47 - moved to post-MVP backlog B-16 |
+| Exceptional-deal mascot asset (only if approved artwork exists) | prompt 23 | Step 47 - moved to post-MVP backlog B-25 |
+| Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until approved art exists) | step 32 | Step 47 - moved to post-MVP backlog B-25 |
+| Thinking / idea mascot asset for the analytics recommendation (slot wired, nothing yet) | step 34 | Step 47 - moved to post-MVP backlog B-25 |
+| Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot. | earlier | Step 47 - moved to post-MVP backlog B-25 |
+| Downgrade must never delete Hunts - docs review (holds: hunts above the limit are paused, never deleted - step 42). | earlier | Step 42: hunts above the limit are paused, never deleted (billing.int-spec) |
+| Downgrade enforcement covers the live-Hunt limit only; marketplaces / priority no longer in the plan aren't enforced on running hunts | step 42 | Step 47 - moved to post-MVP backlog B-15 |
+| After a downgrade the most recently started hunts are paused automatically; a "choose which stay live" screen isn't built | step 42 | Step 47 - moved to post-MVP backlog B-15 |
+| Native store billing (D2) and in-app plan purchase on mobile | step 42 | Step 47 - moved to post-MVP backlog B-14 |
+| Invoices / receipts and billing emails are Stripe's (Customer Portal); nothing in Rein Drop | step 42 | Step 47 - moved to post-MVP backlog B-14 |
+| Failed BillingEvents aren't surfaced anywhere but logs (diagnostics / alerting) | step 42 | Step 47 - moved to post-MVP backlog B-31 |
+| Returns and write-offs (statuses exist, no endpoints) | step 31 | Step 47 - moved to post-MVP backlog B-19 |
+| Estimated upside doesn't subtract selling fees, so expected-vs-actual profit compares an estimate without fees to a result with fees | step 31 (with D13) | Step 47 - moved to post-MVP backlog B-18 |
+| Profit-over-time chart (needs time buckets from the API) | step 34 | Step 47 - moved to post-MVP backlog B-19 |
+| Home "spent" is purchase price only; Analytics "spent" includes purchase costs - align | step 33 | Step 47 - moved to post-MVP backlog B-19 |
+| Analytics aggregate live on every request (no caching) - revisit with real data volumes | step 33 | Step 47 - moved to post-MVP backlog B-33 |
+| Default sale / purchase day uses the rendering device's time zone; server and browser must agree until the user's time zone is known (with D24) | step 32 | Step 47 - moved to post-MVP backlog B-21 |
+| Mobile date fields are typed (YYYY-MM-DD + Today / Yesterday); a native picker needs a new dependency | step 32 | Step 47 - moved to post-MVP backlog B-22 |
+| OpenAPI spec (Tech Architecture locks "REST + OpenAPI") | docs review | Step 47 - moved to post-MVP backlog B-30 |
+| UI translations (only English exists) | step 14 | Step 47 - moved to post-MVP backlog B-21 |
+| App-store storefront country to refine mobile locale detection | step 14 | Step 47 - moved to post-MVP backlog B-21 |
+| Reduced-monitoring state is a placeholder: the API always reports normal until quiet hours / plan cadence exist (D22, D7) | step 36 | Step 47 - moved to post-MVP backlog B-16 |
+| Hunt-activity integration test creates LIVE hunts a running worker could poll (it asserts a null next check) | step 36 | Step 47 - moved to post-MVP backlog B-35 |
+| Backoff has no jitter (fine for one local worker; add with several workers / real APIs) | step 35 | Step 47 - moved to post-MVP backlog B-33 |
+| MVP freeze | prompt 44 | Step 47: docs/MVP_FREEZE.md, POST_MVP_BACKLOG.md, RELEASE_CHECKLIST.md, KNOWN_LIMITATIONS.md |
+| The acceptance sequence is manual (no browser automation script) | step 44 | Step 47 - moved to post-MVP backlog B-35 |
+| Rate-limit counters are in memory per API instance; several instances need a shared store (Azure Cache for Redis) | step 43 | Step 47 - moved to post-MVP backlog B-05 |
+| Web CSP is a baseline (framing, plugins, base, form targets); a strict script nonce CSP needs per-request rendering (conflicts with Cache Components) | step 43 | Step 47 - moved to post-MVP backlog B-34 |
+| Worker N+1 loops (match stage per pair, duplicate resolution per key, normalization per raw record, analysis enqueue per match, outbox per delivery) - batch when measured | step 43 | Step 47 - moved to post-MVP backlog B-33 |
+| Deals feed ranks all of a user's matches per page; store the latest score on HuntMatch when it gets slow | step 43 | Step 47 - moved to post-MVP backlog B-33 |
+| Push token re-registration moves the token to the new account (shared phones) - accepted risk, documented | step 43 | Step 47 - moved to post-MVP backlog B-34 |
+| POST /hunts has no idempotency key (double submit could create two drafts) | step 43 | Step 47 - moved to post-MVP backlog B-34 |
+| Dynamic success / info banners elsewhere in the web app should move to persistent live regions | step 43 | Step 47 - moved to post-MVP backlog B-22 |
+| Server error logs include stacks (Prisma messages may contain query arguments) - revisit with log retention | step 43 | Step 47 - moved to post-MVP backlog B-34 |
+| Hunt-activity integration test occasionally fails in the full run (a running worker can poll its LIVE hunts) | step 36/43 | Step 47 - moved to post-MVP backlog B-35 |
+| Move the database to Azure Database for PostgreSQL Flexible Server (dump / restore, PITR drills with D38); the free-account B1MS ends after 12 months | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Private networking (VNet-integrated environment, private endpoints for Key Vault / PostgreSQL) instead of public access + `AllowAzureServices` | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Worker always on (exceeds the Container Apps free grant): consider a scheduled Container Apps job or KEDA-driven scaling | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| CI/CD pipeline (GitHub Actions with OIDC federation, image build + push, migration job, deploy) - deployment is manual today | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Migrate image is 3.5 GB (reuses the whole build stage); a slim stage with only Prisma + migrations | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Custom domains + managed certificates for web / API (Entra redirect URIs and the Stripe webhook change with them) | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Shared rate-limit store before the API's `maxReplicas` goes above 1 (see Security and operations) | step 45 | Step 47 - moved to post-MVP backlog B-05 |
+| `EXPO_ACCESS_TOKEN` (only needed with Expo enhanced push security) is not wired into the worker app - add a Key Vault secret if enabled | step 45 | Step 47 - moved to post-MVP backlog B-16 |
+| Application Insights / OpenTelemetry (traces, metrics) not set up - product events are log lines only (step 46) | step 45 | Step 47 - moved to post-MVP backlog B-31 |
+| Vendor ProductEventProvider (after D15): background batching, flush on shutdown, SDK auto-capture (IP / geo / person profiles) off, key from Key Vault | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| Saved Log Analytics queries / a simple funnel workbook for the beta (only a KQL example exists) | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| Events live 30 days in Log Analytics (0.2 GB/day cap) - export or vendor for longer analysis | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| `deal_opened` relies on the apps calling `POST /deals/:id/seen` on every open | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| Not instrumented: alert / push opened, pause / resume / archive, Home / Analytics views, purchase edits, undo sale - add when a question needs them | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| Two concurrent first Seller Snapshot saves could both record `onboarding_started` (accepted) | step 46 | Step 47 - moved to post-MVP backlog B-23 |
+| Confirm font sizes, spacing and neutral greys in the high-fidelity design pass | step 6 | Step 47 - moved to post-MVP backlog B-25 |
+| Optimised @1x/@2x/@3x mascot PNGs for mobile (originals are 1-2 MB) | step 6 | Step 47 - moved to post-MVP backlog B-25 |
+| SVG wordmarks, if available | step 6 | Step 47 - moved to post-MVP backlog B-25 |
+| Mobile tab bar has no orange active indicator like web | step 9 | Step 47 - moved to post-MVP backlog B-25 |
+| Stale comments: raw-listing.ts `provider` TODO; BUILD_STATUS "worker does not use the database" | Housekeeping | Step 47 (fixed) |

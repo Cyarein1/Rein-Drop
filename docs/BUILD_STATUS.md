@@ -1,11 +1,50 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 46)_
+_Last updated: 2026-10-09 (step 47 - MVP freeze)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 47 - MVP freeze, post-MVP backlog, release checklist, known limitations (Build Prompt 44)
+
+The last Build Prompt. Scope review: [MVP_FREEZE.md](MVP_FREEZE.md). No product code changed
+(two stale comments fixed).
+
+**What was added**
+
+- [`MVP_FREEZE.md`](MVP_FREEZE.md): the technical MVP definition (Tech Architecture section 28)
+  clause by clause with the steps that built it, the automated evidence and what still needs a live
+  run; the App Flow Blueprint "Must work in MVP" table; a check that no critical flow depends on a
+  future feature; freeze rules.
+- [`POST_MVP_BACKLOG.md`](POST_MVP_BACKLOG.md): B-01..B-09 explicitly deferred (additional
+  marketplaces, Hot Hunts - unfinished, teams / seats, cross-listing / delisting, Redis, data
+  warehouse, advanced search, fine-tuning, microservices), each with the proven blocker that would
+  bring it back; product (B-10..B-25) and platform (B-30..B-37) items with priorities.
+- [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md): decisions, quality gates (incl. the final local
+  acceptance run), external services with their live tests, Azure deployment, hosted verification,
+  go / no-go + rollback, first week.
+- [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md): what testers and operators will notice, each
+  linked to a backlog item or decision.
+- OUTSTANDING: section 2 now holds only release work; 87 nonessential items moved to Resolved with
+  their backlog id (or the step that already resolved them).
+
+**Findings of the review**
+
+- Every clause of the MVP definition is built and covered by automated tests on a real database.
+- **Facebook in production depends on D12**: production registers no Facebook adapter, so the
+  source shows "isn't set up" and a Facebook-only Hunt finds nothing - a release decision
+  (checklist section 1), not missing code.
+- Not yet run against real Entra / Stripe / eBay / Foundry / push, and the mobile app not on a
+  device - release checklist sections 3 and 5.
+- Hot Hunts are unfinished (NORMAL priority only, entitlements off, "coming later") - deferred (B-02).
+- OpenAPI (locked in the Tech Architecture) is missing - backlog P1 (B-30), not an MVP clause.
+
+**Not done / TODO**
+
+- The final run of LOCAL_MVP_ACCEPTANCE.md is yours (it writes demo data into your database):
+  `pnpm db:reset-demo`, then the guide, then the sign-off sheet - release checklist section 2.
 
 ### Step 46 - Product events behind a provider abstraction (Build Prompt 43)
 
@@ -2175,7 +2214,7 @@ pnpm --filter mobile start
   (`postgresql-x64-18`) is stopped and set to Manual; Docker Postgres now runs on 5432 with the
   default config (no `.env` files needed). Restart it with `Start-Service postgresql-x64-18` only
   if needed - it will conflict with `pnpm infra:up` again.
-- Worker validates `DATABASE_URL` but does not use the database yet (no jobs need it).
+- ~~Worker validates `DATABASE_URL` but does not use the database yet~~ **Stale since step 20** (the worker's scheduler, queue and pipeline use it).
 - Mobile shows liveness only ("API reachable"); it does not call `/ready`.
 - Global pipe only validates DTOs built with `createZodDto`; a handler typed with a plain class
   or interface is not validated - convention to follow when adding endpoints.
@@ -2218,7 +2257,7 @@ All docs re-read: App Flow Blueprint, Screenbook + screen map, Technical Archite
 Prompts (01-44), Brand Identity v2.1, Mascot Usage Guide. The old Product Blueprint v0.1 is not
 used (owner decision).
 
-- Build Prompts done: 01-43 (our steps 1-46 include extra fix / reseller-gate / locale steps, so
+- Build Prompts done: 01-44 (our steps 1-47 include extra fix / reseller-gate / locale steps, so
   our numbers run ahead of the prompt numbers).
 - ~~Gap - Prompt 11 skipped (Seller Snapshot onboarding UI)~~ **Built in step 23.**
 - **Gap - OpenAPI:** Technical Architecture locks "REST + OpenAPI"; the API has no OpenAPI spec yet
@@ -2235,5 +2274,6 @@ used (owner decision).
 
 ## Next step
 
-Build Prompt 44 in document order: MVP freeze + post-MVP backlog.
+All Build Prompts (01-44) are done. Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+[POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

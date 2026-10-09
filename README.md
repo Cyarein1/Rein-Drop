@@ -8,6 +8,8 @@ End-to-end demo / acceptance run: [docs/LOCAL_MVP_ACCEPTANCE.md](docs/LOCAL_MVP_
 Azure beta hosting (Bicep in `infra/`, `Dockerfile`, budget): [docs/azure/BETA_DEPLOYMENT.md](docs/azure/BETA_DEPLOYMENT.md) -
 nothing deploys automatically.
 Product events (beta telemetry): [docs/telemetry/product-events.md](docs/telemetry/product-events.md).
+MVP scope (frozen): [docs/MVP_FREEZE.md](docs/MVP_FREEZE.md) - release: [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) -
+[known limitations](docs/KNOWN_LIMITATIONS.md) - [post-MVP backlog](docs/POST_MVP_BACKLOG.md).
 
 ## Ports
 

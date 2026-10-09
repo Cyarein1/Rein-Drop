@@ -14,8 +14,7 @@ export interface RawListingRecord {
   marketplace: MarketplaceId;
   /**
    * Which implementation fetched it (e.g. `mock`). Lets a swapped Facebook provider refuse
-   * payloads it doesn't understand.
-   * TODO(db): RawListing has no `provider` column yet - add one when ingestion persists records.
+   * payloads it doesn't understand. Stored in the RawListing `provider` column.
    */
   provider: string;
   /** The marketplace's own id for the listing. */
