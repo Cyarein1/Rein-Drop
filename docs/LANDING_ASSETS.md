@@ -61,6 +61,13 @@ visual (UI fragment, icon, illustration built from tokens) - never a substitute 
 
 ## Third-party marks (decision L-D6 - real logos, legal later)
 
+Marketplace marks (Landing 08) are each company's **own site icon / logo, downloaded unaltered
+from its official domain on 2026-10-10** (`public/assets/third-party/marketplaces/`); favicon
+`.ico` files only had their largest image extracted to PNG. Brand-kit / press-kit versions are
+better and should replace them when available - especially the low-resolution ones and the four
+with no file. Shown in tiles with the name as text; a missing mark is a neutral store glyph,
+never a recreated logo.
+
 Official files only, from each owner's brand / press kit, unaltered (no
 recolouring, stretching or redrawing); stored under `apps/web/public/assets/third-party/` with this
 table updated (source URL, date, licence notes). Footer line on the page: trademarks belong to their
@@ -68,10 +75,23 @@ owners; Rein Drop is not affiliated with or endorsed by them. Trademark review b
 
 | Mark | Status on the page | Needed by | File |
 |---|---|---|---|
-| eBay | Launch target | Landing 07 (hero chips), 08 (gallery) | TODO - eBay brand assets |
-| Facebook Marketplace | Launch target | Landing 07, 08 | TODO - Meta brand resources |
-| OfferUp, Craigslist, Mercari, Poshmark | Coming soon / Exploring | Landing 08 | TODO - each brand kit (text name if none exists) |
-| Depop, StockX, GOAT, Grailed, Reverb, Swappa, Etsy, Whatnot, Vinted, Amazon, Walmart Marketplace | Exploring | Landing 08 | TODO - each brand kit (text name if none exists) |
+| eBay | Launch target | Gallery, hero line | **`marketplaces/ebay.svg`** - official 4-colour wordmark SVG (191x77) from eBay Inc.'s site, https://static.ebayinc.com/static/theme/images/logo.svg (ebay.com blocked automated requests); checked: no scripts; sha256 50cfd1d4... |
+| Facebook Marketplace | Launch target | Gallery, hero card | **`marketplaces/facebook.webp`** - Facebook's site icon (180x180), https://www.facebook.com/apple-touch-icon.png (Marketplace has no separate mark); sha256 cd5fcbd5... |
+| Craigslist | Coming soon / Exploring | Gallery | `marketplaces/craigslist.png` - site icon 57x57, https://www.craigslist.org/apple-touch-icon.png - **low resolution** |
+| Mercari | Coming soon / Exploring | Gallery | `marketplaces/mercari.png` - 64x64 image extracted (pixels unchanged) from the official favicon.ico, u-web-assets.mercdn.net - **low resolution** |
+| Poshmark | Coming soon / Exploring | Gallery | `marketplaces/poshmark.png` - apple-touch-icon 180x180 from poshmark.com's page |
+| OfferUp | Coming soon / Exploring | Gallery | **None** - offerup.com is geo-blocked from this network; name + neutral store glyph |
+| Depop | Exploring | Gallery | `marketplaces/depop.png` - 48x48 from the official favicon.ico (assets.depop.com) - **low resolution** |
+| StockX | Exploring | Gallery | `marketplaces/stockx.png` - https://stockx.com/apple-touch-icon.png (180x180) |
+| GOAT | Exploring | Gallery | **None** - the site's apple-touch-icon is a solid black square (logo not visible); name + store glyph |
+| Grailed | Exploring | Gallery | `marketplaces/grailed.png` - https://www.grailed.com/apple-touch-icon.png (152x152) |
+| Reverb | Exploring | Gallery | `marketplaces/reverb.png` - apple-touch-icon 180x180 (static.reverb-assets.com) |
+| Swappa | Exploring | Gallery | **None** - bot challenge page; name + store glyph |
+| Etsy | Exploring | Gallery | **None** - blocked automated requests; name + store glyph |
+| Whatnot | Exploring | Gallery | `marketplaces/whatnot.png` - https://www.whatnot.com/apple-touch-icon.png (180x180) |
+| Vinted | Exploring | Gallery | `marketplaces/vinted.png` - apple-touch-icon 192x192 (marketplace-web-assets.vinted.com) |
+| Amazon | Exploring | Gallery | `marketplaces/amazon.png` - 48x48 from https://www.amazon.com/favicon.ico - **low resolution** |
+| Walmart Marketplace | Exploring | Gallery | `marketplaces/walmart.png` - https://www.walmart.com/apple-touch-icon.png (180x180, the Walmart spark) |
 | Download on the App Store badge | "Coming soon" until `APP_STORE_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/app-store-badge.svg`** - official SVG "Download_on_the_App_Store_Badge_US-UK_RGB_blk", 120x40, from https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg (2026-10-10; `tools.applemarketingtools.com` didn't resolve from this network); unaltered; checked: no scripts / external refs; sha256 a26fc5b3...b9fb99f |
 | Get it on Google Play badge | "Coming soon" until `GOOGLE_PLAY_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/google-play-badge.png`** - official PNG 646x250 (badge 564x168 + Google's 41 px clear space), from https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png (2026-10-10); unaltered - the clear space is offset in CSS; sha256 f72611e2...9934849 |
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { marketplaceByKey } from "../marketplaces";
 import { storeLink, storeLinks } from "../store-links";
 import { heroExample, ILLUSTRATIVE_LABEL, potentialGrossUpsideUsd, signedUsd, usd } from "./hero-example";
 
@@ -10,7 +11,7 @@ describe("hero sample deal (illustrative)", () => {
   });
 
   it("uses only launch-target marketplaces and the app's strength wording", () => {
-    expect(["eBay", "Facebook Marketplace"]).toContain(heroExample.marketplace);
+    expect(marketplaceByKey(heroExample.marketplace).status).toBe("launch_target");
     expect(heroExample.strength).toBe("Strong deal");
   });
 

@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 07 = step 54)_
+_Last updated: 2026-10-10 (Landing 08 = step 55)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -306,4 +306,41 @@ Verified (commands run):
   primary CTA above the fold.
 - Screenshots reviewed: 1440, 1280, 1024, 375 (top and visual), 320 (visual).
 
-Next: **Landing 08** - marketplace gallery and status model.
+Next: Landing 08 - marketplace gallery and status model.
+
+### Landing 08 (step 55) - Marketplace gallery and status model - done 2026-10-10
+
+- `src/marketing/marketplaces.ts` (data-driven): statuses `live | beta | in_development |
+  launch_target | coming_soon | exploring | unavailable` (Technical Decisions section 2) with a
+  label and plain meaning each ("Launch target", "Coming soon / Exploring", "Exploring", ...).
+  **`live` / `beta` require `proof` {verifiedAt, evidence} in the type** - nothing has it.
+  17 entries exactly as the prompt: eBay, Facebook Marketplace = Launch target; OfferUp,
+  Craigslist, Mercari, Poshmark = Coming soon / Exploring; Depop, StockX, GOAT, Grailed, Reverb,
+  Swappa, Etsy, Whatnot, Vinted, Amazon, Walmart Marketplace = Exploring; each with a category.
+- `MarketplaceGallery` (server component): "Starting with" (two large tiles), "On our radar"
+  (4 tiles shown + a native `<details>` "See 11 more we're exploring" - works without JS, keyboard,
+  find-in-page), a status legend, "Don't see where you source? Tell us when you join early access"
+  (-> waitlist; the real request interaction is Landing 17) and the non-affiliation line.
+- `MarketplaceMark`: official mark (unaltered file, never stretched; wordmarks keep their width)
+  or a neutral store glyph + the name as text where no official file was obtainable.
+- **Logos (decision L-D6):** 13 of 17 from each company's own site (eBay's official SVG wordmark
+  from static.ebayinc.com; site / app icons for the rest); OfferUp (geo-blocked), Swappa (bot
+  challenge), Etsy (blocked) and GOAT (its icon file is a blank black square) use the text
+  fallback. Low-resolution: Craigslist 57, Mercari 64, Depop / Amazon 48 px. Sources + hashes in
+  [LANDING_ASSETS.md](LANDING_ASSETS.md).
+- Hero card: the marketplace is now referenced by key and shows the official Facebook mark + name.
+
+Verified (commands run):
+- `pnpm --filter web test` 66/66 (5 new: the prompt's exact groups / labels; nothing live / beta,
+  never without proof; every status has a meaning without dates or guarantees; unique keys / names;
+  every logo file exists with its recorded PNG size, SVG without scripts; the four text fallbacks),
+  typecheck, lint, build.
+- `node scripts/check-landing.mjs` on the production build: **90/90** - at 1280 / 375 / 320 px:
+  no Live / Beta pill; 2 launch targets + 4 coming soon visible and the 11 exploring hidden;
+  **Enter on "See more" opens it** and all 17 are then listed; the 13 logos load with their true
+  aspect ratio; no horizontal overflow closed or open; trademark note; hero card Facebook mark.
+  (Fixed in the check itself: visibility now uses `checkVisibility()` - a closed `<details>`
+  hides content with content-visibility - and a bounded wait for lazy logos.)
+- Screenshots reviewed: 1280 open, 375 closed.
+
+Next: **Landing 09** - problem section.

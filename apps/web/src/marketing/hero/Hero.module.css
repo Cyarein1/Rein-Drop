@@ -220,6 +220,10 @@
 }
 
 .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--rd-space-1);
   color: var(--rd-neutral-text-muted);
   font-size: var(--rd-font-size-sm);
 }

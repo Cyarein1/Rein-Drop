@@ -1,0 +1,41 @@
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  min-width: 0;
+}
+
+/* Square app icons: shown whole, soft corners like a home-screen icon. */
+.icon {
+  display: block;
+  flex-shrink: 0;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  border-radius: calc(var(--mark-size) * 0.22);
+  object-fit: contain;
+}
+
+/* Name logos (eBay): same height, natural width - never stretched. */
+.wordmark {
+  display: block;
+  flex-shrink: 0;
+  height: var(--mark-size);
+  width: auto;
+}
+
+.fallback {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  border-radius: calc(var(--mark-size) * 0.22);
+  background: var(--rd-neutral-surface-subtle);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+  color: var(--rd-neutral-text-muted);
+}
+
+.name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

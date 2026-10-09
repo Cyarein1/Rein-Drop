@@ -2,7 +2,8 @@
 // no extra dependencies - and asserts the navigation (Landing 06: sticky bar, mobile menu focus /
 // Tab wrap / Escape / outside click / resize, in-page links, reduced motion) and the hero
 // (Landing 07: layout at 320-1440 px, the sample card never clipped and labelled illustrative,
-// CTAs, store badges, priority mascot). Screenshots go to <outDir>. Until Playwright is added
+// CTAs, store badges, priority mascot) and the marketplace gallery (Landing 08: honest statuses,
+// expander by mouse and keyboard, official logos loaded undistorted). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -198,6 +199,53 @@ for (const [width, height, mobile] of [[1440, 900, false], [1280, 800, false], [
     await shot(`hero-${width}-visual`);
   }
 }
+
+// ---- Marketplace gallery (Landing 08) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  await evaluate(`document.getElementById('marketplaces').scrollIntoView()`); await sleep(400);
+  const tag = `gallery ${width}px`;
+  const read = () => evaluate(`(() => {
+    const s = document.getElementById('marketplaces');
+    // checkVisibility() also honours content-visibility (how a closed <details> hides its content).
+    const visible = (el) => el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true });
+    const tiles = [...s.querySelectorAll('li')].filter(visible);
+    const imgs = [...s.querySelectorAll('img')].filter(visible);
+    return {
+      pills: [...s.querySelectorAll('[data-status]')].filter(visible).map((p) => p.textContent),
+      starting: [...s.querySelectorAll('ul')][0].querySelectorAll('li').length,
+      visibleTiles: tiles.length,
+      open: s.querySelector('details').open,
+      summary: s.querySelector('summary').textContent.trim(),
+      logos: imgs.map((i) => ({ src: i.getAttribute('src').split('/').pop(), ok: i.complete && i.naturalWidth > 0, ratio: +(i.getBoundingClientRect().width / i.getBoundingClientRect().height).toFixed(2), natural: +(i.naturalWidth / i.naturalHeight).toFixed(2) })),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      footnote: s.textContent.includes("isn't affiliated with or endorsed by them"),
+    };
+  })()`);
+  let g = await read();
+  check(`${tag}: nothing labelled Live or Beta`, !g.pills.some((p) => /^(Live|Beta)$/.test(p)), g.pills.join(","));
+  check(`${tag}: 2 launch targets + 4 coming soon shown, 11 exploring hidden behind "See more"`, g.starting === 2 && g.visibleTiles === 6 && g.pills.filter((p) => p === "Launch target").length === 3 /* 2 tiles + legend */ && g.pills.filter((p) => p === "Coming soon / Exploring").length === 5 && g.pills.filter((p) => p === "Exploring").length === 1 /* legend only */ && !g.open && g.summary === "See 11 more we're exploring", JSON.stringify({ starting: g.starting, tiles: g.visibleTiles, pills: g.pills.length, open: g.open, summary: g.summary }));
+  check(`${tag}: no horizontal overflow`, !g.overflowX);
+  await shot(`gallery-${width}-closed`);
+  // Open with the keyboard: focus the summary, press Enter.
+  await evaluate(`document.querySelector('#marketplaces summary').focus()`);
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: String.fromCharCode(13) });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await sleep(300);
+  // Lazy logos load when near the viewport: bring each into view, then wait (bounded) until loaded.
+  await evaluate(`(async () => { const imgs = [...document.querySelectorAll('#marketplaces img')]; for (const i of imgs) { i.scrollIntoView({ block: 'center' }); await new Promise((r) => setTimeout(r, 60)); }
+    const start = Date.now(); while (!imgs.every((i) => i.complete) && Date.now() - start < 5000) await new Promise((r) => setTimeout(r, 100)); })()`);
+  g = await read();
+  check(`${tag}: Enter on "See more" opens it; all 17 marketplaces then listed`, g.open && g.visibleTiles === 17, JSON.stringify({ open: g.open, tiles: g.visibleTiles }));
+  check(`${tag}: 13 official logos loaded, none distorted`, g.logos.length === 13 && g.logos.every((l) => l.ok && Math.abs(l.ratio - l.natural) < 0.06), JSON.stringify(g.logos.filter((l) => !l.ok || Math.abs(l.ratio - l.natural) >= 0.06)));
+  check(`${tag}: no horizontal overflow when expanded; trademark note present`, !g.overflowX && g.footnote);
+  await shot(`gallery-${width}-open`);
+}
+// Hero card shows the official Facebook mark.
+await viewport(1280, 800, false); await load(`${base}/`);
+const heroMark = await evaluate(`(() => { const i = document.querySelector('#hero figure img'); return i && { src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, text: document.querySelector('#hero figure').textContent.includes('Facebook Marketplace') }; })()`);
+check("hero card: official Facebook mark + name", !!heroMark && heroMark.src.endsWith("facebook.webp") && heroMark.ok && heroMark.text, JSON.stringify(heroMark));
 
 console.log(results.join("\n"));
 console.log(`${results.filter((r) => r.startsWith("PASS")).length}/${results.length} passed`);

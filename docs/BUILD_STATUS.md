@@ -1,11 +1,20 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 54 - Landing 07)_
+_Last updated: 2026-10-10 (step 55 - Landing 08)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 55 - Landing 08: marketplace gallery and status model
+
+Data-driven marketplace roadmap (17 sources, statuses with plain meanings; Live / Beta impossible
+without recorded proof): eBay + Facebook Marketplace "Launch target", OfferUp / Craigslist /
+Mercari / Poshmark "Coming soon / Exploring", 11 "Exploring" behind a native "See more". 13
+official marks from the companies' own sites (eBay SVG wordmark), 4 text fallbacks; hero card shows
+the Facebook mark. Verified: web tests 66/66, browser check 90/90 incl. keyboard expand and logo
+loading at 1280 / 375 / 320 px. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 54 - Landing 07: hero
 
@@ -2337,6 +2346,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 08 = step 55; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 09 = step 56; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { ArrowDown, ArrowRight, Smartphone } from "lucide-react";
 import { landingImages } from "../landing-assets";
+import { marketplaceByKey } from "../marketplaces";
+import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
 import { NAV_LINKS, PRIMARY_CTA } from "../sections";
 import { StoreBadges } from "../StoreBadges";
 import { heroExample, ILLUSTRATIVE_LABEL, potentialGrossUpsideUsd, signedUsd, usd } from "./hero-example";
@@ -71,7 +73,7 @@ export function Hero() {
                 <span className={styles.strength}>{heroExample.strength}</span>
                 <p className={styles.product}>{heroExample.product}</p>
                 <p className={styles.meta}>
-                  {heroExample.marketplace} · {heroExample.condition}
+                  <MarketplaceMark marketplace={marketplaceByKey(heroExample.marketplace)} size={16} showName /> · {heroExample.condition}
                 </p>
               </div>
             </div>
