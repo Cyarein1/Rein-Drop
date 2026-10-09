@@ -106,7 +106,7 @@ export function SiteNav() {
             width={Math.round((wordmark.width / wordmark.height) * WORDMARK_HEIGHT)}
             height={WORDMARK_HEIGHT}
             alt=""
-            priority
+            loading="eager"
             sizes={`${Math.round((wordmark.width / wordmark.height) * WORDMARK_HEIGHT)}px`}
           />
         </a>

@@ -1,11 +1,21 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 53 - Landing 06)_
+_Last updated: 2026-10-10 (step 54 - Landing 07)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 54 - Landing 07: hero
+
+"You flip it. We find it." hero: supporting copy, orange Join early access + See how it works,
+official App Store / Google Play badges ("coming soon" -> waitlist; configurable store URLs),
+honest launch-target line, approved mascot holding a box and a sample deal card labelled
+"Illustrative example - not a live listing" (gross upside, cost caveat, no live activity).
+Asymmetric desktop, stacked mobile. Verified: web tests 61/61, real-browser check 71/71 at
+1440-320 px (incl. badge alignment it caught and we fixed), screenshots reviewed. Details:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 53 - Landing 06: navigation and mobile menu
 
@@ -2327,6 +2337,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 07 = step 54; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 08 = step 55; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

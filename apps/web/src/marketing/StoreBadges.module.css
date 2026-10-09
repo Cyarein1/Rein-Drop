@@ -1,0 +1,65 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-3) var(--rd-space-4);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Flex items, not inline boxes: no baseline gap under one badge, so both centre exactly. */
+.badges > li {
+  display: flex;
+}
+
+.badge {
+  display: flex;
+  border-radius: 9px;
+  transition: transform 150ms ease;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+}
+
+/* Apple badge: the artwork is the whole file - 40px high. */
+.badge[data-store="appStore"] img {
+  display: block;
+  height: 40px;
+  width: auto;
+}
+
+/* Google's file (646x250) includes its required clear space: the badge itself is 564x168 starting
+   41px in on every side. Shown at 59.52px so the badge is 40px like Apple's (40/168 scale), with the
+   9.76px clear space pulled back by negative margins - the official artwork is not cropped or altered. */
+.badge[data-store="googlePlay"] img {
+  display: block;
+  height: 59.52px;
+  width: auto;
+  margin: -9.76px;
+}
+
+.soon {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 var(--rd-space-3);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-wash-yellow);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.row[data-tone="dark"] .soon {
+  background: rgb(255 255 255 / 0.12);
+  color: var(--rd-color-canvas);
+}

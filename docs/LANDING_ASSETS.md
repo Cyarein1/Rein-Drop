@@ -61,7 +61,7 @@ visual (UI fragment, icon, illustration built from tokens) - never a substitute 
 
 ## Third-party marks (decision L-D6 - real logos, legal later)
 
-None supplied yet. Official files only, from each owner's brand / press kit, unaltered (no
+Official files only, from each owner's brand / press kit, unaltered (no
 recolouring, stretching or redrawing); stored under `apps/web/public/assets/third-party/` with this
 table updated (source URL, date, licence notes). Footer line on the page: trademarks belong to their
 owners; Rein Drop is not affiliated with or endorsed by them. Trademark review before public launch.
@@ -72,8 +72,8 @@ owners; Rein Drop is not affiliated with or endorsed by them. Trademark review b
 | Facebook Marketplace | Launch target | Landing 07, 08 | TODO - Meta brand resources |
 | OfferUp, Craigslist, Mercari, Poshmark | Coming soon / Exploring | Landing 08 | TODO - each brand kit (text name if none exists) |
 | Depop, StockX, GOAT, Grailed, Reverb, Swappa, Etsy, Whatnot, Vinted, Amazon, Walmart Marketplace | Exploring | Landing 08 | TODO - each brand kit (text name if none exists) |
-| Download on the App Store badge | "Coming soon" until the store URL is configured | Landing 07, 13 | TODO - Apple marketing tools (official badge) |
-| Get it on Google Play badge | "Coming soon" until the store URL is configured | Landing 07, 13 | TODO - Google Play badge generator (official badge) |
+| Download on the App Store badge | "Coming soon" until `APP_STORE_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/app-store-badge.svg`** - official SVG "Download_on_the_App_Store_Badge_US-UK_RGB_blk", 120x40, from https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg (2026-10-10; `tools.applemarketingtools.com` didn't resolve from this network); unaltered; checked: no scripts / external refs; sha256 a26fc5b3...b9fb99f |
+| Get it on Google Play badge | "Coming soon" until `GOOGLE_PLAY_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/google-play-badge.png`** - official PNG 646x250 (badge 564x168 + Google's 41 px clear space), from https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png (2026-10-10); unaltered - the clear space is offset in CSS; sha256 f72611e2...9934849 |
 
 ## Never production assets
 

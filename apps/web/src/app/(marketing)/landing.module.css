@@ -15,26 +15,25 @@
   top: var(--rd-space-2);
 }
 
+/* Full width: each section sets its own background and inner width (the hero's wash runs edge to edge). */
 .main {
-  max-width: var(--rd-page-max-width);
-  margin: 0 auto;
-  padding: 0 var(--rd-space-4) var(--rd-space-12);
+  padding-bottom: var(--rd-space-12);
 }
 
+/* Placeholder sections (until their landing step designs them). */
 .section {
+  max-width: var(--rd-page-max-width);
+  margin: 0 auto;
+  padding-inline: var(--rd-gutter);
   /* Anchor targets land below the sticky navigation (64px bar + breathing room). */
   scroll-margin-top: 80px;
-  padding: var(--rd-space-10) 0;
+  padding-block: var(--rd-space-10);
   border-top: 1px solid var(--rd-neutral-border);
 }
 
 /* Focus target for in-page links (tabIndex -1): the heading is announced, no ring around the section. */
 .section:focus {
   outline: none;
-}
-
-.section:first-child {
-  border-top: 0;
 }
 
 .placeholder {

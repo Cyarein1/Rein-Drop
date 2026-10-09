@@ -1,10 +1,12 @@
-// Browser check of the landing navigation (Landing 06): drives a headless Chrome / Edge over the
-// DevTools protocol - no extra dependencies - and asserts the sticky bar, the mobile menu (focus,
-// Tab wrap, Escape, outside click, resize), in-page links and reduced motion. Screenshots go to
-// <outDir>. Until Playwright is added (landing QA steps) this is the nav's browser test.
+// Browser check of the landing page: drives a headless Chrome / Edge over the DevTools protocol -
+// no extra dependencies - and asserts the navigation (Landing 06: sticky bar, mobile menu focus /
+// Tab wrap / Escape / outside click / resize, in-page links, reduced motion) and the hero
+// (Landing 07: layout at 320-1440 px, the sample card never clipped and labelled illustrative,
+// CTAs, store badges, priority mascot). Screenshots go to <outDir>. Until Playwright is added
+// (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
-//   node scripts/check-landing-nav.mjs http://localhost:3000 .browser-check
+//   node scripts/check-landing.mjs http://localhost:3000 .browser-check
 //
 // CHROME_PATH overrides the browser (default: Chrome, else Edge, Windows install paths).
 import { spawn } from "node:child_process";
@@ -65,7 +67,7 @@ const desk = await evaluate(`(() => {
 check("desktop: inline links", desk.navLinks.join(",") === "How it works>#how-it-works,Features>#intelligence,Marketplaces>#marketplaces,FAQ>#faq", desk.navLinks.join(", "));
 check("desktop: menu button hidden, Sign in shown", !desk.menuButtonVisible && desk.signInVisible);
 check("desktop: CTA -> #waitlist", desk.cta.length === 1 && desk.cta[0] === "#waitlist", desk.cta.join(","));
-check("desktop: sticky, transparent at top", desk.position === "sticky" && !desk.scrolled);
+check("desktop: sticky, transparent at top (hero wash shows through)", desk.position === "sticky" && !desk.scrolled);
 check("desktop: wordmark not stretched", desk.wordmark && Math.abs(desk.wordmark.w / desk.wordmark.h - 570 / 192) < 0.05, JSON.stringify(desk.wordmark));
 check("desktop: no horizontal overflow", !desk.overflowX);
 await shot("desktop-top");
@@ -148,6 +150,54 @@ await viewport(1280, 900, false); await load(`${base}/`);
 await key("Tab");
 const skip = await evaluate(`({ text: document.activeElement.textContent, top: document.activeElement.getBoundingClientRect().top })`);
 check("skip link is the first Tab stop and shows on focus", skip.text === "Skip to content" && skip.top >= 0, JSON.stringify(skip));
+
+// ---- Hero (Landing 07) ----
+for (const [width, height, mobile] of [[1440, 900, false], [1280, 800, false], [1024, 768, false], [768, 1024, true], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  const h = await evaluate(`(() => {
+    const hero = document.getElementById('hero');
+    const r = (el) => el.getBoundingClientRect();
+    const card = hero.querySelector('figure');
+    const mascot = hero.querySelector('img[fetchpriority="high"], img[loading="eager"]');
+    const inView = (el) => { const b = r(el); return b.left >= 0 && b.right <= innerWidth + 0.5; };
+    const numbers = [...card.querySelectorAll('dd')];
+    return {
+      h1: hero.querySelector('h1').textContent,
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      cardInView: inView(card),
+      numbersInView: numbers.every(inView),
+      numbersNotClipped: numbers.every((dd) => dd.scrollWidth <= dd.clientWidth + 1),
+      numbers: numbers.map((d) => d.textContent),
+      label: card.querySelector('figcaption').textContent,
+      mascot: mascot && { src: mascot.currentSrc.includes('holding-box'), complete: mascot.complete && mascot.naturalWidth > 0, ratio: +(r(mascot).width / r(mascot).height).toFixed(3) },
+      ctas: [...hero.querySelectorAll('a')].filter((a) => !a.closest('ul')).map((a) => a.textContent.trim() + '>' + a.getAttribute('href')),
+      badges: [...hero.querySelectorAll('ul a')].map((a) => a.getAttribute('href') + '|' + a.getAttribute('aria-label').slice(0, 40)),
+      soon: hero.textContent.includes('Mobile apps coming soon'),
+      // Visible badge boxes: Apple's file is all badge; Google's has 41/250 clear space on each side.
+      badgeBoxes: (() => { const a = r(hero.querySelector('[data-store="appStore"] img')); const g = r(hero.querySelector('[data-store="googlePlay"] img')); const pad = g.height * 41 / 250;
+        return { appleH: +a.height.toFixed(1), googleH: +(g.height - 2 * pad).toFixed(1), centerDiff: +Math.abs((a.top + a.height / 2) - (g.top + g.height / 2)).toFixed(1) }; })(),
+      ctaAboveFold: r([...hero.querySelectorAll('a')].find((a) => a.textContent.includes('Join early access'))).bottom <= innerHeight,
+      cardTop: Math.round(r(card).top), mascotBottom: mascot && Math.round(r(mascot).bottom),
+      sideBySide: r(hero.querySelector('h1')).right <= r(card).left + 1 || r(hero.querySelector('h1')).bottom <= r(card).top,
+    };
+  })()`);
+  const tag = `hero ${width}px`;
+  check(`${tag}: headline`, h.h1 === "You flip it.We find it.", h.h1);
+  check(`${tag}: no horizontal overflow; card and its numbers fully visible`, !h.overflowX && h.cardInView && h.numbersInView && h.numbersNotClipped, JSON.stringify({ overflowX: h.overflowX, cardInView: h.cardInView, numbers: h.numbers }));
+  check(`${tag}: card labelled illustrative`, h.label.startsWith("Illustrative example"), h.label);
+  check(`${tag}: approved mascot loaded as the priority image, not stretched`, !!h.mascot && h.mascot.src && h.mascot.complete && Math.abs(h.mascot.ratio - 775 / 1024) < 0.02, JSON.stringify(h.mascot));
+  check(`${tag}: CTAs -> waitlist / how it works`, h.ctas.join(",") === "Join early access>#waitlist,See how it works>#how-it-works", h.ctas.join(","));
+  check(`${tag}: store badges coming soon -> waitlist`, h.soon && h.badges.length === 2 && h.badges.every((b) => b.startsWith("#waitlist|")), h.badges.join(" ; "));
+  check(`${tag}: badges the same visible height, aligned`, Math.abs(h.badgeBoxes.appleH - h.badgeBoxes.googleH) <= 1 && h.badgeBoxes.centerDiff <= 1, JSON.stringify(h.badgeBoxes));
+  check(`${tag}: primary CTA visible without scrolling`, h.ctaAboveFold);
+  await shot(`hero-${width}`);
+  if (mobile) {
+    // Below the fold on phones: the mascot + sample card.
+    await evaluate(`document.querySelector('#hero figure').scrollIntoView({ block: 'end' })`); await sleep(300);
+    await shot(`hero-${width}-visual`);
+  }
+}
 
 console.log(results.join("\n"));
 console.log(`${results.filter((r) => r.startsWith("PASS")).length}/${results.length} passed`);

@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-10, after step 53 (Landing 06)._
+_Last updated: 2026-10-10, after step 54 (Landing 07)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,9 +104,9 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 07-24 (steps 54-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 08-24 (steps 55-71) per the scoped plan - step 48.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
-- Official logo / badge files (eBay, Facebook Marketplace, gallery marketplaces, App Store, Google Play) from each brand kit; trademark review before public launch (decision L-D6) - step 48.
+- Official marketplace logo files (eBay, Facebook Marketplace, gallery marketplaces) from each brand kit - store badges done in step 54; trademark review before public launch (decision L-D6) - step 48.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
 - Landing skeleton is public at `/` once deployed - don't deploy the web app publicly until the landing is finished (or keep the beta URL private) - step 49.
 - Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable - step 50.
@@ -114,6 +114,9 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - The landing mockup shows a deer / reindeer mascot; the approved mascot is the orange droplet - confirm which character the landing uses (only approved art is used) - step 51.
 - Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
 - Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
+- Hero deal card names the marketplace as text; switch to the official logo with the gallery's marketplace mark (Landing 08) - step 54.
+- The app's `Wordmark` component (sign-in page etc.) still uses Next's deprecated `priority` prop - switch to `loading="eager"` / `fetchPriority` - step 54.
+- Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 

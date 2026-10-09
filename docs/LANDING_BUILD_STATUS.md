@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 06 = step 53)_
+_Last updated: 2026-10-10 (Landing 07 = step 54)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -265,4 +265,45 @@ Verified (commands run):
   320 closed).
 - Not yet: a screen reader pass by a person.
 
-Next: **Landing 07** - hero (or Landing 05 if it is sent).
+Next: Landing 07 - hero (or Landing 05 if it is sent).
+
+### Landing 07 (step 54) - Hero - done 2026-10-10
+
+- `src/marketing/hero/Hero.tsx` + css (server component, no client JS), replacing the hero
+  placeholder:
+  - Eyebrow "Built for resellers"; **"You flip it. We find it."** (`--rd-display-hero`, navy; "find
+    it." on an orange highlighter stroke - orange *text* on white is 2.8:1 and fails even large-text
+    AA, so the mockup's orange headline isn't used); the spec's supporting line; orange **Join early
+    access** (navy text) -> `#waitlist` and **See how it works** -> `#how-it-works`.
+  - App Store / Google Play badges (decision L-D7): official files, "Mobile apps coming soon",
+    each leads to the waitlist; `APP_STORE_URL` / `GOOGLE_PLAY_URL` (https on the store's own host
+    only) switch a badge to a real download link (`store-links.ts`, `StoreBadges.tsx`).
+  - "Launch targets: eBay and Facebook Marketplace. You decide what to buy." - honest scope.
+  - Visual: approved mascot **holding a box** (the orange droplet - the mockup's deer is not an
+    approved asset; owner to confirm) on a soft yellow / orange glow, with a **sample deal card**:
+    "Illustrative example - not a live listing", Strong deal, iPhone 13 Pro 128 GB, Facebook
+    Marketplace (text - official marketplace logos come with the gallery, Landing 08), asking $380,
+    est. resale $520, **potential gross upside +$140** (green only at 24 px bold), "Before fees,
+    shipping and repairs. Estimates aren't guaranteed." No timestamps, counters or live dots.
+  - Desktop ~45 / 55 asymmetric grid, card overlapping the mascot; mobile stacked: copy -> CTAs ->
+    badges -> mascot + card; 320 px: the three numbers wrap to two rows.
+- `hero-example.ts`: the illustrative numbers (upside = resale - asking, gross) + formatting.
+- Mascot `fetchPriority="high"` + `loading="eager"` (Next 16 deprecated `priority`); nav wordmark
+  `loading="eager"`.
+- Page: the main area is full width (sections set their own width), the hero runs under the
+  transparent nav.
+- `scripts/check-landing-nav.mjs` -> **`scripts/check-landing.mjs`** (nav + hero groups).
+
+Verified (commands run):
+- `pnpm --filter web test` 61/61 (5 new: illustrative label + gross upside invariant, launch-target
+  marketplace, USD formatting; store links coming soon by default, only https store hosts accepted),
+  typecheck, lint, build (`/` static).
+- `node scripts/check-landing.mjs` on the production build (port 3100): **71/71** - nav (23) and,
+  at 1440 / 1280 / 1024 / 768 / 375 / 320 px: headline; no horizontal overflow; card and its
+  numbers fully visible and not clipped; illustrative label; approved mascot loaded as the
+  high-priority image with its real aspect ratio; CTA targets; badges coming soon -> waitlist;
+  **badges the same visible height and centred** (the check caught a 4.9 px baseline offset, fixed);
+  primary CTA above the fold.
+- Screenshots reviewed: 1440, 1280, 1024, 375 (top and visual), 320 (visual).
+
+Next: **Landing 08** - marketplace gallery and status model.

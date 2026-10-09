@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Hero } from "@/marketing/hero/Hero";
 import { SiteNav } from "@/marketing/nav/SiteNav";
 import { LANDING_SECTIONS } from "@/marketing/sections";
 import styles from "./landing.module.css";
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Landing page (docs/LANDING_BUILD_STATUS.md): navigation (Landing 06) + section skeleton (Landing 02);
+ * Landing page (docs/LANDING_BUILD_STATUS.md): navigation (Landing 06), hero (Landing 07), and the
+ * remaining section skeleton (Landing 02);
  * each section is filled in by its own landing step. Sections are focusable (tabIndex -1) so in-page
  * links move keyboard / screen-reader focus to them, not just the scroll position.
  */
@@ -24,10 +26,7 @@ export default function LandingPage() {
       <main id="main-content" className={styles.main}>
         {LANDING_SECTIONS.map((section) =>
           section.id === "hero" ? (
-            <section key={section.id} id={section.id} aria-labelledby={`${section.id}-heading`} tabIndex={-1} className={styles.section}>
-              <h1 id={`${section.id}-heading`}>You flip it. We find it.</h1>
-              <p className={styles.placeholder}>Hero - designed in Landing 07.</p>
-            </section>
+            <Hero key={section.id} />
           ) : (
             <section key={section.id} id={section.id} aria-labelledby={`${section.id}-heading`} tabIndex={-1} className={styles.section}>
               <h2 id={`${section.id}-heading`}>{section.label}</h2>
