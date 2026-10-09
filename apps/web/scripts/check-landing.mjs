@@ -3,7 +3,8 @@
 // Tab wrap / Escape / outside click / resize, in-page links, reduced motion) and the hero
 // (Landing 07: layout at 320-1440 px, the sample card never clipped and labelled illustrative,
 // CTAs, store badges, priority mascot) and the marketplace gallery (Landing 08: honest statuses,
-// expander by mouse and keyboard, official logos loaded undistorted). Screenshots go to <outDir>. Until Playwright is added
+// expander by mouse and keyboard, official logos loaded undistorted) and the problem section
+// (Landing 09: before / after layout, labelled CSS illustrations, nothing off-screen). Screenshots go to <outDir>. Until Playwright is added
 // (landing QA steps) this is the landing page's browser test.
 //
 //   pnpm --filter web build && pnpm --filter web start   (or any running web server)
@@ -241,6 +242,38 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
   check(`${tag}: 13 official logos loaded, none distorted`, g.logos.length === 13 && g.logos.every((l) => l.ok && Math.abs(l.ratio - l.natural) < 0.06), JSON.stringify(g.logos.filter((l) => !l.ok || Math.abs(l.ratio - l.natural) >= 0.06)));
   check(`${tag}: no horizontal overflow when expanded; trademark note present`, !g.overflowX && g.footnote);
   await shot(`gallery-${width}-open`);
+}
+// ---- Problem (Landing 09) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [320, 640, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  await evaluate(`document.getElementById('problem').scrollIntoView()`); await sleep(400);
+  const tag = `problem ${width}px`;
+  const pr = await evaluate(`(() => {
+    const s = document.getElementById('problem');
+    const r = (el) => el.getBoundingClientRect();
+    const [before, after] = s.querySelectorAll('article');
+    const imgs = [...s.querySelectorAll('[role="img"]')];
+    const inside = (el) => { const b = r(el); return b.left >= -1 && b.right <= innerWidth + 1; };
+    return {
+      heading: s.querySelector('h2').textContent,
+      titles: [...s.querySelectorAll('h3')].map((h) => h.textContent),
+      layout: r(before).right <= r(after).left ? 'side-by-side' : r(before).bottom <= r(after).top ? 'stacked' : 'overlap',
+      illustrations: imgs.map((i) => ({ label: (i.getAttribute('aria-label') || '').startsWith('Illustration:'), hiddenInside: [...i.children].every((c) => c.getAttribute('aria-hidden') === 'true') })),
+      allInside: [...s.querySelectorAll('article, [role="img"], [role="img"] > *')].every(inside),
+      points: [...s.querySelectorAll('article > ul')].map((u) => u.children.length),
+      // The heads-up overlaps the Hunt card's bottom padding only - never the marketplace row.
+      sourcesClear: (() => { const card = s.querySelector('article:last-of-type [role="img"] > div'); const rows = [...card.children]; const last = rows[rows.length - 1]; return r(last).bottom <= r(card.nextElementSibling).top + 0.5; })(),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  })()`);
+  check(`${tag}: headline + before / after titles`, pr.heading === "Great flips don't wait for your next refresh." && pr.titles.join("|") === "BeforeWithout Rein Drop|AfterWith a saved Hunt", `${pr.heading} / ${pr.titles.join("|")}`);
+  check(`${tag}: ${mobile ? "stacked" : "side by side"}`, pr.layout === (mobile ? "stacked" : "side-by-side"), pr.layout);
+  check(`${tag}: both illustrations summarised for screen readers, decoration hidden`, pr.illustrations.length === 2 && pr.illustrations.every((i) => i.label && i.hiddenInside), JSON.stringify(pr.illustrations));
+  check(`${tag}: heads-up never covers the Hunt card's content`, pr.sourcesClear);
+  check(`${tag}: three points per side; nothing off-screen; no horizontal overflow`, pr.points.join(",") === "3,3" && pr.allInside && !pr.overflowX, JSON.stringify({ points: pr.points, allInside: pr.allInside, overflowX: pr.overflowX }));
+  await shot(`problem-${width}`);
+  if (mobile) { await evaluate(`document.querySelectorAll('#problem article')[1].scrollIntoView()`); await sleep(300); await shot(`problem-${width}-after`); }
 }
 // Hero card shows the official Facebook mark.
 await viewport(1280, 800, false); await load(`${base}/`);

@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 08 = step 55)_
+_Last updated: 2026-10-10 (Landing 09 = step 56)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -343,4 +343,36 @@ Verified (commands run):
   hides content with content-visibility - and a bounded wait for lazy logos.)
 - Screenshots reviewed: 1280 open, 375 closed.
 
-Next: **Landing 09** - problem section.
+Next: Landing 09 - problem section.
+
+### Landing 09 (step 56) - Problem section - done 2026-10-10
+
+- `src/marketing/problem/ProblemSection.tsx` + css (server component) on a sky-wash band:
+  eyebrow "The problem", **"Great flips don't wait for your next refresh."** (the spec's line), one
+  plain-language lead.
+- Before / after as two expressive cards (not a table), side by side on desktop with a navy "vs",
+  stacked on phones:
+  - **Before - Without Rein Drop**: a CSS-only browser, slightly tilted - six squeezed marketplace
+    tabs, a refresh button, three struck-through listings stamped "Sold already", "Too expensive",
+    "Seen it twice"; points: same searches over and over / tabs everywhere / the good one was gone.
+  - **After - With a saved Hunt**: one Hunt card (iPhone 13 Pro; Under $400, Good condition or
+    better, Within 25 miles; eBay + Facebook official marks; "Live - watching for you") and a
+    heads-up notification with the approved app icon ("Strong deal: iPhone 13 Pro 128 GB");
+    points: set it once / Rein Drop keeps checking / a heads-up when something's worth a look.
+- Illustrations are CSS / UI fragments plus approved assets only (app icon, official marketplace
+  marks); each is `role="img"` with an "Illustration: ..." summary and hidden decoration, so the
+  meaning never depends on the picture. No numbers about time saved, no speed claims, no timestamps.
+- `problem-story.ts` holds the copy (+ spec).
+
+Verified (commands run):
+- `pnpm --filter web test` 70/70 (4 new: spec headline; no performance / speed / live-activity
+  wording; three short points per side and "Illustration:" summaries; launch-target marketplaces
+  only), typecheck, lint, build.
+- `node scripts/check-landing.mjs` on the production build: **105/105** - problem at 1280 / 375 /
+  320 px: headline and titles, side by side vs stacked, illustrations summarised with decoration
+  hidden, three points per side, nothing off-screen, no horizontal overflow, and **the heads-up
+  never covers the Hunt card's content** (added after the first screenshots showed it hiding the
+  marketplace row on phones - now it overlaps only the card's bottom padding).
+- Screenshots reviewed: 1280, 375 (after card), 320.
+
+Next: **Landing 10** - how it works.

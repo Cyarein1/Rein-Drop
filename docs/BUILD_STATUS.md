@@ -1,11 +1,20 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 55 - Landing 08)_
+_Last updated: 2026-10-10 (step 56 - Landing 09)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 56 - Landing 09: problem section
+
+"Great flips don't wait for your next refresh." - a before / after story in two expressive cards:
+a crowded CSS browser (tabs, refresh, listings sold / too expensive / seen) vs one saved Hunt (live,
+official eBay + Facebook marks, a heads-up with the approved app icon). CSS / UI illustrations with
+screen-reader summaries; no performance claims or live activity. Verified: web tests 70/70, browser
+check 105/105 (incl. a new no-overlap check after a screenshot caught one), screenshots reviewed.
+Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 55 - Landing 08: marketplace gallery and status model
 
@@ -2346,6 +2355,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 09 = step 56; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 10 = step 57; Landing 05 = step 52 not sent yet). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)
