@@ -1,11 +1,19 @@
 # Build Status
 
-_Last updated: 2026-10-09 (step 49 - Landing 02)_
+_Last updated: 2026-10-09 (step 50 - Landing 03)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 50 - Landing 03: brand tokens and typography
+
+Extended `@rein-drop/design-tokens` for marketing (app values unchanged): fluid display type
+scale, lead / eyebrow text, letter spacing, containers, gutter, section spacing, navy-tinted
+shadows + CTA glow, radii xl / 2xl - all generated as `--rd-*` CSS variables. Dev-only style
+reference at `/dev/landing` (404 in production). Verified: token tests 16/16, web checks, production
+404, render on the running dev server, full check 58/58. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 49 - Landing 02: marketing route skeleton
 
@@ -2299,6 +2307,6 @@ used (owner decision).
 
 ## Next step
 
-All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 03 = step 50). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
+All Build Prompts (01-44) are done; landing-page track in progress (next: Landing 04 = step 51). Next: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), then
 [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md) by priority.
 (Await the next prompt.)

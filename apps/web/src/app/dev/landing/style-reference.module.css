@@ -1,0 +1,213 @@
+/* Landing style reference (development only). Uses the marketing tokens exactly as sections will. */
+.page {
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: var(--rd-section-space-compact) var(--rd-gutter);
+}
+
+.intro {
+  display: grid;
+  gap: var(--rd-space-3);
+  max-width: var(--rd-container-prose);
+}
+
+.block {
+  display: grid;
+  gap: var(--rd-space-4);
+  padding: var(--rd-section-space-compact) 0;
+  border-top: 1px solid var(--rd-neutral-border);
+  margin-top: var(--rd-space-10);
+}
+
+/* ---------- Type ---------- */
+.displayHero,
+.displayXl,
+.displayLg,
+.displayMd {
+  margin: 0;
+  color: var(--rd-color-navy);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.displayHero {
+  font-size: var(--rd-display-hero);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-hero);
+}
+
+.displayXl {
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+}
+
+.displayLg {
+  font-size: var(--rd-display-lg);
+  font-weight: var(--rd-font-weight-bold);
+  line-height: var(--rd-line-height-heading);
+}
+
+.displayMd {
+  font-size: var(--rd-display-md);
+  font-weight: var(--rd-font-weight-bold);
+  line-height: var(--rd-line-height-heading);
+}
+
+.lead {
+  font-size: var(--rd-text-lead);
+  color: var(--rd-neutral-text-muted);
+  max-width: var(--rd-container-prose);
+}
+
+.eyebrow {
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+  color: var(--rd-color-orange);
+}
+
+.subhead {
+  font-size: var(--rd-font-size-md);
+  margin-top: var(--rd-space-4);
+}
+
+.note {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-neutral-text-muted);
+}
+
+.rule {
+  padding: var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-yellow);
+}
+
+/* ---------- Palette ---------- */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--rd-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swatch {
+  display: grid;
+  gap: var(--rd-space-1);
+  align-content: start;
+}
+
+.chip {
+  display: block;
+  height: 72px;
+  border-radius: var(--rd-radius-lg);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+}
+
+/* ---------- Type list ---------- */
+.typeList {
+  display: grid;
+  gap: var(--rd-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.typeRow {
+  display: grid;
+  gap: var(--rd-space-1);
+}
+
+/* ---------- Actions ---------- */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-4);
+  align-items: center;
+}
+
+.cta,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-6);
+  border-radius: var(--rd-radius-full);
+  font-weight: var(--rd-font-weight-bold);
+  text-decoration: none;
+}
+
+.cta {
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  box-shadow: var(--rd-shadow-cta);
+}
+
+.secondary {
+  color: var(--rd-color-navy);
+  box-shadow: inset 0 0 0 2px var(--rd-neutral-border);
+}
+
+.navyPanel {
+  display: grid;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-10) var(--rd-gutter);
+  border-radius: var(--rd-radius-2xl);
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+}
+
+.navyPanel .displayLg {
+  color: var(--rd-color-canvas);
+}
+
+/* ---------- Radii / shadows ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--rd-space-6);
+  margin: 0;
+  padding: var(--rd-space-2) 0;
+  list-style: none;
+}
+
+.tile {
+  display: grid;
+  gap: var(--rd-space-1);
+  padding: var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+}
+
+/* ---------- Spacing / containers ---------- */
+.spaceList,
+.plainList,
+.containers {
+  display: grid;
+  gap: var(--rd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spaceList li {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-3);
+}
+
+.spaceBar {
+  display: block;
+  height: 12px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-color-orange);
+}
+
+.containers li {
+  padding: var(--rd-space-3);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-sky);
+}

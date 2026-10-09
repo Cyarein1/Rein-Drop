@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-09 (Landing 02 = step 49)_
+_Last updated: 2026-10-09 (Landing 03 = step 50)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -152,4 +152,38 @@ Verified (commands run):
   `/sign-in?next=/home`; `/sign-in` 200; security headers present. Server stopped afterwards.
 - Not checked in a browser by a person yet.
 
-Next: **Landing 03** - brand tokens and typography.
+Next: Landing 03 - brand tokens and typography.
+
+### Landing 03 (step 50) - Brand tokens and typography - done 2026-10-09
+
+The brand already lived in `@rein-drop/design-tokens` (palette exactly as the documents: white,
+navy, orange, yellow, green, sky / orange / yellow / green washes, navy-derived neutrals; Inter;
+4 px spacing; radii). This step **extends** it for marketing - the app's values are unchanged:
+
+- `typography.ts`: fluid **display scale** `displaySize` (hero 40-76, xl 30-48, lg 24-34, md
+  20-24 px), `marketingText` (lead 17-20, eyebrow 12-13), `letterSpacing` (display -0.02em,
+  eyebrow 0.08em), `displayLineHeight` (hero 1.05, heading 1.15). Fluid = linear from a 375 px to
+  a 1280 px viewport, clamped (`fluidClamp`). Values are engineering defaults to confirm at Gate C.
+- `layout.ts`: radii `xl` 24 / `2xl` 32; `container` (prose 680, narrow 560, page 1120, wide 1280);
+  fluid `gutter` 16-40 px; `sectionSpace` (default 64-120, compact 40-72); `shadow` (sm / md / lg /
+  xl navy-tinted, `cta` orange glow for the primary CTA only).
+- `css.ts`: all of them as `--rd-*` variables (`--rd-display-hero`, `--rd-text-lead`,
+  `--rd-section-space-default`, `--rd-gutter`, `--rd-container-wide`, `--rd-shadow-xl`, ...),
+  inlined by the root layout like the existing tokens - no new styling system, no UI kit theme.
+- Contrast rule recorded and tested: CTA text on orange is **navy** (5.54:1); white on orange is
+  2.84:1 (fails even large-text AA), white on navy 15.7:1.
+- `/dev/landing` - development-only style reference (palette with uses, type samples, CTA / navy
+  band, radii, shadows, spacing, containers); `notFound()` in production, `noindex`.
+
+Verified (commands run):
+- `pnpm --filter @rein-drop/design-tokens test` 16/16 (5 new: fluid endpoints at 320 / 375 / 1280 /
+  1920 px, scale order, app values unchanged, landing contrast pairs, CSS variables) + typecheck + lint.
+- `pnpm --filter web` typecheck, lint, test 31/31, build.
+- Production server (port 3100): `/dev/landing` 404; the new variables are served on `/`.
+- Your running dev server (read-only request): `/dev/landing` 200 with the reference; `/` 200.
+- `pnpm turbo run build typecheck lint test`: 58/58 (mobile uses the same token package).
+
+Found: the existing `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are
+**not** gated and are served by production builds (logged in OUTSTANDING; out of this step's scope).
+
+Next: **Landing 04** - asset register and mascot mapping.

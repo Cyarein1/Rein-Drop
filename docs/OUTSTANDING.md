@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-09, after step 49 (Landing 02)._
+_Last updated: 2026-10-09, after step 50 (Landing 03)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,12 +104,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 03-24 (steps 50-71) per the scoped plan - step 48.
+- Landing 04-24 (steps 51-71) per the scoped plan - step 48.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
 - Official logo / badge files (eBay, Facebook Marketplace, gallery marketplaces, App Store, Google Play) from each brand kit; trademark review before public launch (decision L-D6) - step 48.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
 - Verify production image optimization (`sharp` install scripts are denied in pnpm-workspace.yaml) - step 48.
 - Landing skeleton is public at `/` once deployed - don't deploy the web app publicly until the landing is finished (or keep the beta URL private) - step 49.
+- Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable - step 50.
+- Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 
 ## 3. Built but not yet verified by a person

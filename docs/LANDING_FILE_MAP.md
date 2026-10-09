@@ -17,7 +17,7 @@ file is for. Status: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md). Planned
 | `apps/web/src/brand/assets.ts`, `Wordmark.tsx` | Token -> file mapping for logos / mascots | Reused for the wordmark and approved poses (Landing 04) |
 | `apps/web/src/components/ui/*` | App UI primitives (Button, Card, Badge, Metric, Disclosure, TextInput, ...) | Reused where they fit; marketing-specific primitives are separate (Landing 05) |
 | `apps/web/src/app/dev/ui/page.tsx` | Dev-only component showcase | Pattern for the landing style reference (Landing 03 / 05) |
-| `packages/design-tokens/src/*` | Colours, type scale (max 36 px), spacing, radius, CSS variable generator | Add marketing display sizes / section spacing / shadows / container widths (Landing 03) |
+| `packages/design-tokens/src/*` | Colours, type scale, spacing, radius, CSS variable generator | **Landing 03**: fluid display scale, lead / eyebrow, letter spacing, containers, gutter, section spacing, shadows, radii xl / 2xl (all `--rd-*`) |
 | `packages/brand-assets/{logo,mascot,app-icon}/*` | Approved Rein Drop artwork (5 mascot poses, wordmarks, lock-ups) | Source of all Rein Drop imagery on the page |
 | `packages/contracts/src/*` | API contracts (zod) | Add the waitlist request / response contract (Landing 19) |
 | `packages/api-client/src/index.ts` | Typed API client | Add `joinWaitlist()` (Landing 19 / 20) |
@@ -50,7 +50,7 @@ apps/web/src/marketing/
   demo/                      fixtures + finite-state model + tests       (planned, Landing 14)
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   logos/                     official third-party logo / badge files + register (planned, Landing 04 / 08)
-apps/web/src/app/dev/landing/page.tsx  dev-only style / primitive reference (planned, Landing 03 / 05)
+apps/web/src/app/dev/landing/page.tsx  dev-only style reference (Landing 03; primitives added in Landing 05)
 apps/api/src/modules/waitlist/         public POST /waitlist module      (planned, Landing 19)
 packages/contracts/src/waitlist.ts     waitlist request / response schema (planned, Landing 19)
 docs/LANDING_ASSETS.md                 asset register (Rein Drop + third-party) (planned, Landing 04)
