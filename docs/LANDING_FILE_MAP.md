@@ -56,7 +56,9 @@ apps/web/src/marketing/
   faq/                       FaqSection (+ css), faq.ts, landing13 spec (Landing 13)
   closing/                   ClosingCta (+ css) - the #waitlist target (Landing 13; form in 20)
   footer/                    SiteFooter, LegalPlaceholder (+ css) (Landing 13)
-  demo/                      DemoPlaceholder - TEMPORARY until Landing 14-15
+  demo/                      DemoPlaceholder - TEMPORARY until Landing 15
+  demo/demo-fixtures.ts      3 demo products: made-up listings, illustrative resale estimates, disclaimers (Landing 14)
+  demo/demo-model.ts (+spec) pure finite-state demo: choose > configure > scan > candidate / no match > evaluation (Landing 14)
   site-config.ts             CONTACT_EMAIL (never invented), legal links (Landing 13)
   photos.ts (+ spec)         example product photos (Unsplash) + credits (step 60b)
   sections/                  Marketplaces, Problem, HowItWorks, Demo, Intelligence,
@@ -64,7 +66,6 @@ apps/web/src/marketing/
   marketplaces.ts (+ spec)   marketplace roadmap data, statuses, proof rule (Landing 08)
   marketplaces/              MarketplaceGallery, MarketplaceMark (+ css) (Landing 08)
   store-links.ts             App Store / Google Play URLs from config (APP_STORE_URL / GOOGLE_PLAY_URL) (Landing 07)
-  demo/                      fixtures + finite-state model + tests       (planned, Landing 14)
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   brand-assets.generated.ts  GENERATED paths + sizes of the optimized brand images (Landing 04)
   landing-assets.ts (+ spec) landing meanings -> images; null = missing pose (Landing 04)

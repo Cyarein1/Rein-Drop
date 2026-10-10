@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (step 60b - landing photo pass)_
+_Last updated: 2026-10-10 (Landing 14 = step 61)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -556,4 +556,66 @@ Verified (commands run):
   by the audit script and moved to Node).
 - Screenshots reviewed: hero 1280 / 375, deal intelligence 1280 / 375, problem 1280.
 
-Next: **Landing 14** - deterministic Hunt demo model.
+Next: Landing 14 - deterministic Hunt demo model.
+
+### Landing 14 (step 61) - Deterministic Hunt demo model - done 2026-10-10
+
+No UI in this step: Landing 15 builds the interactive demo on top of this model. The
+`DemoPlaceholder` stays in `#demo` until then.
+
+- **Fixtures** (`src/marketing/demo/demo-fixtures.ts`): three products.
+  - **iPhone 13 Pro**, **PlayStation 5** and **MacBook Air M2**.
+  - Each has a default Hunt, a price range and step, and radius options of 10 / 25 / 50 mi.
+  - Each has illustrative resale estimates (low / typical / high, plus the number of similar
+    sales), separately for **used** and **new**.
+  - Each has four made-up listings on eBay and Facebook Marketplace. Every listing id starts with
+    `demo-`. Facebook listings have a distance; eBay listings ship.
+  - Each has questions to ask the seller.
+  - The iPhone and PS5 reuse the example photos; the MacBook has none, so `photo: null` and the
+    UI uses a neutral visual.
+- **Disclaimers**, kept with the demo and repeated in every evaluation:
+  - "Illustrative demo - not live listings."
+  - The resale figures are illustrative estimates.
+  - The upside is gross, "not profit".
+- **The PS5 demo matches the Landing 11 deal card** ($300 asking, $420 typical resale, +$120), so
+  the page never contradicts itself.
+- **The model** (`demo-model.ts`):
+  - A pure finite-state machine: choose → configure → scan → candidate, or no match (back to
+    configure) → evaluation. Also BACK from each step and RESTART from anywhere.
+  - No network, AI, clock or randomness. The scan checks one listing per `SCAN_TICK`, so the UI
+    sets the pace; `SCAN_COMPLETE` finishes at once for reduced motion.
+  - Each listing is checked in a fixed order (marketplace, condition, max price, distance) and
+    gets a plain-words reason ("Over your max price ($450)", "38 mi away - outside 25 mi").
+  - The candidate is the match with the highest estimated gross upside, using the estimate for
+    that listing's condition.
+  - The evaluation contains:
+    - asking price;
+    - resale range;
+    - gross upside range;
+    - strength: "Strong deal" from 20% of the typical resale, "Worth a look" from 8%, otherwise
+      "Thin margin";
+    - confidence in words: high from 10 similar sales, medium from 5;
+    - four "why" reasons;
+    - questions for the seller;
+    - costs before profit;
+    - the disclaimers.
+  - Events that don't apply return the same state object. Settings are validated: price is
+    clamped and snapped to the step, only offered conditions and radii are accepted, and the
+    last marketplace can't be switched off. The fixtures are never changed.
+- **Default paths**:
+  - iPhone: candidate at $340, +$90, Strong deal, high confidence.
+  - PS5: +$120, Strong deal, medium confidence.
+  - MacBook: +$120, Worth a look, medium confidence.
+  - Each default also filters out at least one listing, and a too-tight Hunt reaches "no match"
+    for every product.
+
+Verified (commands run):
+- `vitest src/marketing/demo`: 41/41, covering fixture invariants, every transition, ignored
+  events, the scan order and reasons, candidates, no match, the evaluation maths and wording (no
+  "profit" outside the disclaimers), and determinism (Math.random, Date.now and fetch rigged to
+  throw are never called).
+- Mutation check: three deliberate bugs, each caught (best-candidate comparison: 6 failures;
+  max-price rule: 2; last-marketplace guard: 1). The file was restored and passes 41/41.
+- `pnpm turbo run typecheck lint test build --filter web`: 9/9 tasks, web tests 136/136.
+
+Next: **Landing 15** - interactive demo UI ("Illustrative demo - not live listings").

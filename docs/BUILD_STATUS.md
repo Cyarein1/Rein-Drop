@@ -1,11 +1,20 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 60b - landing photo pass)_
+_Last updated: 2026-10-10 (step 61 - Landing 14)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 61 - Landing 14: deterministic Hunt demo model
+
+Typed fixtures for three products (iPhone 13 Pro, PlayStation 5, MacBook Air M2): made-up
+listings, illustrative resale estimates per condition, and explicit "demo / estimate / gross - not
+profit" disclaimers. A pure finite-state model drives it: choose → configure → scan → candidate
+(or no match) → evaluation. There is no network, AI, clock or randomness, and no UI yet
+(Landing 15). Verified: 41 new tests (and a mutation check), web 136/136, typecheck, lint and
+build. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 60b - Landing photo pass (owner request)
 
