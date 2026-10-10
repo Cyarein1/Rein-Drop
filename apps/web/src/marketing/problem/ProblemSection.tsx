@@ -1,9 +1,13 @@
+import Image from "next/image";
 import { Bell, Check, RotateCw, X } from "lucide-react";
 import { landingImages } from "../landing-assets";
 import { marketplaceByKey } from "../marketplaces";
 import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
+import { productPhotos } from "../photos";
 import { afterStory, beforeStory, problemCopy } from "./problem-story";
 import styles from "./ProblemSection.module.css";
+
+const LISTING_PHOTOS = [productPhotos.iphoneListing1, productPhotos.iphoneListing2, productPhotos.iphoneListing3];
 
 /**
  * The problem (Landing 09, spec 04): two opposing worlds side by side. Before = a crowded browser
@@ -46,7 +50,7 @@ export function ProblemSection() {
               <ul className={styles.listings} aria-hidden>
                 {beforeStory.listings.map((l, i) => (
                   <li key={i} className={styles.listing}>
-                    <span className={styles.listingThumb} />
+                    <Image src={LISTING_PHOTOS[i]!.src} width={LISTING_PHOTOS[i]!.width} height={LISTING_PHOTOS[i]!.height} alt="" sizes="72px" className={styles.listingThumb} />
                     <span className={styles.listingTitle}>{l.title}</span>
                     <span className={styles.outcome}>
                       <X size={12} strokeWidth={3} />

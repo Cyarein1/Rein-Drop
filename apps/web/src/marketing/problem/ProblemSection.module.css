@@ -195,11 +195,14 @@
   align-items: center;
 }
 
+/* Real example photos, a little faded: listings you missed. */
 .listingThumb {
   width: 36px;
   height: 36px;
   border-radius: var(--rd-radius-sm);
-  background: linear-gradient(135deg, var(--rd-neutral-border), var(--rd-neutral-surface-subtle));
+  object-fit: cover;
+  filter: grayscale(0.5);
+  opacity: 0.85;
 }
 
 .listingTitle {

@@ -1,11 +1,19 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 60 - Landing 13)_
+_Last updated: 2026-10-10 (step 60b - landing photo pass)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 60b - Landing photo pass (owner request)
+
+Real product photos (free Unsplash License, verified per photo, no people) for the example deals:
+iPhone 13 Pro in the hero card, PlayStation 5 in the deal-intelligence card ("Example photo" tag),
+three iPhones as missed-listing thumbnails; credited in the footer; copy aligned to what the photos
+show ("PlayStation 5 console"). Verified: web tests 95/95, browser check 174/174, screenshots
+reviewed. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 60 - Landing 13: after the flip, FAQ, closing CTA, footer
 

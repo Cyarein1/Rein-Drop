@@ -1,8 +1,9 @@
 import Image from "next/image";
-import { ArrowDown, ArrowRight, Smartphone } from "lucide-react";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import { landingImages } from "../landing-assets";
 import { marketplaceByKey } from "../marketplaces";
 import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
+import { productPhotos } from "../photos";
 import { NAV_LINKS, PRIMARY_CTA } from "../sections";
 import { StoreBadges } from "../StoreBadges";
 import { heroExample, ILLUSTRATIVE_LABEL, potentialGrossUpsideUsd, signedUsd, usd } from "./hero-example";
@@ -66,15 +67,21 @@ export function Hero() {
           <figure className={styles.card}>
             <figcaption className={styles.cardLabel}>{ILLUSTRATIVE_LABEL} - not a live listing</figcaption>
             <div className={styles.cardBody}>
-              <div className={styles.thumb} aria-hidden>
-                <Smartphone size={34} strokeWidth={1.6} />
-              </div>
+              <Image
+                src={productPhotos.iphone13Pro.src}
+                width={productPhotos.iphone13Pro.width}
+                height={productPhotos.iphone13Pro.height}
+                alt={productPhotos.iphone13Pro.alt}
+                sizes="96px"
+                className={styles.thumb}
+              />
               <div className={styles.cardText}>
                 <span className={styles.strength}>{heroExample.strength}</span>
                 <p className={styles.product}>{heroExample.product}</p>
                 <p className={styles.meta}>
-                  <MarketplaceMark marketplace={marketplaceByKey(heroExample.marketplace)} size={16} showName /> · {heroExample.condition}
+                  <MarketplaceMark marketplace={marketplaceByKey(heroExample.marketplace)} size={16} showName />
                 </p>
+                <p className={styles.meta}>{heroExample.condition}</p>
               </div>
             </div>
             <dl className={styles.metrics}>

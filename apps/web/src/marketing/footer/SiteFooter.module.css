@@ -72,3 +72,7 @@
   font-size: var(--rd-font-size-xs);
   line-height: 1.6;
 }
+
+.fineprint a {
+  color: var(--rd-neutral-text-muted);
+}

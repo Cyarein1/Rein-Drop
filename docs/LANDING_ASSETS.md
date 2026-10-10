@@ -95,6 +95,31 @@ owners; Rein Drop is not affiliated with or endorsed by them. Trademark review b
 | Download on the App Store badge | "Coming soon" until `APP_STORE_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/app-store-badge.svg`** - official SVG "Download_on_the_App_Store_Badge_US-UK_RGB_blk", 120x40, from https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg (2026-10-10; `tools.applemarketingtools.com` didn't resolve from this network); unaltered; checked: no scripts / external refs; sha256 a26fc5b3...b9fb99f |
 | Get it on Google Play badge | "Coming soon" until `GOOGLE_PLAY_URL` is set | Hero (Landing 07), closing CTA (13) | **`stores/google-play-badge.png`** - official PNG 646x250 (badge 564x168 + Google's 41 px clear space), from https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png (2026-10-10); unaltered - the clear space is offset in CSS; sha256 f72611e2...9934849 |
 
+## Example product photos (step 60b - owner: "more images give it authority")
+
+Real photographs, **free Unsplash License** (each photo page checked 2026-10-10: "Free to use under
+the Unsplash License", not Unsplash+): commercial use allowed without permission or payment; the
+licence doesn't allow selling them unaltered or building a competing photo service. Downloaded at
+web size from images.unsplash.com, converted to WebP q80 (`public/assets/photos/`), registered in
+`src/marketing/photos.ts`. Rules:
+
+- **Examples, never "live listings"**: every card around a photo keeps "Illustrative example - not a
+  live listing"; informative photos have alt text starting "Example photo:"; the deal-intelligence
+  photo carries an "Example photo" tag.
+- **Copy matches the photo**: the PS5 photo can't prove Disc vs Digital edition, so the example is
+  "PlayStation 5 console" everywhere; the iPhone is Sierra Blue, a colour only the iPhone 13 Pro had.
+- **No people** (creative spec), product shots only.
+- **Credited** in the footer ("Example product photos from Unsplash by ...", with profile links).
+- Products show Apple / Sony products and logos - part of the trademark review before launch.
+
+| File | Used for | Size | Photographer | Source page | Hash |
+|---|---|---|---|---|---|
+| `photos/iphone-13-pro-sierra-blue.webp` | Hero sample deal card | 1200x1500, 25 KB | Luka Petranović (https://unsplash.com/@basically_luka) | https://unsplash.com/photos/a-close-up-of-a-cell-phone-on-a-white-surface-_T8MeuamyT4 | sha256 fd6d5b4b0fd8e263... |
+| `photos/playstation-5.webp` | Deal intelligence card ("Example photo" tag) | 1200x1800, 36 KB | User_Pascal (https://unsplash.com/@user_pascal) | https://unsplash.com/photos/a-playstation-5-console-with-a-controller-mth7yBmBQ84 | sha256 37e67a8bbf3b0d65... |
+| `photos/iphone-listing-1.webp` | Problem section - missed listing 1 | 480x320, 7 KB | Onur Binay (https://unsplash.com/@onurbinay) | https://unsplash.com/photos/a-close-up-of-an-iphone-on-a-table-epM08OIfGqk | sha256 5bd8bf65322ec2da... |
+| `photos/iphone-listing-2.webp` | Problem section - missed listing 2 | 480x360, 10 KB | Vanja Matijevic (https://unsplash.com/@vanjamphotos) | https://unsplash.com/photos/a-close-up-of-a-cell-phone-on-a-wooden-surface-iTx4QUQyPWA | sha256 ddfca8c0c1c2fbf6... |
+| `photos/iphone-listing-3.webp` | Problem section - missed listing 3 | 480x320, 6 KB | Amjith S (https://unsplash.com/@amjiths) | https://unsplash.com/photos/a-cell-phone-on-a-table-vRRYyCd2TDE | sha256 0d8dafb554a919d3... |
+
 ## Never production assets
 
 | File | Why |

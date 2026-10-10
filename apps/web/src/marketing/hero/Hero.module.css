@@ -174,14 +174,14 @@
   align-items: center;
 }
 
+/* Example product photo (Unsplash), cropped to a listing-style square. */
 .thumb {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: var(--rd-radius-md);
   background: var(--rd-wash-sky);
-  color: var(--rd-color-navy);
+  object-fit: cover;
+  object-position: 50% 45%;
 }
 
 .cardText {

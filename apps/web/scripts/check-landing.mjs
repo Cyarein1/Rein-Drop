@@ -337,7 +337,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [1024, 768, false], [
     const green = [...s.querySelectorAll('*')].filter((el) => { const c = getComputedStyle(el); return c.color === GREEN || c.backgroundColor === GREEN; }).map((el) => el.tagName + ':' + el.textContent.trim().slice(0, 12));
     return {
       label: card.querySelector('figcaption').textContent,
-      photo: s.querySelector('[role="img"]')?.getAttribute('aria-label'),
+      photo: (() => { const i = card.querySelector('img[src*="playstation-5"]'); return i && { alt: i.alt, ok: i.complete && i.naturalWidth > 0, fit: getComputedStyle(i).objectFit, tag: card.textContent.includes('Example photo') }; })(),
       dts, numbers: dds.map((d) => d.textContent),
       numbersOk: dds.every((d) => d.scrollWidth <= d.clientWidth + 1 && r(d).right <= innerWidth),
       green,
@@ -347,7 +347,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [1024, 768, false], [
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };
   })()`);
-  check(`${tag}: labelled illustrative; photo is a labelled placeholder`, di.label.startsWith("Illustrative example") && di.photo === "Listing photo placeholder", `${di.label} / ${di.photo}`);
+  check(`${tag}: labelled illustrative; real example photo (alt + tag), loaded, cropped not stretched`, di.label.startsWith("Illustrative example") && !!di.photo && di.photo.alt.startsWith("Example photo:") && di.photo.ok && di.photo.fit === "cover" && di.photo.tag, JSON.stringify(di.photo));
   check(`${tag}: asking / Estimate-tagged resale / gross upside, numbers fully visible`, di.dts.join("|") === "Asking price|Est. resale Estimate|Potential gross upside 3" && di.numbers.join(",") === "$300,$420,+$120" && di.numbersOk, JSON.stringify({ dts: di.dts, numbers: di.numbers, ok: di.numbersOk }));
   check(`${tag}: green used once (the upside), no "net profit" anywhere`, di.green.length === 1 && di.green[0] === "DD:+$120" && !di.netProfit, JSON.stringify(di.green));
   check(`${tag}: three notes; ${width >= 1000 ? "side by side" : "stacked"}; no horizontal overflow`, di.notes.join("|") === "Why it was flagged|Questions to ask the seller|Before you count it as profit" && di.layout === (width >= 1000 ? "side-by-side" : "stacked") && !di.overflowX, JSON.stringify({ layout: di.layout, overflowX: di.overflowX }));
@@ -459,6 +459,21 @@ for (const path of ["/privacy", "/terms"]) {
   const lp = await evaluate(`({ status: document.querySelector('main p')?.textContent, robots: document.querySelector('meta[name="robots"]')?.getAttribute('content'), h1: document.querySelector('h1')?.textContent, footer: !!document.querySelector('footer') })`);
   check(`${path}: placeholder marked "Draft - requires legal review", noindex, with footer`, lp.status === "Draft - requires legal review" && /noindex/.test(lp.robots || "") && !!lp.h1 && lp.footer, JSON.stringify(lp));
 }
+// ---- Example product photos (step 60b) ----
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true]]) {
+  await viewport(width, height, mobile);
+  await load(`${base}/`);
+  // Bring every photo near the viewport so lazy ones load, then wait (bounded).
+  await evaluate(`(async () => { const imgs = [...document.querySelectorAll('img[src*="assets%2Fphotos"], img[src*="/assets/photos/"]')]; for (const i of imgs) { i.scrollIntoView({ block: 'center' }); await new Promise((r) => setTimeout(r, 80)); }
+    const s = Date.now(); while (!imgs.every((i) => i.complete) && Date.now() - s < 5000) await new Promise((r) => setTimeout(r, 100)); })()`);
+  const rawPhotos = await evaluate(`[...document.querySelectorAll('img[src*="assets%2Fphotos"], img[src*="/assets/photos/"]')].map((i) => ({ src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, fit: getComputedStyle(i).objectFit }))`);
+  // File names extracted here in Node (a regex inside the page template would lose its backslashes).
+  const photos = rawPhotos.map((ph) => ({ ...ph, src: decodeURIComponent(ph.src).match(/photos\/([\w-]+)/)?.[1] }));
+  const names = photos.map((ph) => ph.src).sort().join(",");
+  check(`photos ${width}px: all 5 example photos load, cropped (object-fit: cover) not stretched`, names === "iphone-13-pro-sierra-blue,iphone-listing-1,iphone-listing-2,iphone-listing-3,playstation-5" && photos.every((ph) => ph.ok && ph.fit === "cover"), JSON.stringify(photos));
+}
+const credits = await evaluate(`(() => { const f = document.querySelector('footer'); return { text: f.textContent.includes('Example product photos from Unsplash'), links: [...f.querySelectorAll('a[href*="unsplash.com/@"]')].length }; })()`);
+check("footer credits Unsplash and each photographer", credits.text && credits.links === 5, JSON.stringify(credits));
 // Nav "Features" lands on deal intelligence.
 await viewport(1280, 800, false); await load(`${base}/`);
 await evaluate(`document.querySelector('nav[aria-label="Main"] a[href="#intelligence"]').click()`); await settleScroll();
@@ -471,7 +486,7 @@ const landed = await evaluate(`({ hash: location.hash, top: Math.round(document.
 check("hero 'See how it works' scrolls to the section", landed.hash === "#how-it-works" && landed.top >= 0 && landed.top <= 96, JSON.stringify(landed));
 // Hero card shows the official Facebook mark.
 await viewport(1280, 800, false); await load(`${base}/`);
-const heroMark = await evaluate(`(() => { const i = document.querySelector('#hero figure img'); return i && { src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, text: document.querySelector('#hero figure').textContent.includes('Facebook Marketplace') }; })()`);
+const heroMark = await evaluate(`(() => { const i = document.querySelector('#hero figure img[src*="facebook"]'); return i && { src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, text: document.querySelector('#hero figure').textContent.includes('Facebook Marketplace') }; })()`);
 check("hero card: official Facebook mark + name", !!heroMark && heroMark.src.endsWith("facebook.webp") && heroMark.ok && heroMark.text, JSON.stringify(heroMark));
 
 console.log(results.join("\n"));

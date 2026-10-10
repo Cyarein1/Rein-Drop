@@ -77,22 +77,34 @@
   gap: var(--rd-space-5);
 }
 
-/* Placeholder, clearly not a real photo. */
+/* Example product photo (Unsplash), listing-style crop, tagged as an example. */
 .photo {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: var(--rd-space-2);
+  position: relative;
   aspect-ratio: 4 / 3;
+  overflow: hidden;
   border-radius: var(--rd-radius-lg);
-  background:
-    repeating-linear-gradient(135deg, transparent 0 14px, rgb(18 35 63 / 0.035) 14px 28px),
-    var(--rd-wash-sky);
-  color: var(--rd-neutral-text-muted);
-  font-size: var(--rd-font-size-xs);
+  background: var(--rd-wash-sky);
+}
+
+.photoImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Portrait photo in a landscape box: keep the console's base and the controller in view. */
+  object-position: 50% 82%;
+}
+
+.photoTag {
+  position: absolute;
+  left: var(--rd-space-2);
+  bottom: var(--rd-space-2);
+  padding: 2px var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: rgb(18 35 63 / 0.75);
+  color: var(--rd-color-canvas);
+  font-size: 11px;
   font-weight: var(--rd-font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--rd-letter-spacing-eyebrow);
 }
 
 .identity {
@@ -305,6 +317,15 @@
   .top {
     grid-template-columns: minmax(0, 220px) 1fr;
     align-items: center;
+  }
+
+  /* Side by side: a portrait crop suits the upright console. */
+  .photo {
+    aspect-ratio: 4 / 5;
+  }
+
+  .photoImage {
+    object-position: 50% 70%;
   }
 }
 

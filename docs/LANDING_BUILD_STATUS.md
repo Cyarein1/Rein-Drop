@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 13 = step 60)_
+_Last updated: 2026-10-10 (step 60b - landing photo pass)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -524,5 +524,36 @@ Verified (commands run):
   prices") were silently not testing. All text regexes now run in Node, the script was audited
   (no backslashes left in page templates), and each regex was proven to catch a violation.
 - Screenshots reviewed: outcomes 1280, waitlist 1280, FAQ 375, footer 375.
+
+Next: Landing 14 - deterministic Hunt demo model.
+
+### Step 60b - Landing photo pass (owner request, between Landing 13 and 14) - done 2026-10-10
+
+Owner: "we need real images for listings ... more images can give it authority". Not one of the 24
+prompts, so numbered 60b (Landing 14 stays step 61).
+
+- Five real product photos under the **free Unsplash License** (licence verified on each photo
+  page; not Unsplash+; no people): a Sierra Blue **iPhone 13 Pro** (hero card - Sierra Blue was
+  13 Pro-only, so photo and copy agree), a **PlayStation 5** with controller (deal-intelligence
+  card, replacing the placeholder, tagged "Example photo"), three iPhones as the problem section's
+  missed-listing thumbnails (slightly faded). WebP, 6-36 KB each.
+- `src/marketing/photos.ts` (src, size, "Example photo: ..." alt, credit) + spec; footer credit line
+  "Example product photos from Unsplash by ..." with each photographer linked.
+- Copy aligned to what the photos can show: "PlayStation 5 console" (not "Disc edition") in deal
+  intelligence, outcomes and the alerts notification; the seller question about the disc drive
+  became "Any overheating, fan noise or drift on the controller?".
+- Hero card: condition on its own line (no dangling separator next to the larger photo); PS5 crop:
+  landscape on phones (controller + console base), portrait 4:5 when the card is side by side.
+- Register: [LANDING_ASSETS.md](LANDING_ASSETS.md) "Example product photos".
+
+Verified (commands run):
+- `pnpm --filter web test` 95/95 (7 new: each photo exists as WebP with its recorded size and under
+  60 KB; credits complete with Unsplash profile / photo URLs; informative alts start "Example photo:"),
+  typecheck, lint, build.
+- `node scripts/check-landing.mjs`: **174/174** - all 5 photos load at 1280 and 375 px with
+  `object-fit: cover` (cropped, never stretched); deal-intelligence photo alt + tag; footer credits
+  (5 photographer links); all previous checks. Template audit clean (one new in-page regex caught
+  by the audit script and moved to Node).
+- Screenshots reviewed: hero 1280 / 375, deal intelligence 1280 / 375, problem 1280.
 
 Next: **Landing 14** - deterministic Hunt demo model.

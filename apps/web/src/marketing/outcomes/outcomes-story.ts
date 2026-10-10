@@ -13,7 +13,7 @@ export const outcomesCopy = {
 
 /** The PS5 from the deal-intelligence showcase, bought and sold. */
 export const exampleFlip = {
-  product: "PlayStation 5 · Disc edition",
+  product: "PlayStation 5 console",
   /** What the showcase estimated (gross, before costs). */
   estimate: { askingUsd: 300, estimatedResaleUsd: 420 } satisfies IllustrativeDeal,
   bought: { priceUsd: 300, costs: [{ label: "Cleaning kit", usd: 8 }] },

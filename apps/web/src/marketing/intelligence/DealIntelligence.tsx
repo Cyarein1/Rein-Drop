@@ -1,7 +1,9 @@
-import { CircleAlert, CircleCheck, CircleHelp, Gamepad2, Gauge, Receipt } from "lucide-react";
+import Image from "next/image";
+import { CircleAlert, CircleCheck, CircleHelp, Gauge, Receipt } from "lucide-react";
 import { ILLUSTRATIVE_LABEL, potentialGrossUpsideUsd, signedUsd, usd } from "../illustrative";
 import { marketplaceByKey } from "../marketplaces";
 import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
+import { productPhotos } from "../photos";
 import { intelligenceCopy, showcaseDeal, showcaseNotes } from "./deal-showcase";
 import styles from "./DealIntelligence.module.css";
 
@@ -15,7 +17,7 @@ const Marker = ({ n }: { n: number }) => (
 );
 
 /**
- * Deal intelligence (Landing 11, spec 07): one oversized, editorial deal card - photo placeholder,
+ * Deal intelligence (Landing 11, spec 07): one oversized, editorial deal card - example product photo,
  * asking price, ESTIMATED resale, potential GROSS upside (the only green) - with three numbered
  * notes: why it was flagged, questions / risks, and the costs that come before any profit.
  * Everything is labelled illustrative; no net-profit claim, no invented costs, no confidence %.
@@ -39,9 +41,18 @@ export function DealIntelligence() {
           <figure className={styles.card} aria-labelledby="intelligence-deal">
             <figcaption className={styles.label}>{ILLUSTRATIVE_LABEL} - not a live listing</figcaption>
             <div className={styles.top}>
-              <div className={styles.photo} role="img" aria-label="Listing photo placeholder">
-                <Gamepad2 aria-hidden size={56} strokeWidth={1.4} />
-                <span aria-hidden>Listing photo</span>
+              <div className={styles.photo}>
+                <Image
+                  src={productPhotos.playstation5.src}
+                  width={productPhotos.playstation5.width}
+                  height={productPhotos.playstation5.height}
+                  alt={productPhotos.playstation5.alt}
+                  sizes="(min-width: 640px) 220px, 90vw"
+                  className={styles.photoImage}
+                />
+                <span className={styles.photoTag} aria-hidden>
+                  Example photo
+                </span>
               </div>
               <div className={styles.identity}>
                 <span className={styles.strengthRow}>

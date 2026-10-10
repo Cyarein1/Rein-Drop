@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { landingImages } from "../landing-assets";
+import { photoCredits } from "../photos";
 import { NAV_LINKS } from "../sections";
 import { contactEmail, LEGAL_LINKS } from "../site-config";
 import styles from "./SiteFooter.module.css";
@@ -63,6 +64,21 @@ export function SiteFooter() {
         <p className={styles.fineprint}>
           eBay, Facebook, Facebook Marketplace and other marketplace names and logos, App Store and Google Play are trademarks of their
           respective owners. Rein Drop is not affiliated with or endorsed by them. Examples on this page are illustrative.
+        </p>
+        <p className={styles.fineprint}>
+          Example product photos from{" "}
+          <a href="https://unsplash.com/?utm_source=rein_drop&utm_medium=referral" rel="noopener">
+            Unsplash
+          </a>{" "}
+          by{" "}
+          {photoCredits.map((c, i) => (
+            <span key={c.author}>
+              <a href={`${c.profile}?utm_source=rein_drop&utm_medium=referral`} rel="noopener">
+                {c.author}
+              </a>
+              {i < photoCredits.length - 2 ? ", " : i === photoCredits.length - 2 ? " and " : "."}
+            </span>
+          ))}
         </p>
         <p className={styles.fineprint}>© Rein Drop</p>
       </div>

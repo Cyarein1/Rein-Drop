@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-10, after step 60 (Landing 13)._
+_Last updated: 2026-10-10, after step 60b (landing photo pass)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -116,11 +116,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
 - The app's `Wordmark` component (sign-in page etc.) still uses Next's deprecated `priority` prop - switch to `loading="eager"` / `fetchPriority` - step 54.
 - Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
-- Deal intelligence uses a listing-photo placeholder; a licensed product photo (or approved illustration) would make it richer - step 58.
 - Alerts section lists push + in-app only; add email to the landing copy only once an email provider exists (D14) - step 59.
 - Public contact address for the landing footer (`CONTACT_EMAIL`) - the owner's decision; shows "Contact details coming soon - needs review" until set - step 60.
 - Landing closing CTA shows the email form disabled until the waitlist is wired (Landing 18-20); `/privacy` and `/terms` are placeholders until the drafts (Landing 20) and legal review - step 60.
 - `#demo` is a temporary placeholder until the interactive demo (Landing 14-15) - step 60.
+- Example product photos (Unsplash License) show Apple / Sony products and logos - include them in the pre-launch trademark review; keep the footer credits - step 60b.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
 
@@ -310,3 +310,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | `/` redirected everyone to `/home` (TODO(auth): signed-out visitors to welcome / sign-in) | Step 7 | Step 49 (public landing; signed-in -> /home in the Proxy) |
 | Verify production image optimization (`sharp` install scripts denied) | Step 48 | Step 51 (prebuilt sharp works in the web container; pre-optimized WebP) |
 | Hero deal card named the marketplace as text | Step 54 | Step 55 (official Facebook mark via MarketplaceMark) |
+| Deal intelligence used a listing-photo placeholder | Step 58 | Step 60b (licensed PS5 photo, tagged "Example photo") |

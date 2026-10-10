@@ -10,7 +10,7 @@ export const intelligenceCopy = {
 } as const;
 
 export const showcaseDeal = {
-  product: "PlayStation 5 · Disc edition",
+  product: "PlayStation 5 console",
   details: "Good condition · 1 controller included",
   /** A launch target from the marketplace roadmap. */
   marketplace: "ebay",
@@ -31,7 +31,7 @@ export const showcaseNotes = [
   {
     key: "questions",
     title: "Questions to ask the seller",
-    items: ["Has the disc drive been tested?", "Original controller and cables included?", "Pickup or shipped - and who pays shipping?"],
+    items: ["Any overheating, fan noise or drift on the controller?", "Original controller and cables included?", "Pickup or shipped - and who pays shipping?"],
     caution: "An unusually low price can also be a red flag. Check the seller before you pay.",
   },
   {

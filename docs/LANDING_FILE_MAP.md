@@ -58,6 +58,7 @@ apps/web/src/marketing/
   footer/                    SiteFooter, LegalPlaceholder (+ css) (Landing 13)
   demo/                      DemoPlaceholder - TEMPORARY until Landing 14-15
   site-config.ts             CONTACT_EMAIL (never invented), legal links (Landing 13)
+  photos.ts (+ spec)         example product photos (Unsplash) + credits (step 60b)
   sections/                  Marketplaces, Problem, HowItWorks, Demo, Intelligence,
                              Hunts, Alerts, Outcomes, Faq, FinalCta, Footer (planned, Landing 07-15)
   marketplaces.ts (+ spec)   marketplace roadmap data, statuses, proof rule (Landing 08)
@@ -71,6 +72,7 @@ apps/web/scripts/check-landing.mjs       real-browser landing check: whole landi
 apps/web/scripts/build-brand-assets.mjs  generates public/assets/brand + brand-assets.generated.ts (Landing 04)
 apps/web/public/assets/brand/          GENERATED optimized Rein Drop images, stable URLs (Landing 04)
 apps/web/public/assets/third-party/    official third-party marks: stores/ badges (Landing 07), marketplaces/ (Landing 08)
+apps/web/public/assets/photos/         example product photos, Unsplash License (step 60b)
 apps/web/src/app/dev/landing/page.tsx  dev-only style reference (Landing 03; primitives added in Landing 05)
 apps/api/src/modules/waitlist/         public POST /waitlist module      (planned, Landing 19)
 packages/contracts/src/waitlist.ts     waitlist request / response schema (planned, Landing 19)

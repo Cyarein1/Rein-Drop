@@ -12,10 +12,10 @@ export const alertsCopy = {
 
 export const exampleNotification = {
   app: "Rein Drop",
-  title: "Strong deal: PlayStation 5 · Disc",
+  title: "Strong deal: PlayStation 5 console",
   body: "$300 asking · est. resale $420 · eBay",
   /** The phone screen is an illustration - its numbers are the deal-intelligence example. */
-  summary: "Illustration: a phone lock screen showing a Rein Drop notification - Strong deal: PlayStation 5 Disc, $300 asking, estimated resale $420, on eBay.",
+  summary: "Illustration: a phone lock screen showing a Rein Drop notification - Strong deal: PlayStation 5 console, $300 asking, estimated resale $420, on eBay.",
 } as const;
 
 export const ALERT_POINTS = [
