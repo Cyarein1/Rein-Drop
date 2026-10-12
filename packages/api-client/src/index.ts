@@ -113,6 +113,10 @@ import {
   type IngestionDiagnosticsQueryInput,
   clientProductEventRequestSchema,
   type ClientProductEventRequest,
+  joinWaitlistRequestSchema,
+  joinWaitlistResponseSchema,
+  type JoinWaitlistRequestInput,
+  type JoinWaitlistResponse,
 } from '@rein-drop/contracts';
 import { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
@@ -264,6 +268,12 @@ export interface ApiClient {
 
   /** DEVELOPMENT ONLY (404 in production): ingestion economics and freshness across every user's Hunts. */
   getIngestionDiagnostics(query?: IngestionDiagnosticsQueryInput): Promise<IngestionDiagnostics>;
+
+  /**
+   * Public early-access sign-up (no auth). Same `{ status: 'received' }` for a new or repeat address.
+   * Server-side callers only (the web's /api/waitlist route), never from a browser bundle.
+   */
+  joinWaitlist(input: JoinWaitlistRequestInput): Promise<JoinWaitlistResponse>;
 }
 
 function analytics<T>(http: HttpOptions, view: string, query: AnalyticsQueryInput, response: z.ZodType<T>): Promise<T> {
@@ -478,6 +488,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: '/dev/diagnostics/ingestion',
         query: validateInput(ingestionDiagnosticsQuerySchema, query, 'query'),
         response: ingestionDiagnosticsSchema,
+      }),
+
+    joinWaitlist: async (input) =>
+      send(http, {
+        method: 'POST',
+        path: '/waitlist',
+        body: validateInput(joinWaitlistRequestSchema, input, 'body'),
+        response: joinWaitlistResponseSchema,
       }),
   };
 }

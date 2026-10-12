@@ -21,7 +21,7 @@ import { loadApiConfig } from './../src/config/api-config.js';
 import { PRISMA } from './../src/database/database.module.js';
 
 /** Routes allowed without a user - review any change to this list. */
-const PUBLIC_ROUTES = ['GET /health', 'GET /ready', 'POST /billing/webhooks/stripe'];
+const PUBLIC_ROUTES = ['GET /health', 'GET /ready', 'POST /billing/webhooks/stripe', 'POST /waitlist'];
 
 const users = new Map([
   ['alice', { id: '01990000-0000-7000-8000-00000000000a', email: 'alice@reindrop.test', displayName: null }],

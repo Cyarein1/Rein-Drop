@@ -1,11 +1,35 @@
 # Build Status
 
-_Last updated: 2026-10-12 (step 65 - Landing 18)_
+_Last updated: 2026-10-12 (step 66 - Landing 19)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 66 - Landing 19: waitlist sign-up endpoint
+
+**Endpoints:**
+- Web `POST /api/waitlist`: same-origin check, JSON only, 5 sign-ups per 10 minutes per visitor,
+  4 KB limit, honeypot, shared Zod schema.
+- It forwards server-to-server to the new public API `POST /waitlist`, which keeps decision L-D3:
+  the API is the only database writer, and the web has no database credentials (a test enforces
+  that).
+
+**Behaviour:**
+- Repeat addresses are a database no-op (`ON CONFLICT DO NOTHING`), and the answer is the same
+  `202 received` for new and repeat addresses.
+- Errors use fixed messages and never echo input or API internals.
+- Logs on both sides carry outcomes only, never the email, the "other" name or the IP.
+
+**Verified:**
+- New unit tests: contracts 11, API 7, API client 1, web 16; a 4-mutation check of the web route.
+- Monorepo 58/58; API e2e 58/58.
+- No server code in the browser bundles.
+- Real HTTP 7/7 against a production build.
+
+**Still to do:** a successful database write is unverified until the local database is up and the
+step 65 migration is applied. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 65 - Landing 18: WaitlistSignup model
 

@@ -121,6 +121,15 @@ describe('createApiClient', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('joinWaitlist posts the normalized sign-up to /waitlist; invalid input never leaves the server', async () => {
+    const fetch = fakeFetch(202, { status: 'received' });
+    await expect(client(fetch).joinWaitlist({ email: ' Sam@Example.com', source: 'landing_waitlist_form', consentVersion: '2026-10-12' })).resolves.toEqual({ status: 'received' });
+    expect(fetch.mock.calls[0]![0]).toBe('http://api.test/waitlist');
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toMatchObject({ email: 'sam@example.com', requestedMarketplaces: [] });
+    await expect(client(fetch).joinWaitlist({ email: 'nope', source: 'landing_waitlist_form', consentVersion: '2026-10-12' })).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('deals: feed query defaults to open; actions hit /deals/:id/<action> with validated bodies', async () => {
     const feed = fakeFetch(200, { items: [], nextCursor: null });
     await client(feed).listDeals({ marketplace: 'ebay' });

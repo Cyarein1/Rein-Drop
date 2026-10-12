@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-12 (Landing 18 = step 65)_
+_Last updated: 2026-10-12 (Landing 19 = step 66)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -827,4 +827,88 @@ Verified (commands run):
 `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate`, which also
 checks for schema drift). In Azure it is applied by the normal deploy.
 
-Next: **Landing 19**.
+Next: Landing 19.
+
+### Landing 19 (step 66) - Waitlist sign-up endpoint - done 2026-10-12
+
+The prompt asked for the endpoint in `apps/web` "using existing database access"; decision L-D3
+keeps the database in the API. Asked the owner, who chose both, keeping L-D3: `apps/web` has
+`POST /api/waitlist`, which forwards server-to-server to a new NestJS `POST /waitlist`, the only
+database writer. The web app still holds **no database credentials**, and a test enforces that.
+
+- **Shared contract** (`@rein-drop/contracts` `waitlist.ts`), used by the web route, the API and
+  the API client:
+  - `joinWaitlistRequestSchema` (zod 4):
+    - the email is normalized inside the schema;
+    - `source` is from `WAITLIST_SOURCES`;
+    - `requestedMarketplaces` must come from `WAITLIST_MARKETPLACE_CHOICES` (the 15 radar
+      marketplaces plus `other`), with no repeats;
+    - `requestedMarketplaceOther` (trimmed, 60 characters max, blank means none) is only allowed
+      with `other`;
+    - `consentVersion` must be a date.
+  - **Fixed field messages** (`WAITLIST_MESSAGES`) never repeat the input.
+  - `joinWaitlistResponseSchema` = `{ status: "received" }`.
+- **API** `modules/waitlist`:
+  - `@Public()` `POST /waitlist` returns **202 `{status:"received"}` for both new and repeat
+    addresses**, so the response never reveals whether someone signed up.
+  - Duplicates are handled at the database with `createMany({ skipDuplicates: true })`
+    (`ON CONFLICT DO NOTHING`): a concurrent double-submit is safe and nothing is overwritten.
+  - It logs `{event, outcome: created|duplicate, source, requestedMarketplaces: <count>,
+    requestId}` and never the email. The existing request log never logs bodies, and a database
+    failure becomes the generic 500 from the existing exception filter.
+  - Throttle: 120 per minute per caller IP. That's a ceiling for direct callers and the whole
+    site, since every landing visitor reaches the API through the web server's one IP.
+  - `POST /waitlist` was added to the reviewed public-route list (`security.e2e-spec`). It has no
+    GET route and no reads, as the Landing 18 guards require.
+- **API client:** `joinWaitlist()` validates before sending; server-side callers only.
+- **Web route** `POST /api/waitlist`: the logic is in `marketing/waitlist/waitlist-route.ts`
+  (`server-only`); `app/api/waitlist/route.ts` just wires it up. Checks, in order:
+  1. Same-origin: a cross-site `Origin` gets 403. Callers without an Origin are still limited and
+     validated.
+  2. JSON only (415 otherwise).
+  3. **Per-visitor rate limit**: 5 per 10 minutes per client IP (rightmost `X-Forwarded-For`,
+     added by the trusted ingress), 429 with `Retry-After`. In memory (see OUTSTANDING).
+  4. 4 KB body limit (413), checked against the declared length and the actual bytes.
+  5. **Honeypot** field `website`: if filled, the answer is 202 "received" and nothing is
+     forwarded.
+  6. Zod validation (400 `INVALID` with field names and fixed messages).
+  7. Forward with a 5 s timeout.
+  - **Privacy-safe answers:** the API's text is never passed on. An API 400 becomes "check the
+    form", an API 429 becomes 429, and anything else becomes 503 "We couldn't save your sign-up
+    just now".
+  - All answers are `Cache-Control: no-store`.
+  - **Server log:** one JSON line per request with outcome, status, field names and the API status.
+    Never the email, the "other" name or the IP.
+  - GET returns 405, so there's no list.
+
+Verified (commands run):
+- Unit tests:
+  - contracts: 11 new waitlist tests (14 in the file);
+  - API: 7 (service: insert, duplicate no-op, logs without the email in JSON and text format,
+    database failure; controller: same answer for new and repeat, public POST 202 with throttle);
+  - API client: 1;
+  - web: 16. These cover the happy path, repeats, invalid input not echoed, malformed / array /
+    string JSON, the honeypot, origin, 415 and 413, the per-visitor 429 (other visitors
+    unaffected), API errors mapped safely, logs free of email / name / IP, rightmost XFF,
+    limiter reset, the landing ↔ contract marketplace list, and "web never touches the database"
+    (no `@rein-drop/db`, `@prisma/client` or `DATABASE_URL` in `apps/web`).
+- Mutation check of the web route: four deliberate bugs (origin check removed, leftmost XFF,
+  honeypot disabled, limit ×100) were each caught; the file was restored and passes 16/16.
+- `pnpm turbo run build typecheck lint test`: **58/58** (API 168, web 165). API e2e suite: 58/58,
+  including the public-route inventory.
+- Browser bundles (`.next/static`, 30 chunks): no `DATABASE_URL`, `@rein-drop/db`,
+  `PrismaClient`, waitlist log or honeypot code.
+- **Real HTTP** against the production build (port 3100), with the owner's running API at :4000
+  (database down): 7/7.
+  - GET returns 405.
+  - An invalid email returns 400 with the field named and not echoed.
+  - A cross-site origin returns 403, and non-JSON returns 415.
+  - The honeypot returns 202 with nothing forwarded.
+  - A valid sign-up returns **503 with generic text**: the API answered 500 because the database
+    is down, so nothing was stored.
+  - A 6th attempt from one visitor returns 429 with Retry-After 600.
+  - The server log lines contained only outcome, status and field names.
+- **Not verified:** a successful database write end to end. That needs the database up and the
+  Landing 18 migration applied.
+
+Next: **Landing 20** - the form (one form for every CTA), legal drafts, contact.

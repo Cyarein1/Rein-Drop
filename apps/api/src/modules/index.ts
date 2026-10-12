@@ -16,6 +16,7 @@ import { EntitlementsModule } from './entitlements/entitlements.module.js';
 import { HomeModule } from './home/home.module.js';
 import { DiagnosticsModule } from './diagnostics/diagnostics.module.js';
 import { TelemetryModule } from './telemetry/telemetry.module.js';
+import { WaitlistModule } from './waitlist/waitlist.module.js';
 
 /** Domain modules, one per Rein Drop bounded context. Imported by AppModule. */
 export const DOMAIN_MODULES = [
@@ -40,4 +41,6 @@ export const DOMAIN_MODULES = [
   HomeModule,
   // Development-only internal reporting (no tables).
   DiagnosticsModule,
+  // Public marketing: early-access sign-ups (write-only).
+  WaitlistModule,
 ];

@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-12, after step 65 (Landing 18)._
+_Last updated: 2026-10-12, after step 66 (Landing 19)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 19-24 (steps 66-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 20-24 (steps 67-71) per the scoped plan - step 48.
+- Waitlist end to end with a real database write is not verified yet: start Postgres, apply the step 65 migration, then sign up once through `/api/waitlist` (expect 202, one row; a second time: 202, still one row) - step 66.
+- Waitlist rate limits are in memory (web: 5 per 10 min per visitor; API: 120 per min per caller) - fine for one instance each; several instances need a shared store (same as the API's existing limiter) - step 66.
+- Web visitor IP = rightmost `X-Forwarded-For` (one trusted ingress hop). Confirm the Azure ingress appends exactly one entry; with zero or two proxy hops the limiter keys on the wrong address - step 66.
+- The landing form (Landing 20) must render the `website` honeypot off-screen (not `display:none` only, which some bots skip) and send `consentVersion` matching the consent text actually shown - step 66.
 - **Apply the waitlist migration locally** (`20261012211858_waitlist_signup`): the database was down when it was created - `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate` to also check drift). Only replayed on an in-memory Postgres so far - step 65.
 - Waitlist consent version: the value stored per sign-up must match the privacy / consent text actually shown; that text is a draft until Landing 20 + legal review - step 65.
 - Waitlist data retention / deletion on request (and who on the team may read the table) - decide before collecting real emails - step 65.
