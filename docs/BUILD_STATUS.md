@@ -1,11 +1,33 @@
 # Build Status
 
-_Last updated: 2026-10-12 (step 66 - Landing 19)_
+_Last updated: 2026-10-13 (step 67 - Landing 20)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 67 - Landing 20: one waitlist form, consent, contact path, legal drafts
+
+**The form:**
+- Every sign-up link and coming-soon badge on the landing leads to one accessible form:
+  - email;
+  - an explicit consent checkbox;
+  - optional requested marketplaces (gallery picks plus an in-form select);
+  - a honeypot.
+- Its states: validation with focus, loading, success with the approved mascot, and errors with
+  Try again and the contact path.
+- The consent words and version are defined once and shared with the privacy draft.
+
+**Legal drafts and contact:**
+- `/privacy` and `/terms` are drafts with a conspicuous "Draft - requires legal review" banner and
+  11 "To be confirmed" points, noindex, and no unsupported guarantees.
+- Contact comes from `CONTACT_EMAIL` via one `ContactLink`. It's a placeholder until set (the
+  owner will set it later).
+
+**Verified:** web 181/181, monorepo 58/58, landing browser check 230/230 (including one real
+submission through the route); screenshots reviewed. Details:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 66 - Landing 19: waitlist sign-up endpoint
 

@@ -3,49 +3,70 @@
 import { X } from "lucide-react";
 import { marketplaceByKey } from "../marketplaces";
 import { dispatchInterest, useMarketplaceInterest } from "../marketplaces/interest-store";
-import { interestFormFields, OTHER_TEXT_MAX, pickCount } from "../marketplaces/marketplace-interest";
+import { OTHER_TEXT_MAX, pickCount, REQUESTABLE_MARKETPLACES } from "../marketplaces/marketplace-interest";
 import styles from "./ClosingCta.module.css";
 
 /**
- * The marketplace picks from the gallery, carried into the early-access form (Landing 17). The
- * visitor can see, remove and (for "Other") name what will be sent; hidden inputs hold the values
- * for when the form is wired (Landing 20). Client state only - nothing is stored or sent today.
+ * The optional "requested marketplace" part of the early-access form (Landing 17 + 20). Picks from
+ * the gallery arrive here; visitors who skipped the gallery can add one from the native select.
+ * Every pick can be removed, and "Other" can be named. The form sends what is shown - nothing else.
  */
-export function WaitlistInterest() {
+export function WaitlistInterest({ disabled = false }: { disabled?: boolean }) {
   const interest = useMarketplaceInterest();
-  if (pickCount(interest) === 0) {
-    return (
-      <p className={styles.interestEmpty}>
-        Want Rein Drop on another marketplace? <a href="#marketplaces">Pick it in the marketplace list</a> and it&apos;s added here.
-      </p>
-    );
-  }
+  const available = REQUESTABLE_MARKETPLACES.filter((k) => !interest.keys.includes(k));
+  const any = pickCount(interest) > 0;
   return (
     <div className={styles.interest} role="group" aria-labelledby="waitlist-interest-heading">
       <p id="waitlist-interest-heading" className={styles.interestHeading}>
-        Marketplaces you&apos;d like us to add
+        {any ? "Marketplaces you'd like us to add" : "Want Rein Drop on another marketplace? (optional)"}
       </p>
-      <ul className={styles.interestChips}>
-        {interest.keys.map((key) => {
-          const name = marketplaceByKey(key).name;
-          return (
-            <li key={key} className={styles.interestChip}>
-              {name}
-              <button type="button" className={styles.remove} aria-label={`Remove ${name}`} onClick={() => dispatchInterest({ type: "toggle", key })}>
+      {any && (
+        <ul className={styles.interestChips}>
+          {interest.keys.map((key) => {
+            const name = marketplaceByKey(key).name;
+            return (
+              <li key={key} className={styles.interestChip}>
+                {name}
+                <button type="button" className={styles.remove} aria-label={`Remove ${name}`} disabled={disabled} onClick={() => dispatchInterest({ type: "toggle", key })}>
+                  <X aria-hidden size={14} strokeWidth={3} />
+                </button>
+              </li>
+            );
+          })}
+          {interest.other && (
+            <li className={styles.interestChip}>
+              Other
+              <button type="button" className={styles.remove} aria-label="Remove Other" disabled={disabled} onClick={() => dispatchInterest({ type: "toggleOther" })}>
                 <X aria-hidden size={14} strokeWidth={3} />
               </button>
             </li>
-          );
-        })}
-        {interest.other && (
-          <li className={styles.interestChip}>
-            Other
-            <button type="button" className={styles.remove} aria-label="Remove Other" onClick={() => dispatchInterest({ type: "toggleOther" })}>
-              <X aria-hidden size={14} strokeWidth={3} />
-            </button>
-          </li>
-        )}
-      </ul>
+          )}
+        </ul>
+      )}
+      {(available.length > 0 || !interest.other) && (
+        <span className={styles.otherField}>
+          <label htmlFor="waitlist-add-marketplace">{any ? "Add another" : "Add a marketplace"}</label>
+          <select
+            id="waitlist-add-marketplace"
+            className={styles.otherInput}
+            value=""
+            disabled={disabled}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "other") dispatchInterest({ type: "toggleOther" });
+              else if (v) dispatchInterest({ type: "toggle", key: v as (typeof REQUESTABLE_MARKETPLACES)[number] });
+            }}
+          >
+            <option value="">Choose a marketplace…</option>
+            {available.map((k) => (
+              <option key={k} value={k}>
+                {marketplaceByKey(k).name}
+              </option>
+            ))}
+            {!interest.other && <option value="other">Other (somewhere else)</option>}
+          </select>
+        </span>
+      )}
       {interest.other && (
         <span className={styles.otherField}>
           <label htmlFor="waitlist-other-marketplace">Which marketplace? (optional)</label>
@@ -56,14 +77,18 @@ export function WaitlistInterest() {
             value={interest.otherText}
             maxLength={OTHER_TEXT_MAX}
             placeholder="e.g. a local classifieds site"
+            disabled={disabled}
             onChange={(e) => dispatchInterest({ type: "setOtherText", text: e.target.value })}
           />
         </span>
       )}
-      <p className={styles.interestNote}>Requests help us decide what to look at next - they don&apos;t guarantee a marketplace will be added.</p>
-      {interestFormFields(interest).map((f, i) => (
-        <input key={`${f.name}-${i}`} type="hidden" name={f.name} value={f.value} />
-      ))}
+      <p className={styles.interestNote}>
+        {any ? "Requests help us decide what to look at next - they don't guarantee a marketplace will be added." : (
+          <>
+            Or pick from the <a href="#marketplaces">marketplace list</a>. Requests help us decide what to look at next - they don&apos;t guarantee a marketplace will be added.
+          </>
+        )}
+      </p>
     </div>
   );
 }

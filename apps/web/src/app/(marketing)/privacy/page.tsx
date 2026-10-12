@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { LegalPlaceholder } from "@/marketing/footer/LegalPlaceholder";
+import { LegalDraft } from "@/marketing/legal/LegalDraft";
+import { PRIVACY_DRAFT } from "@/marketing/legal/legal-drafts";
 
-// Draft placeholder - kept out of search results until the reviewed policy exists.
-export const metadata: Metadata = { title: "Privacy policy (draft)", robots: { index: false, follow: true } };
+// Kept out of search results until the reviewed notice exists.
+export const metadata: Metadata = {
+  title: PRIVACY_DRAFT.reviewed ? PRIVACY_DRAFT.title : `${PRIVACY_DRAFT.title} (draft)`,
+  robots: PRIVACY_DRAFT.reviewed ? undefined : { index: false, follow: true },
+};
 
 export default function PrivacyPage() {
-  return <LegalPlaceholder title="Privacy policy" />;
+  return <LegalDraft doc={PRIVACY_DRAFT} />;
 }

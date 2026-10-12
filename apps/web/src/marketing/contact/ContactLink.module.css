@@ -1,0 +1,21 @@
+.link {
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.linkDark {
+  color: var(--rd-color-canvas);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+/* Marks a placeholder that must be set / reviewed before launch. */
+.review {
+  display: inline-block;
+  margin-left: var(--rd-space-1);
+  padding: 0 var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-wash-yellow);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}

@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-12 (Landing 19 = step 66)_
+_Last updated: 2026-10-13 (Landing 20 = step 67)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -911,4 +911,100 @@ Verified (commands run):
 - **Not verified:** a successful database write end to end. That needs the database up and the
   Landing 18 migration applied.
 
-Next: **Landing 20** - the form (one form for every CTA), legal drafts, contact.
+Next: Landing 20 - the form (one form for every CTA), legal drafts, contact.
+
+### Landing 20 (step 67) - One waitlist form, consent, contact, legal drafts - done 2026-10-13
+
+**Contact:** asked the owner, who chose to set the address later via `CONTACT_EMAIL`. Nothing is
+invented: one `ContactLink` (mailto from `CONTACT_EMAIL`, read on the server) feeds the footer,
+both legal drafts and the form's error help. Until the address is set it reads "Contact details
+coming soon", tagged "Needs review".
+
+- **One form for every CTA:** `closing/WaitlistForm.tsx` (client) replaces the disabled
+  placeholder. It's the target of all 8 sign-up links on the page: nav, hero, hunts, demo, the
+  gallery's sign-up links and the four "coming soon" store badges. From the hero CTA, the next Tab
+  lands on the email field.
+- **Fields:**
+  - email (`type=email`, autocomplete, labelled);
+  - an **explicit, unticked consent checkbox**, "Email me about Rein Drop early access. I've read
+    the privacy notice", with the notice linked and opening in a new tab;
+  - **optional requested marketplace(s)**: the gallery picks as removable chips, plus a native
+    "Add a marketplace" select for visitors who skipped the gallery (radar list plus Other with an
+    optional name);
+  - a honeypot `website` field: off-screen, `tabIndex -1`, `aria-hidden`;
+  - fine print stating what the email and picks are used for, and that you can ask us to remove
+    your sign-up.
+- **States:**
+  - **Validation** before sending (the same rule as the server, kept in agreement by a test): the
+    message sits next to the field, is announced (`role=alert`), and focus moves to the first
+    problem. That covers an empty email, an invalid email and missing consent.
+  - **Loading:** `aria-busy`, a "Joining…" spinner (no spin with reduced motion), and the button
+    stays focusable but ignores a second press.
+  - **Success:** the form is replaced by "You're on the early-access list" (`role=status`,
+    focused) with the **approved thumbs-up mascot**. It's the same for a new or repeat address,
+    and the picks are cleared.
+  - **Errors** (announced, with no input repeated back):
+    - server field errors are shown on the field;
+    - rate limited says "wait a few minutes" (no retry button);
+    - "couldn't save" and "couldn't reach Rein Drop" (offline or 10 s timeout) get **Try again**,
+      which resends the same sign-up, plus the contact path. The typed email stays in the field.
+- **Consent versioning:** `waitlist/consent.ts` holds the consent words, the fine print and
+  `WAITLIST_CONSENT_VERSION` (2026-10-12) in one place. It's sent with every sign-up, and the
+  privacy draft carries the same version, so each stored sign-up records which text it agreed to.
+- **Legal drafts:** `/privacy` and `/terms` are rendered from typed data (`legal/legal-drafts.ts`)
+  by `LegalDraft`, replacing the deleted `LegalPlaceholder`.
+  - While `reviewed: false` (both today), there's a **conspicuous yellow banner** at the top,
+    "Draft - requires legal review - This text hasn't been reviewed by a lawyer yet…". The banner
+    is `role=note`, the version is marked "(draft)", and the pages stay `noindex`.
+  - The privacy draft describes only what exists: what the sign-up stores; that server logs don't
+    contain the email; that IPs are counted in memory for rate limiting and not stored with the
+    sign-up; and that there are no advertising or tracking cookies. It covers why the data is
+    used, that sign-ups aren't sold, removal via the contact path, and "No system is completely
+    secure".
+  - The terms draft says early access guarantees nothing, the examples and demo are illustrative,
+    estimates and gross upside aren't profit, you make the buying decisions, marketplace marks
+    belong to their owners, and you shouldn't misuse the site.
+  - **11 "To be confirmed" points** are left open instead of invented: legal entity, officer,
+    hosting / email providers and countries, legal basis, retention, rights, liability wording,
+    governing law, app terms, the hosting provider's own logs, and analytics.
+
+Verified (commands run):
+- Unit tests: 16 new (`landing20.spec.ts`):
+  - the client email check agrees with the server's normalization on 12 samples;
+  - the form payload passes the API contract;
+  - HTTP 202 / 400 (with and without fields) / 429 / 503 / 500 / 403 map to the right outcomes,
+    and offline or a timeout gives the network outcome;
+  - the consent and error copy has no promises;
+  - the drafts are unreviewed and the privacy version equals the consent version;
+  - the privacy draft names every stored field;
+  - there are no unsupported guarantees (only negations), and the open points are listed.
+  Web 181/181, typecheck, lint, build; monorepo 58/58.
+- `node scripts/check-landing.mjs` on the production build (port 3100, owner's API at :4000 with
+  the database down): **230/230**. New checks:
+  - all 8 sign-up links point to `#waitlist`;
+  - Tab from the hero CTA lands on the email field;
+  - the honeypot is off-screen, out of the tab order and hidden from screen readers;
+  - empty / invalid email and missing consent get messages and focus, with nothing sent;
+  - the loading state, and no double send;
+  - the exact payload (email, source, the marketplace picked in the select, consent version,
+    empty honeypot);
+  - success (announced, focused, thumbs-up mascot, no repeat-or-new hint) and picks cleared;
+  - offline: error, Try again, contact placeholder; Try again resends the same sign-up;
+  - rate limited (no retry);
+  - **the real route**: "couldn't save" with Try again while the database is down, and the email
+    kept;
+  - 375 px error state;
+  - legal pages at 1280 / 375: banner at the top in yellow, version, To-be-confirmed blocks,
+    contact, noindex, no guarantees.
+  Earlier checks were updated for the live form.
+- Browser bundles: no zod schema, contracts list or database code (only the form's own strings).
+- Screenshots reviewed: the form idle / error / success at 1280, error at 375, privacy at 1280 /
+  375.
+
+**Not done** (needs the owner or later steps):
+- legal review;
+- `CONTACT_EMAIL`;
+- an email provider to actually contact sign-ups;
+- a real database write (the database is down).
+
+Next: **Landing 21** - anonymous analytics.

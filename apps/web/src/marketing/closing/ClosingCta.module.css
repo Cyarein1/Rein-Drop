@@ -95,15 +95,181 @@
   font-weight: var(--rd-font-weight-bold);
 }
 
-/* Not connected yet: visibly inactive. */
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rd-space-2);
+  cursor: pointer;
 }
 
-.status {
-  color: rgb(255 255 255 / 0.8);
+/* Sending: stays focusable (aria-disabled) but looks busy; presses are ignored in code. */
+.button[aria-disabled="true"] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+.button:focus-visible,
+.retry:focus-visible,
+.consent input:focus-visible,
+.formError a:focus-visible,
+.consent a:focus-visible {
+  outline: 2px solid var(--rd-color-yellow);
+  outline-offset: 2px;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.formRow:focus-within {
+  box-shadow: 0 0 0 3px var(--rd-color-yellow);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spinner {
+    animation: rd-spin 900ms linear infinite;
+  }
+}
+
+@keyframes rd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Validation, errors, consent (Landing 20) ---------- */
+/* On navy: messages are white text with a yellow marker (red text on navy would be unreadable). */
+.formRowInvalid {
+  box-shadow: 0 0 0 3px var(--rd-color-yellow);
+}
+
+.fieldError {
+  margin-top: calc(-1 * var(--rd-space-2));
+  padding-left: var(--rd-space-3);
+  border-left: 3px solid var(--rd-color-yellow);
+  color: var(--rd-color-canvas);
   font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.consent {
+  display: flex;
+  gap: var(--rd-space-3);
+  align-items: flex-start;
+  color: rgb(255 255 255 / 0.9);
+  font-size: var(--rd-font-size-sm);
+  line-height: 1.5;
+}
+
+.consent input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--rd-color-orange);
+  cursor: pointer;
+}
+
+.consent a,
+.formError a {
+  color: var(--rd-color-canvas);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.formError {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-3);
+  align-items: flex-start;
+  padding: var(--rd-space-3) var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: inset 3px 0 0 var(--rd-color-yellow);
+  color: var(--rd-color-canvas);
+  font-size: var(--rd-font-size-sm);
+}
+
+.formError > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--rd-color-yellow);
+}
+
+.formError > div {
+  display: grid;
+  flex: 1 1 220px;
+  gap: var(--rd-space-1);
+}
+
+.formErrorHelp {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.retry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  min-height: 40px;
+  padding: 0 var(--rd-space-4);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-canvas);
+  color: var(--rd-color-navy);
+  font: inherit;
+  font-weight: var(--rd-font-weight-bold);
+  cursor: pointer;
+}
+
+.finePrint {
+  color: rgb(255 255 255 / 0.75);
+  font-size: var(--rd-font-size-xs);
+  line-height: 1.5;
+}
+
+/* Honeypot: off-screen, not display:none (some bots skip hidden fields). */
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ---------- Success ---------- */
+.success {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-4);
+  width: min(100%, 520px);
+  padding: var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: rgb(255 255 255 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+
+.success:focus {
+  outline: none;
+}
+
+.success:focus-visible {
+  outline: 2px solid var(--rd-color-yellow);
+  outline-offset: 2px;
+}
+
+.successMascot {
+  flex-shrink: 0;
+  width: 88px;
+  height: auto;
+}
+
+.successTitle {
+  font-size: var(--rd-font-size-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.successText {
+  color: rgb(255 255 255 / 0.85);
 }
 
 /* ---------- Marketplace picks carried from the gallery (Landing 17) ---------- */

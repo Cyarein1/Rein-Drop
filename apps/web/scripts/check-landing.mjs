@@ -418,7 +418,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
       faq: details.map((d) => d.querySelector('h3').textContent), firstOpen: details[0].open, othersClosed: details.slice(1).every((d) => !d.open),
       faqText: f.textContent,
       waitHeading: w.querySelector('h2').textContent,
-      formDisabled: input.disabled && button.disabled && w.textContent.includes('Sign-up opens here soon'),
+      formReady: !input.disabled && button.type === 'submit' && !!w.querySelector('#waitlist-consent') && !w.textContent.includes('Sign-up opens here soon'),
       inputLabelled: !!document.querySelector('label[for="' + input.id + '"]'),
       contrast: getComputedStyle(w.querySelector('h2')).color + ' on ' + getComputedStyle(w.firstElementChild).backgroundColor,
       waitBadges: [...w.querySelectorAll('[data-store]')].map((a) => a.getAttribute('href')),
@@ -438,7 +438,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
   check(`${tag}: outcomes green only on the result`, l.greensInResult);
   const faqClean = !/\b20\d\d\b|\$\d/.test(l.faqText);
   check(`${tag}: FAQ has the 7 questions, first open, no dates or prices`, l.faq.length === 7 && l.faq[0] === "What is a Hunt?" && l.firstOpen && l.othersClosed && faqClean, l.faq.join(" | "));
-  check(`${tag}: waitlist CTA - white on navy, form shown disabled with a note, labelled input, badges -> waitlist`, l.waitHeading === "Spend less time searching. More time flipping." && l.formDisabled && l.inputLabelled && l.contrast === "rgb(255, 255, 255) on rgb(18, 35, 63)" && l.waitBadges.length === 2 && l.waitBadges.every((h) => h === "#waitlist"), JSON.stringify({ contrast: l.contrast, badges: l.waitBadges }));
+  check(`${tag}: waitlist CTA - white on navy, live form with consent (Landing 20), labelled input, badges -> waitlist`, l.waitHeading === "Spend less time searching. More time flipping." && l.formReady && l.inputLabelled && l.contrast === "rgb(255, 255, 255) on rgb(18, 35, 63)" && l.waitBadges.length === 2 && l.waitBadges.every((h) => h === "#waitlist"), JSON.stringify({ contrast: l.contrast, badges: l.waitBadges }));
   check(`${tag}: footer - legal drafts marked for review, contact placeholder marked, trademark line, no pricing`, l.footLegal.join(",") === "/privacy,/terms" && l.footReview === 2 && l.footContact && l.footTrademark && !/\$\d/.test(l.footText), JSON.stringify({ legal: l.footLegal, review: l.footReview }));
   check(`${tag}: no dead in-page links; no horizontal overflow`, l.deadLinks.length === 0 && !l.overflowX, JSON.stringify({ dead: l.deadLinks, overflowX: l.overflowX }));
   await shotAt("#outcomes", `outcomes-${width}`);
@@ -457,7 +457,7 @@ check("FAQ: Enter opens a question", await evaluate(`document.querySelectorAll('
 for (const path of ["/privacy", "/terms"]) {
   await load(`${base}${path}`);
   const lp = await evaluate(`({ status: document.querySelector('main p')?.textContent, robots: document.querySelector('meta[name="robots"]')?.getAttribute('content'), h1: document.querySelector('h1')?.textContent, footer: !!document.querySelector('footer') })`);
-  check(`${path}: placeholder marked "Draft - requires legal review", noindex, with footer`, lp.status === "Draft - requires legal review" && /noindex/.test(lp.robots || "") && !!lp.h1 && lp.footer, JSON.stringify(lp));
+  check(`${path}: draft marked "Draft - requires legal review", noindex, with footer`, lp.status === "Draft - requires legal review" && /noindex/.test(lp.robots || "") && !!lp.h1 && lp.footer, JSON.stringify(lp));
 }
 // ---- Example product photos (step 60b) ----
 for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true]]) {
@@ -580,8 +580,7 @@ const interestInfo = () => evaluate(`(() => {
     other: g.querySelector('button[aria-pressed]:not([aria-label])')?.getAttribute('aria-pressed') ?? null,
     summary: g.querySelector('[aria-live="polite"]')?.textContent ?? null,
     chips: [...w.querySelectorAll('form [role="group"] li')].map((li) => li.textContent.trim()), otherInput: !!w.querySelector('#waitlist-other-marketplace'),
-    hidden: [...w.querySelectorAll('input[type="hidden"]')].map((i) => i.name + '=' + i.value),
-    emailDisabled: w.querySelector('#waitlist-email').disabled, submitDisabled: w.querySelector('button[type="submit"]').disabled,
+        addSelect: !!w.querySelector('#waitlist-add-marketplace'),
     waitText: w.textContent, galleryText: g.textContent,
     resources: performance.getEntriesByType('resource').length, fetches: performance.getEntriesByType('resource').filter((r) => r.initiatorType === 'fetch' || r.initiatorType === 'xmlhttprequest').length,
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth };
@@ -595,7 +594,7 @@ await viewport(1280, 900, false); await load(`${base}/`);
 let mi = await interestInfo();
 const launchNames = ["eBay", "Facebook Marketplace"];
 check("requests: every 'on our radar' marketplace has a Request toggle; launch targets don't", mi.requestable.length === 15 && launchNames.every((n) => !mi.requestable.includes(n)) && mi.pressed.length === 0 && mi.other === "false", JSON.stringify(mi.requestable));
-check("requests: nothing picked -> no summary; the waitlist form points back to the list", mi.summary === "" && mi.chips.length === 0 && mi.waitText.includes("Pick it in the marketplace list"), JSON.stringify({ summary: mi.summary }));
+check("requests: nothing picked -> no summary; the waitlist form points back to the list", mi.summary === "" && mi.chips.length === 0 && mi.waitText.includes("marketplace list") && mi.addSelect, JSON.stringify({ summary: mi.summary }));
 const before = mi.fetches;
 await clickSel(reqButton("Mercari"));
 await clickSel(reqButton("OfferUp"));
@@ -611,8 +610,8 @@ check("requests: carried into the waitlist form in gallery order, with Other's n
 await evaluate(`document.getElementById('waitlist-other-marketplace').focus()`);
 await send("Input.insertText", { text: "Kijiji" }); await sleep(150);
 mi = await interestInfo();
-check("requests: hidden form values ready for the waitlist backend (keys + Other's name)", mi.hidden.join(",") === "requestedMarketplaces=offerup,requestedMarketplaces=mercari,requestedMarketplaces=vinted,requestedMarketplaces=other,requestedMarketplaceOther=Kijiji", mi.hidden.join(","));
-check("requests: the sign-up itself stays disabled until the backend exists; nothing was sent", mi.emailDisabled && mi.submitDisabled && mi.fetches === before, JSON.stringify({ email: mi.emailDisabled, submit: mi.submitDisabled, fetches: [before, mi.fetches] }));
+check("requests: Other's name is typed in the form (sent with the sign-up - Landing 20)", (await evaluate(`document.getElementById('waitlist-other-marketplace').value`)) === "Kijiji", "");
+check("requests: picking sends nothing (only the sign-up does)", mi.fetches === before, JSON.stringify({ fetches: [before, mi.fetches] }));
 const honest = (t) => !/\bvotes?\b|\d+\s+(people|resellers|others|requests)|we'll add|will launch/i.test(t);
 check("requests: no vote totals or delivery promises in the gallery or the form", honest(mi.galleryText) && honest(mi.waitText) && mi.waitText.includes("don't guarantee a marketplace will be added"), "");
 await shotEl("#waitlist form", "requests-waitlist-1280");
@@ -620,7 +619,7 @@ await shotEl("#waitlist form", "requests-waitlist-1280");
 await clickSel(`document.querySelector('#waitlist button[aria-label="Remove Mercari"]')`);
 await clickSel(`document.querySelector('#waitlist button[aria-label="Remove Other"]')`);
 mi = await interestInfo();
-check("requests: removing in the form un-picks in the gallery (shared state); Other's name is dropped", mi.pressed.join(",") === "OfferUp,Vinted" && mi.other === "false" && !mi.otherInput && !mi.hidden.some((h) => h.startsWith("requestedMarketplaceOther")), JSON.stringify({ pressed: mi.pressed, hidden: mi.hidden }));
+check("requests: removing in the form un-picks in the gallery (shared state); Other's name is dropped", mi.pressed.join(",") === "OfferUp,Vinted" && mi.other === "false" && !mi.otherInput, JSON.stringify({ pressed: mi.pressed }));
 await clickSel(`[...document.querySelectorAll('#marketplaces button')].find((b) => b.textContent.trim() === 'Clear picks')`);
 mi = await interestInfo();
 check("requests: Clear picks empties both", mi.pressed.length === 0 && mi.chips.length === 0 && mi.summary === "", JSON.stringify({ pressed: mi.pressed, chips: mi.chips }));
@@ -637,6 +636,115 @@ await clickSel(`document.querySelector('#marketplaces button[aria-pressed]:not([
 mi = await interestInfo();
 check("requests 375px: picks carried, no horizontal overflow", mi.chips.join(",") === "Craigslist,Poshmark,Other" && !mi.overflowX, JSON.stringify({ chips: mi.chips, overflowX: mi.overflowX }));
 await shotEl("#waitlist form", "requests-waitlist-375");
+
+// ---- One waitlist form for every CTA + legal drafts (Landing 20) ----
+const formInfo = () => evaluate(`(() => {
+  const w = document.getElementById('waitlist'); const a = document.activeElement;
+  return { focus: a ? (a.id || a.getAttribute('role') || a.tagName) : null,
+    emailError: document.getElementById('waitlist-email-error')?.textContent ?? null, emailInvalid: document.getElementById('waitlist-email')?.getAttribute('aria-invalid') ?? null,
+    consentError: document.getElementById('waitlist-consent-error')?.textContent ?? null,
+    alert: w.querySelector('form [role="alert"]:not(p)')?.textContent ?? null,
+    retry: [...w.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Try again'),
+    busy: w.querySelector('form')?.getAttribute('aria-busy') ?? null, button: w.querySelector('button[type="submit"]')?.textContent.trim() ?? null,
+    success: w.querySelector('[role="status"]')?.textContent ?? null, successFocused: a?.getAttribute('role') === 'status',
+    mascot: (() => { const i = w.querySelector('[role="status"] img'); return i ? i.complete && i.naturalWidth > 0 && i.getAttribute('src').includes('thumbs-up') : null; })(),
+    sent: window.__sent ?? [], text: w.textContent,
+    overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+})()`);
+/** Replace fetch for /api/waitlist in the page: record bodies, answer with `mode` (status | 'throw' | 'slow:<status>'). */
+const stubWaitlist = (mode) => evaluate(`(() => {
+  window.__realFetch = window.__realFetch || window.fetch; window.__sent = window.__sent || [];
+  window.fetch = async (url, init) => {
+    if (!String(url).includes('/api/waitlist')) return window.__realFetch(url, init);
+    window.__sent.push(JSON.parse(init.body));
+    const mode = ${JSON.stringify(mode)};
+    if (mode === 'throw') throw new TypeError('Failed to fetch');
+    if (String(mode).startsWith('slow:')) { await new Promise((r) => setTimeout(r, 800)); return new Response(JSON.stringify({ status: 'received' }), { status: Number(mode.slice(5)) }); }
+    const bodies = { 202: { status: 'received' }, 429: { status: 'error', code: 'RATE_LIMITED' }, 503: { status: 'error', code: 'UNAVAILABLE' } };
+    return new Response(JSON.stringify(bodies[mode] || {}), { status: mode });
+  };
+})()`);
+const typeEmail = async (value) => { await evaluate(`(() => { const i = document.getElementById('waitlist-email'); i.focus(); i.select(); })()`); if (value) await send("Input.insertText", { text: value }); else for (const type of ["keyDown", "keyUp"]) await send("Input.dispatchKeyEvent", { type, key: "Backspace", code: "Backspace", windowsVirtualKeyCode: 8 }); await sleep(100); };
+const submitForm = async () => { await evaluate(`document.querySelector('#waitlist button[type="submit"]').click()`); await sleep(250); };
+
+await viewport(1280, 900, false); await load(`${base}/`);
+const ctas = await evaluate(`[...document.querySelectorAll('a')].filter((a) => a.textContent.includes('Join early access') || a.textContent.includes('early-access sign-up') || a.hasAttribute('data-store')).map((a) => a.getAttribute('href'))`);
+check("form: every Join early access / coming-soon badge / sign-up link leads to the one form (#waitlist)", ctas.length >= 7 && ctas.every((h) => h === "#waitlist"), JSON.stringify(ctas));
+await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('Join early access')).click()`); await settleScroll();
+await pressKey("Tab", 9);
+let fi = await formInfo();
+check("form: hero CTA lands on the waitlist; the next Tab is the email field", fi.focus === "waitlist-email", JSON.stringify({ focus: fi.focus }));
+const trap = await evaluate(`(() => { const i = document.getElementById('waitlist-website'); const r = i.getBoundingClientRect(); return { tab: i.tabIndex, hidden: i.closest('[aria-hidden="true"]') !== null, offscreen: r.right < 0, displayed: getComputedStyle(i).display !== 'none' }; })()`);
+check("form: honeypot is off-screen (not display:none), out of the tab order and hidden from screen readers", trap.tab === -1 && trap.hidden && trap.offscreen && trap.displayed, JSON.stringify(trap));
+// Validation, before anything is sent.
+await stubWaitlist(202);
+await submitForm();
+fi = await formInfo();
+check("form: empty email -> message next to the field, announced, focus on the field; nothing sent", fi.emailError === "Enter your email address" && fi.emailInvalid === "true" && fi.focus === "waitlist-email" && fi.sent.length === 0, JSON.stringify({ e: fi.emailError, focus: fi.focus }));
+await typeEmail("not-an-email"); await submitForm();
+fi = await formInfo();
+check("form: invalid email -> specific message", (fi.emailError ?? "").startsWith("Enter a valid email address") && fi.sent.length === 0, fi.emailError);
+await typeEmail("sam@example.com"); await submitForm();
+fi = await formInfo();
+check("form: consent is required - unticked box -> message, focus on the box; nothing sent", fi.consentError === "Tick the box to agree before joining" && fi.focus === "waitlist-consent" && fi.sent.length === 0, JSON.stringify({ c: fi.consentError, focus: fi.focus }));
+// Optional marketplace from the form's own select + consent; slow answer shows the loading state.
+await evaluate(`(() => { const s = document.getElementById('waitlist-add-marketplace'); const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; set.call(s, 'mercari'); s.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(150);
+await evaluate(`document.getElementById('waitlist-consent').click()`); await sleep(100);
+await stubWaitlist("slow:202");
+await evaluate(`document.querySelector('#waitlist button[type="submit"]').click()`); await sleep(150);
+const loading = await formInfo();
+await evaluate(`document.querySelector('#waitlist button[type="submit"]')?.click()`); // a second press while busy is ignored
+await sleep(1100);
+fi = await formInfo();
+check("form: loading state (busy, 'Joining…'), a second press doesn't send twice", loading.busy === "true" && loading.button === "Joining…" && fi.sent.length === 1, JSON.stringify({ busy: loading.busy, button: loading.button, sent: fi.sent.length }));
+check("form: sends email, consent version, source, the picked marketplace and the empty honeypot", JSON.stringify(fi.sent[0]) === JSON.stringify({ email: "sam@example.com", source: "landing_waitlist_form", requestedMarketplaces: ["mercari"], requestedMarketplaceOther: null, consentVersion: "2026-10-12", website: "" }), JSON.stringify(fi.sent[0]));
+check("form: success - confirmation announced and focused, approved thumbs-up mascot, no repeat-or-new hint", !!fi.success && fi.success.includes("You're on the early-access list.") && fi.successFocused && fi.mascot === true && !/already/i.test(fi.success), JSON.stringify({ s: fi.success, focused: fi.successFocused, mascot: fi.mascot }));
+await shotEl("#waitlist", "form-success-1280");
+const cleared = await evaluate(`[...document.querySelectorAll('#marketplaces button[aria-pressed="true"]')].length`);
+check("form: after joining, the marketplace picks are cleared", cleared === 0, String(cleared));
+
+// Errors + retry.
+await load(`${base}/`);
+await stubWaitlist("throw");
+await typeEmail("sam@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(200);
+fi = await formInfo();
+check("form: offline -> announced error, Try again, contact path (placeholder until CONTACT_EMAIL is set)", (fi.alert ?? "").includes("couldn't reach Rein Drop") && fi.retry && fi.text.includes("Contact details coming soon"), fi.alert);
+await shotEl("#waitlist form", "form-error-1280");
+await stubWaitlist(202);
+await evaluate(`[...document.querySelectorAll('#waitlist button')].find((b) => b.textContent.trim() === 'Try again').click()`); await sleep(400);
+fi = await formInfo();
+check("form: Try again resends the same sign-up and succeeds", !!fi.success && fi.sent.length === 2 && JSON.stringify(fi.sent[0]) === JSON.stringify(fi.sent[1]), String(fi.sent.length));
+await load(`${base}/`);
+await stubWaitlist(429);
+await typeEmail("sam@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(200);
+fi = await formInfo();
+check("form: rate limited -> 'wait a few minutes', no Try again button", (fi.alert ?? "").includes("wait a few minutes") && !fi.retry, fi.alert);
+// The real route (owner's API has no database right now): a safe 503 'try again', email kept in the field.
+await load(`${base}/`);
+await typeEmail("landing20.check@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(2500);
+fi = await formInfo();
+const kept = await evaluate(`document.getElementById('waitlist-email')?.value`);
+check("form (real route, API without database): 'couldn't save' + Try again; the email stays in the field", (fi.alert ?? "").includes("couldn't save your sign-up") && fi.retry && kept === "landing20.check@example.com", JSON.stringify({ alert: fi.alert, kept }));
+// Phone width.
+await viewport(375, 812, true); await load(`${base}/`);
+await stubWaitlist(503);
+await typeEmail("sam@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(200);
+fi = await formInfo();
+check("form 375px: error state fits, no horizontal overflow", (fi.alert ?? "").length > 0 && !fi.overflowX, JSON.stringify({ overflowX: fi.overflowX }));
+await shotEl("#waitlist form", "form-error-375");
+
+// Legal drafts: conspicuous status, open points, contact path, out of search.
+for (const [path, width] of [["/privacy", 1280], ["/terms", 1280], ["/privacy", 375]]) {
+  await viewport(width, 900, width < 500); await load(`${base}${path}`);
+  const lg = await evaluate(`(() => { const b = document.querySelector('main [role="note"]'); const r = b?.getBoundingClientRect();
+    return { banner: b?.textContent ?? null, bg: b && getComputedStyle(b).backgroundColor, top: r && Math.round(r.top), h1: document.querySelector('h1')?.textContent, version: [...document.querySelectorAll('main p')].some((p) => /^Version \\d{4}-\\d{2}-\\d{2} \\(draft\\)$/.test(p.textContent)),
+      toConfirm: [...document.querySelectorAll('main p')].filter((p) => p.textContent === 'To be confirmed').length, contact: document.querySelector('#legal-contact')?.parentElement.textContent ?? '',
+      robots: document.querySelector('meta[name="robots"]')?.getAttribute('content'), text: document.querySelector('main').textContent, overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth }; })()`);
+  const promise = lg.text.replace(/doesn't guarantee|not a promise|No system is completely secure/g, "");
+  check(`${path} ${width}px: conspicuous draft banner at the top (yellow), version, 'To be confirmed' points, contact path, noindex`, (lg.banner ?? "").startsWith("Draft - requires legal review") && lg.bg === "rgb(255, 248, 217)" && lg.top < 200 && lg.version && lg.toConfirm >= 1 && lg.contact.includes("Contact details coming soon") && /noindex/.test(lg.robots || "") && !lg.overflowX, JSON.stringify({ banner: lg.banner?.slice(0, 40), bg: lg.bg, top: lg.top, version: lg.version, toConfirm: lg.toConfirm, robots: lg.robots }));
+  check(`${path} ${width}px: no unsupported guarantees on the page`, !/guarantee|promise|100%|completely secure|will never/i.test(promise), "");
+  await shot(`legal${path.replace("/", "-")}-${width}`);
+}
 
 // ---- Motion (Landing 16) ----
 await viewport(1280, 900, false);

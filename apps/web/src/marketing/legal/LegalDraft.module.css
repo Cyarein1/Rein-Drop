@@ -1,0 +1,91 @@
+/* Legal drafts (Landing 20): readable prose column; the draft status impossible to miss. */
+.main {
+  display: grid;
+  gap: var(--rd-space-5);
+  max-width: var(--rd-container-prose);
+  margin: 0 auto;
+  padding: var(--rd-space-10) var(--rd-gutter) var(--rd-space-12);
+  color: var(--rd-color-navy);
+}
+
+.back {
+  justify-self: start;
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+/* Conspicuous: full width, yellow, bold, with an icon - and announced as a note. */
+.banner {
+  display: flex;
+  gap: var(--rd-space-3);
+  align-items: flex-start;
+  padding: var(--rd-space-4) var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-wash-yellow);
+  box-shadow: inset 0 0 0 2px var(--rd-color-yellow);
+  line-height: 1.5;
+}
+
+.banner svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bannerTitle {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.title {
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.version {
+  margin-top: calc(-1 * var(--rd-space-3));
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.intro {
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+.section {
+  display: grid;
+  gap: var(--rd-space-2);
+}
+
+.heading {
+  margin-top: var(--rd-space-2);
+  font-size: var(--rd-font-size-xl);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.text {
+  color: var(--rd-neutral-text-muted);
+  line-height: 1.6;
+}
+
+.toConfirm {
+  padding: var(--rd-space-3) var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+  box-shadow: inset 3px 0 0 var(--rd-color-yellow);
+  font-size: var(--rd-font-size-sm);
+}
+
+.toConfirmTitle {
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.toConfirm ul {
+  display: grid;
+  gap: 4px;
+  margin: var(--rd-space-1) 0 0;
+  padding-left: 1.1em;
+  color: var(--rd-neutral-text-muted);
+}

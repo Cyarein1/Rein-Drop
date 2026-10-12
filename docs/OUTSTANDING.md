@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-12, after step 66 (Landing 19)._
+_Last updated: 2026-10-13, after step 67 (Landing 20)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,13 +104,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 20-24 (steps 67-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 21-24 (steps 68-71) per the scoped plan - step 48.
+- **Legal review of the privacy notice and terms drafts** (`/privacy`, `/terms`, version 2026-10-12): every "To be confirmed" point (legal entity, officer, hosting / email providers and countries, legal basis, retention, rights, liability wording, governing law). Set `reviewed: true` in `legal-drafts.ts` only after review; until then the pages show the draft banner and stay noindex. Required before collecting real emails publicly - step 67.
+- The success message says "We'll be in touch by email about early access" - there is no email provider yet (D14); contact sign-ups manually or wire a provider before launch - step 67.
+- Consent is an explicit, unticked checkbox (safe default before legal review) - legal review may simplify or keep it; changing the words means a new `WAITLIST_CONSENT_VERSION` - step 67.
 - Waitlist end to end with a real database write is not verified yet: start Postgres, apply the step 65 migration, then sign up once through `/api/waitlist` (expect 202, one row; a second time: 202, still one row) - step 66.
 - Waitlist rate limits are in memory (web: 5 per 10 min per visitor; API: 120 per min per caller) - fine for one instance each; several instances need a shared store (same as the API's existing limiter) - step 66.
 - Web visitor IP = rightmost `X-Forwarded-For` (one trusted ingress hop). Confirm the Azure ingress appends exactly one entry; with zero or two proxy hops the limiter keys on the wrong address - step 66.
-- The landing form (Landing 20) must render the `website` honeypot off-screen (not `display:none` only, which some bots skip) and send `consentVersion` matching the consent text actually shown - step 66.
 - **Apply the waitlist migration locally** (`20261012211858_waitlist_signup`): the database was down when it was created - `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate` to also check drift). Only replayed on an in-memory Postgres so far - step 65.
-- Waitlist consent version: the value stored per sign-up must match the privacy / consent text actually shown; that text is a draft until Landing 20 + legal review - step 65.
 - Waitlist data retention / deletion on request (and who on the team may read the table) - decide before collecting real emails - step 65.
 - Marketplace requests are client state only (in memory, lost on reload) and are never sent: the waitlist backend (Landing 18-20) must accept `requestedMarketplaces` (keys or `other`) and `requestedMarketplaceOther` (max 60 characters), validate keys against the radar list, and never publish totals - step 64.
 - A visitor who reloads before signing up loses their picks; keep it that way or persist them once there's a privacy-reviewed reason to - owner's call - step 64.
@@ -131,8 +132,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - The app's `Wordmark` component (sign-in page etc.) still uses Next's deprecated `priority` prop - switch to `loading="eager"` / `fetchPriority` - step 54.
 - Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
 - Alerts section lists push + in-app only; add email to the landing copy only once an email provider exists (D14) - step 59.
-- Public contact address for the landing footer (`CONTACT_EMAIL`) - the owner's decision; shows "Contact details coming soon - needs review" until set - step 60.
-- Landing closing CTA shows the email form disabled until the waitlist is wired (Landing 18-20); `/privacy` and `/terms` are placeholders until the drafts (Landing 20) and legal review - step 60.
+- Public contact address (`CONTACT_EMAIL` in the web app's environment) - owner chose to set it later (2026-10-13). One `ContactLink` feeds the footer, both legal drafts and the form's error help; until set they show "Contact details coming soon - Needs review". Set before launch: the privacy draft points people here to remove their sign-up - step 60 / 67.
 - Example product photos (Unsplash License) show Apple / Sony products and logos - include them in the pre-launch trademark review; keep the footer credits - step 60b.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
@@ -325,3 +325,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Hero deal card named the marketplace as text | Step 54 | Step 55 (official Facebook mark via MarketplaceMark) |
 | Deal intelligence used a listing-photo placeholder | Step 58 | Step 60b (licensed PS5 photo, tagged "Example photo") |
 | `#demo` was a temporary placeholder | Step 60 | Step 62 (interactive illustrative demo, Landing 15) |
+| Landing waitlist form shown disabled until wired | Step 60 | Step 67 (live form: validation, loading / success / error / retry, consent, optional marketplace) |
+| `/privacy` and `/terms` were placeholders | Step 60 | Step 67 (drafts with conspicuous "requires legal review" banner - review itself still open) |
+| Form must render the honeypot off-screen and send the matching consent version | Step 66 | Step 67 (off-screen, tab-skipped, aria-hidden; `WAITLIST_CONSENT_VERSION` shared with the privacy draft) |
+| Stored consent version must match the text shown | Step 65 | Step 67 (one constant for the consent words + version; privacy draft carries the same version) |

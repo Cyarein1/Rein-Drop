@@ -3,6 +3,7 @@ import Link from "next/link";
 import { landingImages } from "../landing-assets";
 import { photoCredits } from "../photos";
 import { NAV_LINKS } from "../sections";
+import { ContactLink } from "../contact/ContactLink";
 import { contactEmail, LEGAL_LINKS } from "../site-config";
 import styles from "./SiteFooter.module.css";
 
@@ -39,13 +40,7 @@ export function SiteFooter() {
             <h2 className={styles.columnTitle}>Contact</h2>
             <ul>
               <li>
-                {email ? (
-                  <a href={`mailto:${email}`}>{email}</a>
-                ) : (
-                  <span>
-                    Contact details coming soon <span className={styles.review}>Needs review</span>
-                  </span>
-                )}
+                <ContactLink email={email} />
               </li>
             </ul>
           </div>

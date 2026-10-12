@@ -1,17 +1,17 @@
 import Image from "next/image";
 import { landingImages } from "../landing-assets";
 import { StoreBadges } from "../StoreBadges";
+import { contactEmail } from "../site-config";
 import styles from "./ClosingCta.module.css";
-import { WaitlistInterest } from "./WaitlistInterest";
+import { WaitlistForm } from "./WaitlistForm";
 
 const mascot = landingImages.closingMascot;
 
 /**
  * Closing CTA (Landing 13, spec 13) - the waitlist section every "Join early access" scrolls to.
- * High contrast: white on navy (15.7:1), navy on orange. The sign-up form is wired in Landing 20;
- * until then it is shown DISABLED with a plain note, so nothing pretends to submit. The approved
- * delivery-dash mascot carries the "more time flipping" idea. Server component; the marketplace
- * picks from the gallery (Landing 17) show inside the form as a small client island.
+ * High contrast: white on navy (15.7:1), navy on orange. Holds the ONE early-access form
+ * (WaitlistForm, Landing 20) that every CTA leads to. The approved delivery-dash mascot carries the
+ * "more time flipping" idea. Server component; the form is a client island.
  */
 export function ClosingCta() {
   return (
@@ -24,22 +24,8 @@ export function ClosingCta() {
           </h2>
           <p className={styles.lead}>Join early access and be among the first resellers to try Rein Drop on eBay and Facebook Marketplace.</p>
 
-          <form className={styles.form} aria-describedby="waitlist-status" action="#waitlist">
-            <div className={styles.formRow}>
-              <label htmlFor="waitlist-email" className="visually-hidden">
-                Email address
-              </label>
-              <input id="waitlist-email" type="email" name="email" placeholder="Enter your email address" autoComplete="email" disabled className={styles.input} />
-              <button type="submit" disabled className={styles.button}>
-                Join early access
-              </button>
-            </div>
-            {/* Marketplace picks from the gallery (Landing 17) - client state only until the form is wired. */}
-            <WaitlistInterest />
-          </form>
-          <p id="waitlist-status" className={styles.status}>
-            Sign-up opens here soon - the form is being connected.
-          </p>
+          {/* The one sign-up form (Landing 20); the contact address is read here, on the server. */}
+          <WaitlistForm contactEmail={contactEmail()} />
 
           <StoreBadges tone="dark" />
         </div>

@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { LegalPlaceholder } from "@/marketing/footer/LegalPlaceholder";
+import { LegalDraft } from "@/marketing/legal/LegalDraft";
+import { TERMS_DRAFT } from "@/marketing/legal/legal-drafts";
 
-// Draft placeholder - kept out of search results until the reviewed terms exist.
-export const metadata: Metadata = { title: "Terms of use (draft)", robots: { index: false, follow: true } };
+// Kept out of search results until the reviewed terms exist.
+export const metadata: Metadata = {
+  title: TERMS_DRAFT.reviewed ? TERMS_DRAFT.title : `${TERMS_DRAFT.title} (draft)`,
+  robots: TERMS_DRAFT.reviewed ? undefined : { index: false, follow: true },
+};
 
 export default function TermsPage() {
-  return <LegalPlaceholder title="Terms of use" />;
+  return <LegalDraft doc={TERMS_DRAFT} />;
 }
