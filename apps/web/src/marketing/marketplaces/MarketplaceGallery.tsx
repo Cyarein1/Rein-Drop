@@ -1,6 +1,8 @@
 import { ChevronDown } from "lucide-react";
-import { comingSoon, exploring, MARKETPLACE_STATUS_INFO, startingWith, type MarketplaceEntry, type MarketplaceStatus } from "../marketplaces";
+import { comingSoon, exploring, MARKETPLACE_STATUS_INFO, startingWith, type MarketplaceEntry, type MarketplaceKey, type MarketplaceStatus } from "../marketplaces";
 import { PRIMARY_CTA } from "../sections";
+import { InterestSummary, OtherToggle, RequestToggle } from "./InterestControls";
+import { INTEREST_COPY } from "./marketplace-interest";
 import { MarketplaceMark } from "./MarketplaceMark";
 import styles from "./MarketplaceGallery.module.css";
 
@@ -21,6 +23,7 @@ function RadarTile({ marketplace }: { marketplace: MarketplaceEntry }) {
         <span className={styles.tileCategory}>{marketplace.category}</span>
       </div>
       <StatusPill status={marketplace.status} />
+      <RequestToggle marketplace={marketplace.key as MarketplaceKey} name={marketplace.name} />
     </li>
   );
 }
@@ -29,7 +32,8 @@ function RadarTile({ marketplace }: { marketplace: MarketplaceEntry }) {
  * Marketplace gallery (Landing 08). "Starting with" = the launch targets, large; "On our radar" =
  * Coming soon / Exploring shown, the 11 Exploring ones behind a native <details> expander (works
  * without JavaScript, keyboard and screen reader friendly, searchable with find-in-page). Server
- * component; data and honesty rules in ../marketplaces.ts.
+ * component; data and honesty rules in ../marketplaces.ts. Landing 17: radar tiles + "Other" can be
+ * requested (client islands); the picks are carried into the waitlist form - no totals, no promises.
  */
 export function MarketplaceGallery() {
   const starting = startingWith();
@@ -64,6 +68,7 @@ export function MarketplaceGallery() {
         </ul>
 
         <h3 className={styles.groupHeading}>On our radar</h3>
+        <p className={styles.requestHint}>{INTEREST_COPY.hint}</p>
         <ul className={styles.grid}>
           {next.map((m) => (
             <RadarTile key={m.key} marketplace={m} />
@@ -83,6 +88,11 @@ export function MarketplaceGallery() {
           </ul>
         </details>
 
+        <div className={styles.requestRow}>
+          <OtherToggle />
+          <InterestSummary />
+        </div>
+
         <dl className={styles.legend}>
           {(["launch_target", "coming_soon", "exploring"] as const).map((s) => (
             <div key={s}>
@@ -95,7 +105,7 @@ export function MarketplaceGallery() {
         </dl>
 
         <p className={styles.footnote}>
-          Don&apos;t see where you source? <a href={`#${PRIMARY_CTA.section}`}>Tell us when you join early access.</a> Marketplace names and
+          Don&apos;t see where you source? Pick <strong>Other</strong> and name it in the <a href={`#${PRIMARY_CTA.section}`}>early-access sign-up</a>. Marketplace names and
           logos are trademarks of their owners; Rein Drop isn&apos;t affiliated with or endorsed by them.
         </p>
       </div>

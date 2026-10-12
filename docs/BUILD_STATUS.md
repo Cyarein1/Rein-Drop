@@ -1,11 +1,21 @@
 # Build Status
 
-_Last updated: 2026-10-12 (step 63 - Landing 16)_
+_Last updated: 2026-10-12 (step 64 - Landing 17)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 64 - Landing 17: marketplace requests carried to the waitlist
+
+- **Gallery:** visitors can request any "On our radar" marketplace, or "Other", from the gallery.
+- **Waitlist form:** the picks appear in the early-access form, where they can be removed; Other
+  can be named; hidden inputs are ready for Landing 20.
+- **State:** client state only, in memory, never stored or sent. The sign-up stays disabled.
+- **Honesty:** no vote totals, no delivery promises.
+Verified: 7 unit tests (web 149/149), typecheck, lint, build; landing browser check 209/209;
+screenshots at 1280 / 375. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 63 - Landing 16: motion
 

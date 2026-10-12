@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-12 (Landing 16 = step 63)_
+_Last updated: 2026-10-12 (Landing 17 = step 64)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -712,4 +712,60 @@ Verified (commands run):
 - `pnpm turbo run typecheck lint test build --filter web`: 9/9 tasks.
 - Screenshots reviewed: the hero at rest (1280) and the demo stages.
 
-Next: **Landing 17**.
+Next: Landing 17.
+
+### Landing 17 (step 64) - Marketplace requests carried to the waitlist - done 2026-10-12
+
+- **Gallery:** every "On our radar" marketplace (4 coming soon + 11 exploring) has a
+  **Request** toggle. The launch targets (eBay, Facebook Marketplace) can't be requested, since
+  they're what Rein Drop launches with.
+  - Buttons are named "Request OfferUp" etc. and use `aria-pressed`; a picked tile gets a navy
+    outline and a tick, so the state isn't shown by colour alone.
+  - An **Other - somewhere else** toggle covers marketplaces not in the list.
+  - A polite summary reports only the visitor's own picks: "4 picked - added to your early-access
+    sign-up below", with "Go to sign-up" and "Clear picks".
+  - The hint above the tiles says picks help prioritise and "don't guarantee a marketplace will be
+    added".
+- **Waitlist form:** the picks appear inside the early-access form, in gallery order, as chips
+  with "Remove X" buttons.
+  - Picking Other adds an optional "Which marketplace?" field (60 characters max). Switching Other
+    off forgets the text, so nothing is carried that the visitor can't see.
+  - Hidden inputs (`requestedMarketplaces` = key or `other`, `requestedMarketplaceOther` = name)
+    are ready for Landing 20.
+  - The email field and button stay disabled until the backend exists.
+  - With no picks, the form shows a line pointing back to the marketplace list.
+- **State:** client state only. One in-memory store (`interest-store.ts`, `useSyncExternalStore`)
+  is shared by the two client islands. There's no localStorage, cookie or network call; a reload
+  clears it. The gallery stays server-rendered. The pure rules (`marketplace-interest.ts`) are kept
+  apart from the React store, so the server component can import the copy; the build caught that
+  boundary.
+- **Honesty:** no vote or request totals anywhere, and no delivery promises. Both are tested in
+  unit tests and in the browser.
+
+Verified (commands run):
+- Unit tests: 7 new (`marketplace-interest.spec.ts`):
+  - only radar marketplaces are requestable;
+  - picks keep gallery order;
+  - Other's text is trimmed and capped, and dropped when Other is switched off;
+  - clear;
+  - form fields;
+  - summaries cover the visitor's own picks only;
+  - the copy has no totals or promises.
+  Web 149/149, typecheck, lint, build: 9/9 tasks.
+- `node scripts/check-landing.mjs` on the production build (port 3100): **209/209**, with 11 new
+  request checks:
+  - toggles on the 15 radar marketplaces only;
+  - the empty state;
+  - mouse and keyboard (Space) toggles, and the announced summary;
+  - picks carried in order, with Other's field;
+  - hidden values, including Other's name;
+  - the sign-up stays disabled and nothing is sent (no fetch / XHR);
+  - no totals or promises;
+  - removing in the form un-picks in the gallery;
+  - Clear picks;
+  - gone after a reload, with nothing in local / session storage or cookies;
+  - 375 px with no overflow.
+- Screenshots reviewed: the gallery with picks (1280), the waitlist form with picks at 1280 and
+  375.
+
+Next: **Landing 18**.

@@ -193,6 +193,109 @@
   margin-bottom: var(--rd-space-1);
 }
 
+/* ---------- Requests (Landing 17): the visitor's own picks, no totals ---------- */
+.requestHint {
+  max-width: var(--rd-container-prose);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.request,
+.otherToggle,
+.clear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Full row under the tile's name, so tiles keep their layout at any width. */
+.request {
+  flex-basis: 100%;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.request:hover {
+  box-shadow: inset 0 0 0 1.5px var(--rd-color-navy);
+}
+
+/* Picked: navy outline on sky wash + a tick (never colour alone); selection isn't an action, so not orange. */
+.request[aria-pressed="true"],
+.otherToggle[aria-pressed="true"] {
+  background: var(--rd-wash-sky);
+  box-shadow: inset 0 0 0 2px var(--rd-color-navy);
+}
+
+.tile:has(.request[aria-pressed="true"]) {
+  box-shadow: inset 0 0 0 2px var(--rd-color-navy);
+}
+
+.requestRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-3) var(--rd-space-5);
+}
+
+.otherToggle {
+  gap: var(--rd-space-2);
+  min-height: 48px;
+  padding: 0 var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1.5px var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+}
+
+.interestSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2) var(--rd-space-4);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.interestActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-3);
+}
+
+.interestLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.clear {
+  padding: 0;
+  background: none;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.request:focus-visible,
+.otherToggle:focus-visible,
+.clear:focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
 /* ---------- Legend + footnote ---------- */
 .legend {
   display: grid;

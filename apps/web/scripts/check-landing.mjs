@@ -572,6 +572,72 @@ d = await demoInfo();
 check("demo 375px: works through to the deal, no horizontal overflow", d.heading === "Why this deal was flagged" && !d.overflowX && d.label, JSON.stringify({ heading: d.heading, overflowX: d.overflowX }));
 await shotDemo("demo-5-evaluation-375");
 
+// ---- Marketplace requests -> waitlist form (Landing 17) ----
+const interestInfo = () => evaluate(`(() => {
+  const g = document.getElementById('marketplaces'); const w = document.getElementById('waitlist');
+  const req = [...g.querySelectorAll('button[aria-label^="Request "]')];
+  return { requestable: req.map((b) => b.getAttribute('aria-label').slice(8)), pressed: req.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.getAttribute('aria-label').slice(8)),
+    other: g.querySelector('button[aria-pressed]:not([aria-label])')?.getAttribute('aria-pressed') ?? null,
+    summary: g.querySelector('[aria-live="polite"]')?.textContent ?? null,
+    chips: [...w.querySelectorAll('form [role="group"] li')].map((li) => li.textContent.trim()), otherInput: !!w.querySelector('#waitlist-other-marketplace'),
+    hidden: [...w.querySelectorAll('input[type="hidden"]')].map((i) => i.name + '=' + i.value),
+    emailDisabled: w.querySelector('#waitlist-email').disabled, submitDisabled: w.querySelector('button[type="submit"]').disabled,
+    waitText: w.textContent, galleryText: g.textContent,
+    resources: performance.getEntriesByType('resource').length, fetches: performance.getEntriesByType('resource').filter((r) => r.initiatorType === 'fetch' || r.initiatorType === 'xmlhttprequest').length,
+    overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+})()`);
+const clickSel = async (expr) => { await evaluate(`(${expr}).click()`); await sleep(150); };
+const reqButton = (name) => `document.querySelector('#marketplaces button[aria-label="Request ${name}"]')`;
+/** Screenshot of one element in page coordinates (works at the very bottom of the page too). */
+const shotEl = async (selector, name) => { await sleep(300); const r = await evaluate(`(() => { const b = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: b.left + scrollX - 16, y: b.top + scrollY - 16, width: b.width + 32, height: b.height + 32 }; })()`); writeFileSync(path.join(outDir, `${name}.png`), Buffer.from((await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...r, scale: 1 } })).data, "base64")); };
+
+await viewport(1280, 900, false); await load(`${base}/`);
+let mi = await interestInfo();
+const launchNames = ["eBay", "Facebook Marketplace"];
+check("requests: every 'on our radar' marketplace has a Request toggle; launch targets don't", mi.requestable.length === 15 && launchNames.every((n) => !mi.requestable.includes(n)) && mi.pressed.length === 0 && mi.other === "false", JSON.stringify(mi.requestable));
+check("requests: nothing picked -> no summary; the waitlist form points back to the list", mi.summary === "" && mi.chips.length === 0 && mi.waitText.includes("Pick it in the marketplace list"), JSON.stringify({ summary: mi.summary }));
+const before = mi.fetches;
+await clickSel(reqButton("Mercari"));
+await clickSel(reqButton("OfferUp"));
+await clickSel(`document.querySelector('#marketplaces details summary')`);
+await clickSel(reqButton("Vinted"));
+// Keyboard: Space on "Other".
+await evaluate(`document.querySelector('#marketplaces button[aria-pressed]:not([aria-label])').focus()`);
+await pressKey(" ", 32, " ");
+mi = await interestInfo();
+check("requests: toggles (mouse + keyboard Space) show pressed; the visitor's own summary is announced", mi.pressed.join(",") === "OfferUp,Mercari,Vinted" && mi.other === "true" && mi.summary === "4 picked - added to your early-access sign-up below.", JSON.stringify({ pressed: mi.pressed, other: mi.other, summary: mi.summary }));
+await shotAt("#marketplaces h3 + p", "requests-gallery-1280");
+check("requests: carried into the waitlist form in gallery order, with Other's name field", mi.chips.join(",") === "OfferUp,Mercari,Vinted,Other" && mi.otherInput, JSON.stringify(mi.chips));
+await evaluate(`document.getElementById('waitlist-other-marketplace').focus()`);
+await send("Input.insertText", { text: "Kijiji" }); await sleep(150);
+mi = await interestInfo();
+check("requests: hidden form values ready for the waitlist backend (keys + Other's name)", mi.hidden.join(",") === "requestedMarketplaces=offerup,requestedMarketplaces=mercari,requestedMarketplaces=vinted,requestedMarketplaces=other,requestedMarketplaceOther=Kijiji", mi.hidden.join(","));
+check("requests: the sign-up itself stays disabled until the backend exists; nothing was sent", mi.emailDisabled && mi.submitDisabled && mi.fetches === before, JSON.stringify({ email: mi.emailDisabled, submit: mi.submitDisabled, fetches: [before, mi.fetches] }));
+const honest = (t) => !/\bvotes?\b|\d+\s+(people|resellers|others|requests)|we'll add|will launch/i.test(t);
+check("requests: no vote totals or delivery promises in the gallery or the form", honest(mi.galleryText) && honest(mi.waitText) && mi.waitText.includes("don't guarantee a marketplace will be added"), "");
+await shotEl("#waitlist form", "requests-waitlist-1280");
+// Removing in the form updates the gallery (one shared state).
+await clickSel(`document.querySelector('#waitlist button[aria-label="Remove Mercari"]')`);
+await clickSel(`document.querySelector('#waitlist button[aria-label="Remove Other"]')`);
+mi = await interestInfo();
+check("requests: removing in the form un-picks in the gallery (shared state); Other's name is dropped", mi.pressed.join(",") === "OfferUp,Vinted" && mi.other === "false" && !mi.otherInput && !mi.hidden.some((h) => h.startsWith("requestedMarketplaceOther")), JSON.stringify({ pressed: mi.pressed, hidden: mi.hidden }));
+await clickSel(`[...document.querySelectorAll('#marketplaces button')].find((b) => b.textContent.trim() === 'Clear picks')`);
+mi = await interestInfo();
+check("requests: Clear picks empties both", mi.pressed.length === 0 && mi.chips.length === 0 && mi.summary === "", JSON.stringify({ pressed: mi.pressed, chips: mi.chips }));
+// Client state only: gone after a reload, nothing in browser storage.
+await clickSel(reqButton("Etsy"));
+await load(`${base}/`);
+mi = await interestInfo();
+const stored = await evaluate(`({ local: Object.keys(localStorage), session: Object.keys(sessionStorage), cookie: document.cookie })`);
+check("requests: client state only - gone after a reload, nothing stored in the browser", mi.pressed.length === 0 && mi.chips.length === 0 && stored.local.length === 0 && stored.session.length === 0 && !/etsy|market/i.test(stored.cookie), JSON.stringify(stored));
+// Phone width.
+await viewport(375, 812, true); await load(`${base}/`);
+await clickSel(reqButton("Craigslist")); await clickSel(reqButton("Poshmark"));
+await clickSel(`document.querySelector('#marketplaces button[aria-pressed]:not([aria-label])')`);
+mi = await interestInfo();
+check("requests 375px: picks carried, no horizontal overflow", mi.chips.join(",") === "Craigslist,Poshmark,Other" && !mi.overflowX, JSON.stringify({ chips: mi.chips, overflowX: mi.overflowX }));
+await shotEl("#waitlist form", "requests-waitlist-375");
+
 // ---- Motion (Landing 16) ----
 await viewport(1280, 900, false);
 await send("Page.navigate", { url: `${base}/` }); await sleep(250);
