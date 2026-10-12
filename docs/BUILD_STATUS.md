@@ -1,11 +1,29 @@
 # Build Status
 
-_Last updated: 2026-10-12 (step 64 - Landing 17)_
+_Last updated: 2026-10-12 (step 65 - Landing 18)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 65 - Landing 18: WaitlistSignup model
+
+- **Model:** `WaitlistSignup` in `packages/db`: a unique normalized email, source, requested
+  marketplaces (list) plus an optional "Other" name, consent version and createdAt.
+- **Migration:** additive only, `20261012211858_waitlist_signup`, with CHECK constraints for the
+  normalized email and the dated consent version.
+- **Shared rules:** `normalizeWaitlistEmail()` and the waitlist constants live in
+  `@rein-drop/contracts`.
+- **No public list endpoint:** API guard tests forbid GET routes and reads, counts or lists of
+  sign-ups.
+- **Not yet applied locally:** the local database was down, so the migration was generated without
+  it. Verified by replaying all 23 migrations on an in-memory Postgres, with 10/10 constraint
+  checks.
+- **Checks:** monorepo 58/58.
+- **Prerequisite:** `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy`.
+
+Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 64 - Landing 17: marketplace requests carried to the waitlist
 

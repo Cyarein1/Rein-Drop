@@ -971,6 +971,34 @@ model UsageEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Marketing: early-access waitlist (Landing 18)
+// ---------------------------------------------------------------------------
+
+/// One early-access sign-up from the public landing page. Not a User (no account exists yet) and
+/// not linked to one. Written by the public sign-up endpoint (Landing 19-20); there is deliberately
+/// NO public endpoint that lists sign-ups - they are read only by the team, never shown on the site
+/// (no counts or totals either). Rules: @rein-drop/contracts waitlist.ts.
+model WaitlistSignup {
+  id                        String   @id @default(uuid(7)) @db.Uuid
+  /// normalizeWaitlistEmail(): trimmed + lower-cased, so a repeat sign-up hits the unique index
+  /// instead of creating a duplicate. A CHECK constraint in the migration enforces the form.
+  email                     String   @unique @db.VarChar(254)
+  /// WAITLIST_SOURCES, e.g. "landing_waitlist_form". Text, not an enum: new sources need no migration.
+  source                    String
+  /// Marketplace keys picked in the landing gallery (the "On our radar" list) and/or "other".
+  /// Empty = none requested. A signal for prioritising, never a promise.
+  requestedMarketplaces     String[] @default([])
+  /// Name typed for "other", if any (max 60, like the form).
+  requestedMarketplaceOther String?  @db.VarChar(60)
+  /// Which consent / privacy text the visitor agreed to, e.g. "2026-10-12" (dated version).
+  consentVersion            String
+  createdAt                 DateTime @default(now()) @db.Timestamptz(3)
+
+  /// Team exports by sign-up date.
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
 // Background jobs
 // ---------------------------------------------------------------------------
 

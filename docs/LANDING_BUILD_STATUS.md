@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-12 (Landing 17 = step 64)_
+_Last updated: 2026-10-12 (Landing 18 = step 65)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -768,4 +768,63 @@ Verified (commands run):
 - Screenshots reviewed: the gallery with picks (1280), the waitlist form with picks at 1280 and
   375.
 
-Next: **Landing 18**.
+Next: Landing 18.
+
+### Landing 18 (step 65) - WaitlistSignup data model - done 2026-10-12
+
+**Existing setup:** `packages/db` holds the shared data layer: Prisma 7.10, PostgreSQL (local
+docker-compose `reindrop`, later Azure Database for PostgreSQL), UUIDv7 ids, `timestamptz(3)` and
+22 hand-reviewed migrations. The database exists, but **the local server wasn't running** during
+this step (`P1001: Can't reach database server at localhost:5432`). It's the owner's Docker
+Postgres, so it wasn't started. The migration was therefore created without a database, and
+applying it locally is a prerequisite (below).
+
+- **Model `WaitlistSignup`** (not a User, no relations):
+  - `id` (uuid7);
+  - `email` - `VARCHAR(254)`, **unique**, stored only in normalized form;
+  - `source` - text, from `WAITLIST_SOURCES`, currently `landing_waitlist_form`;
+  - `requestedMarketplaces` - text[], default empty;
+  - `requestedMarketplaceOther` - `VARCHAR(60)`, optional;
+  - `consentVersion` - a dated text version such as `2026-10-12`;
+  - `createdAt`, with an index on it for team exports.
+
+  "Optional requested marketplace" became a list (empty means none) plus an optional name for
+  "Other", because Landing 17 lets visitors pick several. Nothing the form collects is lost.
+- **Migration `20261012211858_waitlist_signup`:**
+  - Generated with `prisma migrate diff --from-schema <committed schema> --to-schema <new schema>`
+    (no database needed).
+  - Reviewed by hand. It's additive only: one table and two indexes; no existing table is touched.
+  - Two CHECK constraints added: `email = lower(btrim(email))` and not empty; `consentVersion`
+    matching `^\d{4}-\d{2}-\d{2}$`. Prisma doesn't model CHECKs, so later diffs leave them alone.
+  - The folder name uses a UTC timestamp, and the file has no BOM (both lessons from step 20).
+- **Shared rules:** `@rein-drop/contracts` `waitlist.ts` holds `normalizeWaitlistEmail()`
+  (trimmed and lower-cased as a whole, dots and +tags kept, null if implausible),
+  `WAITLIST_SOURCES`, `WAITLIST_EMAIL_MAX` (254), `WAITLIST_OTHER_MARKETPLACE_MAX` (60) and
+  `WAITLIST_CONSENT_VERSION_PATTERN`.
+- **No public list endpoint**, and a guard keeps it that way: the API's `architecture.spec.ts`
+  now fails if any waitlist controller has a GET route, or if API code calls `findMany`, `count`,
+  `aggregate`, `groupBy`, `findFirst` or `findUnique` on `waitlistSignup`. Reading one back by
+  email is banned too: answering "already on the list" would let anyone test whether an address
+  signed up, so the sign-up response must be the same either way. The guard's own patterns are
+  tested against a sample violation.
+
+Verified (commands run):
+- `prisma validate`: valid.
+- **Migration replay on a fresh in-memory Postgres** (PGlite 0.3.11, installed in a scratch
+  folder only, not a project dependency):
+  - all 23 migrations apply in order, ending with the new one;
+  - 10/10 constraint checks pass: a normalized sign-up with requests and "other" is accepted;
+    the defaults apply (empty list, createdAt set); a duplicate email is rejected (23505);
+    upper-case, padded and empty emails are rejected (23514); an undated consent version is
+    rejected (23514); an "other" name over 60 characters and an email over 254 are rejected
+    (22001).
+- Contracts: 3 new waitlist tests. API: 3 new guard tests.
+- `pnpm turbo run build typecheck lint test`: **58/58**. One run had a timeout in
+  `health.controller.spec` under full parallel load. It passed alone (3/3, 1.9 s) and in the
+  re-run of the full suite; it's unrelated to this step.
+
+**Prerequisite (owner):** apply the migration to the local database:
+`pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate`, which also
+checks for schema drift). In Azure it is applied by the normal deploy.
+
+Next: **Landing 19**.

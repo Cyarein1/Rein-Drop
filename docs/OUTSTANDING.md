@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-12, after step 64 (Landing 17)._
+_Last updated: 2026-10-12, after step 65 (Landing 18)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,10 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 18-24 (steps 65-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 19-24 (steps 66-71) per the scoped plan - step 48.
+- **Apply the waitlist migration locally** (`20261012211858_waitlist_signup`): the database was down when it was created - `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate` to also check drift). Only replayed on an in-memory Postgres so far - step 65.
+- Waitlist consent version: the value stored per sign-up must match the privacy / consent text actually shown; that text is a draft until Landing 20 + legal review - step 65.
+- Waitlist data retention / deletion on request (and who on the team may read the table) - decide before collecting real emails - step 65.
 - Marketplace requests are client state only (in memory, lost on reload) and are never sent: the waitlist backend (Landing 18-20) must accept `requestedMarketplaces` (keys or `other`) and `requestedMarketplaceOther` (max 60 characters), validate keys against the radar list, and never publish totals - step 64.
 - A visitor who reloads before signing up loses their picks; keep it that way or persist them once there's a privacy-reviewed reason to - owner's call - step 64.
 - Demo figures (resale ranges, number of similar sales, asking prices) are made-up but plausible US used / new prices - sanity-check them before launch; they're labelled illustrative, but they shouldn't look wrong to a reseller - step 61.

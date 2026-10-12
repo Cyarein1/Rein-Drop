@@ -61,3 +61,36 @@ describe('marketplace boundary', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * Waitlist sign-ups (Landing 18) are write-only from the API: the public endpoint may create one,
+ * but nothing may list them, count them or expose totals (the landing never shows numbers). Reading
+ * one back by email is banned too: answering "already on the list" would let anyone test whether
+ * an address signed up - the sign-up response must be the same either way (create + ignore the
+ * unique-email conflict).
+ */
+describe('waitlist privacy', () => {
+  const files = sourceFiles(apiSrc)
+    .filter((f) => !f.endsWith('.spec.ts'))
+    .map((f) => ({ rel: relative(apiSrc, f), text: readFileSync(f, 'utf8') }));
+
+  it('no controller that handles the waitlist has a GET route', () => {
+    const offenders = files
+      .filter(({ rel, text }) => rel.endsWith('.controller.ts') && /waitlist/i.test(text) && /@Get\s*\(/.test(text))
+      .map(({ rel }) => rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it('API code never lists, counts or aggregates sign-ups', () => {
+    const offenders = files
+      .filter(({ text }) => /waitlistSignup\s*\.\s*(findMany|findFirst|findUnique|count|aggregate|groupBy)\b/.test(text))
+      .map(({ rel }) => rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it('the guards above would catch a violation', () => {
+    const controller = "@Controller('waitlist') class W { @Get() list() { return this.db.waitlistSignup.findMany(); } }";
+    expect(/waitlist/i.test(controller) && /@Get\s*\(/.test(controller)).toBe(true);
+    expect(/waitlistSignup\s*\.\s*(findMany|findFirst|findUnique|count|aggregate|groupBy)\b/.test(controller)).toBe(true);
+  });
+});

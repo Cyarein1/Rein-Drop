@@ -19,9 +19,9 @@ file is for. Status: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md). Planned
 | `apps/web/src/app/dev/ui/page.tsx` | Dev-only component showcase | Pattern for the landing style reference (Landing 03 / 05) |
 | `packages/design-tokens/src/*` | Colours, type scale, spacing, radius, CSS variable generator | **Landing 03**: fluid display scale, lead / eyebrow, letter spacing, containers, gutter, section spacing, shadows, radii xl / 2xl (all `--rd-*`) |
 | `packages/brand-assets/{logo,mascot,app-icon}/*` | Approved Rein Drop artwork (5 mascot poses, wordmarks, lock-ups) | Source of all Rein Drop imagery on the page |
-| `packages/contracts/src/*` | API contracts (zod) | Add the waitlist request / response contract (Landing 19) |
+| `packages/contracts/src/*` | API contracts (zod) | **Landing 18**: `waitlist.ts` - email normalization, sources, limits, consent-version format. Landing 19: the request / response schema |
 | `packages/api-client/src/index.ts` | Typed API client | Add `joinWaitlist()` (Landing 19 / 20) |
-| `packages/db/prisma/schema.prisma` + migrations | Product schema | Add `WaitlistSignup` + UTC-named migration (Landing 18) |
+| `packages/db/prisma/schema.prisma` + migrations | Product schema | **Landing 18 (done)**: `WaitlistSignup` + `20261012211858_waitlist_signup` (additive; CHECK constraints for normalized email and dated consent version) |
 | `apps/api/src/modules/*` | Domain modules | Add a public `waitlist` module (Landing 19, decision L-D3) |
 | `apps/api/test/security.e2e-spec.ts` | Inventory of public routes | Updated: `POST /waitlist` becomes a reviewed public route (Landing 19) |
 | `apps/mobile/app.json` | No bundle id / package yet | Store URLs come later - configuration only (Landing 07 / 13) |
@@ -81,7 +81,7 @@ apps/web/public/assets/third-party/    official third-party marks: stores/ badge
 apps/web/public/assets/photos/         example product photos, Unsplash License (step 60b)
 apps/web/src/app/dev/landing/page.tsx  dev-only style reference (Landing 03; primitives added in Landing 05)
 apps/api/src/modules/waitlist/         public POST /waitlist module      (planned, Landing 19)
-packages/contracts/src/waitlist.ts     waitlist request / response schema (planned, Landing 19)
+packages/contracts/src/waitlist.ts     email normalization, sources, limits (Landing 18); request / response schema (planned, Landing 19)
 docs/LANDING_ASSETS.md                 asset register (Rein Drop + third-party) (Landing 04)
 docs/LANDING_BUILD_STATUS.md           this track's status (exists)
 docs/LANDING_FILE_MAP.md               this file (exists)
