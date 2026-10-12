@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ArrowDown, ArrowRight } from "lucide-react";
+import { TrackedHeroLink } from "../analytics/TrackedLink";
 import { landingImages } from "../landing-assets";
 import { marketplaceByKey } from "../marketplaces";
 import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
@@ -18,7 +19,7 @@ const howItWorks = NAV_LINKS.find((l) => l.section === "how-it-works")!;
  * approved mascot presenting a package with a sample deal card. Desktop: asymmetric ~45 / 55;
  * mobile: copy -> CTAs -> compact mascot + card. Every number on the card is labelled
  * illustrative; nothing pretends to be live (no timestamps, counters or "just found").
- * Server-rendered, no client JavaScript.
+ * Server-rendered; the two CTAs are tiny client links that record anonymous analytics (Landing 21).
  */
 export function Hero() {
   const upside = potentialGrossUpsideUsd(heroExample);
@@ -37,14 +38,14 @@ export function Hero() {
             heads-up.
           </p>
           <div className={styles.ctas}>
-            <a href={`#${PRIMARY_CTA.section}`} className={styles.primary}>
+            <TrackedHeroLink cta="join_early_access" href={`#${PRIMARY_CTA.section}`} className={styles.primary}>
               {PRIMARY_CTA.label}
               <ArrowRight aria-hidden size={18} />
-            </a>
-            <a href={`#${howItWorks.section}`} className={styles.secondary}>
+            </TrackedHeroLink>
+            <TrackedHeroLink cta="see_how_it_works" href={`#${howItWorks.section}`} className={styles.secondary}>
               See {howItWorks.label.toLowerCase()}
               <ArrowDown aria-hidden size={18} />
-            </a>
+            </TrackedHeroLink>
           </div>
           <StoreBadges />
           <p className={styles.sources}>

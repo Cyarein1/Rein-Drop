@@ -57,6 +57,11 @@ export function interestReducer(state: MarketplaceInterest, action: InterestActi
   }
 }
 
+/** Picks present in `next` but not in `prev` (keys, and "other" when it was just turned on). */
+export function newlyRequested(prev: MarketplaceInterest, next: MarketplaceInterest): (MarketplaceKey | "other")[] {
+  return [...next.keys.filter((k) => !prev.keys.includes(k)), ...(next.other && !prev.other ? (["other"] as const) : [])];
+}
+
 /** How many picks (a marketplace or "Other"). Shown to the visitor about THEIR picks only. */
 export const pickCount = (s: MarketplaceInterest) => s.keys.length + (s.other ? 1 : 0);
 

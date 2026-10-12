@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-13, after step 67 (Landing 20)._
+_Last updated: 2026-10-13, after step 68 (Landing 21)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,8 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 21-24 (steps 68-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 22-24 (steps 69-71) per the scoped plan - step 48.
+- **Choose a production analytics provider** for the landing (none is configured, so production sends nothing): add it to `PROVIDERS` in `apps/web/src/marketing/analytics/analytics.ts` with an honest `requiresConsent` (a provider that sets cookies or identifiers needs a consent banner first - none exists), then set `NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER` at build time. Prefer cookieless; ties in with D15 (app analytics vendor). Update the privacy draft before it goes live (it says no tracking cookies and lists analytics as To be confirmed) - step 68.
 - **Legal review of the privacy notice and terms drafts** (`/privacy`, `/terms`, version 2026-10-12): every "To be confirmed" point (legal entity, officer, hosting / email providers and countries, legal basis, retention, rights, liability wording, governing law). Set `reviewed: true` in `legal-drafts.ts` only after review; until then the pages show the draft banner and stay noindex. Required before collecting real emails publicly - step 67.
 - The success message says "We'll be in touch by email about early access" - there is no email provider yet (D14); contact sign-ups manually or wire a provider before launch - step 67.
 - Consent is an explicit, unticked checkbox (safe default before legal review) - legal review may simplify or keep it; changing the words means a new `WAITLIST_CONSENT_VERSION` - step 67.
@@ -127,7 +128,6 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
 - Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
 - Screen-reader pass of the interactive demo by a person (NVDA / VoiceOver): focus moves to each step's heading and the scan is announced politely - checked in Chrome's accessibility tree only - step 62.
-- Demo usage events (product chosen, scan finished, deal viewed) are not tracked yet - anonymous analytics come with Landing 21 - step 62.
 - Scroll-linked entrances (How it works mascot, deal-intelligence card) only play in browsers with scroll-driven animations (Chrome / Edge today); elsewhere the elements are simply shown - acceptable, revisit if Safari / Firefox support lands - step 63.
 - The app's `Wordmark` component (sign-in page etc.) still uses Next's deprecated `priority` prop - switch to `loading="eager"` / `fetchPriority` - step 54.
 - Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
@@ -329,3 +329,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | `/privacy` and `/terms` were placeholders | Step 60 | Step 67 (drafts with conspicuous "requires legal review" banner - review itself still open) |
 | Form must render the honeypot off-screen and send the matching consent version | Step 66 | Step 67 (off-screen, tab-skipped, aria-hidden; `WAITLIST_CONSENT_VERSION` shared with the privacy draft) |
 | Stored consent version must match the text shown | Step 65 | Step 67 (one constant for the consent words + version; privacy draft carries the same version) |
+| Demo usage events not tracked | Step 62 | Step 68 (demo_started / demo_completed in the anonymous landing analytics) |

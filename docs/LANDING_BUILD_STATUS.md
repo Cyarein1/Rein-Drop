@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-13 (Landing 20 = step 67)_
+_Last updated: 2026-10-13 (Landing 21 = step 68)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -1007,4 +1007,62 @@ Verified (commands run):
 - an email provider to actually contact sign-ups;
 - a real database write (the database is down).
 
-Next: **Landing 21** - anonymous analytics.
+Next: Landing 21 - anonymous analytics.
+
+### Landing 21 (step 68) - Anonymous landing analytics - done 2026-10-13
+
+A lightweight, **write-only** adapter in `apps/web/src/marketing/analytics/`, separate from the
+app's product events (`@rein-drop/telemetry`).
+
+- **Catalog** (`landing-events.ts`) - exactly five events, every property from a fixed list:
+  - `hero_cta_clicked {cta: join_early_access | see_how_it_works}`;
+  - `demo_started {product}` and `demo_completed {product}`, using the demo's three keys;
+  - `marketplace_requested {marketplace}` - radar keys or `other`, **never the typed name**;
+  - `waitlist_succeeded {requested: 0-16}` - a count only, **never the email**.
+
+  `sanitizeLandingEvent()` keeps only catalog properties and refuses anything else: free text, an
+  unknown value, a count out of range, an unknown event. So no email, name, IP, ID or timestamp
+  can reach a provider.
+- **Adapter** (`analytics.ts`):
+  - **Providers:** `console` (dev mode: `console.info("[landing-analytics]", name, props)`) and
+    `none`. The provider comes from `NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER` at build time.
+    Defaults: console in development, **none in production** until a real provider is chosen
+    and added to `PROVIDERS`. An unknown name means none, never "send somewhere".
+  - **Consent:** **Global Privacy Control or Do Not Track means never tracked.** A provider with
+    `requiresConsent: true` (cookies or identifiers) stays off until consent is given, and there's
+    no consent UI yet, so it would stay off. The built-in providers set nothing.
+  - **Safety:** no cookies, storage, IDs, timestamps or network calls in the adapter. A failing
+    provider (e.g. an ad blocker) never breaks the page.
+  - Turborepo's Next.js framework inference already hashes `NEXT_PUBLIC_*`, so builds with
+    different providers never share a cache entry; no config change needed.
+- **Wiring:**
+  - hero CTAs via `TrackedHeroLink` (the hero stays a server component);
+  - demo start (product chosen) and completion (deal explanation reached) in HuntDemo's
+    step-change effect;
+  - marketplace requests **in one place** - the picks store - once per new pick, whether from a
+    gallery toggle, the form select or Other;
+  - waitlist success in WaitlistForm.
+- **No fake counters:** nothing is read back, so the page has nothing to count from. Tests check
+  there's no read API, and that the page shows no sign-up, visitor or request totals.
+
+Verified (commands run):
+- Unit tests: 9 new (`analytics.spec.ts`):
+  - the five events and their exact properties;
+  - personal data is dropped or refused;
+  - GPC and DNT;
+  - the consent gate;
+  - provider resolution;
+  - console output, and a failing provider;
+  - one request per new pick, never the typed name;
+  - the adapter has no storage, cookie, ID or fetch code.
+  Web 190/190; monorepo 58/58.
+- `node scripts/check-landing.mjs`, against two production builds:
+  - **console build** (`NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER=console`, `ANALYTICS_MODE=console`):
+    **235/235**. One visit (hero CTAs, the demo through to the deal, Etsy + Other with a typed
+    name, a sign-up) logs exactly 7 events in order with catalog values only. No email, typed
+    name or IP appears. With **Global Privacy Control** on, the same visit logs **nothing** and
+    still works.
+  - **default build** (`ANALYTICS_MODE=none`): **233/233** - the same visit logs **nothing**.
+  - Both: no cookies or local / session storage, and no totals on the page.
+
+Next: **Landing 22**.

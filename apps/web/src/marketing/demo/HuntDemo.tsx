@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useReducer, useRef } from "react";
 import { ArrowLeft, ArrowRight, Check, CircleAlert, CircleCheck, CircleHelp, FlaskConical, Gauge, Laptop, Receipt, RotateCcw, Search, X } from "lucide-react";
+import { trackLanding } from "../analytics/analytics";
 import { signedUsd, usd } from "../illustrative";
 import { marketplaceByKey } from "../marketplaces";
 import { MarketplaceMark } from "../marketplaces/MarketplaceMark";
@@ -60,10 +61,15 @@ export function HuntDemo() {
   // Step changed: the old controls are gone, so focus moves to the new heading.
   useEffect(() => {
     if (previousStep.current === state.step) return;
+    const from = previousStep.current;
     previousStep.current = state.step;
+    // Anonymous analytics (Landing 21): the product key only.
+    if (from === "choose" && state.step === "configure") trackLanding("demo_started", { product: state.product });
+    if (state.step === "evaluation") trackLanding("demo_completed", { product: state.product });
     heading.current?.focus({ preventScroll: true });
     heading.current?.scrollIntoView({ block: "nearest" });
-  }, [state.step]);
+    // Runs on every state change but returns early unless the step changed (scan ticks don't refocus).
+  }, [state]);
 
   // The scan: one listing per tick; with reduced motion, the result straight away.
   useEffect(() => {

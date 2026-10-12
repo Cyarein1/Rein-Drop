@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { CircleAlert, LoaderCircle, RotateCcw } from "lucide-react";
+import { trackLanding } from "../analytics/analytics";
 import { ContactLink } from "../contact/ContactLink";
 import { landingImages } from "../landing-assets";
 import { dispatchInterest, useMarketplaceInterest } from "../marketplaces/interest-store";
@@ -58,8 +59,11 @@ export function WaitlistForm({ contactEmail }: { contactEmail: string | null }) 
       return;
     }
     setPhase({ kind: "submitting" });
-    const outcome = await submitWaitlist(values());
+    const sent = values();
+    const outcome = await submitWaitlist(sent);
     if (outcome.kind === "success") {
+      // Anonymous: only how many marketplaces were picked - never the email or the typed name.
+      trackLanding("waitlist_succeeded", { requested: Math.min(16, sent.requestedMarketplaces.length) });
       dispatchInterest({ type: "clear" });
       setPhase({ kind: "success" });
       return;

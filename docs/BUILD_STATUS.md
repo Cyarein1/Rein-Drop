@@ -1,11 +1,26 @@
 # Build Status
 
-_Last updated: 2026-10-13 (step 67 - Landing 20)_
+_Last updated: 2026-10-13 (step 68 - Landing 21)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 68 - Landing 21: anonymous landing analytics
+
+- **Events:** a write-only adapter with five catalog events: hero CTA, demo started, demo
+  completed, marketplace requested, waitlist succeeded. Every property comes from a fixed list,
+  so emails, typed names, IPs and IDs can't be sent.
+- **Providers:** console in development; none in production until a provider is chosen (the
+  `NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER` slot).
+- **Consent:** Global Privacy Control and Do Not Track are respected. Providers that need consent
+  stay off, and there's no consent banner yet.
+- **No fake counters:** nothing is read back, so nothing is counted on the page.
+
+Verified: 9 unit tests (web 190/190), monorepo 58/58; landing browser check 235/235 on a console
+build (exact events, no personal data, nothing under GPC) and 233/233 on the default build
+(nothing sent). Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 67 - Landing 20: one waitlist form, consent, contact path, legal drafts
 

@@ -746,6 +746,58 @@ for (const [path, width] of [["/privacy", 1280], ["/terms", 1280], ["/privacy", 
   await shot(`legal${path.replace("/", "-")}-${width}`);
 }
 
+// ---- Anonymous analytics (Landing 21) ----
+// ANALYTICS_MODE tells the check how the web app was BUILT: "none" (default production build) or
+// "console" (built with NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER=console).
+const analyticsMode = process.env.ANALYTICS_MODE ?? "none";
+const analyticsLog = [];
+ws.addEventListener("message", (e) => {
+  const m = JSON.parse(e.data);
+  if (m.method !== "Runtime.consoleAPICalled" || m.params.args?.[0]?.value !== "[landing-analytics]") return;
+  analyticsLog.push({ name: m.params.args[1]?.value, props: Object.fromEntries((m.params.args[2]?.preview?.properties ?? []).map((p) => [p.name, p.type === "number" ? Number(p.value) : p.value])) });
+});
+/** One visit doing everything that should be tracked. */
+const trackedVisit = async () => {
+  await viewport(1280, 900, false); await load(`${base}/`);
+  analyticsLog.length = 0;
+  await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('Join early access')).click()`); await sleep(150);
+  await evaluate(`[...document.querySelectorAll('#hero a')].find((a) => a.textContent.includes('See how it works')).click()`); await sleep(150);
+  await evaluate(`document.getElementById('demo').scrollIntoView()`); await sleep(200);
+  await clickDemo("PlayStation 5"); await clickDemo("Start the scan"); await clickDemo("Skip to the result"); await waitHeading("Best match found", 2000);
+  await clickDemo("See why it was flagged"); await sleep(300);
+  await clickSel(reqButton("Etsy"));
+  await clickSel(`document.querySelector('#marketplaces button[aria-pressed]:not([aria-label])')`);
+  await evaluate(`document.getElementById('waitlist-other-marketplace').focus()`); await send("Input.insertText", { text: "Kijiji" }); await sleep(100);
+  await stubWaitlist(202);
+  await typeEmail("private.person@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(400);
+  return { events: analyticsLog.map((e) => ({ ...e })), success: !!(await formInfo()).success };
+};
+const visit = await trackedVisit();
+const pii = /private\.person|example\.com|kijiji|203\.0\.113/i.test(JSON.stringify(visit.events));
+if (analyticsMode === "console") {
+  check("analytics (console build): exactly the tracked moments, with catalog properties only", JSON.stringify(visit.events) === JSON.stringify([
+    { name: "hero_cta_clicked", props: { cta: "join_early_access" } },
+    { name: "hero_cta_clicked", props: { cta: "see_how_it_works" } },
+    { name: "demo_started", props: { product: "playstation" } },
+    { name: "demo_completed", props: { product: "playstation" } },
+    { name: "marketplace_requested", props: { marketplace: "etsy" } },
+    { name: "marketplace_requested", props: { marketplace: "other" } },
+    { name: "waitlist_succeeded", props: { requested: 2 } },
+  ]) && visit.success, JSON.stringify(visit.events));
+  check("analytics (console build): no email, typed 'Other' name or IP in any event", !pii, "");
+  // Global Privacy Control: nothing is tracked.
+  const { identifier } = await send("Page.addScriptToEvaluateOnNewDocument", { source: "Object.defineProperty(Navigator.prototype, 'globalPrivacyControl', { get: () => true });" });
+  const gpc = await trackedVisit();
+  await send("Page.removeScriptToEvaluateOnNewDocument", { identifier });
+  check("analytics: a browser sending Global Privacy Control is never tracked (the page still works)", gpc.events.length === 0 && gpc.success, JSON.stringify(gpc.events));
+} else {
+  check("analytics (default production build): no provider configured -> nothing is sent or logged", visit.events.length === 0 && visit.success, JSON.stringify(visit.events));
+}
+const storage = await evaluate(`({ local: Object.keys(localStorage).length, session: Object.keys(sessionStorage).length, cookie: document.cookie })`);
+check("analytics: nothing stored in the browser (no cookies, no local / session storage)", storage.local === 0 && storage.session === 0 && storage.cookie === "", JSON.stringify(storage));
+const pageText = await evaluate(`document.body.textContent`);
+check("no fake counters: no sign-up, visitor or request totals anywhere on the page", !/\d[\d,]*\+?\s+(people|resellers|sign-?ups|members|visitors|requests)\b|\b(have|already)\s+joined\b|join\s+\d/i.test(pageText), "");
+
 // ---- Motion (Landing 16) ----
 await viewport(1280, 900, false);
 await send("Page.navigate", { url: `${base}/` }); await sleep(250);
