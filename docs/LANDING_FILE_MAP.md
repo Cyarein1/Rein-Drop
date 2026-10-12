@@ -79,6 +79,7 @@ apps/web/src/marketing/
   analytics/analytics.ts (+spec)  write-only adapter: console (dev) / none (prod default) / provider slot; GPC + DNT; consent gate (Landing 21)
   analytics/TrackedLink.tsx  hero CTA links that record which CTA was used (Landing 21)
   seo.ts (+spec)             SITE_URL, landing metadata, robots / sitemap rules, JSON-LD (accurate only) (Landing 22)
+  RenderAhead.tsx            renders content-visibility sections when idle / before in-page links (Landing 23)
 app/robots.ts, app/sitemap.ts           generated from seo.ts (block-all / empty until SITE_URL is set) (Landing 22)
 app/(marketing)/opengraph-image.tsx    1200x630 social image from approved brand art + Inter, prerendered (Landing 22)
 apps/web/turbo.json                     declares the web's build-time env vars (SITE_URL, CONTACT_EMAIL, store URLs) (Landing 22)

@@ -32,7 +32,8 @@ export function StoreBadges({ links = storeLinks(), tone = "light" }: { links?: 
               >
                 {/* Plain <img>: official artwork served as-is (an SVG and a palette PNG need no optimizer). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={badge.src} width={badge.width} height={badge.height} alt="" decoding="async" />
+                {/* Lazy: the closing section's copy is far below the fold; the hero's loads at once anyway (in view). */}
+                <img src={badge.src} width={badge.width} height={badge.height} alt="" decoding="async" loading="lazy" />
               </a>
             </li>
           );

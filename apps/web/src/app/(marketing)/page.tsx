@@ -13,6 +13,7 @@ import { MarketplaceGallery } from "@/marketing/marketplaces/MarketplaceGallery"
 import { SiteNav } from "@/marketing/nav/SiteNav";
 import { OutcomesSection } from "@/marketing/outcomes/OutcomesSection";
 import { ProblemSection } from "@/marketing/problem/ProblemSection";
+import { RenderAhead } from "@/marketing/RenderAhead";
 import { LANDING_SECTIONS, type LandingSectionId } from "@/marketing/sections";
 import { jsonLdScript, landingMetadata, landingStructuredData, siteUrl } from "@/marketing/seo";
 import { contactEmail } from "@/marketing/site-config";
@@ -58,6 +59,7 @@ export default function LandingPage() {
         })}
       </main>
       <SiteFooter />
+      <RenderAhead mainId="main-content" />
       {/* Structured data only with a public origin; it mirrors what the page shows. */}
       {structuredData?.map((data, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(data) }} />)}
     </>

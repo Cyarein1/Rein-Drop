@@ -173,7 +173,7 @@ for (const [width, height, mobile] of [[1440, 900, false], [1280, 800, false], [
     const hero = document.getElementById('hero');
     const r = (el) => el.getBoundingClientRect();
     const card = hero.querySelector('figure');
-    const mascot = hero.querySelector('img[fetchpriority="high"], img[loading="eager"]');
+    const mascot = hero.querySelector('img[src*="holding-box"], img[srcset*="holding-box"]');
     const inView = (el) => { const b = r(el); return b.left >= 0 && b.right <= innerWidth + 0.5; };
     const numbers = [...card.querySelectorAll('dd')];
     return {
@@ -184,7 +184,7 @@ for (const [width, height, mobile] of [[1440, 900, false], [1280, 800, false], [
       numbersNotClipped: numbers.every((dd) => dd.scrollWidth <= dd.clientWidth + 1),
       numbers: numbers.map((d) => d.textContent),
       label: card.querySelector('figcaption').textContent,
-      mascot: mascot && { src: mascot.currentSrc.includes('holding-box'), complete: mascot.complete && mascot.naturalWidth > 0, ratio: +(r(mascot).width / r(mascot).height).toFixed(3) },
+      mascot: mascot && { src: mascot.currentSrc.includes('holding-box'), complete: mascot.complete && mascot.naturalWidth > 0, ratio: +(r(mascot).width / r(mascot).height).toFixed(3), preloaded: !!document.querySelector('head link[rel="preload"][as="image"][imagesrcset*="holding-box"]') },
       ctas: [...hero.querySelectorAll('a')].filter((a) => !a.closest('ul')).map((a) => a.textContent.trim() + '>' + a.getAttribute('href')),
       badges: [...hero.querySelectorAll('ul a')].map((a) => a.getAttribute('href') + '|' + a.getAttribute('aria-label').slice(0, 40)),
       soon: hero.textContent.includes('Mobile apps coming soon'),
@@ -200,7 +200,7 @@ for (const [width, height, mobile] of [[1440, 900, false], [1280, 800, false], [
   check(`${tag}: headline`, h.h1 === "You flip it.We find it.", h.h1);
   check(`${tag}: no horizontal overflow; card and its numbers fully visible`, !h.overflowX && h.cardInView && h.numbersInView && h.numbersNotClipped, JSON.stringify({ overflowX: h.overflowX, cardInView: h.cardInView, numbers: h.numbers }));
   check(`${tag}: card labelled illustrative`, h.label.startsWith("Illustrative example"), h.label);
-  check(`${tag}: approved mascot loaded as the priority image, not stretched`, !!h.mascot && h.mascot.src && h.mascot.complete && Math.abs(h.mascot.ratio - 775 / 1024) < 0.02, JSON.stringify(h.mascot));
+  check(`${tag}: approved mascot preloaded from <head> as the LCP image (Landing 23), loaded, not stretched`, !!h.mascot && h.mascot.src && h.mascot.preloaded && h.mascot.complete && Math.abs(h.mascot.ratio - 775 / 1024) < 0.02, JSON.stringify(h.mascot));
   check(`${tag}: CTAs -> waitlist / how it works`, h.ctas.join(",") === "Join early access>#waitlist,See how it works>#how-it-works", h.ctas.join(","));
   check(`${tag}: store badges coming soon -> waitlist`, h.soon && h.badges.length === 2 && h.badges.every((b) => b.startsWith("#waitlist|")), h.badges.join(" ; "));
   check(`${tag}: badges the same visible height, aligned`, Math.abs(h.badgeBoxes.appleH - h.badgeBoxes.googleH) <= 1 && h.badgeBoxes.centerDiff <= 1, JSON.stringify(h.badgeBoxes));
@@ -867,6 +867,40 @@ for (let i = 0; i < 45; i++) {
 }
 const invisible = stops.filter((s) => s && !s.ring);
 check("keyboard: 45 Tab stops from the top, each with a visible focus indicator", stops.filter(Boolean).length >= 40 && invisible.length === 0, JSON.stringify(invisible.slice(0, 5)));
+
+// ---- Performance guards (Landing 23) ----
+await viewport(412, 823, true);
+await send("Page.addScriptToEvaluateOnNewDocument", { source: "window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); document.addEventListener('DOMContentLoaded', () => { window.__skippedAtStart = [...document.querySelectorAll('#main-content > section')].slice(1).filter((s) => getComputedStyle(s).contentVisibility === 'auto').length; });" });
+await load(`${base}/`);
+const perf = await evaluate(`(async () => {
+  const sections = [...document.querySelectorAll('#main-content > section')].slice(1);
+  const skippedAtStart = window.__skippedAtStart ?? -1; // recorded at DOMContentLoaded, before render-ahead
+  await document.fonts.ready;
+  const inter = [...document.fonts].some((f) => f.status === 'loaded' && /inter/i.test(f.family));
+  const bodyFont = getComputedStyle(document.body).fontFamily;
+  const s = Date.now(); while (sections.some((x) => x.dataset.rendered === undefined) && Date.now() - s < 8000) await new Promise((r) => setTimeout(r, 100));
+  const renderedAhead = sections.every((x) => x.dataset.rendered !== undefined);
+  for (let y = 0; y < document.body.scrollHeight; y += 400) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); }
+  await new Promise((r) => setTimeout(r, 600));
+  const imgs = [...document.images];
+  const belowFoldEager = imgs.filter((i) => !i.closest('header') && i.getBoundingClientRect().top + scrollY > innerHeight * 1.5 && i.loading !== 'lazy').map((i) => i.getAttribute('src').slice(0, 60));
+  return { sections: sections.length, skippedAtStart, inter, bodyFont: bodyFont.slice(0, 40), renderedAhead, cls: +window.__cls.toFixed(4),
+    icon: document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null, belowFoldEager };
+})()`);
+const favicon = await fetch(`${base}${perf.icon ?? "/favicon.ico"}`);
+check("perf: sections below the hero start skipped (content-visibility) and are all rendered ahead after load", perf.sections >= 10 && perf.skippedAtStart >= perf.sections - 1 && perf.renderedAhead, JSON.stringify({ sections: perf.sections, skipped: perf.skippedAtStart, rendered: perf.renderedAhead }));
+check("perf: the brand font (self-hosted Inter) is loaded and used", perf.inter && /inter/i.test(perf.bodyFont), perf.bodyFont);
+check("perf: no layout shift on load or while scrolling the whole page (CLS < 0.01)", perf.cls < 0.01, String(perf.cls));
+check("perf: an app icon is declared and served (no favicon 404)", !!perf.icon && favicon.status === 200, `${perf.icon} ${favicon.status}`);
+check("perf: below-the-fold images are lazy-loaded", perf.belowFoldEager.length === 0, JSON.stringify(perf.belowFoldEager));
+// Arriving on a #hash lands on the section (skipped sections are rendered first).
+for (const hash of ["faq", "waitlist"]) {
+  await viewport(1280, 900, false);
+  await send("Page.navigate", { url: `${base}/#${hash}` }); await sleep(2500);
+  const top = await evaluate(`Math.round(document.getElementById('${hash}').getBoundingClientRect().top)`);
+  const atBottom = await evaluate(`Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight`);
+  check(`perf: opening /#${hash} lands on the section`, (top >= 0 && top <= 96) || (atBottom && top >= 0), JSON.stringify({ top, atBottom }));
+}
 
 // ---- Motion (Landing 16) ----
 await viewport(1280, 900, false);

@@ -1,11 +1,31 @@
 # Build Status
 
-_Last updated: 2026-10-13 (step 69 - Landing 22)_
+_Last updated: 2026-10-13 (step 70 - Landing 23)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 70 - Landing 23: performance + responsive audit
+
+Measured with Lighthouse (simulated, real-throttled, desktop), lab Web Vitals, a 6-width layout
+sweep and an interaction profile, then fixed what was measured:
+- **Brand font:** the Inter font never loaded (family-name mismatch). It's now self-hosted and
+  preloaded via `next/font` with a size-adjusted fallback.
+- **Favicon:** the 404 is gone; the approved app icon is declared.
+- **Images:** oversized / eager images are now right-sized and lazy, and the hero LCP image is
+  preloaded from `<head>`.
+- **Rendering:** below-fold sections use `content-visibility`, rendered ahead when idle and before
+  in-page links, so anchors stay exact.
+- **Target size:** the consent checkbox is now 24 px.
+
+**Results (real-throttled mobile):** Performance 91 → 96, LCP 2.4 → 2.1 s, TBT 220 → 100 ms, CLS 0.
+Best Practices is 100. There's no overflow at any width, and every interaction is ≤ 152 ms at 4×
+CPU. Reduced motion is unaffected.
+
+Verified: landing check 254/254, monorepo 58/58. Details:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 69 - Landing 22: SEO, social image, accessibility audit
 

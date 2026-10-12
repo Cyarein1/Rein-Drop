@@ -13,7 +13,8 @@ body {
   margin: 0;
   background: var(--rd-background);
   color: var(--rd-text);
-  font-family: var(--rd-font-sans);
+  /* --rd-font-inter = the self-hosted Inter + its size-adjusted fallback (next/font, root layout). */
+  font-family: var(--rd-font-inter), var(--rd-font-sans);
   font-size: var(--rd-font-size-md);
   font-weight: var(--rd-font-weight-regular);
   line-height: 1.5;

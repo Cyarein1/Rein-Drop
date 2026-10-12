@@ -27,6 +27,18 @@
   --rd-motion-rise: 14px;
 }
 
+/* Rendering cost (Landing 23): Lighthouse measured ~1.1 s of style + layout on a throttled phone
+   before first paint - the whole long page laid out at once. Sections below the hero are skipped
+   (style, layout, paint) until they near the viewport; they stay in the accessibility tree and in
+   find-in-page. contain-intrinsic-size reserves space and, with "auto", remembers each section's
+   real size once seen. A skipped section's height is only an estimate, so RenderAhead renders the
+   sections after load (one per idle period) and before any in-page link is followed - scrolls to
+   #faq / #waitlist land exactly. data-rendered = rendered ahead. */
+.main > section:not(:first-child):not([data-rendered]) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 /* Smooth in-page scrolling on the landing page only, and only when motion is welcome. */
 @media (prefers-reduced-motion: no-preference) {
   :global(html):has(.main) {

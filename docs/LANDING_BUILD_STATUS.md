@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-13 (Landing 22 = step 69)_
+_Last updated: 2026-10-13 (Landing 23 = step 70)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -1162,4 +1162,124 @@ Verified (commands run):
 **Not covered by automation:** a manual screen-reader pass (NVDA / VoiceOver) and a real-device
 keyboard and zoom check. These stay in OUTSTANDING.
 
-Next: **Landing 23**.
+Next: Landing 23.
+
+### Landing 23 (step 70) - Responsive audit, assets, fonts, CLS, interaction cost, Web Vitals - done 2026-10-13
+
+**Method:** measure first, then fix only what the numbers showed. All measurements were taken on
+the production build (port 3100). The tools were installed in a scratch folder only and are not
+project dependencies:
+- Lighthouse 12.8.2: mobile with simulated throttling, mobile with **real (DevTools) throttling**,
+  and desktop;
+- lab Web Vitals over CDP: 4× CPU, about 1.6 Mbps / 150 ms RTT, 412 px at DPR 1.75, with and
+  without reduced motion, 3-5 runs;
+- a layout sweep at 320 / 375 / 768 / 1024 / 1280 / 1440 px;
+- an interaction profile: Event Timing (INP-style) plus long tasks, at 4× CPU, using real pointer
+  and keyboard input.
+
+**Found and fixed:**
+1. **The brand font never loaded.** The `@fontsource-variable/inter` CSS registers the family as
+   "Inter Variable" while the tokens ask for "Inter", so every visitor got the system fallback
+   (Segoe UI and so on), on the landing and in the app.
+   - Now `next/font/local` loads the single latin variable WOFF2 (47 KB, every weight), self-hosted
+     and **preloaded**, with `display: swap` and a **size-adjusted fallback** (no layout shift on
+     swap).
+   - The unused `@fontsource` CSS import (every subset's `@font-face`) is gone.
+   - Inter is now loaded and used (`inter 100 900`).
+2. **Favicon 404 on every page.** The approved app icon (192 px PNG, plus the Apple touch icon) is
+   declared through the metadata `icons`. Best Practices went from 96 to **100**.
+3. **Oversized and offscreen images:**
+   - The 512 px app icon was shown at 32-40 px, eager, in two below-fold illustrations. It's now
+     `next/image`, 64 / 96 px WebP and lazy: 45 KB became a few KB.
+   - The hero mascot got the 640 px file for a ~450 device-px slot. `images.imageSizes` now
+     includes 448.
+   - The store badges are now `loading="lazy"` (the closing section's copies were eager).
+   - Lighthouse's image savings went from 93 KB to 26 KB (mobile) and from 77 KB to 5 KB
+     (desktop).
+4. **LCP "load delay":** the hero mascot is the LCP element at every width and was only found when
+   the parser reached it (about 0.6 s). It's now `preload` (a `<link rel="preload">` in `<head>`,
+   per the Next 16 docs), replacing `fetchPriority` / `eager`.
+5. **Style and layout before first paint** (the biggest main-thread cost: **1075 ms** in the
+   real-throttled run): the whole long page was laid out at once.
+   - Sections below the hero now use `content-visibility: auto` with
+     `contain-intrinsic-size: auto 900px`.
+   - **Side effect found by the landing check:** in-page links (nav "FAQ" / "Features", CTAs to
+     `#waitlist`) landed in the wrong place (off by up to −922 px), because skipped sections only
+     have estimated heights.
+   - Fix, `RenderAhead` (a tiny client component): after load it renders the skipped sections one
+     per idle period (small chunks, no long task). Before any in-page link is followed (a
+     capture-phase click listener) or on arrival with a `#hash`, it renders everything first. Nav
+     links and `/#faq` / `/#waitlist` land exactly again.
+6. **Consent checkbox 20 → 24 px** (the WCAG 2.2 minimum target size, even without counting its
+   label).
+
+**Before → after:**
+
+| | Before | After |
+|---|---|---|
+| Lighthouse mobile, real throttling | Perf 91, FCP 2.4 s, **LCP 2.4 s**, TBT 220 ms, CLS 0 | **Perf 96, FCP 2.1 s, LCP 2.1 s, TBT 100 ms**, CLS 0 |
+| Lighthouse mobile, simulated | Perf 94, LCP 3.1 s, Best Practices 96 | Perf 94, LCP 3.1 s, **Best Practices 100** |
+| Lighthouse desktop | Perf 100, LCP 0.7 s, BP 96 | Perf 100, LCP 0.7 s, **BP 100** |
+| Lab LCP (median, throttled) | 1376 ms (3 runs) | **1184 ms (5 runs, 1164-1192)** |
+| CLS: load + scrolling the full page | 0 | **0** (with the real font now swapping in) |
+| Longest load task (real throttling) | 697 ms | **394 ms** |
+
+- **Simulated mobile LCP stays ~3.1 s.** Lighthouse's model attributes ~2.6 s to "render delay",
+  but real-throttled runs measure 2.1 s and lab runs ~1.2 s. Field data after launch should settle
+  it (OUTSTANDING).
+- **SEO 66** in these runs is intended: the default build has no `SITE_URL`, so it's noindex
+  (step 69).
+
+**Layout sweep** (320 / 375 / 768 / 1024 / 1280 / 1440): **no horizontal overflow and nothing
+outside the viewport at any width.**
+- The only flags were known false positives: the visually hidden email label, the off-screen
+  honeypot, and the inline "privacy notice" link (exempt from target size).
+- The full-page tablet screenshot (768) was reviewed: single column below 900 px, Inter visible,
+  nothing cramped.
+
+**Interaction cost** (4× CPU, real input; good INP is ≤ 200 ms): worst event per interaction.
+
+| Interaction | Worst event |
+|---|---|
+| Demo: choose a product | 152 ms |
+| Demo: slider | 24 ms |
+| Demo: start scan | 64 ms |
+| Demo: skip | 56 ms |
+| Demo: see why | 48 ms |
+| Gallery: expander | 24 ms |
+| Gallery: request | 40 ms |
+| FAQ: open | 24 ms |
+| Nav menu | 32 ms |
+| Form: submit | 40 ms |
+| Form: typing | 24 ms |
+
+One 107 ms long task in total. Choosing a demo product is the closest to the limit and is noted
+for field INP.
+
+**Reduced motion is unchanged:**
+- all motion checks pass;
+- `RenderAhead` and `content-visibility` add no motion;
+- lab LCP is the same with reduced motion (1184 ms median).
+
+**Measured but deliberately not changed** (in OUTSTANDING):
+- about 13 KB of Next.js's own modern-JS polyfills;
+- 3 render-blocking CSS files, about 15 KB (`experimental.inlineCss` is experimental, global to
+  the signed-in app, and duplicates styles);
+- the Google Play badge PNG, an official file served unaltered.
+
+**Permanent checks** (`check-landing.mjs`, "Performance guards"):
+- the 10 sections below the hero start skipped and are all rendered ahead after load;
+- Inter is loaded and used;
+- CLS < 0.01 over load plus a full scroll;
+- the app icon is declared and served (no favicon 404);
+- below-fold images are lazy;
+- opening `/#faq` and `/#waitlist` lands on the section;
+- the hero mascot check now also requires the `<head>` preload.
+
+Verified (commands run):
+- `node scripts/check-landing.mjs`: **254/254** (default build).
+- `pnpm turbo run build typecheck lint test`: **58/58** (web 198/198).
+- Lighthouse before and after (simulated, real-throttled, desktop), lab vitals, the layout sweep
+  and the interaction profile, as above.
+
+Next: **Landing 24**.

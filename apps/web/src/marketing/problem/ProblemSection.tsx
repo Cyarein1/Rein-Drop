@@ -101,8 +101,7 @@ export function ProblemSection() {
                 </div>
               </div>
               <div className={styles.headsUp} aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={landingImages.appIcon.src} width={32} height={32} alt="" className={styles.appIcon} />
+                <Image src={landingImages.appIcon.src} width={32} height={32} sizes="32px" alt="" className={styles.appIcon} />
                 <span className={styles.headsUpText}>
                   <strong>Rein Drop</strong>
                   {afterStory.headsUp}

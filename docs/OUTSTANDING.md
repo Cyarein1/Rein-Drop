@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-13, after step 69 (Landing 22)._
+_Last updated: 2026-10-13, after step 70 (Landing 23)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -100,11 +100,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Facebook source not configured in the beta until D12 is decided - step 45.
 
 ### Brand and assets
-- App icon + splash still Expo defaults; brand icon awaits store approval - step 9. Web has no
-  `favicon.ico` either (404 in the browser console) - step 32.
+- App icon + splash still Expo defaults; brand icon awaits store approval - step 9. (The web part -
+  no favicon, a 404 on every page - is resolved: step 70.)
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 23-24 (steps 70-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 24 (step 71) per the scoped plan - step 48.
+- Performance (step 70): Lighthouse's *simulated* mobile LCP stays ~3.1 s (its model counts ~2.6 s of 'render delay') while real-throttled runs measure 2.1 s and lab runs ~1.2 s. Confirm with field data (Chrome UX Report / real-user LCP, INP, CLS) once the site is public - the lab can't settle it - step 70.
+- Remaining measured items, deliberately not changed (step 70): ~13 KB of Next.js's own modern-JS polyfills (framework chunk, no supported switch); 3 render-blocking CSS files (~15 KB; `experimental.inlineCss` would inline them but is experimental, global to the signed-in app and duplicates styles); the Google Play badge PNG is 646 px shown at 154 px (5 KB; official file served unaltered, decision L-D6). Revisit if field data says they matter - step 70.
+- Demo: choosing a product is the most expensive interaction (~150 ms at 4x CPU - under the 200 ms 'good' INP line, but the closest to it) - watch it in field INP - step 70.
 - **Set `SITE_URL` (the public https origin) at build time for the public launch** - it is the switch that makes the landing indexable (canonical, sitemap, robots allow-list, structured data). Leave it unset on preview / beta deployments so they stay noindex. Set it as a build environment variable of the web app (declared in `apps/web/turbo.json`) - step 69.
 - Add the legal pages to the sitemap / search automatically by setting `reviewed: true` after legal review (they are noindex until then) - step 69.
 - Accessibility: automated axe-core audit is clean (step 69) but ran from a scratch install; make it a committed check with the landing QA / Playwright work, and still do a manual screen-reader (NVDA / VoiceOver), 200 % zoom and real-device keyboard pass - step 69.
@@ -335,3 +338,5 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Stored consent version must match the text shown | Step 65 | Step 67 (one constant for the consent words + version; privacy draft carries the same version) |
 | Demo usage events not tracked | Step 62 | Step 68 (demo_started / demo_completed in the anonymous landing analytics) |
 | Build-time web env vars (`CONTACT_EMAIL`, store URLs) not declared to Turborepo (strict env mode could drop them; cache shared across values) | Steps 54 / 60 (found in step 69) | Step 69 (declared in `apps/web/turbo.json`; hash verified to change) |
+| Web had no favicon (`/favicon.ico` 404 on every page) | Step 32 | Step 70 (approved app icon declared via metadata `icons`) |
+| Brand font never loaded on the web (CSS asked for `Inter`, the package registered `Inter Variable`) | found in step 70 | Step 70 (`next/font/local`: self-hosted, preloaded latin variable Inter + size-adjusted fallback) |

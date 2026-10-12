@@ -60,8 +60,9 @@ export function Hero() {
             width={mascot.width}
             height={mascot.height}
             alt=""
-            fetchPriority="high"
-            loading="eager"
+            // The LCP element at every width: preloaded from <head> (Landing 23 measured ~0.6 s of
+            // "load delay" while the parser reached it). preload implies high priority + eager.
+            preload
             sizes="(min-width: 900px) 440px, 62vw"
             className={styles.mascot}
           />

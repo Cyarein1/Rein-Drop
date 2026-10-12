@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { BellRing, Inbox, Repeat2, Settings2 } from "lucide-react";
 import { landingImages } from "../landing-assets";
 import { ALERT_POINTS, alertsCopy, exampleNotification } from "./alerts-story";
@@ -22,8 +23,8 @@ export function AlertsSection() {
               <span className={styles.notch} />
               <span className={styles.lock}>Illustration</span>
               <div className={styles.notification}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={appIcon.src} width={40} height={40} alt="" className={styles.appIcon} />
+                {/* Optimized + lazy: a 40 px icon from the 512 px source (Landing 23). */}
+                <Image src={appIcon.src} width={40} height={40} sizes="40px" alt="" className={styles.appIcon} />
                 <div className={styles.notificationText}>
                   <span className={styles.appName}>{exampleNotification.app}</span>
                   <strong>{exampleNotification.title}</strong>

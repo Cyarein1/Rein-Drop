@@ -27,6 +27,11 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // Don't advertise the framework.
   poweredByHeader: false,
+  images: {
+    // Default sizes plus 448: the hero mascot shows at ~255 CSS px (~450 device px on phones) and
+    // otherwise jumped to the 640 px file (Landing 23 - Lighthouse "properly size images").
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 448],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
