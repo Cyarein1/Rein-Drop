@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { colors, cssVariablesBlock } from "@rein-drop/design-tokens";
 import "@fontsource-variable/inter";
+import { siteUrl } from "@/marketing/seo";
 import "./globals.css";
 
+// Absolute URLs (canonical, Open Graph image) resolve against the public origin - only when SITE_URL
+// is set (Landing 22); nothing is guessed otherwise.
+const site = siteUrl();
+
 export const metadata: Metadata = {
+  ...(site ? { metadataBase: site } : {}),
   title: { default: "Rein Drop", template: "%s · Rein Drop" },
   description: "AI-powered reseller sourcing",
 };

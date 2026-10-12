@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-13 (Landing 21 = step 68)_
+_Last updated: 2026-10-13 (Landing 22 = step 69)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -1065,4 +1065,101 @@ Verified (commands run):
   - **default build** (`ANALYTICS_MODE=none`): **233/233** - the same visit logs **nothing**.
   - Both: no cookies or local / session storage, and no totals on the page.
 
-Next: **Landing 22**.
+Next: Landing 22.
+
+### Landing 22 (step 69) - SEO, social image, accessibility audit - done 2026-10-13
+
+**Rule: only accurate metadata.** All of it lives in `marketing/seo.ts`.
+
+- **Public origin `SITE_URL`** (https, or http for localhost only; an origin with no path), read at
+  build time. When it isn't set, nothing is guessed:
+  - the landing page is `noindex, nofollow`;
+  - there's no canonical URL or `og:url`;
+  - `robots.txt` blocks everything;
+  - `sitemap.xml` is empty;
+  - there's no structured data.
+
+  That keeps any preview or beta deployment out of search engines.
+- **With `SITE_URL`:**
+  - `metadataBase`, canonical `/`, `og:url`;
+  - `robots.txt` allows `/` but blocks the app, auth, API and dev routes, and links the sitemap;
+  - `sitemap.xml` lists the landing page (the legal pages join once `reviewed: true`).
+- **Always:**
+  - title "Rein Drop - You flip it. We find it." and a meta description (137 characters);
+  - Open Graph (website, site name, title, description, `en_US`) and a Twitter
+    `summary_large_image` card.
+  - The legal drafts keep their own "(draft)" titles and `noindex`.
+- **Structured data** (JSON-LD, only with `SITE_URL`, `<` escaped per the Next.js guide):
+  - `Organization` (name, URL, app-icon logo; `contactPoint` only if `CONTACT_EMAIL` is set);
+  - `WebSite`;
+  - `FAQPage` that is **exactly the visible FAQ**.
+
+  There's **no** Product, SoftwareApplication, Offer, price, rating or review markup.
+- **Social image** (`app/(marketing)/opengraph-image.tsx`, 1200×630 PNG, prerendered):
+  - approved art only: the navy wordmark and holding-box mascot from `@rein-drop/brand-assets`;
+  - the hero's own words ("You flip it. We find it."), "A sourcing assistant for resellers." and
+    an "Early access" pill, set in Inter 800 / 500;
+  - no numbers, marketplaces, results or dates;
+  - alt text: "Rein Drop - You flip it. We find it. The Rein Drop mascot holding a parcel."
+
+  Implementation notes:
+  - Cache Components made the image dynamic (it reads files), so the reads moved into
+    `'use cache'` helpers with `cacheLife('max')` and it's now **prerendered at build**.
+  - Fonts come from `@expo-google-fonts/inter` 0.4.2 (TTF, MIT / OFL). The mobile app already used
+    it; it's now also a web dependency, because the image renderer can't read the site's WOFF2.
+    Fonts are cached as base64 and converted back to `ArrayBuffer`s; the first attempt failed the
+    build with a DataView error, which this fixed.
+- **Build cache fix:** `apps/web/turbo.json` now declares `SITE_URL`, `CONTACT_EMAIL`,
+  `APP_STORE_URL` and `GOOGLE_PLAY_URL` as web build inputs.
+  - Turborepo 2.11.7 strict environment mode filters out undeclared variables, so these build-time
+    values could be dropped from turbo builds, or a cached build could be reused across different
+    values. `CONTACT_EMAIL` (Landing 13) and the store URLs (Landing 07) had this gap too.
+  - Verified: the build hash changes when `SITE_URL` changes. `NEXT_PUBLIC_*` was already covered
+    by framework inference.
+- **Accessibility audit** with axe-core 4.10.3 (WCAG 2.0 / 2.1 / 2.2 A + AA plus best practices).
+  It was injected into the real pages from a scratch folder; it isn't a project dependency.
+  - Covered: `/`, `/privacy` and `/terms` at 1280 and 375 px, plus the interactive states (demo
+    deal explanation, gallery expander open with picks, form validation errors).
+  - It found **3 issues**, all fixed:
+    1. **Contrast:** the outcomes "+$63" was brand green on the green wash at **2.75:1** (below
+       3:1 even for large text). The result card is now white with a green outline; green on
+       white is 3.1:1, which passes for this large bold figure.
+    2. **Definition list:** the deal-intelligence "Before fees…" note was a `<span>` inside the
+       `<dl>` group. It's now a `<dd>`, styled small and muted.
+    3. **Landmark:** "You stay in charge" was an `<aside>` inside `<main>`. It's now a `div` with
+       its own heading.
+  - **Re-run: 0 violations on every page, width and state.**
+- **Permanent checks** in `check-landing.mjs`. The SEO part adapts to whether the build had
+  `SITE_URL`. Checks:
+  - title, description length, `lang`;
+  - Open Graph and the Twitter card, and that the social image really is a 1200×630 PNG;
+  - canonical / `og:url` / indexable, structured-data types and FAQ parity, robots rules and
+    sitemap (with `SITE_URL`); or noindex, block-all robots, an empty sitemap and no JSON-LD
+    (without it);
+  - the legal drafts stay noindex with their own titles;
+  - one h1 with no skipped heading levels, at 1280 and 375;
+  - every image has alt text (decorative ones empty, informative ones descriptive);
+  - every control has an accessible name, there's one `main`, and the skip link comes first;
+  - **45 Tab stops from the top of the page, each with a visible focus indicator.**
+
+Verified (commands run):
+- Unit tests: 8 new (`seo.spec.ts`):
+  - `SITE_URL` validation;
+  - the no-origin defaults;
+  - metadata with an origin;
+  - robots and sitemap;
+  - structured data (FAQ parity, no product / price / rating types or properties, contact point
+    only when configured);
+  - JSON-LD escaping;
+  - social alt text.
+  Web 198/198; monorepo **58/58**.
+- axe-core audit: 3 issues found and fixed, then **0 violations** across all 8 page / width /
+  state runs.
+- `node scripts/check-landing.mjs`: **249/249** on a build with `SITE_URL=http://localhost:3100`,
+  and **247/247** on the default build (no `SITE_URL`).
+- Screenshots reviewed: the social image (before and after switching to Inter).
+
+**Not covered by automation:** a manual screen-reader pass (NVDA / VoiceOver) and a real-device
+keyboard and zoom check. These stay in OUTSTANDING.
+
+Next: **Landing 23**.

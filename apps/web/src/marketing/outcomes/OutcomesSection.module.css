@@ -79,9 +79,11 @@
   box-shadow: var(--rd-shadow-md), inset 0 0 0 1px var(--rd-neutral-border);
 }
 
+/* White, not the green wash: brand green on the wash is 2.75:1 (fails even AA-large); on white it is
+   3.1:1, which AA allows for this large bold figure (Landing 22 audit). The outline marks the result. */
 .result {
-  background: var(--rd-wash-green);
-  box-shadow: inset 0 0 0 2px rgb(22 166 106 / 0.45);
+  background: var(--rd-color-canvas);
+  box-shadow: var(--rd-shadow-md), inset 0 0 0 2px rgb(22 166 106 / 0.6);
 }
 
 .icon,

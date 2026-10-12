@@ -309,7 +309,7 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true], [32
       layout: steps.length === 3 && Math.abs(r(steps[0]).top - r(steps[2]).top) < 2 ? 'row' : r(steps[0]).bottom <= r(steps[1]).top ? 'column' : 'other',
       figures: [...s.querySelectorAll('figure[role="img"]')].map((f) => (f.getAttribute('aria-label') || '').startsWith('Illustration:')),
       mascot: img && { src: img.currentSrc.includes('running-box'), ok: img.complete && img.naturalWidth > 0, ratio: +(r(img).width / r(img).height).toFixed(2) },
-      decide: s.querySelector('aside').textContent.includes('never buys anything for you'),
+      decide: (s.querySelector('#how-it-works-decide')?.parentElement.textContent ?? '').includes('never buys anything for you'),
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };
   })()`);
@@ -332,7 +332,8 @@ for (const [width, height, mobile] of [[1280, 900, false], [1024, 768, false], [
     const r = (el) => el.getBoundingClientRect();
     const card = s.querySelector('figure');
     const dts = [...card.querySelectorAll('dt')].map((d) => d.textContent);
-    const dds = [...card.querySelectorAll('dd')];
+    // The figure is each group's first <dd>; a second one is its note ("Before fees ...", Landing 22).
+    const dds = [...card.querySelectorAll('dl > div > dd:first-of-type')];
     const GREEN = 'rgb(22, 166, 106)';
     const green = [...s.querySelectorAll('*')].filter((el) => { const c = getComputedStyle(el); return c.color === GREEN || c.backgroundColor === GREEN; }).map((el) => el.tagName + ':' + el.textContent.trim().slice(0, 12));
     return {
@@ -797,6 +798,75 @@ const storage = await evaluate(`({ local: Object.keys(localStorage).length, sess
 check("analytics: nothing stored in the browser (no cookies, no local / session storage)", storage.local === 0 && storage.session === 0 && storage.cookie === "", JSON.stringify(storage));
 const pageText = await evaluate(`document.body.textContent`);
 check("no fake counters: no sign-up, visitor or request totals anywhere on the page", !/\d[\d,]*\+?\s+(people|resellers|sign-?ups|members|visitors|requests)\b|\b(have|already)\s+joined\b|join\s+\d/i.test(pageText), "");
+
+// ---- SEO + accessibility audit (Landing 22) ----
+await viewport(1280, 900, false); await load(`${base}/`);
+const seo = await evaluate(`(() => {
+  const meta = (sel) => document.querySelector(sel)?.getAttribute('content') ?? null;
+  const ld = [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => JSON.parse(s.textContent));
+  return { title: document.title, description: meta('meta[name="description"]'), robots: meta('meta[name="robots"]'),
+    canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
+    ogTitle: meta('meta[property="og:title"]'), ogType: meta('meta[property="og:type"]'), ogUrl: meta('meta[property="og:url"]'), ogSite: meta('meta[property="og:site_name"]'),
+    ogImage: meta('meta[property="og:image"]'), ogImageAlt: meta('meta[property="og:image:alt"]'), ogW: meta('meta[property="og:image:width"]'), ogH: meta('meta[property="og:image:height"]'),
+    twitter: meta('meta[name="twitter:card"]'), ld: ld.map((d) => d['@type']), faqLd: ld.find((d) => d['@type'] === 'FAQPage')?.mainEntity?.map((q) => q.name) ?? null,
+    faqShown: [...document.querySelectorAll('#faq details h3')].map((h) => h.textContent), lang: document.documentElement.lang };
+})()`);
+const robotsTxt = await (await fetch(`${base}/robots.txt`)).text();
+const sitemapXml = await (await fetch(`${base}/sitemap.xml`)).text();
+check("seo: title, meta description (<= 160 chars) and html lang on the landing page", seo.title === "Rein Drop - You flip it. We find it." && (seo.description ?? "").length > 50 && seo.description.length <= 160 && seo.lang === "en", JSON.stringify({ title: seo.title, lang: seo.lang }));
+check("seo: Open Graph + Twitter card, social image 1200x630 with alt text", seo.ogTitle === seo.title && seo.ogType === "website" && seo.ogSite === "Rein Drop" && !!seo.ogImage && seo.ogW === "1200" && seo.ogH === "630" && (seo.ogImageAlt ?? "").startsWith("Rein Drop - You flip it.") && seo.twitter === "summary_large_image", JSON.stringify({ ogImage: seo.ogImage, alt: seo.ogImageAlt }));
+const ogPath = seo.ogImage ? new URL(seo.ogImage, base).pathname + new URL(seo.ogImage, base).search : null;
+const ogRes = ogPath ? await fetch(`${base}${ogPath}`) : null;
+const ogBytes = ogRes ? Buffer.from(await ogRes.arrayBuffer()) : Buffer.alloc(0);
+check("seo: the social image is a real 1200x630 PNG", ogRes?.status === 200 && ogRes.headers.get("content-type") === "image/png" && ogBytes.readUInt32BE(16) === 1200 && ogBytes.readUInt32BE(20) === 630, `${ogRes?.status} ${ogRes?.headers.get("content-type")} ${ogBytes.length} bytes`);
+if (ogBytes.length) writeFileSync(path.join(outDir, "social-image.png"), ogBytes);
+if (seo.canonical) {
+  // Built with SITE_URL: absolute, accurate metadata.
+  // Next.js writes the root without a trailing slash; both forms are the same URL.
+  const root = (u) => (u ?? "").replace(/\/$/, "");
+  check("seo (SITE_URL): canonical + og:url = the site root; indexable", root(seo.canonical) === base && root(seo.ogUrl) === base && seo.robots === null && seo.ogImage.startsWith(base), JSON.stringify({ canonical: seo.canonical, ogUrl: seo.ogUrl, robots: seo.robots }));
+  check("seo (SITE_URL): structured data = Organization, WebSite and the FAQ exactly as shown", seo.ld.join(",") === "Organization,WebSite,FAQPage" && JSON.stringify(seo.faqLd) === JSON.stringify(seo.faqShown), JSON.stringify(seo.ld));
+  check("seo (SITE_URL): robots.txt allows the site, blocks app / api / dev routes, links the sitemap", /Allow: \/\n/.test(robotsTxt) && ["/home", "/api/", "/dev", "/auth/"].every((d) => robotsTxt.includes(`Disallow: ${d}`)) && robotsTxt.includes(`Sitemap: ${base}/sitemap.xml`), robotsTxt.replace(/\n/g, " | "));
+  check("seo (SITE_URL): sitemap lists the landing page only (legal drafts stay out until reviewed)", (sitemapXml.match(/<loc>/g) || []).length === 1 && sitemapXml.includes(`<loc>${base}/</loc>`), sitemapXml.replace(/\s+/g, " ").slice(0, 200));
+} else {
+  // Built without SITE_URL: nothing guessed, nothing indexed.
+  check("seo (no SITE_URL): noindex, no canonical, no structured data", /noindex/.test(seo.robots ?? "") && seo.ld.length === 0, JSON.stringify({ robots: seo.robots, ld: seo.ld }));
+  check("seo (no SITE_URL): robots.txt blocks everything; sitemap is empty", /Disallow: \/\s*$/m.test(robotsTxt) && !robotsTxt.includes("Allow: /") && !sitemapXml.includes("<loc>"), robotsTxt.replace(/\n/g, " | "));
+}
+for (const p of ["/privacy", "/terms"]) {
+  await load(`${base}${p}`);
+  const lp = await evaluate(`({ robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '', title: document.title, h1: document.querySelectorAll('h1').length })`);
+  check(`seo ${p}: draft stays noindex, own title, one h1`, /noindex/.test(lp.robots) && lp.title.includes("(draft)") && lp.h1 === 1, JSON.stringify(lp));
+}
+// Accessibility structure, at both widths.
+for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true]]) {
+  await viewport(width, height, mobile); await load(`${base}/`);
+  const a = await evaluate(`(() => {
+    const hs = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')].filter((h) => h.getClientRects().length > 0 || h.closest('details'));
+    const levels = hs.map((h) => Number(h.tagName[1]));
+    const skips = levels.map((l, i) => (i > 0 && l > levels[i - 1] + 1 ? hs[i].textContent.slice(0, 40) : null)).filter(Boolean);
+    const imgs = [...document.querySelectorAll('img')];
+    const controls = [...document.querySelectorAll('input:not([type="hidden"]), select, textarea, button')].filter((c) => !c.closest('[aria-hidden="true"]'));
+    const unnamed = controls.filter((c) => { const id = c.id && document.querySelector('label[for="' + c.id + '"]'); return !(id || c.closest('label') || c.getAttribute('aria-label') || c.getAttribute('aria-labelledby') || (c.tagName === 'BUTTON' && c.textContent.trim())); }).map((c) => c.outerHTML.slice(0, 60));
+    return { h1: levels.filter((l) => l === 1).length, firstLevel: levels[0], skips, imgsWithoutAlt: imgs.filter((i) => !i.hasAttribute('alt')).map((i) => i.getAttribute('src')),
+      informativeImgs: imgs.filter((i) => i.alt).map((i) => i.alt), unnamed, mains: document.querySelectorAll('main').length,
+      skipFirst: (() => { const f = [...document.querySelectorAll('a, button, input, select, textarea, summary, [tabindex]')].find((e) => e.tabIndex >= 0); return f?.getAttribute('href'); })() };
+  })()`);
+  check(`a11y ${width}px: one h1, headings never skip a level`, a.h1 === 1 && a.firstLevel === 1 && a.skips.length === 0, JSON.stringify({ h1: a.h1, skips: a.skips }));
+  check(`a11y ${width}px: every image has alt (decorative = empty), informative ones say what they show`, a.imgsWithoutAlt.length === 0 && a.informativeImgs.every((t) => t.length > 8), JSON.stringify({ missing: a.imgsWithoutAlt, informative: a.informativeImgs }));
+  check(`a11y ${width}px: every form control and button has an accessible name; one main; skip link first`, a.unnamed.length === 0 && a.mains === 1 && a.skipFirst === "#main-content", JSON.stringify({ unnamed: a.unnamed, skip: a.skipFirst }));
+}
+// Keyboard: Tab through the start of the page; every stop shows a visible focus indicator.
+await viewport(1280, 900, false); await load(`${base}/`);
+const stops = [];
+for (let i = 0; i < 45; i++) {
+  await pressKey("Tab", 9);
+  stops.push(await evaluate(`(() => { const e = document.activeElement; if (!e || e === document.body) return null; const s = getComputedStyle(e);
+    const ring = (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none' || (e.parentElement && getComputedStyle(e.parentElement).boxShadow !== 'none' && e.parentElement.matches(':focus-within'));
+    return { what: (e.getAttribute('aria-label') || e.textContent || e.id || e.tagName).trim().slice(0, 30), ring }; })()`));
+}
+const invisible = stops.filter((s) => s && !s.ring);
+check("keyboard: 45 Tab stops from the top, each with a visible focus indicator", stops.filter(Boolean).length >= 40 && invisible.length === 0, JSON.stringify(invisible.slice(0, 5)));
 
 // ---- Motion (Landing 16) ----
 await viewport(1280, 900, false);

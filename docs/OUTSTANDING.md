@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-13, after step 68 (Landing 21)._
+_Last updated: 2026-10-13, after step 69 (Landing 22)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 22-24 (steps 69-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 23-24 (steps 70-71) per the scoped plan - step 48.
+- **Set `SITE_URL` (the public https origin) at build time for the public launch** - it is the switch that makes the landing indexable (canonical, sitemap, robots allow-list, structured data). Leave it unset on preview / beta deployments so they stay noindex. Set it as a build environment variable of the web app (declared in `apps/web/turbo.json`) - step 69.
+- Add the legal pages to the sitemap / search automatically by setting `reviewed: true` after legal review (they are noindex until then) - step 69.
+- Accessibility: automated axe-core audit is clean (step 69) but ran from a scratch install; make it a committed check with the landing QA / Playwright work, and still do a manual screen-reader (NVDA / VoiceOver), 200 % zoom and real-device keyboard pass - step 69.
+- Validate the structured data with the Rich Results Test / Schema Markup Validator once `SITE_URL` points at the public site - step 69.
 - **Choose a production analytics provider** for the landing (none is configured, so production sends nothing): add it to `PROVIDERS` in `apps/web/src/marketing/analytics/analytics.ts` with an honest `requiresConsent` (a provider that sets cookies or identifiers needs a consent banner first - none exists), then set `NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER` at build time. Prefer cookieless; ties in with D15 (app analytics vendor). Update the privacy draft before it goes live (it says no tracking cookies and lists analytics as To be confirmed) - step 68.
 - **Legal review of the privacy notice and terms drafts** (`/privacy`, `/terms`, version 2026-10-12): every "To be confirmed" point (legal entity, officer, hosting / email providers and countries, legal basis, retention, rights, liability wording, governing law). Set `reviewed: true` in `legal-drafts.ts` only after review; until then the pages show the draft banner and stay noindex. Required before collecting real emails publicly - step 67.
 - The success message says "We'll be in touch by email about early access" - there is no email provider yet (D14); contact sign-ups manually or wire a provider before launch - step 67.
@@ -330,3 +334,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Form must render the honeypot off-screen and send the matching consent version | Step 66 | Step 67 (off-screen, tab-skipped, aria-hidden; `WAITLIST_CONSENT_VERSION` shared with the privacy draft) |
 | Stored consent version must match the text shown | Step 65 | Step 67 (one constant for the consent words + version; privacy draft carries the same version) |
 | Demo usage events not tracked | Step 62 | Step 68 (demo_started / demo_completed in the anonymous landing analytics) |
+| Build-time web env vars (`CONTACT_EMAIL`, store URLs) not declared to Turborepo (strict env mode could drop them; cache shared across values) | Steps 54 / 60 (found in step 69) | Step 69 (declared in `apps/web/turbo.json`; hash verified to change) |

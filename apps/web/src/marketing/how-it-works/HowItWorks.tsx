@@ -143,7 +143,8 @@ export function HowItWorks() {
           })}
         </ol>
 
-        <aside className={styles.decide} aria-labelledby="how-it-works-decide">
+        {/* Part of this section (not a separate landmark inside <main>): a div with its own heading. */}
+        <div className={styles.decide}>
           <ShieldCheck aria-hidden size={28} className={styles.decideIcon} />
           <div>
             <h3 id="how-it-works-decide" className={styles.decideTitle}>
@@ -151,7 +152,7 @@ export function HowItWorks() {
             </h3>
             <p>{youDecide.text}</p>
           </div>
-        </aside>
+        </div>
       </div>
     </section>
   );

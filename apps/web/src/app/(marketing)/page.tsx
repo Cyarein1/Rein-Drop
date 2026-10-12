@@ -14,13 +14,15 @@ import { SiteNav } from "@/marketing/nav/SiteNav";
 import { OutcomesSection } from "@/marketing/outcomes/OutcomesSection";
 import { ProblemSection } from "@/marketing/problem/ProblemSection";
 import { LANDING_SECTIONS, type LandingSectionId } from "@/marketing/sections";
+import { jsonLdScript, landingMetadata, landingStructuredData, siteUrl } from "@/marketing/seo";
+import { contactEmail } from "@/marketing/site-config";
 import styles from "./landing.module.css";
 
-export const metadata: Metadata = {
-  // Absolute: the landing page is the brand's front door, not "<page> · Rein Drop".
-  title: { absolute: "Rein Drop - You flip it. We find it." },
-  description: "Tell Rein Drop what you're hunting for. It keeps an eye on supported marketplaces, spots promising listings and gives you a heads-up.",
-};
+// Title (absolute - the brand's front door), description, canonical, Open Graph / Twitter and robots:
+// see marketing/seo.ts (Landing 22). The social image is ./opengraph-image.tsx.
+export const metadata: Metadata = landingMetadata();
+
+const structuredData = landingStructuredData(siteUrl(), contactEmail());
 
 /** Each section id -> its component (each renders its own <section id=...>). Typed so none is missing. */
 const SECTIONS: Record<LandingSectionId, ComponentType> = {
@@ -56,6 +58,8 @@ export default function LandingPage() {
         })}
       </main>
       <SiteFooter />
+      {/* Structured data only with a public origin; it mirrors what the page shows. */}
+      {structuredData?.map((data, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(data) }} />)}
     </>
   );
 }

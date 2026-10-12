@@ -1,11 +1,30 @@
 # Build Status
 
-_Last updated: 2026-10-13 (step 68 - Landing 21)_
+_Last updated: 2026-10-13 (step 69 - Landing 22)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 69 - Landing 22: SEO, social image, accessibility audit
+
+- **Metadata:** title, meta description, Open Graph and Twitter card.
+- **Public origin:** canonical, sitemap, robots allow-list and structured data
+  (Organization / WebSite / FAQPage mirroring the page) only when `SITE_URL` is set. Without it:
+  noindex, block-all robots, an empty sitemap, no structured data.
+- **Social image:** a 1200×630 PNG prerendered at build, from approved brand art and the hero's
+  words, in Inter.
+- **Build cache:** `apps/web/turbo.json` now declares the web's build-time variables (`SITE_URL`,
+  `CONTACT_EMAIL`, store URLs). Turbo's strict mode could otherwise drop them or reuse a build
+  across different values.
+- **Accessibility:** the axe-core audit found 3 issues (outcomes green contrast, a definition-list
+  structure, a nested aside), all fixed; the re-run shows 0 violations.
+- **Permanent browser checks:** SEO, heading order, alt text, labels, and keyboard focus visibility
+  over 45 Tab stops.
+
+Verified: web 198/198, monorepo 58/58, landing check 249/249 (with `SITE_URL`) and 247/247
+(without). Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 68 - Landing 21: anonymous landing analytics
 

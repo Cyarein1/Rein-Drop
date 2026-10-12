@@ -86,7 +86,7 @@ export function DealIntelligence() {
                   Potential gross upside <Marker n={3} />
                 </dt>
                 <dd>{signedUsd(upside)}</dd>
-                <span className={styles.beforeCosts}>Before fees, shipping, tax and repairs</span>
+                <dd className={styles.beforeCosts}>Before fees, shipping, tax and repairs</dd>
               </div>
             </dl>
 
