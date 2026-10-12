@@ -1,0 +1,842 @@
+/* "Try a sample Hunt" (Landing 15): one demo frame - label + controls, progress, a panel per step. */
+.section {
+  padding: var(--rd-section-space-default) 0;
+  background: var(--rd-wash-sky);
+  scroll-margin-top: 64px;
+}
+
+.section:focus {
+  outline: none;
+}
+
+.inner {
+  display: grid;
+  gap: var(--rd-space-8);
+  max-width: var(--rd-container-page);
+  margin: 0 auto;
+  padding: 0 var(--rd-gutter);
+}
+
+.header {
+  display: grid;
+  gap: var(--rd-space-3);
+  max-width: var(--rd-container-prose);
+}
+
+.eyebrow {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-text-eyebrow);
+  font-weight: var(--rd-font-weight-bold);
+  letter-spacing: var(--rd-letter-spacing-eyebrow);
+  text-transform: uppercase;
+}
+
+.heading {
+  color: var(--rd-color-navy);
+  font-size: var(--rd-display-xl);
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  letter-spacing: var(--rd-letter-spacing-display);
+}
+
+.lead {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-text-lead);
+  line-height: 1.55;
+}
+
+/* ---------- The demo frame ---------- */
+.demo {
+  display: grid;
+  gap: var(--rd-space-5);
+  padding: clamp(16px, 3vw, 32px);
+  border-radius: var(--rd-radius-2xl);
+  background: var(--rd-color-canvas);
+  box-shadow: var(--rd-shadow-xl);
+  color: var(--rd-color-navy);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+}
+
+/* Obvious, always visible: this is a demo with example data. */
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-2) var(--rd-space-3);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-yellow);
+  box-shadow: inset 0 0 0 1px var(--rd-color-yellow);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.toolButton,
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  min-height: 40px;
+  padding: 0 var(--rd-space-3);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+  font: inherit;
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+  cursor: pointer;
+}
+
+.toolButton:hover,
+.textButton:hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.textButton {
+  justify-self: start;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Progress ---------- */
+.progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--rd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rd-space-1);
+  padding-top: var(--rd-space-2);
+  border-top: 4px solid var(--rd-neutral-border);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+  text-align: center;
+}
+
+.progressStep[data-state="done"] {
+  border-top-color: var(--rd-color-navy);
+  color: var(--rd-color-navy);
+}
+
+.progressStep[data-state="current"] {
+  border-top-color: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.progressDot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--rd-neutral-surface-subtle);
+  font-size: 12px;
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+[data-state="done"] > .progressDot {
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+}
+
+[data-state="current"] > .progressDot {
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+}
+
+/* ---------- Panel ---------- */
+.panel {
+  display: grid;
+  gap: var(--rd-space-5);
+  min-width: 0;
+}
+
+.panelHeading {
+  font-size: var(--rd-display-md, var(--rd-font-size-xl));
+  font-weight: var(--rd-font-weight-extrabold);
+  line-height: var(--rd-line-height-heading);
+  scroll-margin-top: 80px;
+}
+
+.panelHeading:focus {
+  outline: none;
+}
+
+.panelHeading:focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 4px;
+  border-radius: var(--rd-radius-sm);
+}
+
+.stage {
+  display: grid;
+  gap: var(--rd-space-5);
+  min-width: 0;
+}
+
+/* ---------- Motion (Landing 16) ----------
+   Short, one-time transitions between stages; the best match / no-match card enters a beat
+   later; each listing's result fades in as it is checked. Nothing loops. */
+@media (prefers-reduced-motion: no-preference) {
+  .stage {
+    animation: rd-stage-in var(--rd-motion-stage, 280ms) var(--rd-motion-ease-out, ease-out) both;
+  }
+
+  .match,
+  .noMatch {
+    animation: rd-card-in 480ms var(--rd-motion-ease-out, ease-out) 80ms both;
+  }
+
+  .logStatus {
+    animation: rd-status-in 220ms ease-out both;
+  }
+}
+
+@keyframes rd-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes rd-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+@keyframes rd-status-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+/* ---------- Step 1: products ---------- */
+.products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--rd-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.productCard {
+  display: grid;
+  gap: var(--rd-space-2);
+  justify-items: start;
+  width: 100%;
+  height: 100%;
+  padding: var(--rd-space-3) var(--rd-space-3) var(--rd-space-4);
+  border: 0;
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1.5px var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.productCard:hover {
+  box-shadow: inset 0 0 0 2px var(--rd-color-navy), var(--rd-shadow-sm);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .productCard:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.productCard:focus-visible,
+.toolButton:focus-visible,
+.textButton:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
+.visual {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-sky);
+  color: var(--rd-color-navy);
+}
+
+.visualSmall {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-wash-sky);
+  color: var(--rd-color-navy);
+}
+
+.visualImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 70%;
+}
+
+.productName {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.productMeta {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.productGo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-1);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+/* ---------- Step 2: configure ---------- */
+.form {
+  display: grid;
+  gap: var(--rd-space-5);
+  max-width: 560px;
+}
+
+.query {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-3);
+}
+
+.queryLabel {
+  display: block;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.queryText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.field {
+  display: grid;
+  gap: var(--rd-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field:disabled {
+  opacity: 0.55;
+}
+
+.fieldRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.fieldLabel {
+  padding: 0;
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.value {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+}
+
+.slider {
+  --fill: 50%;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--rd-radius-full);
+  background: linear-gradient(to right, var(--rd-color-orange) var(--fill), var(--rd-neutral-border) var(--fill));
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: var(--rd-radius-full);
+  background: linear-gradient(to right, var(--rd-color-orange) var(--fill), var(--rd-neutral-border) var(--fill));
+}
+
+.slider::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--rd-color-canvas);
+  box-shadow: 0 0 0 3px var(--rd-color-orange), var(--rd-shadow-sm);
+  appearance: none;
+}
+
+.slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--rd-color-canvas);
+  box-shadow: 0 0 0 3px var(--rd-color-orange), var(--rd-shadow-sm);
+}
+
+.slider:focus {
+  outline: none;
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--rd-radius-sm);
+}
+
+.segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.segment {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  place-items: center;
+  min-height: 40px;
+  border-radius: var(--rd-radius-sm);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+  cursor: pointer;
+}
+
+.segment:has(:checked) {
+  background: var(--rd-color-navy);
+  color: var(--rd-color-canvas);
+}
+
+.segment:has(:focus-visible),
+.chip:has(:focus-visible) {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
+.field:disabled .segment {
+  cursor: not-allowed;
+}
+
+/* Focusable native input covering its label. */
+.hiddenInput {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  min-height: 44px;
+  padding: 0 var(--rd-space-4) 0 var(--rd-space-3);
+  border-radius: var(--rd-radius-md);
+  box-shadow: inset 0 0 0 1.5px var(--rd-neutral-border);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.chip:has(:checked) {
+  background: var(--rd-wash-sky);
+  box-shadow: inset 0 0 0 2px var(--rd-color-navy);
+  opacity: 1;
+}
+
+/* A tick, so "selected" isn't shown by colour alone. */
+.chip:has(:checked)::after {
+  content: "✓";
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.chip[data-disabled] {
+  cursor: not-allowed;
+}
+
+/* ---------- Buttons ---------- */
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rd-space-2);
+  justify-self: start;
+  min-height: 48px;
+  padding: 0 var(--rd-space-5);
+  border: 0;
+  border-radius: var(--rd-radius-full);
+  font: inherit;
+  font-weight: var(--rd-font-weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Navy on orange (white would fail contrast). */
+.primary {
+  background: var(--rd-color-orange);
+  color: var(--rd-color-navy);
+  box-shadow: var(--rd-shadow-cta);
+}
+
+.secondary {
+  background: var(--rd-color-canvas);
+  box-shadow: inset 0 0 0 1.5px var(--rd-color-navy);
+  color: var(--rd-color-navy);
+}
+
+/* ---------- Step 3: scan ---------- */
+.scan {
+  display: grid;
+  gap: var(--rd-space-4);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-3);
+}
+
+.bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--rd-color-orange);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .barFill {
+    transition: width 300ms ease;
+  }
+}
+
+.barText {
+  flex-shrink: 0;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.log {
+  display: grid;
+  gap: var(--rd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--rd-space-1) var(--rd-space-3);
+  align-items: center;
+  padding: var(--rd-space-3);
+  border-radius: var(--rd-radius-md);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+}
+
+.logRow[data-status="waiting"] {
+  opacity: 0.5;
+}
+
+.logRow[data-status="checking"] {
+  box-shadow: inset 0 0 0 2px var(--rd-color-orange);
+}
+
+.logRow[data-status="skip"] .logTitle {
+  color: var(--rd-neutral-text-muted);
+}
+
+.logRow[data-best] {
+  background: var(--rd-wash-yellow);
+  box-shadow: inset 0 0 0 2px var(--rd-color-navy);
+}
+
+.logMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.logTitle {
+  font-weight: var(--rd-font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.logMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.logStatus {
+  display: inline-flex;
+  grid-column: 2;
+  align-items: center;
+  gap: var(--rd-space-1);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+[data-status="match"] .logStatus {
+  color: var(--rd-color-navy);
+}
+
+[data-status="skip"] .logStatus,
+[data-status="waiting"] .logStatus {
+  color: var(--rd-neutral-text-muted);
+}
+
+.match,
+.noMatch,
+.evaluation {
+  display: grid;
+  gap: var(--rd-space-5);
+  padding: var(--rd-space-5);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: inset 0 0 0 1.5px var(--rd-neutral-border);
+}
+
+.matchTop {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-4);
+}
+
+.matchTop > div {
+  display: grid;
+  gap: var(--rd-space-1);
+  justify-items: start;
+  min-width: 0;
+}
+
+.matchTitle {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  overflow-wrap: anywhere;
+}
+
+.strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px var(--rd-space-3);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-wash-yellow);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.strength::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rd-color-orange);
+}
+
+/* Oversized numbers, as on the deal-intelligence card. Green only on the upside. */
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: var(--rd-space-4) var(--rd-space-6);
+  margin: 0;
+}
+
+.numbers > div {
+  display: grid;
+  align-content: start;
+  gap: var(--rd-space-1);
+}
+
+.numbers dt {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.numbers dd {
+  margin: 0;
+  font-size: var(--rd-display-md, 32px);
+  font-weight: var(--rd-font-weight-extrabold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.numbers dd.small,
+.small {
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-weight: var(--rd-font-weight-medium);
+  line-height: 1.4;
+}
+
+.upside dd:not(.small) {
+  color: var(--rd-color-green);
+}
+
+.estimate {
+  padding: 1px var(--rd-space-2);
+  border-radius: var(--rd-radius-full);
+  box-shadow: inset 0 0 0 1px var(--rd-neutral-border);
+  color: var(--rd-color-navy);
+  font-size: var(--rd-font-size-xs);
+}
+
+/* ---------- Step 4: evaluation ---------- */
+.confidence {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-3) var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+  font-size: var(--rd-font-size-sm);
+}
+
+.confidence svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--rd-space-4);
+}
+
+.note {
+  display: grid;
+  align-content: start;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-4);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-neutral-surface-subtle);
+}
+
+.noteTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+  font-size: var(--rd-font-size-md);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.items {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.disclaimer {
+  display: flex;
+  gap: var(--rd-space-2);
+  align-items: flex-start;
+  color: var(--rd-neutral-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+.disclaimer svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-3);
+}

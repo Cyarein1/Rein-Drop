@@ -269,6 +269,92 @@
   font-size: var(--rd-font-size-xs);
 }
 
+/* ---------- Motion (Landing 16): a one-time reveal on load, then still ----------
+   Copy rises in with a short stagger; the headline and the mascot only MOVE (no fade), so the
+   largest content is painted - and counted for LCP - straight away. The mascot (approved
+   holding-box art) settles in and does ONE gentle bob, then stops: no endless loop. The sample
+   deal card pops in last. Everything is done in about 2.5 s. */
+@media (prefers-reduced-motion: no-preference) {
+  .copy > * {
+    animation: rd-rise var(--rd-motion-enter) var(--rd-motion-ease-out) both;
+  }
+
+  /* Children in order: eyebrow, headline, lead, CTAs, store badges, launch targets. */
+  .copy > :nth-child(2) {
+    animation-name: rd-lift;
+    animation-delay: 60ms;
+  }
+
+  .copy > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .copy > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  .copy > :nth-child(5) {
+    animation-delay: 240ms;
+  }
+
+  .copy > :nth-child(6) {
+    animation-delay: 300ms;
+  }
+
+  .glow {
+    animation: rd-glow 900ms ease-out both;
+  }
+
+  .mascot {
+    animation:
+      rd-mascot-in 700ms var(--rd-motion-ease-out) 100ms both,
+      rd-bob 1600ms ease-in-out 900ms 1;
+  }
+
+  .card {
+    animation: rd-card-in 560ms var(--rd-motion-ease-out) 420ms both;
+  }
+}
+
+@keyframes rd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rd-motion-rise));
+  }
+}
+
+@keyframes rd-lift {
+  from {
+    transform: translateY(var(--rd-motion-rise));
+  }
+}
+
+@keyframes rd-glow {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes rd-mascot-in {
+  from {
+    transform: translateY(24px) rotate(-2deg);
+  }
+}
+
+@keyframes rd-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes rd-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+}
+
 /* Narrow phones: the three numbers wrap to two rows instead of squeezing. */
 @media (max-width: 359px) {
   .metrics {

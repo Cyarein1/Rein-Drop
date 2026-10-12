@@ -85,7 +85,7 @@ describe("demo fixtures", () => {
   });
 
   it("disclaimers say demo / not live, estimate, and gross - not profit", () => {
-    expect(DEMO_DISCLAIMERS.demo).toMatch(/Illustrative demo - not live listings/);
+    expect(DEMO_DISCLAIMERS.demo).toMatch(/Illustrative demo — not live listings/);
     expect(DEMO_DISCLAIMERS.estimate).toMatch(/estimates/);
     expect(DEMO_DISCLAIMERS.gross).toMatch(/gross/i);
     expect(DEMO_DISCLAIMERS.gross).toMatch(/not profit/);

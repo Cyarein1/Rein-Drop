@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-10 (Landing 14 = step 61)_
+_Last updated: 2026-10-12 (Landing 16 = step 63)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -618,4 +618,98 @@ Verified (commands run):
   max-price rule: 2; last-marketplace guard: 1). The file was restored and passes 41/41.
 - `pnpm turbo run typecheck lint test build --filter web`: 9/9 tasks, web tests 136/136.
 
-Next: **Landing 15** - interactive demo UI ("Illustrative demo - not live listings").
+Next: Landing 15 - interactive demo UI ("Illustrative demo - not live listings").
+
+### Landing 15 (step 62) - Interactive Hunt demo - done 2026-10-12
+
+"Try a sample Hunt" (`#demo`) is now interactive, built on the Landing 14 model. It replaces the
+temporary `DemoPlaceholder`, which has been deleted.
+
+- **Steps:**
+  - **Product:** three cards (photo, or a neutral laptop glyph for the MacBook).
+  - **Hunt:** max-price slider, condition (Any / New / Used), marketplace chips with the official
+    logos (the last one can't be switched off), and local-pickup distance (only enabled with
+    Facebook Marketplace).
+  - **Scan:** a progress bar plus a log of the four example listings, each showing waiting /
+    checking / fits / skipped with the plain reason. "Skip to the result" is available. A best
+    match card shows asking price, estimate and gross upside; if nothing fits, there's a way back.
+  - **Deal:** strength, the listing, asking price, resale range ("Estimate"), gross upside range
+    (the only green), confidence in words, why it was flagged / questions to ask the seller /
+    costs to count before profit, the estimate and gross disclaimers, "Join early access"
+    (`#waitlist`) and "Try another product".
+- **Labelling:** "Illustrative demo — not live listings" is always on screen (yellow label,
+  `DEMO_LABEL`).
+- **Navigation:** a four-step progress bar (`aria-current="step"`, done steps marked for screen
+  readers). Back is named for where it goes ("Back to products", "Stop and go back", "Change the
+  Hunt", "Back to the match"), and Start over is available from any step after the first.
+- **Accessibility:** on every step change, focus moves to the new step's heading (the old controls
+  are gone). The scan, which runs by itself, is announced through a polite live region (start;
+  outcome with the best match and gross upside). Everything works by keyboard.
+- **Fast and deterministic:** one listing every 450 ms, so a scan takes about 2 s. "Skip" and
+  reduced motion finish at once. The same choices always give the same result. There are no
+  network calls, AI, clock or randomness; the timer only sets the pace.
+- `demo-view.ts`: the progress steps, headings and announcements as pure functions (6 tests).
+
+Verified (commands run):
+- Web tests 142/142 (6 new view tests; the model tests from Landing 14 still pass). Typecheck,
+  lint and build pass.
+- `node scripts/check-landing.mjs` on the production build (port 3100), with the motion checks
+  below: **198/198**. The new demo checks cover:
+  - the label;
+  - progress and the three products;
+  - focus on each new heading;
+  - the scan announcement and progress advancing one listing at a time;
+  - the result in about 1.8 s, with the best match marked and announced;
+  - the deal explanation and the waitlist link;
+  - Back and Start over;
+  - keyboard Enter and Home;
+  - "nothing fits", and going back keeping the settings;
+  - Skip giving the same result again (deterministic);
+  - 375 px with no overflow.
+  The photo check now counts distinct files, since the demo reuses two photos.
+- Screenshots reviewed: every step at 1280 px, and the deal at 375 px (the confidence icon was
+  fixed to sit beside its text).
+
+### Landing 16 (step 63) - Motion - done 2026-10-12
+
+CSS only; no JavaScript animation library and no sprites.
+
+- **Shared feel:** `--rd-motion-ease-out`, `--rd-motion-enter` (600 ms), `--rd-motion-stage`
+  (280 ms) and `--rd-motion-rise` (14 px) on the landing's `<main>`.
+- **Hero reveal**, on load only, then still:
+  - the copy rises in with a 60 ms stagger;
+  - the **headline and mascot only move** - they never start invisible, so the largest content
+    is painted (and counted for LCP) immediately;
+  - the glow fades in.
+- **Mascot motion** uses only approved art, with no new image:
+  - the hero holding-box mascot settles in, then makes **one** gentle 6 px bob and stops;
+  - the How it works running mascot dashes in once, tied to scrolling it into view.
+- **Deal-card entrances:**
+  - the hero sample card pops in after the mascot;
+  - the deal-intelligence card rises in as it scrolls into view;
+  - in the demo, the best-match / no-match card enters a beat after the scan finishes.
+- **Stage transitions:** each demo stage fades and rises in (keyed by progress step, so the scan
+  result stays in place), and each listing's result fades in as it's checked.
+- **No loops:** nothing on the landing repeats forever, and everything finishes within about
+  2.5 s of loading.
+- **Reduced motion:** every animation sits behind `prefers-reduced-motion: no-preference`, with
+  the global reset as a backstop. With "reduce" there are no animations at all, and the demo scan
+  shows its result at once.
+- **Fallback:** scroll-linked entrances are wrapped in `@supports (animation-timeline: view())`.
+  Browsers without support (Safari / Firefox today) simply show the element.
+
+Verified (commands run):
+- `node scripts/check-landing.mjs`: 198/198, including 11 motion checks:
+  - hero copy and card animate on load;
+  - the headline and mascot animations contain no opacity;
+  - the mascot animations are finite;
+  - after 3 s nothing is running, nothing loops forever, and the card and mascot are at rest;
+  - the running mascot and deal-intelligence card use a view timeline;
+  - the card is fully shown once in view, and part-way (opacity about 0.79) when part-way in;
+  - the demo stage animates on change;
+  - under reduced motion: no hero, mascot or scroll animations, no demo stage animation, and an
+    instant scan.
+- `pnpm turbo run typecheck lint test build --filter web`: 9/9 tasks.
+- Screenshots reviewed: the hero at rest (1280) and the demo stages.
+
+Next: **Landing 17**.

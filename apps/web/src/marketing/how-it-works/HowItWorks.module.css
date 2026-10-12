@@ -217,6 +217,27 @@
   margin-bottom: calc(var(--rd-space-2) * -1);
 }
 
+/* Motion (Landing 16): the approved running mascot dashes in ONCE as the step scrolls into view
+   (tied to scrolling, so it never loops). Browsers without scroll-driven animations - and anyone
+   who prefers reduced motion - simply see it in place. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .mascot {
+      animation: rd-dash-in linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 90%;
+    }
+  }
+}
+
+@keyframes rd-dash-in {
+  from {
+    opacity: 0;
+    transform: translateX(-36px) rotate(-4deg);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 .checks {
   display: grid;
   gap: var(--rd-space-2);

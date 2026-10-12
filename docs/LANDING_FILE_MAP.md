@@ -56,7 +56,8 @@ apps/web/src/marketing/
   faq/                       FaqSection (+ css), faq.ts, landing13 spec (Landing 13)
   closing/                   ClosingCta (+ css) - the #waitlist target (Landing 13; form in 20)
   footer/                    SiteFooter, LegalPlaceholder (+ css) (Landing 13)
-  demo/                      DemoPlaceholder - TEMPORARY until Landing 15
+  demo/HuntDemo.tsx (+ css)  "Try a sample Hunt" - the interactive, illustrative demo (client component) (Landing 15; motion 16)
+  demo/demo-view.ts (+spec)  progress steps, panel headings, live-region announcements (Landing 15)
   demo/demo-fixtures.ts      3 demo products: made-up listings, illustrative resale estimates, disclaimers (Landing 14)
   demo/demo-model.ts (+spec) pure finite-state demo: choose > configure > scan > candidate / no match > evaluation (Landing 14)
   site-config.ts             CONTACT_EMAIL (never invented), legal links (Landing 13)
@@ -69,7 +70,7 @@ apps/web/src/marketing/
   analytics.ts               anonymous landing events adapter            (planned, Landing 21)
   brand-assets.generated.ts  GENERATED paths + sizes of the optimized brand images (Landing 04)
   landing-assets.ts (+ spec) landing meanings -> images; null = missing pose (Landing 04)
-apps/web/scripts/check-landing.mjs       real-browser landing check: whole landing page + legal placeholders (headless Chrome / Edge, screenshots) (Landing 06-13)
+apps/web/scripts/check-landing.mjs       real-browser landing check: whole landing page + legal placeholders + demo + motion (headless Chrome / Edge, screenshots) (Landing 06-16)
 apps/web/scripts/build-brand-assets.mjs  generates public/assets/brand + brand-assets.generated.ts (Landing 04)
 apps/web/public/assets/brand/          GENERATED optimized Rein Drop images, stable URLs (Landing 04)
 apps/web/public/assets/third-party/    official third-party marks: stores/ badges (Landing 07), marketplaces/ (Landing 08)

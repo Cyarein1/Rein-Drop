@@ -63,6 +63,26 @@
   color: var(--rd-color-navy);
 }
 
+/* Motion (Landing 16): the deal card rises in once as it scrolls into view. Without scroll-driven
+   animation support, or with reduced motion, it is simply there. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .card {
+      animation: rd-card-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+  }
+}
+
+@keyframes rd-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.98);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 .label {
   justify-self: start;
   padding: 3px var(--rd-space-2);

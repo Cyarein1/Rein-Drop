@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-10, after step 61 (Landing 14)._
+_Last updated: 2026-10-12, after step 63 (Landing 16)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   `favicon.ico` either (404 in the browser console) - step 32.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 15-24 (steps 62-71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 17-24 (steps 64-71) per the scoped plan - step 48.
 - Demo figures (resale ranges, number of similar sales, asking prices) are made-up but plausible US used / new prices - sanity-check them before launch; they're labelled illustrative, but they shouldn't look wrong to a reseller - step 61.
 - The MacBook demo product has no example photo (`photo: null`) - add a licensed photo or keep the neutral visual - step 61.
 - Gate A: owner approval of the landing design (the mockup is inspiration only) - step 48.
@@ -116,12 +116,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - The landing mockup shows a deer / reindeer mascot; the approved mascot is the orange droplet - confirm which character the landing uses (only approved art is used) - step 51.
 - Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
 - Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
+- Screen-reader pass of the interactive demo by a person (NVDA / VoiceOver): focus moves to each step's heading and the scan is announced politely - checked in Chrome's accessibility tree only - step 62.
+- Demo usage events (product chosen, scan finished, deal viewed) are not tracked yet - anonymous analytics come with Landing 21 - step 62.
+- Scroll-linked entrances (How it works mascot, deal-intelligence card) only play in browsers with scroll-driven animations (Chrome / Edge today); elsewhere the elements are simply shown - acceptable, revisit if Safari / Firefox support lands - step 63.
 - The app's `Wordmark` component (sign-in page etc.) still uses Next's deprecated `priority` prop - switch to `loading="eager"` / `fetchPriority` - step 54.
 - Store URLs are read when the web app is built (static page): changing `APP_STORE_URL` / `GOOGLE_PLAY_URL` needs a rebuild / redeploy - step 54.
 - Alerts section lists push + in-app only; add email to the landing copy only once an email provider exists (D14) - step 59.
 - Public contact address for the landing footer (`CONTACT_EMAIL`) - the owner's decision; shows "Contact details coming soon - needs review" until set - step 60.
 - Landing closing CTA shows the email form disabled until the waitlist is wired (Landing 18-20); `/privacy` and `/terms` are placeholders until the drafts (Landing 20) and legal review - step 60.
-- `#demo` is a temporary placeholder until the interactive demo UI (Landing 15; the model is done, step 61) - step 60.
 - Example product photos (Unsplash License) show Apple / Sony products and logos - include them in the pre-launch trademark review; keep the footer credits - step 60b.
 - Marketing display sizes / spacing are engineering defaults - confirm at the landing high-fidelity design (Gate C) - step 50.
 - Web `minReplicas: 1` at landing launch to avoid cold starts for first visitors (decision 0015 has 0) - step 48.
@@ -313,3 +315,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Verify production image optimization (`sharp` install scripts denied) | Step 48 | Step 51 (prebuilt sharp works in the web container; pre-optimized WebP) |
 | Hero deal card named the marketplace as text | Step 54 | Step 55 (official Facebook mark via MarketplaceMark) |
 | Deal intelligence used a listing-photo placeholder | Step 58 | Step 60b (licensed PS5 photo, tagged "Example photo") |
+| `#demo` was a temporary placeholder | Step 60 | Step 62 (interactive illustrative demo, Landing 15) |

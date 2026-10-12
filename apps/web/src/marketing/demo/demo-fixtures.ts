@@ -17,9 +17,12 @@ export type DemoCondition = Exclude<DemoConditionChoice, "any">;
 
 export const DEMO_CONDITION_LABEL: Record<DemoConditionChoice, string> = { any: "Any condition", new: "New", used: "Used" };
 
+/** The demo's always-visible label (Landing 15). */
+export const DEMO_LABEL = "Illustrative demo — not live listings";
+
 /** Shown with the demo and repeated in every evaluation. */
 export const DEMO_DISCLAIMERS = {
-  demo: "Illustrative demo - not live listings. Nothing here was fetched from a marketplace.",
+  demo: `${DEMO_LABEL}. Nothing here was fetched from a marketplace.`,
   estimate: "Resale figures are illustrative estimates, not quotes or guarantees.",
   gross: "Upside is gross: before selling fees, shipping, taxes and repairs. It is not profit.",
 } as const;

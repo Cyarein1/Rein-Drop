@@ -469,7 +469,8 @@ for (const [width, height, mobile] of [[1280, 900, false], [375, 812, true]]) {
   const rawPhotos = await evaluate(`[...document.querySelectorAll('img[src*="assets%2Fphotos"], img[src*="/assets/photos/"]')].map((i) => ({ src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, fit: getComputedStyle(i).objectFit }))`);
   // File names extracted here in Node (a regex inside the page template would lose its backslashes).
   const photos = rawPhotos.map((ph) => ({ ...ph, src: decodeURIComponent(ph.src).match(/photos\/([\w-]+)/)?.[1] }));
-  const names = photos.map((ph) => ph.src).sort().join(",");
+  // Distinct files: the demo (Landing 15) shows the iPhone and PS5 photos again.
+  const names = [...new Set(photos.map((ph) => ph.src))].sort().join(",");
   check(`photos ${width}px: all 5 example photos load, cropped (object-fit: cover) not stretched`, names === "iphone-13-pro-sierra-blue,iphone-listing-1,iphone-listing-2,iphone-listing-3,playstation-5" && photos.every((ph) => ph.ok && ph.fit === "cover"), JSON.stringify(photos));
 }
 const credits = await evaluate(`(() => { const f = document.querySelector('footer'); return { text: f.textContent.includes('Example product photos from Unsplash'), links: [...f.querySelectorAll('a[href*="unsplash.com/@"]')].length }; })()`);
@@ -488,6 +489,141 @@ check("hero 'See how it works' scrolls to the section", landed.hash === "#how-it
 await viewport(1280, 800, false); await load(`${base}/`);
 const heroMark = await evaluate(`(() => { const i = document.querySelector('#hero figure img[src*="facebook"]'); return i && { src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, text: document.querySelector('#hero figure').textContent.includes('Facebook Marketplace') }; })()`);
 check("hero card: official Facebook mark + name", !!heroMark && heroMark.src.endsWith("facebook.webp") && heroMark.ok && heroMark.text, JSON.stringify(heroMark));
+
+// ---- Hunt demo (Landing 15) ----
+const demoInfo = () => evaluate(`(() => { const d = document.getElementById('demo'); const h = d.querySelector('h3'); const bar = d.querySelector('[role="progressbar"]');
+  return { label: [...d.querySelectorAll('p')].some((p) => p.textContent.trim() === 'Illustrative demo — not live listings' && p.getBoundingClientRect().width > 0),
+    heading: h && h.textContent, focusIsHeading: document.activeElement === h, current: d.querySelector('[aria-current="step"]')?.textContent ?? null,
+    live: d.querySelector('[aria-live="polite"]')?.textContent ?? null, progress: bar && Number(bar.getAttribute('aria-valuenow')),
+    statuses: [...d.querySelectorAll('ol[aria-label="Example listings"] li')].map((li) => li.dataset.status + (li.dataset.best ? '*' : '')),
+    buttons: [...d.querySelectorAll('button')].map((b) => b.textContent.trim()), text: d.textContent,
+    overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth }; })()`);
+const clickDemo = async (start) => { await evaluate(`[...document.querySelectorAll('#demo button, #demo a')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(start)})).click()`); await sleep(150); };
+const waitHeading = (text, ms = 6000) => evaluate(`(async () => { const s = Date.now(); while (document.querySelector('#demo h3')?.textContent !== ${JSON.stringify(text)} && Date.now() - s < ${ms}) await new Promise((r) => setTimeout(r, 25)); return Date.now() - s; })()`);
+const pressKey = async (k, code, text) => { for (const type of ["keyDown", "keyUp"]) await send("Input.dispatchKeyEvent", { type, key: k, code: k, windowsVirtualKeyCode: code, ...(text && type === "keyDown" ? { text } : {}) }); await sleep(150); };
+/** Screenshot of the whole demo frame (page coordinates, so it doesn't depend on the scroll position). */
+const shotDemo = async (name) => {
+  await sleep(350);
+  const r = await evaluate(`(() => { const b = document.getElementById('demo').querySelector(':scope > div > div').getBoundingClientRect(); return { x: b.left + scrollX, y: b.top + scrollY, width: b.width, height: b.height }; })()`);
+  writeFileSync(path.join(outDir, `${name}.png`), Buffer.from((await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...r, scale: 1 } })).data, "base64"));
+};
+await viewport(1280, 900, false); await load(`${base}/`);
+await evaluate(`document.getElementById('demo').scrollIntoView()`); await sleep(400);
+let d = await demoInfo();
+check("demo: obvious 'Illustrative demo — not live listings' label, 4-step progress at 'Product', 3 products", d.label && d.heading === "What should Rein Drop hunt for?" && (d.current ?? "").includes("Product") && ["iPhone 13 Pro", "PlayStation 5", "MacBook Air M2"].every((n) => d.buttons.some((b) => b.startsWith(n))), JSON.stringify({ label: d.label, heading: d.heading, current: d.current, buttons: d.buttons }));
+await shotDemo("demo-1-choose-1280");
+await clickDemo("PlayStation 5"); await sleep(350);
+d = await demoInfo();
+check("demo: choosing a product -> 'Hunt' step, focus on the new heading, Back + Start over shown", d.heading === "Set up your PlayStation 5 Hunt" && d.focusIsHeading && (d.current ?? "").includes("Hunt") && d.buttons.includes("Back to products") && d.buttons.includes("Start over"), JSON.stringify({ heading: d.heading, focus: d.focusIsHeading, current: d.current }));
+await shotDemo("demo-2-configure-1280");
+await clickDemo("Start the scan");
+d = await demoInfo();
+check("demo: scan starts at 0 of 4 and is announced politely", d.heading === "Checking example listings for PlayStation 5" && d.progress === 0 && d.live === "Checking 4 example listings. This takes a couple of seconds.", JSON.stringify({ heading: d.heading, progress: d.progress, live: d.live }));
+await sleep(600);
+d = await demoInfo();
+check("demo: progress advances one listing at a time", d.progress >= 1 && d.progress < 4 && d.statuses.some((s) => s === "checking"), JSON.stringify({ progress: d.progress, statuses: d.statuses }));
+await shotDemo("demo-3-scan-1280");
+const scanMs = await waitHeading("Best match found");
+d = await demoInfo();
+const firstAnnouncement = d.live;
+check("demo: fast - the scan ends in about 2 s with the best match marked, focus on its heading", scanMs < 2500 && d.focusIsHeading && d.progress === 4 && d.statuses.join(",") === "skip,skip,match*,match", JSON.stringify({ ms: scanMs + 750, statuses: d.statuses, focus: d.focusIsHeading }));
+check("demo: result announced (fits, best match, estimated gross upside)", d.live === "Scan finished: 2 of 4 example listings fit your Hunt. Best match: PlayStation 5 console + 1 controller, good condition, asking $300, estimated gross upside +$120.", d.live);
+await sleep(600); await shotDemo("demo-4-candidate-1280");
+await clickDemo("See why it was flagged"); await sleep(350);
+d = await demoInfo();
+const joinHref = await evaluate(`[...document.querySelectorAll('#demo a')].find((a) => a.textContent.includes('Join early access'))?.getAttribute('href')`);
+check("demo: deal explanation - strength, estimate, gross upside, why / questions / costs, 'not profit', CTA to the waitlist", d.heading === "Why this deal was flagged" && d.focusIsHeading && (d.current ?? "").includes("Deal") && ["Strong deal", "Estimate", "+$120", "Why it was flagged", "Questions to ask the seller", "Before you count it as profit", "It is not profit."].every((t) => d.text.includes(t)) && joinHref === "#waitlist", JSON.stringify({ heading: d.heading, current: d.current, joinHref }));
+await sleep(400); await shotDemo("demo-5-evaluation-1280");
+await clickDemo("Back to the match"); await sleep(300);
+d = await demoInfo();
+check("demo: Back from the deal returns to the match", d.heading === "Best match found" && d.focusIsHeading, d.heading);
+await clickDemo("Start over"); await sleep(300);
+d = await demoInfo();
+check("demo: Start over returns to the products, focus on the heading", d.heading === "What should Rein Drop hunt for?" && d.focusIsHeading && !d.buttons.includes("Start over"), JSON.stringify({ heading: d.heading, focus: d.focusIsHeading }));
+
+// Keyboard only: Enter on a product, Home on the price slider -> nothing fits -> back keeps the setting.
+await evaluate(`[...document.querySelectorAll('#demo button')].find((b) => b.textContent.startsWith('MacBook Air M2')).focus()`);
+await pressKey("Enter", 13, "\r"); await sleep(300);
+d = await demoInfo();
+check("demo (keyboard): Enter on a product opens its Hunt", d.heading === "Set up your MacBook Air M2 Hunt", d.heading);
+await evaluate(`document.getElementById('demo-max-price').focus()`);
+await pressKey("Home", 36);
+const minPrice = await evaluate(`document.getElementById('demo-max-price').value`);
+await clickDemo("Start the scan");
+await waitHeading("Nothing fits this Hunt yet");
+d = await demoInfo();
+check("demo: a too-tight Hunt ends in 'nothing fits', announced, with a way back", d.heading === "Nothing fits this Hunt yet" && d.live === "Scan finished: none of the 4 example listings fit your Hunt. Go back to change it." && d.buttons.includes("Change the Hunt"), JSON.stringify({ heading: d.heading, live: d.live, minPrice }));
+await clickDemo("Change the Hunt"); await sleep(300);
+const keptPrice = await evaluate(`document.getElementById('demo-max-price').value`);
+check("demo: going back keeps the Hunt settings", keptPrice === minPrice && minPrice === "300", `${minPrice} -> ${keptPrice}`);
+
+// Skip, and determinism: the same choices give the same result.
+await clickDemo("Start over"); await clickDemo("PlayStation 5"); await clickDemo("Start the scan"); await clickDemo("Skip to the result");
+const skipMs = await waitHeading("Best match found", 2000);
+d = await demoInfo();
+check("demo: 'Skip to the result' finishes at once, with the same result as before (deterministic)", skipMs < 300 && d.live === firstAnnouncement, `${skipMs} ms`);
+
+// Phone width.
+await viewport(375, 812, true); await load(`${base}/`);
+await evaluate(`document.getElementById('demo').scrollIntoView()`); await sleep(300);
+await clickDemo("iPhone 13 Pro"); await clickDemo("Start the scan"); await clickDemo("Skip to the result"); await waitHeading("Best match found", 2000);
+await clickDemo("See why it was flagged"); await sleep(500);
+d = await demoInfo();
+check("demo 375px: works through to the deal, no horizontal overflow", d.heading === "Why this deal was flagged" && !d.overflowX && d.label, JSON.stringify({ heading: d.heading, overflowX: d.overflowX }));
+await shotDemo("demo-5-evaluation-375");
+
+// ---- Motion (Landing 16) ----
+await viewport(1280, 900, false);
+await send("Page.navigate", { url: `${base}/` }); await sleep(250);
+const early = await evaluate(`(() => {
+  const anims = (sel) => { const el = document.querySelector(sel); return el ? el.getAnimations().map((a) => ({ name: a.animationName, iterations: a.effect.getTiming().iterations, opacity: a.effect.getKeyframes().some((k) => 'opacity' in k) })) : null; };
+  return { headline: anims('#hero h1'), lead: anims('#hero h1 + p'), mascot: anims('#hero img[src*="holding-box"]'), card: anims('#hero figure') };
+})()`);
+check("motion: hero copy and deal card animate in on load", early.lead?.length === 1 && early.lead[0].opacity && early.card?.length === 1 && early.card[0].opacity, JSON.stringify({ lead: early.lead, card: early.card }));
+check("motion: headline and mascot only move - never start invisible (LCP stays fast)", early.headline?.length === 1 && !early.headline[0].opacity && early.mascot?.length >= 1 && early.mascot.every((a) => !a.opacity), JSON.stringify({ headline: early.headline, mascot: early.mascot }));
+check("motion: the mascot's motion is one-time (no endless loop)", early.mascot?.every((a) => Number.isFinite(a.iterations)), JSON.stringify(early.mascot));
+await sleep(3000);
+const settled = await evaluate(`(() => {
+  const time = document.getAnimations().filter((a) => a.timeline === document.timeline);
+  const card = getComputedStyle(document.querySelector('#hero figure'));
+  const mascot = getComputedStyle(document.querySelector('#hero img[src*="holding-box"]'));
+  return { running: time.filter((a) => a.playState === 'running').map((a) => a.animationName ?? 'js'), infinite: document.getAnimations().filter((a) => a.effect.getTiming().iterations === Infinity).length,
+    card: card.opacity + ' ' + card.transform, mascot: mascot.transform };
+})()`);
+const atRest = (t) => t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)";
+check("motion: everything settles within 3 s; nothing on the page loops forever", settled.running.length === 0 && settled.infinite === 0 && settled.card.startsWith("1 ") && atRest(settled.card.slice(2)) && atRest(settled.mascot), JSON.stringify(settled));
+const scrollMotion = await evaluate(`(() => { const supported = CSS.supports('animation-timeline: view()');
+  const tl = (sel) => document.querySelector(sel).getAnimations().map((a) => a.timeline && a.timeline.constructor.name);
+  return { supported, howMascot: tl('#how-it-works img[src*="running-box"]'), intelCard: tl('#intelligence figure') }; })()`);
+check("motion: running mascot and deal-intelligence card enter with the scroll (scroll-driven, where supported)", !scrollMotion.supported || (scrollMotion.howMascot.join() === "ViewTimeline" && scrollMotion.intelCard.join() === "ViewTimeline"), JSON.stringify(scrollMotion));
+// The page scrolls smoothly: wait until scrolling has stopped before reading the card.
+await evaluate(`document.getElementById('intelligence').scrollIntoView()`); await settleScroll(); await sleep(150);
+const intel = await evaluate(`(() => { const s = getComputedStyle(document.querySelector('#intelligence figure')); return s.opacity + ' ' + s.transform; })()`);
+check("motion: once in view, the deal-intelligence card is fully shown", /^1 (none|matrix\(1, 0, 0, 1, 0, 0\))$/.test(intel), intel);
+// Only partly scrolled in: it is part-way through its entrance (tied to the scroll, not a timer).
+await evaluate(`(() => { const r = document.querySelector('#intelligence figure').getBoundingClientRect(); document.documentElement.style.scrollBehavior = 'auto'; window.scrollBy(0, r.top - innerHeight + 120); document.documentElement.style.scrollBehavior = ''; })()`); await sleep(200);
+const partly = await evaluate(`Number(getComputedStyle(document.querySelector('#intelligence figure')).opacity)`);
+check("motion: part-way into view, the card is part-way through its entrance", partly > 0 && partly < 1, String(partly));
+await evaluate(`document.getElementById('demo').scrollIntoView()`); await sleep(300);
+await clickDemo("iPhone 13 Pro");
+const stage = await evaluate(`(() => { const s = document.querySelector('#demo h3 + div'); return s.getAnimations().map((a) => a.animationName); })()`);
+check("motion: a demo stage change fades the new stage in", stage.length === 1, JSON.stringify(stage));
+
+// Reduced motion: no animations at all, and the demo scan finishes at once.
+await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+await send("Page.navigate", { url: `${base}/` }); await sleep(250);
+const still = await evaluate(`({ hero: ['#hero h1', '#hero h1 + p', '#hero figure', '#hero img[src*="holding-box"]'].flatMap((s) => document.querySelector(s).getAnimations()).length,
+  scroll: ['#how-it-works img[src*="running-box"]', '#intelligence figure'].flatMap((s) => document.querySelector(s).getAnimations()).length,
+  card: getComputedStyle(document.querySelector('#hero figure')).opacity })`);
+check("reduced motion: no hero reveal, no mascot motion, no scroll entrances; card shown at once", still.hero === 0 && still.scroll === 0 && still.card === "1", JSON.stringify(still));
+await sleep(1000);
+await evaluate(`document.getElementById('demo').scrollIntoView()`); await sleep(200);
+await clickDemo("PlayStation 5");
+const stillStage = await evaluate(`document.querySelector('#demo h3 + div').getAnimations().length`);
+await clickDemo("Start the scan");
+const reducedMs = await waitHeading("Best match found", 2000);
+check("reduced motion: no demo stage animation; the scan shows its result at once", stillStage === 0 && reducedMs < 300, JSON.stringify({ stillStage, reducedMs }));
+await send("Emulation.setEmulatedMedia", { features: [] });
 
 console.log(results.join("\n"));
 console.log(`${results.filter((r) => r.startsWith("PASS")).length}/${results.length} passed`);

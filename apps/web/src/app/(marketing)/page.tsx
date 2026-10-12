@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ComponentType } from "react";
 import { AlertsSection } from "@/marketing/alerts/AlertsSection";
 import { ClosingCta } from "@/marketing/closing/ClosingCta";
-import { DemoPlaceholder } from "@/marketing/demo/DemoPlaceholder";
+import { HuntDemo } from "@/marketing/demo/HuntDemo";
 import { FaqSection } from "@/marketing/faq/FaqSection";
 import { SiteFooter } from "@/marketing/footer/SiteFooter";
 import { Hero } from "@/marketing/hero/Hero";
@@ -28,7 +28,7 @@ const SECTIONS: Record<LandingSectionId, ComponentType> = {
   marketplaces: MarketplaceGallery, // Landing 08
   problem: ProblemSection, // Landing 09
   "how-it-works": HowItWorks, // Landing 10
-  demo: DemoPlaceholder, // TEMPORARY - interactive demo in Landing 14-15
+  demo: HuntDemo, // Landing 14-15 (interactive, illustrative)
   intelligence: DealIntelligence, // Landing 11
   hunts: HuntPreferences, // Landing 12
   alerts: AlertsSection, // Landing 12

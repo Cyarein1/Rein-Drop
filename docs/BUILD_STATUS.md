@@ -1,11 +1,34 @@
 # Build Status
 
-_Last updated: 2026-10-10 (step 61 - Landing 14)_
+_Last updated: 2026-10-12 (step 63 - Landing 16)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 63 - Landing 16: motion
+
+CSS-only motion:
+- a one-time hero reveal (the headline and mascot only move, so the page's main content is shown
+  at once);
+- one gentle bob for the approved hero mascot, and a single scroll-linked dash-in for the approved
+  running mascot;
+- deal-card entrances and demo stage transitions.
+Nothing loops. Everything sits behind `prefers-reduced-motion: no-preference`, and scroll-linked
+entrances fall back to simply showing the element. Verified with 11 motion checks in the landing
+browser check (198/198, with the demo checks). Details:
+[LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
+
+### Step 62 - Landing 15: interactive Hunt demo
+
+"Try a sample Hunt" is now interactive, built on the step 61 model: product → Hunt → scan → deal.
+- **On screen:** progress, Back / Start over, and the always-visible "Illustrative demo — not live
+  listings" label.
+- **Accessibility:** focus moves to each new heading, and the scan is announced politely.
+- **Speed:** about 2 s per scan, deterministic, with an instant result under reduced motion or Skip.
+Verified: web tests 142/142, typecheck, lint, build; landing browser check 198/198; screenshots at
+1280 / 375. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 61 - Landing 14: deterministic Hunt demo model
 

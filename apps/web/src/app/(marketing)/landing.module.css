@@ -18,6 +18,13 @@
 /* Full width: each section sets its own background and inner width (the hero's wash runs edge to edge). */
 .main {
   display: block;
+
+  /* Motion (Landing 16): one shared feel for every section. Used only inside
+     prefers-reduced-motion: no-preference; globals.css also cuts motion short for "reduce". */
+  --rd-motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --rd-motion-enter: 600ms;
+  --rd-motion-stage: 280ms;
+  --rd-motion-rise: 14px;
 }
 
 /* Smooth in-page scrolling on the landing page only, and only when motion is welcome. */
