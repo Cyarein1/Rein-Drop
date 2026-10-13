@@ -95,6 +95,12 @@ apps/api/src/modules/waitlist/         public POST /waitlist module (write-only,
 apps/web/src/app/api/waitlist/route.ts  POST /api/waitlist - wires the checks to the API client (Landing 19)
 apps/web/src/marketing/waitlist/waitlist-route.ts (+spec)  origin / JSON / rate limit / size / honeypot / zod / privacy-safe answers + logs (Landing 19)
 packages/contracts/src/waitlist.ts     email normalization, sources, limits (Landing 18); request / response schema, requestable marketplaces, safe messages (Landing 19)
+apps/web/scripts/check-waitlist-e2e.mjs  LIVE waitlist end to end against a preview: browser -> web -> API -> Postgres, logs / analytics privacy (Landing 24)
+docker-compose.preview.yml             preview stack from the production images: Postgres 5433, migrate, API 4100, web 3100 (Landing 24)
+Dockerfile                             web build stage takes SITE_URL / CONTACT_EMAIL / store URLs / analytics provider as build args (Landing 24)
+.github/workflows/ci.yml               CI checks only: monorepo checks, preview e2e, image builds; no deploy, no secrets (Landing 24)
+docs/deploy/LANDING_DEPLOYMENT.md      deployment options, settings matrix, preview, CI, release flow (Landing 24)
+docs/LANDING_LAUNCH_CHECKLIST.md       production launch checklist (Landing 24)
 docs/LANDING_ASSETS.md                 asset register (Rein Drop + third-party) (Landing 04)
 docs/LANDING_BUILD_STATUS.md           this track's status (exists)
 docs/LANDING_FILE_MAP.md               this file (exists)
@@ -108,7 +114,7 @@ docs/LANDING_FILE_MAP.md               this file (exists)
 | `/privacy`, `/terms` | `(marketing)/…` | Public |
 | `/sign-in`, `/auth/*` | existing | Public (auth flow) |
 | `/home`, `/hunts/**`, `/deals/**`, `/alerts`, `/analytics/**`, `/inventory/**`, `/settings/**`, `/onboarding` | existing `(app)` / onboarding | Signed in (proxy + `verifySession()`) |
-| `/dev/**` (incl. `/dev/landing`) | existing dev tools | Development only |
+| `/dev/**` (incl. `/dev/landing`) | existing dev tools | Intended development only - only `/dev/landing` is gated today (launch blocker B1) |
 | API `POST /waitlist` | `apps/api` waitlist module | Public, throttled (Landing 19) |
 
 Collision check: no existing route under `/privacy`, `/terms`, `/sitemap.xml`, `/robots.txt` or

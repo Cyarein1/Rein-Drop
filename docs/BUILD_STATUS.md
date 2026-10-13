@@ -1,11 +1,33 @@
 # Build Status
 
-_Last updated: 2026-10-13 (step 70 - Landing 23)_
+_Last updated: 2026-10-13 (step 71 - Landing 24)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 71 - Landing 24: deployment options, preview, CI, live end to end, launch checklist
+
+- **Deployment options:** [deploy/LANDING_DEPLOYMENT.md](deploy/LANDING_DEPLOYMENT.md) covers
+  what must run (Next.js server, API, Postgres), three low-cost options (Azure Container Apps
+  recommended), the settings and secrets matrix, and the release flow. Nothing was provisioned.
+- **Dockerfile:** the web image now accepts the build-time public settings (`SITE_URL`,
+  `CONTACT_EMAIL`, store URLs, analytics provider). Before this, a deployed image stayed noindex
+  with the contact placeholder.
+- **Preview:** `docker-compose.preview.yml` runs the production images locally (5433 / 4100 /
+  3100) with placeholder settings only.
+- **CI:** `.github/workflows/ci.yml` (checks only, read-only permissions, no secrets): the monorepo
+  checks, a preview end to end against a Postgres service, and the image builds.
+- **Live test:** `check-waitlist-e2e.mjs` signs up through a real browser and checks the database
+  row, duplicates, the honeypot, and that no email appears in logs or analytics. Both writing
+  checks refuse non-local URLs.
+- **Verified on the preview:** waitlist e2e 7/7, landing check 256/256 (no skips). Monorepo
+  checks 58/58.
+- **Launch checklist:** [LANDING_LAUNCH_CHECKLIST.md](LANDING_LAUNCH_CHECKLIST.md) lists 8
+  blockers, including the ungated `/dev` pages found here.
+
+Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
 ### Step 70 - Landing 23: performance + responsive audit
 

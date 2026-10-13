@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-13, after step 70 (Landing 23)._
+_Last updated: 2026-10-13, after step 71 (Landing 24)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -104,7 +104,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   no favicon, a 404 on every page - is resolved: step 70.)
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
-- Landing 05 (step 52, marketing primitives - not sent yet) and Landing 24 (step 71) per the scoped plan - step 48.
+- Landing 05 (step 52, marketing primitives - not sent yet) per the scoped plan - step 48.
+- **Production launch: work through [LANDING_LAUNCH_CHECKLIST.md](LANDING_LAUNCH_CHECKLIST.md)** - 8 blockers (B1 `/dev` gating, B2 legal review, B3 `CONTACT_EMAIL`, B4 retention / access, B5 how sign-ups are contacted, B6 trademark review, B7 design + mascot approval, B8 demo figures), then hosting / database / region / budget / domain decisions - step 71.
+- CI workflow (`.github/workflows/ci.yml`) has not run on GitHub yet - validated locally only; the first push / PR shows whether the preview-e2e job (Chrome sandbox sysctl, Postgres service) works on the hosted runner. Then turn on branch protection ("require CI to pass") in the repository settings - step 71.
+- Each environment needs its own web image (public settings are inlined at build): build the production one with `--build-arg SITE_URL=... CONTACT_EMAIL=...`; a preview image can't be promoted - step 71.
+- Preview database volume `rein-drop-preview_preview-postgres-data` kept after the step 71 run (test rows only: `preview.e2e+*@example.com`, `landing.check+*@example.com`) - delete with `docker compose -f docker-compose.preview.yml down --volumes` when no longer wanted - step 71.
 - Performance (step 70): Lighthouse's *simulated* mobile LCP stays ~3.1 s (its model counts ~2.6 s of 'render delay') while real-throttled runs measure 2.1 s and lab runs ~1.2 s. Confirm with field data (Chrome UX Report / real-user LCP, INP, CLS) once the site is public - the lab can't settle it - step 70.
 - Remaining measured items, deliberately not changed (step 70): ~13 KB of Next.js's own modern-JS polyfills (framework chunk, no supported switch); 3 render-blocking CSS files (~15 KB; `experimental.inlineCss` would inline them but is experimental, global to the signed-in app and duplicates styles); the Google Play badge PNG is 646 px shown at 154 px (5 KB; official file served unaltered, decision L-D6). Revisit if field data says they matter - step 70.
 - Demo: choosing a product is the most expensive interaction (~150 ms at 4x CPU - under the 200 ms 'good' INP line, but the closest to it) - watch it in field INP - step 70.
@@ -116,10 +120,9 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - **Legal review of the privacy notice and terms drafts** (`/privacy`, `/terms`, version 2026-10-12): every "To be confirmed" point (legal entity, officer, hosting / email providers and countries, legal basis, retention, rights, liability wording, governing law). Set `reviewed: true` in `legal-drafts.ts` only after review; until then the pages show the draft banner and stay noindex. Required before collecting real emails publicly - step 67.
 - The success message says "We'll be in touch by email about early access" - there is no email provider yet (D14); contact sign-ups manually or wire a provider before launch - step 67.
 - Consent is an explicit, unticked checkbox (safe default before legal review) - legal review may simplify or keep it; changing the words means a new `WAITLIST_CONSENT_VERSION` - step 67.
-- Waitlist end to end with a real database write is not verified yet: start Postgres, apply the step 65 migration, then sign up once through `/api/waitlist` (expect 202, one row; a second time: 202, still one row) - step 66.
 - Waitlist rate limits are in memory (web: 5 per 10 min per visitor; API: 120 per min per caller) - fine for one instance each; several instances need a shared store (same as the API's existing limiter) - step 66.
 - Web visitor IP = rightmost `X-Forwarded-For` (one trusted ingress hop). Confirm the Azure ingress appends exactly one entry; with zero or two proxy hops the limiter keys on the wrong address - step 66.
-- **Apply the waitlist migration locally** (`20261012211858_waitlist_signup`): the database was down when it was created - `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate` to also check drift). Only replayed on an in-memory Postgres so far - step 65.
+- **Apply the waitlist migration to your development database** (`20261012211858_waitlist_signup`): the database was down when it was created - `pnpm infra:up`, then `pnpm --filter @rein-drop/db db:deploy` (or `db:migrate` to also check drift). Verified on a fresh Postgres 18 in the step 71 preview; your dev database (5432) was not touched - step 65.
 - Waitlist data retention / deletion on request (and who on the team may read the table) - decide before collecting real emails - step 65.
 - Marketplace requests are client state only (in memory, lost on reload) and are never sent: the waitlist backend (Landing 18-20) must accept `requestedMarketplaces` (keys or `other`) and `requestedMarketplaceOther` (max 60 characters), validate keys against the radar list, and never publish totals - step 64.
 - A visitor who reloads before signing up loses their picks; keep it that way or persist them once there's a privacy-reviewed reason to - owner's call - step 64.
@@ -129,7 +132,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Marketplace marks: replace site-icon downloads with brand / press-kit files where available - especially low-resolution Craigslist (57 px), Mercari (64), Depop and Amazon (48) and the four with no file (OfferUp, Swappa, Etsy, GOAT - text fallback); trademark review before public launch (decision L-D6) - step 55.
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
 - Landing skeleton is public at `/` once deployed - don't deploy the web app publicly until the landing is finished (or keep the beta URL private) - step 49.
-- Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable - step 50.
+- Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable. Re-confirmed in step 71: launch blocker B1 - step 50.
 - Six landing mascot poses have no approved art (thinking, searching, phone / alert, planning, surprised / exceptional, celebration) - neutral visuals until approved; see docs/LANDING_ASSETS.md - step 51.
 - The landing mockup shows a deer / reindeer mascot; the approved mascot is the orange droplet - confirm which character the landing uses (only approved art is used) - step 51.
 - Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
@@ -340,3 +343,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Build-time web env vars (`CONTACT_EMAIL`, store URLs) not declared to Turborepo (strict env mode could drop them; cache shared across values) | Steps 54 / 60 (found in step 69) | Step 69 (declared in `apps/web/turbo.json`; hash verified to change) |
 | Web had no favicon (`/favicon.ico` 404 on every page) | Step 32 | Step 70 (approved app icon declared via metadata `icons`) |
 | Brand font never loaded on the web (CSS asked for `Inter`, the package registered `Inter Variable`) | found in step 70 | Step 70 (`next/font/local`: self-hosted, preloaded latin variable Inter + size-adjusted fallback) |
+| Landing 24 (deployment options, preview, CI, live end to end, launch checklist) | Step 48 | Step 71 (docs/deploy/LANDING_DEPLOYMENT.md, docker-compose.preview.yml, .github/workflows/ci.yml, docs/LANDING_LAUNCH_CHECKLIST.md) |
+| Waitlist end to end with a real database write not verified | Step 66 | Step 71 (preview: browser -> web -> API -> Postgres 18, one normalized row, duplicate = same answer + one row, honeypot stores nothing; 7/7) |
+| Production web image couldn't receive build-time settings (`SITE_URL`, `CONTACT_EMAIL`, store URLs, analytics provider) - a deployed image stayed noindex with the contact placeholder | found in step 71 | Step 71 (Dockerfile build args) |
+| No CI | Step 45 (backlog B-31 covers CD) | Step 71 (checks-only workflow; deploy stays manual - B-31 unchanged) |

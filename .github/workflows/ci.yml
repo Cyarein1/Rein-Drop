@@ -1,0 +1,133 @@
+# CI (Landing 24). Checks only - it never deploys and has no cloud credentials: nothing here can
+# create or change an Azure resource (decision 0015: deployment stays manual, runbook in
+# docs/azure/BETA_DEPLOYMENT.md). No repository secrets are needed; the preview job uses
+# placeholder settings (see docker-compose.preview.yml for what each one is).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  TURBO_TELEMETRY_DISABLED: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Build, typecheck, lint, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build typecheck lint test
+
+  preview-e2e:
+    name: Preview end to end (Postgres, API, web, browser)
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: reindrop_ci
+          POSTGRES_PASSWORD: ci-placeholder-password
+          POSTGRES_DB: reindrop_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U reindrop_ci"
+          --health-interval 3s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://reindrop_ci:ci-placeholder-password@localhost:5432/reindrop_ci
+      # Production mode with placeholder settings (none of these services is called on this path).
+      NODE_ENV: production
+      AUTH_PROVIDER: entra
+      ENTRA_AUTHORITY: https://ci-placeholder.ciamlogin.com
+      ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000000
+      ENTRA_API_CLIENT_ID: 00000000-0000-0000-0000-000000000002
+      ENTRA_WEB_CLIENT_ID: 00000000-0000-0000-0000-000000000001
+      ENTRA_WEB_CLIENT_SECRET: ci-placeholder-not-a-secret
+      BILLING_PROVIDER: stripe
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder_not_a_key
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      STRIPE_PRICE_IDS: pro=price_ci_pro,ultimate=price_ci_ultimate
+      WEB_APP_URL: http://localhost:3100
+      EBAY_SOURCE: api
+      EBAY_CLIENT_ID: ci-not-a-real-client
+      EBAY_CLIENT_SECRET: ci-not-a-real-secret
+      API_BASE_URL: http://localhost:4100
+      APP_BASE_URL: http://localhost:3100
+      # Preview build of the web app: not indexable, analytics to the console so the events can be checked.
+      NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER: console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: corepack enable
+      - run: NODE_ENV=development pnpm install --frozen-lockfile
+      - name: Build (preview settings)
+        run: pnpm turbo run build --filter=api --filter=web
+      - name: Apply database migrations
+        run: pnpm db:deploy
+      - name: Start API and web
+        run: |
+          PORT=4100 nohup node apps/api/dist/main.js > api.log 2>&1 &
+          (cd apps/web && nohup npx next start --port 3100 > ../../web.log 2>&1 &)
+          for i in $(seq 1 60); do
+            curl -fs http://localhost:4100/ready > /dev/null && curl -fs http://localhost:3100/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "services did not become ready"; cat api.log web.log; exit 1
+      - name: Allow headless Chrome's sandbox (Ubuntu 24.04 restricts user namespaces)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Landing browser check
+        working-directory: apps/web
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          ANALYTICS_MODE: console
+        run: node scripts/check-landing.mjs http://localhost:3100 .browser-check
+      - name: Live waitlist end to end
+        working-directory: apps/web
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          LOG_FILES: ../../api.log,../../web.log
+        run: node scripts/check-waitlist-e2e.mjs http://localhost:3100
+      - name: Screenshots and logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-e2e-evidence
+          path: |
+            apps/web/.browser-check
+            api.log
+            web.log
+          retention-days: 7
+
+  images:
+    name: Container images build (not pushed)
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build api, web (preview build args) and migrate targets
+        run: |
+          docker build --target api -t rein-drop-api:ci .
+          docker build --target migrate -t rein-drop-migrate:ci .
+          docker build --target web --build-arg NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER=console -t rein-drop-web:ci .

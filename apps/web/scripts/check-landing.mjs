@@ -720,12 +720,21 @@ await stubWaitlist(429);
 await typeEmail("sam@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(200);
 fi = await formInfo();
 check("form: rate limited -> 'wait a few minutes', no Try again button", (fi.alert ?? "").includes("wait a few minutes") && !fi.retry, fi.alert);
-// The real route (owner's API has no database right now): a safe 503 'try again', email kept in the field.
+// The real route, whatever the API's state: with a database (preview / CI) the sign-up succeeds; without one (local dev with the database down) a safe 'couldn't save' + Try again with the email kept. Never a crash or a raw error.
 await load(`${base}/`);
-await typeEmail("landing20.check@example.com"); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(2500);
+// Writes one real sign-up: only against a local preview / CI, or with ALLOW_WRITES=1 (never production by accident).
+const writesAllowed = ["localhost", "127.0.0.1"].includes(new URL(base).hostname) || process.env.ALLOW_WRITES === "1";
+const realEmail = `landing.check+${Date.now().toString(36)}@example.com`;
+if (writesAllowed) {
+await typeEmail(realEmail); await evaluate(`document.getElementById('waitlist-consent').click()`); await submitForm(); await sleep(2500);
 fi = await formInfo();
 const kept = await evaluate(`document.getElementById('waitlist-email')?.value`);
-check("form (real route, API without database): 'couldn't save' + Try again; the email stays in the field", (fi.alert ?? "").includes("couldn't save your sign-up") && fi.retry && kept === "landing20.check@example.com", JSON.stringify({ alert: fi.alert, kept }));
+const realOk = !!fi.success && fi.success.includes("You're on the early-access list.");
+const realSafeFail = (fi.alert ?? "").includes("couldn't save your sign-up") && fi.retry && kept === realEmail;
+check(`form (real route${realOk ? ", database up" : ", database down"}): ${realOk ? "confirmation shown" : "'couldn't save' + Try again, email kept"}`, realOk || realSafeFail, JSON.stringify({ success: fi.success, alert: fi.alert, kept }));
+} else {
+  results.push("SKIP  form (real route): writes a sign-up - not run against a non-local URL without ALLOW_WRITES=1");
+}
 // Phone width.
 await viewport(375, 812, true); await load(`${base}/`);
 await stubWaitlist(503);
@@ -956,6 +965,7 @@ check("reduced motion: no demo stage animation; the scan shows its result at onc
 await send("Emulation.setEmulatedMedia", { features: [] });
 
 console.log(results.join("\n"));
-console.log(`${results.filter((r) => r.startsWith("PASS")).length}/${results.length} passed`);
+const counted = results.filter((r) => !r.startsWith("SKIP"));
+console.log(`${counted.filter((r) => r.startsWith("PASS")).length}/${counted.length} passed${results.length > counted.length ? ` (${results.length - counted.length} skipped)` : ""}`);
 ws.close(); chrome.kill();
 process.exit(results.some((r) => r.startsWith("FAIL")) ? 1 : 0);

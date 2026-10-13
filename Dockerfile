@@ -5,7 +5,8 @@
 #   docker build --target worker  -t <registry>/rein-drop-worker:<tag> .
 #   docker build --target web     -t <registry>/rein-drop-web:<tag> .
 #   docker build --target migrate -t <registry>/rein-drop-migrate:<tag> .
-# No secrets are baked in: every setting comes from the container environment at runtime.
+# No secrets are baked in: every secret comes from the container environment at runtime. The web
+# image takes its PUBLIC build-time settings as --build-arg (see below).
 
 ARG NODE_VERSION=24
 
@@ -17,6 +18,12 @@ COPY . .
 # Only what the server apps need (the mobile app is excluded by .dockerignore and these filters).
 RUN pnpm install --frozen-lockfile --filter "api..." --filter "worker..." --filter "web..." --filter "@rein-drop/db..."
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+# The web app's PUBLIC build-time settings (Landing 22-24), inlined by Next.js when it builds - so
+# they are image build arguments, one image per environment (preview / production). Not secrets.
+# Empty = the safe default: no SITE_URL -> noindex + no canonical; no CONTACT_EMAIL -> "contact
+# details coming soon"; no store URLs -> "coming soon" badges; no analytics provider -> none.
+# Declared to Turborepo in apps/web/turbo.json (NEXT_PUBLIC_* via framework inference).
+ARG SITE_URL="" CONTACT_EMAIL="" APP_STORE_URL="" GOOGLE_PLAY_URL="" NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER=""
 RUN pnpm turbo run build --filter=api --filter=worker --filter=web
 # Self-contained production folders (workspace packages copied in, dev dependencies left out).
 RUN pnpm --filter=api deploy --prod --legacy /out/api \

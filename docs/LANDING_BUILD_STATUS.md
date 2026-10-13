@@ -1,6 +1,6 @@
 # Landing page - build status
 
-_Last updated: 2026-10-13 (Landing 23 = step 70)_
+_Last updated: 2026-10-13 (Landing 24 = step 71)_
 
 Public marketing site for Rein Drop, built inside the existing monorepo (`apps/web`). Source
 documents (owner's, in `Downloads/ReinDrop/landing page/`): Creative & Experience Specification
@@ -1283,3 +1283,94 @@ Verified (commands run):
   and the interaction profile, as above.
 
 Next: **Landing 24**.
+
+### Landing 24 (step 71) - Deployment options, preview environment, CI, live end to end, launch checklist - done 2026-10-13
+
+**Deployment options:** [docs/deploy/LANDING_DEPLOYMENT.md](deploy/LANDING_DEPLOYMENT.md).
+- What has to run, from the code: the Next.js Node server (the waitlist route, proxy and auth), the
+  API (the only database writer, L-D3) and Postgres. A static host can't serve it.
+- Options:
+  - A, Azure Container Apps Consumption (decision 0015, recommended), with an external free-tier
+    Postgres while there's only a waitlist;
+  - B, one VM running the preview compose;
+  - C, a container PaaS free tier (check the commercial-use terms).
+- No prices are quoted (check current pricing).
+- Settings matrix: build-time public values, runtime values and runtime secrets (Key Vault only).
+
+**Gap found and fixed:** the production web image had **no way to receive build-time settings**.
+`SITE_URL`, `CONTACT_EMAIL`, the store URLs and the analytics provider are inlined at build, so a
+deployed image stayed noindex with the contact placeholder forever. The `Dockerfile` build stage
+now takes them as `ARG`s (empty defaults = preview behaviour). Each environment builds its own web
+image.
+
+**Preview environment, no cloud and no cost:** `docker-compose.preview.yml` runs the production
+images.
+- Containers:
+  - Postgres 18 on 5433 (own volume);
+  - a migration job;
+  - the API on 4100 (production mode, format-valid placeholders for Entra / Stripe / eBay, never
+    called on this path);
+  - the web on 3100 (no `SITE_URL`, console analytics).
+- It's separate from local development (5432 / 4000 / 3000).
+- No real secret is in the file.
+
+**CI:** `.github/workflows/ci.yml`, checks only.
+- `permissions: contents: read`, no repository secrets, no cloud credentials, no deploy step.
+- Jobs:
+  1. `pnpm turbo run build typecheck lint test`;
+  2. preview end to end: Postgres service, `migrate deploy`, API + web in production mode, the
+     landing browser check, then the live waitlist e2e (evidence uploaded only on failure);
+  3. Docker builds of `api`, `migrate` and `web` (not pushed).
+- The YAML was validated locally. It **hasn't run on GitHub yet**; the first push will show it.
+
+**New live test:** `apps/web/scripts/check-waitlist-e2e.mjs`. It runs a real browser at 375 px
+through the web route and the API to Postgres, then checks:
+- the row in the database;
+- duplicate handling;
+- the honeypot;
+- the invalid-email message;
+- that the email isn't in any server log or analytics event.
+
+**Write guards:** this test and the real-route form check in `check-landing.mjs` (now adaptive:
+database up → confirmation; database down → error + retry) write rows, so both refuse non-local
+URLs unless `ALLOW_WRITES=1`. Without it the e2e exits with code 2 and check-landing logs a SKIP.
+
+**Verified on the preview** (production images, `docker compose ... up -d --build --wait`: all
+healthy, migrate exit 0):
+- migrations: 23 applied on an empty database, including `waitlist_signup`;
+- `node scripts/check-waitlist-e2e.mjs http://localhost:3100`: **7/7**;
+- `ANALYTICS_MODE=console node scripts/check-landing.mjs http://localhost:3100`: **256/256**, no
+  skips. It covers:
+  - marketplace labels (nothing Live / Beta);
+  - the illustrative labels;
+  - privacy / terms draft banners + noindex;
+  - the contact placeholder;
+  - 320 / 375 px;
+  - analytics (catalog events only, GPC respected, no storage);
+  - SEO without `SITE_URL`;
+  - the real-route confirmation.
+- The preview containers were then removed (`down`). The volume
+  `rein-drop-preview_preview-postgres-data` is kept for the owner to delete or reuse.
+
+**Then:** [docs/LANDING_LAUNCH_CHECKLIST.md](LANDING_LAUNCH_CHECKLIST.md) covers:
+- the preview evidence;
+- 8 blockers;
+- decisions;
+- the production build args;
+- deploy;
+- read-only production checks;
+- go / no-go and rollback;
+- the first week.
+
+**Found while preparing the checklist:** only `/dev/landing` returns 404 in production. `/dev`,
+`/dev/ui`, `/dev/diagnostics` and `/dev/notifications` still render in production builds. It's
+listed as **blocker B1** and wasn't changed (outside this step).
+
+Verified (commands run):
+- the two preview checks above;
+- `pnpm turbo run build typecheck lint test`: **58/58**;
+- the compose file validated (`docker compose config`).
+
+Nothing was provisioned on Azure or anywhere else.
+
+Next: Landing 05 (marketing primitives) if sent; otherwise the owner items in the launch checklist.

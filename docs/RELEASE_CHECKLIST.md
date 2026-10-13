@@ -2,6 +2,7 @@
 
 Ordered, tick-as-you-go list from the frozen code to testers using Rein Drop on Azure. Scope:
 [MVP_FREEZE.md](MVP_FREEZE.md). Deployment detail: [azure/BETA_DEPLOYMENT.md](azure/BETA_DEPLOYMENT.md).
+The public landing page has its own list: [LANDING_LAUNCH_CHECKLIST.md](LANDING_LAUNCH_CHECKLIST.md).
 Each item says **who** does it (you = the owner) and **how it is checked**. Nothing here is done by
 an automated pipeline.
 

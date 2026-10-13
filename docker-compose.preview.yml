@@ -1,0 +1,106 @@
+# Local PREVIEW stack (Landing 24) - the production images (Dockerfile) wired together on this
+# machine, separate from local development: its own project, Postgres (port 5433, own volume), API
+# (4100) and web (3100). Nothing here provisions or calls a cloud service.
+#
+#   docker compose -f docker-compose.preview.yml up -d --build --wait     # build + start (+ migrate)
+#   node apps/web/scripts/check-landing.mjs http://localhost:3100          # landing checks
+#   node apps/web/scripts/check-waitlist-e2e.mjs http://localhost:3100     # live sign-up end to end
+#   docker compose -f docker-compose.preview.yml down                      # stop (keeps the data)
+#   docker compose -f docker-compose.preview.yml down --volumes            # stop + delete preview data
+#
+# Every value below is a PLACEHOLDER for a loopback-only preview - not a credential. The API runs in
+# real production mode, which refuses to start without Entra, Stripe and eBay settings; none of them
+# is called on the public pages or the waitlist, so obviously fake values in the right format are
+# enough. Real secrets never belong in this file: a real environment gets them from Key Vault
+# (docs/azure/BETA_DEPLOYMENT.md, docs/deploy/LANDING_DEPLOYMENT.md).
+
+name: rein-drop-preview
+
+x-entra-placeholders: &entra
+  AUTH_PROVIDER: entra
+  ENTRA_AUTHORITY: https://preview-placeholder.ciamlogin.com
+  ENTRA_TENANT_ID: 00000000-0000-0000-0000-000000000000
+  ENTRA_API_CLIENT_ID: 00000000-0000-0000-0000-000000000002
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: reindrop_preview
+      POSTGRES_PASSWORD: preview-placeholder-password
+      POSTGRES_DB: reindrop_preview
+      PGUSER: reindrop_preview
+      PGDATABASE: reindrop_preview
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - preview-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  # Applies every migration, then exits - like the manual migration job in Azure.
+  migrate:
+    build: { context: ., target: migrate }
+    environment:
+      DATABASE_URL: postgresql://reindrop_preview:preview-placeholder-password@postgres:5432/reindrop_preview
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ., target: api }
+    environment:
+      <<: *entra
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgresql://reindrop_preview:preview-placeholder-password@postgres:5432/reindrop_preview
+      BILLING_PROVIDER: stripe
+      STRIPE_SECRET_KEY: sk_test_preview_placeholder_not_a_key
+      STRIPE_WEBHOOK_SECRET: whsec_preview_placeholder
+      STRIPE_PRICE_IDS: pro=price_preview_pro,ultimate=price_preview_ultimate
+      WEB_APP_URL: http://localhost:3100
+      EBAY_SOURCE: api
+      EBAY_CLIENT_ID: preview-not-a-real-client
+      EBAY_CLIENT_SECRET: preview-not-a-real-secret
+    ports:
+      - "127.0.0.1:4100:4000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # Preview = not the public site: no SITE_URL (noindex, block-all robots), analytics to the
+        # browser console so the events can be checked, contact address only if you set one.
+        SITE_URL: ""
+        CONTACT_EMAIL: ${PREVIEW_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_LANDING_ANALYTICS_PROVIDER: console
+    environment:
+      <<: *entra
+      NODE_ENV: production
+      API_BASE_URL: http://api:4000
+      APP_BASE_URL: http://localhost:3100
+      ENTRA_WEB_CLIENT_ID: 00000000-0000-0000-0000-000000000001
+      ENTRA_WEB_CLIENT_SECRET: preview-placeholder-not-a-secret
+    ports:
+      - "127.0.0.1:3100:3000"
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  preview-postgres-data:
