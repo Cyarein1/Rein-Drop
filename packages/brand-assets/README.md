@@ -52,7 +52,7 @@ app maps tokens to files in one place:
 - mobile: `apps/mobile/src/brand/assets.ts` (`require`)
 
 Every token has approved art (since 2026-10-14). A token without one would map to `null`, and
-`MascotSlot` would show a neutral icon placeholder (never substitute art) - see docs/ASSET_TODO.md.
+`MascotSlot` would show a neutral icon placeholder (never substitute art) - see docs/MASCOT_ASSETS.md.
 
 ## Adding or replacing an asset
 

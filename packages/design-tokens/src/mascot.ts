@@ -28,7 +28,7 @@ export type MascotToken = (typeof MASCOT_TOKENS)[number];
 /**
  * Product states -> mascot token. Screens ask for a STATE; this map picks the semantic token and
  * each app maps tokens to approved files (or a neutral placeholder when none is approved yet -
- * see docs/ASSET_TODO.md). Never reference image files from product code.
+ * see docs/MASCOT_ASSETS.md). Never reference image files from product code.
  */
 export const PRODUCT_STATE_MASCOTS = {
   /** Brand-new account, first welcome. */

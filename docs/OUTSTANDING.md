@@ -217,7 +217,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Adapter `health()` was never called; slow / partial searches counted as clean successes | Step 18 | Step 35 |
 | Browser check of the source banners | Step 35 | Step 36 |
 | Product states: first scan, no deals yet while healthy, reduced monitoring, plan suggestion, cancellation placeholder; semantic mascot slots | Step 6 | Step 36 |
-| "Working" / "waiting" / "thinking" mascot slots rendered nothing - now neutral placeholders tracked in ASSET_TODO.md | Steps 26-34 | Step 36 |
+| "Working" / "waiting" / "thinking" mascot slots rendered nothing - now neutral placeholders tracked in ASSET_TODO.md (now MASCOT_ASSETS.md) | Steps 26-34 | Step 36 |
 | Settings "Plan & billing" said plans weren't decided - now shows the plan and live-Hunt use | Step 16 | Step 36 |
 | Deals integration test hunts could be polled by a running worker | Step 25 | Step 36 |
 | Real eBay adapter (Browse API, OAuth, rate / error handling, pagination, normalization) with mock mode kept | Step 18 | Step 37 |
@@ -284,7 +284,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Exceptional-deal mascot asset (only if approved artwork exists) | prompt 23 | Step 47 - moved to post-MVP backlog B-25 |
 | Profit / success mascot asset for a realized-profit Sale Result (slot wired, shows nothing until approved art exists) | step 32 | Step 47 - moved to post-MVP backlog B-25 |
 | Thinking / idea mascot asset for the analytics recommendation (slot wired, nothing yet) | step 34 | Step 47 - moved to post-MVP backlog B-25 |
-| Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot. | earlier | Step 47 - moved to post-MVP backlog B-25 |
+| Missing mascot art (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis): neutral placeholders until approved - see docs/ASSET_TODO.md (now MASCOT_ASSETS.md) - step 36. Sale Result / exceptional-deal banner still to switch to MascotSlot. | earlier | Step 47 - moved to post-MVP backlog B-25 |
 | Downgrade must never delete Hunts - docs review (holds: hunts above the limit are paused, never deleted - step 42). | earlier | Step 42: hunts above the limit are paused, never deleted (billing.int-spec) |
 | Downgrade enforcement covers the live-Hunt limit only; marketplaces / priority no longer in the plan aren't enforced on running hunts | step 42 | Step 47 - moved to post-MVP backlog B-15 |
 | After a downgrade the most recently started hunts are paused automatically; a "choose which stay live" screen isn't built | step 42 | Step 47 - moved to post-MVP backlog B-15 |

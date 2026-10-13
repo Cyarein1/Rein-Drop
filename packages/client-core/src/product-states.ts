@@ -6,7 +6,7 @@ import { durationUntilText } from './source-view.js';
 /**
  * Polished product states, shared by web and mobile (Mascot Usage Guide section 5, Screenbook
  * frames 31-33). Each state names its PRODUCT_STATE_MASCOTS key; the apps map it to an approved
- * asset or a neutral placeholder (docs/ASSET_TODO.md). Copy is calm and specific: what is
+ * asset or a neutral placeholder (docs/MASCOT_ASSETS.md). Copy is calm and specific: what is
  * happening, what Rein Drop does next, and the one useful thing the user can do.
  */
 

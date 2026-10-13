@@ -138,7 +138,7 @@ export default function UiGallery() {
       </Card>
 
       <Card title="Mascot tokens">
-        <p>Approved art where it exists; a dashed neutral placeholder otherwise (tracked in docs/ASSET_TODO.md).</p>
+        <p>Approved art where it exists; a dashed neutral placeholder otherwise (see docs/MASCOT_ASSETS.md).</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
           {MASCOT_TOKENS.map((t) => (
             <figure key={t} style={{ margin: 0, display: "grid", justifyItems: "center", gap: 4 }}>

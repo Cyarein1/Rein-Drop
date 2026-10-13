@@ -28,7 +28,8 @@ collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 - **Landing:** thinking, magnifier, surprised and celebrating are generated as WebP (87-149 KB)
   and registered in `landingImages`. They are **not placed** in any section yet; that would be a
   landing design change. Two landing poses are still missing (phone / alert, planning).
-- **Docs:** ASSET_TODO is now a register of the art in use; the brand README and LANDING_ASSETS
+- **Docs:** `ASSET_TODO.md` is renamed to [MASCOT_ASSETS.md](MASCOT_ASSETS.md) (a register, not
+  a to-do list; open points live in OUTSTANDING). The brand README and LANDING_ASSETS
   are updated. Stale "no approved art" comments were corrected. Home keeps plain text and a
   spinner by design (no mascot on every row).
 
@@ -870,7 +871,7 @@ source) is unchanged and remains the default outside production.
   cancellation -> cancellation, plus welcome / confirmed / emptyInventory).
 - `MascotSlot` (web + mobile): approved art for a token, otherwise a NEUTRAL placeholder (dashed
   soft circle + plain system icon, marked `data-asset-todo` / `testID asset-todo-*`). No art is
-  generated or invented. [`docs/ASSET_TODO.md`](ASSET_TODO.md) lists every missing pose with its
+  generated or invented. `docs/ASSET_TODO.md` (now [`docs/MASCOT_ASSETS.md`](MASCOT_ASSETS.md), renamed in step 72) lists every missing pose with its
   guide description, where it shows and its placeholder.
 - client-core `product-states.ts` + shared `ProductState` cards:
   - initial Hunt working (first scan; per-marketplace progress; polite live region),
@@ -904,7 +905,7 @@ source) is unchanged and remains the default outside production.
 **Not done / TODO**
 
 - Mascot art for working / waiting / afterHours / suggestion / cancellation / profit / success /
-  exceptionalDeal / analysis (ASSET_TODO.md). Sale Result and exceptional-deal banner still show
+  exceptionalDeal / analysis (ASSET_TODO.md - now MASCOT_ASSETS.md). Sale Result and exceptional-deal banner still show
   nothing (not yet switched to MascotSlot).
 - Reduced monitoring needs quiet hours / plan cadence (D22, D7); cancellation needs billing (D2).
 - Mobile not run on a device.
