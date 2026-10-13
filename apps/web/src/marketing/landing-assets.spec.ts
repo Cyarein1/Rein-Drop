@@ -46,6 +46,6 @@ describe("landing image uses", () => {
   });
 
   it("lists the poses still missing (neutral visuals until approved art exists)", () => {
-    expect(missingLandingImages).toEqual(["thinkingMascot", "searchingMascot", "alertMascot", "planningMascot", "exceptionalMascot", "celebrationMascot"]);
+    expect(missingLandingImages).toEqual(["alertMascot", "planningMascot"]);
   });
 });

@@ -7,7 +7,7 @@ import styles from "./MascotSlot.module.css";
 /**
  * The one way product UI shows a mascot: by semantic token, never a file name. Approved art when it
  * exists; otherwise a NEUTRAL placeholder (a plain UI icon in a soft circle - not mascot artwork),
- * tracked in docs/ASSET_TODO.md. Decorative: the surrounding text carries the meaning.
+ * see docs/MASCOT_ASSETS.md. Decorative: the surrounding text carries the meaning.
  */
 const PLACEHOLDER_ICON: Partial<Record<MascotToken, LucideIcon>> = {
   working: RefreshCw,

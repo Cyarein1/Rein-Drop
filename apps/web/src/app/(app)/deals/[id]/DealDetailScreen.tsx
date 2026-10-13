@@ -72,8 +72,8 @@ export function DealDetailScreen({ initial, context }: { initial: DealDetail; co
 
       {view.exceptional && (
         <div className={styles.exceptionalBanner} role="note">
-          {/* Only an approved "exceptional deal" mascot may appear here; none exists yet. */}
-          {exceptionalArt && <Image src={exceptionalArt} alt="" width={72} height={72} />}
+          {/* Only the approved "exceptional deal" mascot (surprised pose) may appear here. */}
+          {exceptionalArt && <Image src={exceptionalArt} alt="" width={72} height={Math.round((exceptionalArt.height / exceptionalArt.width) * 72)} />}
           <div>
             <strong>Exceptional deal</strong>
             Rare: the estimate is well above your usual target. Still check the details before you buy.

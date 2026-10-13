@@ -129,7 +129,7 @@ export default function UiGallery() {
         <EmptyState
           mascot="waiting"
           title="No deals yet"
-          description="Your Hunt is live. The waiting pose has no approved asset yet, so no illustration renders."
+          description="Your Hunt is live. Rein Drop will show deals here as soon as something matches."
         />
       </Card>
 

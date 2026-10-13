@@ -27,6 +27,15 @@ mascot/      individual production mascot poses (transparent PNG)
 | `mascot/mascot-wave.png` | Glossy Orange Mascot Waving | `welcome` |
 | `mascot/mascot-thumbs-up.png` | Cheerful Orange Mascot Thumbs-Up | `confirmed` |
 | `mascot/mascot-holding-box.png` | Cheerful Orange Mascot Delivering a Package | `inventory` |
+| `mascot/mascot-working.png` | Cheerful Orange Mascot Typing on Box | `working` (added 2026-10-14) |
+| `mascot/mascot-leaning-box.png` | Cheerful Orange Mascot with Shipping Box | `waiting` (added 2026-10-14) |
+| `mascot/mascot-sleeping.png` | Sleepy Orange Mascot on Cardboard Box | `afterHours` (added 2026-10-14) |
+| `mascot/mascot-thinking.png` | Curious Orange Mascot with Question Mark | `suggestion` (added 2026-10-14) |
+| `mascot/mascot-magnifier.png` | Curious Orange Mascot with Magnifying Glass | `analysis` (added 2026-10-14) |
+| `mascot/mascot-surprised.png` | Glossy Surprised Orange Mascot | `exceptionalDeal` (added 2026-10-14) |
+| `mascot/mascot-celebrating.png` | Celebrating Orange Mascot with Confetti | `success` (added 2026-10-14) |
+| `mascot/mascot-profit.png` | Cheerful Profit Growth Mascot | `profit` - realized gains only (added 2026-10-14) |
+| `mascot/mascot-sad.png` | Sad Orange Mascot on Cardboard Box | `cancellation` (added 2026-10-14) |
 | `mascot/mascot-delivery-dash.png` | Cheerful Orange Mascot Delivery Dash | not mapped yet (running/urgency - use sparingly) |
 | `mascot/mascot-running-box.png` | Joyful Orange Package Runner | not mapped yet (running/urgency - use sparingly) |
 
@@ -42,7 +51,8 @@ app maps tokens to files in one place:
 - web: `apps/web/src/brand/assets.ts` (static imports)
 - mobile: `apps/mobile/src/brand/assets.ts` (`require`)
 
-Tokens without an approved asset map to `null` and render nothing (no placeholder art).
+Every token has approved art (since 2026-10-14). A token without one would map to `null`, and
+`MascotSlot` would show a neutral icon placeholder (never substitute art) - see docs/ASSET_TODO.md.
 
 ## Adding or replacing an asset
 

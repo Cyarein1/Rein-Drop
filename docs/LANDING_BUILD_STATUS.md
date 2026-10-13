@@ -1374,3 +1374,14 @@ Verified (commands run):
 Nothing was provisioned on Azure or anywhere else.
 
 Next: Landing 05 (marketing primitives) if sent; otherwise the owner items in the launch checklist.
+
+### Note - step 72 (not a landing step), 2026-10-14: new approved mascot poses
+
+The owner supplied the missing poses (BUILD_STATUS step 72).
+- **Registered for the landing:** `landingImages.thinkingMascot` (thinking), `searchingMascot`
+  (magnifier), `exceptionalMascot` (surprised) and `celebrationMascot` (celebrating), as generated
+  WebP files ([LANDING_ASSETS.md](LANDING_ASSETS.md)).
+- **No landing section changed:** the page, its layout and the browser checks are as in Landing
+  24. Placing the poses is a design change for a future landing step. The celebration pose has no
+  honest place while the outcomes are illustrative.
+- **Still missing:** `alertMascot` and `planningMascot`.

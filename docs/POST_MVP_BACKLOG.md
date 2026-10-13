@@ -46,7 +46,7 @@ fires - **P3** someday / idea.
 | B-22 | UI depth: per-period Hunt performance, listing images on deal cards (image host allowlist), native date picker on mobile, persistent live regions for all success banners | Usability testing | P2 |
 | B-23 | Product analytics vendor (D15) + pseudonymised ids, funnel workbook / saved queries, longer event retention, more events (alert / push opened, pause / resume, page views) | First beta cohort - the log provider is enough to start | P1 |
 | B-24 | AI quality: golden datasets, one repair attempt on invalid output, re-analysis on prompt-version change, Foundry keyless auth (managed identity), non-English mock | Foundry live run shows INVALID / UNGROUNDED output rates worth fixing | P1 |
-| B-25 | Brand polish: confirmed type / spacing / greys, optimized @1x/@2x/@3x mascots, SVG wordmarks, orange active tab indicator on mobile, mascot art for remaining states (only approved art - never invented) | High-fidelity design pass | P2 |
+| B-25 | Brand polish: confirmed type / spacing / greys, optimized @1x/@2x/@3x mascots, SVG wordmarks, orange active tab indicator on mobile (mascot art for the remaining states: done 2026-10-14, step 72 - every token has approved art) | High-fidelity design pass | P2 |
 
 ## 3. Platform and operations (Azure phases C-E, Tech Architecture section 25)
 

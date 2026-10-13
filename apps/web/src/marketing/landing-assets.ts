@@ -19,18 +19,18 @@ export const landingImages = {
   welcomeMascot: brandImages["mascot/wave"],
   /** Waitlist confirmation ("You're on the list"). */
   confirmedMascot: brandImages["mascot/thumbs-up"],
-  /** Deal intelligence / demo evaluation - TODO: thinking pose not approved. */
-  thinkingMascot: null,
-  /** "Rein Drop searches" step - TODO: searching / inspecting pose (e.g. magnifier) not approved. */
-  searchingMascot: null,
+  /** Deal intelligence / demo evaluation: thinking pose (question mark). Not placed in a section yet. */
+  thinkingMascot: brandImages["mascot/thinking"],
+  /** "Rein Drop searches" step: inspecting pose (magnifier). Not placed in a section yet. */
+  searchingMascot: brandImages["mascot/magnifier"],
   /** Alerts section - TODO: phone / notification pose not approved. */
   alertMascot: null,
   /** Create-a-Hunt step - TODO: planning / checklist pose not approved. */
   planningMascot: null,
-  /** Demo's rare exceptional deal - TODO: surprised / exclamation pose not approved. */
-  exceptionalMascot: null,
-  /** Completed sale (outcomes) - TODO: celebration pose not approved; never for speculative profit. */
-  celebrationMascot: null,
+  /** Demo's rare exceptional deal: surprised / exclamation pose. Not placed in a section yet. */
+  exceptionalMascot: brandImages["mascot/surprised"],
+  /** A real completed sale only - never illustrative or speculative profit (so not the outcomes section). */
+  celebrationMascot: brandImages["mascot/celebrating"],
 
   // ---- Logos ----
   /** Header and light surfaces. */

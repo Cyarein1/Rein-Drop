@@ -5,6 +5,15 @@ import wordmarkWhite from "@rein-drop/brand-assets/logo/wordmark-white.png";
 import mascotWave from "@rein-drop/brand-assets/mascot/mascot-wave.png";
 import mascotThumbsUp from "@rein-drop/brand-assets/mascot/mascot-thumbs-up.png";
 import mascotHoldingBox from "@rein-drop/brand-assets/mascot/mascot-holding-box.png";
+import mascotWorking from "@rein-drop/brand-assets/mascot/mascot-working.png";
+import mascotLeaningBox from "@rein-drop/brand-assets/mascot/mascot-leaning-box.png";
+import mascotSleeping from "@rein-drop/brand-assets/mascot/mascot-sleeping.png";
+import mascotThinking from "@rein-drop/brand-assets/mascot/mascot-thinking.png";
+import mascotMagnifier from "@rein-drop/brand-assets/mascot/mascot-magnifier.png";
+import mascotSurprised from "@rein-drop/brand-assets/mascot/mascot-surprised.png";
+import mascotCelebrating from "@rein-drop/brand-assets/mascot/mascot-celebrating.png";
+import mascotProfit from "@rein-drop/brand-assets/mascot/mascot-profit.png";
+import mascotSad from "@rein-drop/brand-assets/mascot/mascot-sad.png";
 
 /**
  * The only place web code maps brand tokens to files (see packages/brand-assets/README.md).
@@ -14,15 +23,15 @@ export const mascotAssets: Record<MascotToken, StaticImageData | null> = {
   welcome: mascotWave,
   confirmed: mascotThumbsUp,
   inventory: mascotHoldingBox,
-  working: null,
-  waiting: null,
-  afterHours: null,
-  suggestion: null,
-  analysis: null,
-  exceptionalDeal: null,
-  success: null,
-  profit: null,
-  cancellation: null,
+  working: mascotWorking,
+  waiting: mascotLeaningBox,
+  afterHours: mascotSleeping,
+  suggestion: mascotThinking,
+  analysis: mascotMagnifier,
+  exceptionalDeal: mascotSurprised,
+  success: mascotCelebrating,
+  profit: mascotProfit,
+  cancellation: mascotSad,
 };
 
 export const logoAssets = {

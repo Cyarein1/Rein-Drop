@@ -29,6 +29,11 @@ const ASSETS = [
   { key: "mascot/holding-box", source: "mascot/mascot-holding-box.png", maxSide: 1024 },
   { key: "mascot/running-box", source: "mascot/mascot-running-box.png", maxSide: 1024 },
   { key: "mascot/delivery-dash", source: "mascot/mascot-delivery-dash.png", maxSide: 1024 },
+  // Poses with a landing use (landing-assets.ts) - registered, not placed in a section yet.
+  { key: "mascot/thinking", source: "mascot/mascot-thinking.png", maxSide: 1024 },
+  { key: "mascot/magnifier", source: "mascot/mascot-magnifier.png", maxSide: 1024 },
+  { key: "mascot/surprised", source: "mascot/mascot-surprised.png", maxSide: 1024 },
+  { key: "mascot/celebrating", source: "mascot/mascot-celebrating.png", maxSide: 1024 },
   // Wordmarks / lock-ups (transparent). The originals carry ~25% empty canvas - trimmed here so a
   // given CSS height shows the full logo.
   { key: "logo/wordmark-navy", source: "logo/wordmark-navy.png", height: 192 },

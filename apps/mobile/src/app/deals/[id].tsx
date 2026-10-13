@@ -125,7 +125,7 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
     <>
       {view.exceptional && (
         <View style={styles.exceptional} accessibilityRole="summary">
-          {/* Only an approved "exceptional deal" mascot may appear here; none exists yet. */}
+          {/* Only the approved "exceptional deal" mascot (surprised pose) may appear here. */}
           {exceptionalArt && <Image source={exceptionalArt} style={styles.art} accessibilityIgnoresInvertColors />}
           <View style={styles.flex}>
             <Text style={[styles.title, font('bold')]}>Exceptional deal</Text>
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: tones.fresh.background,
   },
-  art: { width: 64, height: 64 },
+  art: { width: 64, height: 64, resizeMode: 'contain' },
   flex: { flex: 1 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   heading: { color: roles.text, fontSize: fontSize['2xl'] },

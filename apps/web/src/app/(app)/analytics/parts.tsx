@@ -89,7 +89,7 @@ export function Bars({ bars, label }: { bars: Bar[]; label: string }) {
 
 /**
  * The one recommendation. The thinking / idea mascot may appear only here (Mascot Usage Guide) -
- * and only approved art, which doesn't exist yet, so nothing renders in its place.
+ * and only approved art (the `suggestion` token).
  */
 export function RecommendationBox({ recommendation, period }: { recommendation: AnalyticsRecommendation; period: AnalyticsPeriod }) {
   const art = mascotAssets.suggestion;

@@ -1,11 +1,43 @@
 # Build Status
 
-_Last updated: 2026-10-13 (step 71 - Landing 24)_
+_Last updated: 2026-10-14 (step 72 - mascot art for every token)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 72 - Owner-supplied mascot poses: every mascot token now has approved art
+
+- **What arrived:** the owner supplied 9 new poses in `Downloads/ReinDrop/branding assets`. Each
+  was checked before use:
+  - real transparency (corners fully transparent);
+  - rendered on white: no halo and no baked-in glow;
+  - each matches the pose in the Mascot Usage Guide.
+- **What was done:** the files were copied byte-identical to `packages/brand-assets/mascot/`
+  (`mascot-working`, `-leaning-box`, `-sleeping`, `-thinking`, `-magnifier`, `-surprised`,
+  `-celebrating`, `-profit`, `-sad`) and mapped to their tokens in both apps' `brand/assets.ts`.
+  The neutral placeholders are gone; screens pick the art up through `MascotSlot` / `ProductState`.
+- **Places that rendered nothing now show art:**
+  - the exceptional-deal banner (surprised pose);
+  - Sale Result (profit pose, only for a realized gain);
+  - the Analytics recommendation (thinking pose).
+- **Display fixes:**
+  - mobile deal banner: the art now uses `resizeMode: 'contain'` (the default would crop it);
+  - web deal banner: the art keeps its proportions instead of a forced 72×72.
+- **Landing:** thinking, magnifier, surprised and celebrating are generated as WebP (87-149 KB)
+  and registered in `landingImages`. They are **not placed** in any section yet; that would be a
+  landing design change. Two landing poses are still missing (phone / alert, planning).
+- **Docs:** ASSET_TODO is now a register of the art in use; the brand README and LANDING_ASSETS
+  are updated. Stale "no approved art" comments were corrected. Home keeps plain text and a
+  spinner by design (no mascot on every row).
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 58/58 (landing-assets spec: 2 missing poses, every
+  image under 150 KB).
+- `/dev/ui` on a production build (port 3101): all 12 tokens render approved art, and the product
+  states (first scan, waiting, quiet hours, suggestion, cancellation) were screenshot-checked. No
+  `data-asset-todo` placeholder is left.
 
 ### Step 71 - Landing 24: deployment options, preview, CI, live end to end, launch checklist
 

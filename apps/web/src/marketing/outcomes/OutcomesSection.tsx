@@ -6,7 +6,7 @@ import styles from "./OutcomesSection.module.css";
 /**
  * After the flip (Landing 13, spec 10): Bought -> Sold -> Actual profit, three simple cards and one
  * strong green result, then the estimate-vs-actual comparison (gross upside != realized profit).
- * Illustrative numbers; no celebration mascot (no approved pose). Server component.
+ * Illustrative numbers, so no celebration mascot (it is only for a real completed sale). Server component.
  */
 export function OutcomesSection() {
   const profit = realizedProfitUsd(exampleFlip);

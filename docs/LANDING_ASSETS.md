@@ -32,6 +32,10 @@ All transparent PNG originals (corners fully transparent), checked in Landing 04
 | `closingMascot` | `mascot/delivery-dash.webp` | 1024x717, 108 KB | `mascot/mascot-delivery-dash.png` (1536x1024, 1856 KB) | Closing CTA band |
 | `welcomeMascot` | `mascot/wave.webp` | 886x1024, 104 KB | `mascot/mascot-wave.png` (1278x1230, 1018 KB) | Waitlist intro (friendly hello) |
 | `confirmedMascot` | `mascot/thumbs-up.webp` | 810x1024, 103 KB | `mascot/mascot-thumbs-up.png` (1278x1230, 1034 KB) | Waitlist success |
+| `thinkingMascot` | `mascot/thinking.webp` | 763x1024, 100 KB | `mascot/mascot-thinking.png` (1312x1199, 834 KB) | **Not placed yet** - intended: deal intelligence, demo evaluation (added 2026-10-14) |
+| `searchingMascot` | `mascot/magnifier.webp` | 1018x1024, 110 KB | `mascot/mascot-magnifier.png` (1312x1199, 900 KB) | **Not placed yet** - intended: How it works "Rein Drop searches" (added 2026-10-14) |
+| `exceptionalMascot` | `mascot/surprised.webp` | 642x1024, 87 KB | `mascot/mascot-surprised.png` (1278x1230, 715 KB) | **Not placed yet** - intended: the demo's rare exceptional deal only (added 2026-10-14) |
+| `celebrationMascot` | `mascot/celebrating.webp` | 1024x1020, 149 KB | `mascot/mascot-celebrating.png` (1312x1199, 977 KB) | **Not placed** - a real completed sale only; the landing's outcomes are illustrative, so it has no honest place on the page today (added 2026-10-14) |
 | `wordmark` | `logo/wordmark-navy.webp` | 570x192, 17 KB | `logo/wordmark-navy.png` | Header, light surfaces |
 | `wordmarkOnDark` | `logo/wordmark-white.webp` | 564x192, 13 KB | `logo/wordmark-white.png` | Navy surfaces only |
 | `lockup` | `logo/lockup-horizontal.webp` | 1200x474, 72 KB | `logo/logo-mascot-horizontal.png` | Social preview / share image (Landing 22) |
@@ -40,7 +44,8 @@ All transparent PNG originals (corners fully transparent), checked in Landing 04
 | (browser / home-screen icons) | `icon/app-icon-512.png`, `icon/app-icon-192.png`, `icon/apple-touch-icon.png` | 70 / 16 / 15 KB | `app-icon/app-icon-mascot.png` | Favicon / manifest / Apple touch icon (Landing 22) |
 | (unassigned) | `logo/wordmark-3d.webp` | 563x192, 23 KB | `logo/wordmark-3d.png` | Expressive marketing moments only - not UI chrome; no slot yet |
 
-Totals: 14 files, 898 KB (from 12.6 MB of originals). Product tokens (`MascotToken` in
+Totals: 18 files, 1343 KB (from 16 MB of originals); the four poses added 2026-10-14 are only
+downloaded if a section uses them. Product tokens (`MascotToken` in
 design-tokens, used by the app) are unchanged: the landing has its own meanings above.
 
 ## Missing Rein Drop art (TODO - approved poses only)
@@ -51,12 +56,11 @@ visual (UI fragment, icon, illustration built from tokens) - never a substitute 
 
 | Meaning | Wanted pose | Used in | Spec reference |
 |---|---|---|---|
-| `thinkingMascot` | Thinking / analysing | Deal intelligence, demo evaluation | Spec section 9 "Thinking/analysis" |
-| `searchingMascot` | Searching / inspecting (e.g. magnifier) | How it works "Rein Drop searches" | Mockup step 2 (idea only) |
 | `alertMascot` | Holding a phone / notification | Alerts section | Mockup "Find exactly what you're looking for" (idea only) |
 | `planningMascot` | Checklist / planning | How it works "Create a Hunt" | Mockup step 1 (idea only) |
-| `exceptionalMascot` | Surprised / exclamation | Demo's rare exceptional deal only | Spec section 9 |
-| `celebrationMascot` | Celebration | Completed sale (outcomes) only - never speculative profit | Spec section 9 |
+
+Supplied 2026-10-14 (moved to the table above): thinking, searching / magnifier, surprised,
+celebration.
 | (optional) | WebP / SVG wordmark source | Crisper logo at any size | Brand README TODO |
 
 ## Third-party marks (decision L-D6 - real logos, legal later)

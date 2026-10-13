@@ -119,7 +119,7 @@ function Attention({ home, context }: { home: Home; context: HuntFormContext }) 
         </>
       ) : (
         <Card>
-          {/* "Waiting" mascot has no approved art yet: plain text. */}
+          {/* Plain text: the "waiting" mascot belongs to a Hunt's no-deals-yet state (Hunt detail, Deals), not Home. */}
           <p className={styles.lead}>Nothing needs you right now.</p>
           <p className={styles.muted}>
             {home.hunts.live > 0
@@ -157,7 +157,7 @@ function Hunts({ home, now }: { home: Home; now: Date }) {
                     {h.name}
                   </Link>
                   <span className={styles.monitoring} data-tone={monitoring.tone}>
-                    {/* "Working" mascot has no approved art yet: the normal loading UI. */}
+                    {/* The normal loading UI: no mascot on every row (Mascot Usage Guide). */}
                     {monitoring.scanning && <Spinner size="sm" />}
                     {monitoring.text}
                   </span>
@@ -231,7 +231,7 @@ function Recent({ home, context, now }: { home: Home; context: HuntFormContext; 
   );
 }
 
-/** 5. One thing worth doing next. ("Thinking" mascot has no approved art: none shown.) */
+/** 5. One thing worth doing next. (A suggestion shows the thinking mascot via ProductState.) */
 function Recommendation({ home }: { home: Home }) {
   const rec = home.recommendation;
   if (!rec) return null;

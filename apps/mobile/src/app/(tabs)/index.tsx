@@ -160,7 +160,7 @@ export default function HomeScreen() {
           </>
         ) : (
           <Card>
-            {/* "Waiting" mascot has no approved art yet: plain text. */}
+            {/* Plain text: the "waiting" mascot belongs to a Hunt's no-deals-yet state (Hunt detail, Deals), not Home. */}
             <Text style={[styles.lead, font('semibold')]}>Nothing needs you right now.</Text>
             <Text style={[styles.muted, font('regular')]}>
               {home.hunts.live > 0
@@ -197,7 +197,7 @@ export default function HomeScreen() {
                 >
                   <Text style={[styles.body, font('semibold')]}>{h.name}</Text>
                   <View style={[styles.monitoring, monitoring.tone === 'fresh' && styles.warn]}>
-                    {/* "Working" mascot has no approved art yet: the normal loading UI. */}
+                    {/* The normal loading UI: no mascot on every row (Mascot Usage Guide). */}
                     {monitoring.scanning && <ActivityIndicator size="small" color={roles.text} />}
                     <Text style={[styles.muted, font('regular')]}>{monitoring.text}</Text>
                   </View>

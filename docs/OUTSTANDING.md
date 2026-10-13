@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-13, after step 71 (Landing 24)._
+_Last updated: 2026-10-14, after step 72 (mascot art for every token)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -103,6 +103,10 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - App icon + splash still Expo defaults; brand icon awaits store approval - step 9. (The web part -
   no favicon, a 404 on every page - is resolved: step 70.)
 
+- Profit mascot shows dollar signs while currency is locale-driven (ZAR users see R) - a currency-neutral variant may be wanted - step 72.
+- Mascot originals (0.7-1.9 MB each, now 14 files) are bundled as-is in the mobile app - export @1x/@2x/@3x before a store build (backlog B-25) - step 72.
+- Owner check of the new mascot moments on a phone (first scan, waiting, quiet hours, suggestion, cancel plan, exceptional deal, Sale Result) - step 72.
+
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
 - Landing 05 (step 52, marketing primitives - not sent yet) per the scoped plan - step 48.
 - **Production launch: work through [LANDING_LAUNCH_CHECKLIST.md](LANDING_LAUNCH_CHECKLIST.md)** - 8 blockers (B1 `/dev` gating, B2 legal review, B3 `CONTACT_EMAIL`, B4 retention / access, B5 how sign-ups are contacted, B6 trademark review, B7 design + mascot approval, B8 demo figures), then hosting / database / region / budget / domain decisions - step 71.
@@ -133,7 +137,8 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Store URLs once the apps are published (no iOS bundle id / Android package in `app.json` yet) - step 48.
 - Landing skeleton is public at `/` once deployed - don't deploy the web app publicly until the landing is finished (or keep the beta URL private) - step 49.
 - Existing web `/dev` pages (`/dev`, `/dev/ui`, `/dev/diagnostics`, `/dev/notifications`) are served by production builds - gate them like `/dev/landing` (`notFound()` in production) before any public deploy; the release checklist assumes `/dev/*` is unreachable. Re-confirmed in step 71: launch blocker B1 - step 50.
-- Six landing mascot poses have no approved art (thinking, searching, phone / alert, planning, surprised / exceptional, celebration) - neutral visuals until approved; see docs/LANDING_ASSETS.md - step 51.
+- Two landing mascot poses have no approved art (phone / alert, planning / checklist) - neutral visuals until approved; see docs/LANDING_ASSETS.md. (Thinking, searching, surprised and celebration were supplied in step 72) - step 51.
+- Landing placement of the step 72 poses: thinking, magnifier and surprised are registered (`landingImages`) but **not placed** in any section. Placing them is a landing design change (layout, motion, CLS / performance checks) - send it as a landing step if wanted. Celebration stays off the landing: its numbers are illustrative - step 72.
 - The landing mockup shows a deer / reindeer mascot; the approved mascot is the orange droplet - confirm which character the landing uses (only approved art is used) - step 51.
 - Browser tests: the nav has a script-based headless-Chrome check (`apps/web/scripts/check-landing-nav.mjs`); move it to Playwright with the landing QA steps (Technical Decisions: Vitest + Playwright + accessibility checks) - step 53.
 - Screen-reader pass of the landing navigation by a person (NVDA / VoiceOver) - step 53.
@@ -347,3 +352,6 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Waitlist end to end with a real database write not verified | Step 66 | Step 71 (preview: browser -> web -> API -> Postgres 18, one normalized row, duplicate = same answer + one row, honeypot stores nothing; 7/7) |
 | Production web image couldn't receive build-time settings (`SITE_URL`, `CONTACT_EMAIL`, store URLs, analytics provider) - a deployed image stayed noindex with the contact placeholder | found in step 71 | Step 71 (Dockerfile build args) |
 | No CI | Step 45 (backlog B-31 covers CD) | Step 71 (checks-only workflow; deploy stays manual - B-31 unchanged) |
+| Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
+| Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
+| Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
