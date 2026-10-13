@@ -1,13 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { CreateHuntRequest, Hunt, HuntCondition, MarketplaceKey, UpdateHuntRequest } from "@rein-drop/api-client";
 import {
   buildCreateHuntRequest,
   buildUpdateHuntRequest,
   huntReview,
   needsLocation,
+  priceSlider,
+  priceSliderEnds,
+  priceSliderPosition,
+  priceSliderText,
+  priceSliderValueText,
   type HuntFormContext,
   type HuntFormErrors,
   type HuntFormField,
@@ -21,6 +26,7 @@ import {
   ChoiceGroup,
   Disclosure,
   Page,
+  Slider,
   SystemBanner,
   TextInput,
 } from "@/components/ui";
@@ -69,6 +75,18 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
   const [update, setUpdate] = useState<UpdateHuntRequest | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+
+  // Max-price slider, synced with the typed field (the field stays the source of truth).
+  const slider = useMemo(() => priceSlider(context.currency), [context.currency]);
+  // Where the slider stays while the typed text isn't a valid amount yet.
+  const [heldPosition, setHeldPosition] = useState(() => priceSliderPosition(slider, initialValues.maxPrice, context.currency) ?? slider.max);
+  const sliderPosition = priceSliderPosition(slider, values.maxPrice, context.currency) ?? heldPosition;
+  const sliderEnds = priceSliderEnds(slider, context.currency, context.localeTag);
+  const setMaxPrice = (text: string) => {
+    const position = priceSliderPosition(slider, text, context.currency);
+    if (position !== null) setHeldPosition(position);
+    set("maxPrice", text);
+  };
 
   const set = <K extends HuntFormField>(field: K, value: HuntFormValues[K]) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -278,16 +296,27 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
           error={errors.conditions}
         />
 
-        <TextInput
-          label="Max price"
-          kind="money"
-          currency={context.currency}
-          placeholder="0.00"
-          value={values.maxPrice}
-          onChange={(e) => set("maxPrice", e.target.value)}
-          hint={hint("maxPrice", "The most you'd pay. Leave empty for no limit")}
-          error={errors.maxPrice}
-        />
+        <div className={styles.price}>
+          <TextInput
+            label="Max price"
+            kind="money"
+            currency={context.currency}
+            placeholder="0.00"
+            value={values.maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            hint={hint("maxPrice", "The most you'd pay. Type an amount or use the slider; leave empty for no limit")}
+            error={errors.maxPrice}
+          />
+          <Slider
+            label="Adjust max price"
+            value={sliderPosition}
+            max={slider.max}
+            onChange={(position) => setMaxPrice(priceSliderText(slider, position))}
+            valueText={priceSliderValueText(slider, values.maxPrice, sliderPosition, context.currency, context.localeTag)}
+            minLabel={sliderEnds.min}
+            maxLabel={sliderEnds.max}
+          />
+        </div>
 
         <ChoiceGroup
           legend="Target (optional)"

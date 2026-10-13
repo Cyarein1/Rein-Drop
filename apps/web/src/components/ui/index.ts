@@ -12,5 +12,6 @@ export { Metric, type MetricProps } from "./Metric";
 export { MascotSlot } from "./MascotSlot";
 export { Page, type PageProps } from "./Page";
 export { ProductState } from "./ProductState";
+export { Slider, type SliderProps } from "./Slider";
 export { SystemBanner, type SystemBannerProps } from "./SystemBanner";
 export { TextInput, type TextInputProps } from "./TextInput";

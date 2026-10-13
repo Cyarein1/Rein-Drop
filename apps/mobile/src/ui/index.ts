@@ -10,5 +10,6 @@ export { font, interFonts, setInterLoaded } from './fonts';
 export { LoadingState, type LoadingStateProps } from './LoadingState';
 export { Metric, type MetricProps } from './Metric';
 export { Screen, type ScreenProps } from './Screen';
+export { Slider, type SliderProps } from './Slider';
 export { SystemBanner, type SystemBannerProps } from './SystemBanner';
 export { TextInput, type TextInputProps } from './TextInput';

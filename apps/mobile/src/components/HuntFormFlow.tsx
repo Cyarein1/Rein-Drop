@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { ApiError, type CreateHuntRequest, type Hunt, type HuntCondition, type UpdateHuntRequest } from '@rein-drop/api-client';
@@ -8,6 +8,11 @@ import {
   huntReview,
   mapHuntErrors,
   needsLocation,
+  priceSlider,
+  priceSliderEnds,
+  priceSliderPosition,
+  priceSliderText,
+  priceSliderValueText,
   type HuntFormContext,
   type HuntFormErrors,
   type HuntFormField,
@@ -16,7 +21,7 @@ import {
 } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
-import { Button, Card, ChoiceGroup, Disclosure, font, Screen, SystemBanner, TextInput } from '@/ui';
+import { Button, Card, ChoiceGroup, Disclosure, font, Screen, Slider, SystemBanner, TextInput } from '@/ui';
 
 type ConditionChoice = HuntCondition | 'any';
 
@@ -65,6 +70,18 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   const note = (field: HuntFormField) => prefilled.find((p) => p.field === field)?.note;
   const hint = (field: HuntFormField, text?: string) =>
     [note(field) && `${note(field)} - change it anytime`, text].filter(Boolean).join('. ') || undefined;
+
+  // Max-price slider, synced with the typed field (the field stays the source of truth).
+  const slider = useMemo(() => priceSlider(context.currency), [context.currency]);
+  // Where the slider stays while the typed text isn't a valid amount yet.
+  const [heldPosition, setHeldPosition] = useState(() => priceSliderPosition(slider, initialValues.maxPrice, context.currency) ?? slider.max);
+  const sliderPosition = priceSliderPosition(slider, values.maxPrice, context.currency) ?? heldPosition;
+  const sliderEnds = priceSliderEnds(slider, context.currency, context.localeTag);
+  const setMaxPrice = (text: string) => {
+    const position = priceSliderPosition(slider, text, context.currency);
+    if (position !== null) setHeldPosition(position);
+    set('maxPrice', text);
+  };
 
   const goToReview = () => {
     const result = editing ? buildUpdateHuntRequest(editing, values, context) : buildCreateHuntRequest(values, context);
@@ -260,16 +277,27 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
         error={errors.conditions}
       />
 
-      <TextInput
-        label="Max price"
-        kind="money"
-        currency={context.currency}
-        placeholder="0.00"
-        value={values.maxPrice}
-        onChangeText={(t) => set('maxPrice', t)}
-        hint={hint('maxPrice', "The most you'd pay. Leave empty for no limit")}
-        error={errors.maxPrice}
-      />
+      <View style={styles.price}>
+        <TextInput
+          label="Max price"
+          kind="money"
+          currency={context.currency}
+          placeholder="0.00"
+          value={values.maxPrice}
+          onChangeText={setMaxPrice}
+          hint={hint('maxPrice', "The most you'd pay. Type an amount or use the slider; leave empty for no limit")}
+          error={errors.maxPrice}
+        />
+        <Slider
+          label="Adjust max price"
+          value={sliderPosition}
+          max={slider.max}
+          onChange={(position) => setMaxPrice(priceSliderText(slider, position))}
+          valueText={priceSliderValueText(slider, values.maxPrice, sliderPosition, context.currency, context.localeTag)}
+          minLabel={sliderEnds.min}
+          maxLabel={sliderEnds.max}
+        />
+      </View>
 
       <ChoiceGroup
         legend="Target (optional)"
@@ -317,6 +345,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
 }
 
 const styles = StyleSheet.create({
+  price: { gap: space[1], alignSelf: 'stretch' },
   sentence: { color: roles.text, fontSize: fontSize.lg, lineHeight: 26 },
   reviewRow: {
     flexDirection: 'row',

@@ -1,11 +1,52 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 72 - mascot art for every token)_
+_Last updated: 2026-10-14 (step 73 - max-price slider in Create / Edit Hunt)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 73 - Max-price slider in Create / Edit Hunt (web + mobile)
+
+The owner asked for the landing demo's price slider in the real app, with typing kept.
+- **Shared logic** (`packages/client-core/src/price-slider.ts`, 14 tests):
+  - **Stops:** round prices, at most a ~50% jump per step (5, 6, 8, 10, 15, 20, 25 ... 7,500,
+    10,000), then a last position, **"No limit"** = the empty field.
+  - **Range by currency:** an order-of-magnitude table, no exchange rates. Examples: 5-10,000 USD /
+    EUR / GBP, 50-100,000 ZAR, 500-1,000,000 JPY / INR. Unknown currencies get the USD-sized range.
+- **Behaviour:**
+  - **The typed field stays the source of truth.** The slider writes whole amounts into it; typing
+    any exact amount moves the slider to the nearest stop.
+  - **Above the top stop** the slider shows the top stop, never "No limit". **Text that isn't an
+    amount yet** leaves the slider where it was.
+  - **Screen readers** hear the exact amount in the user's locale (or "No limit").
+- **Web:** `components/ui/Slider` (native range input, styled like the landing demo, 44 px hit
+  area, focus ring), placed directly under the Max price field.
+- **Mobile:** `ui/Slider` on `@react-native-community/slider` 5.2.0 (added with `expo install`,
+  the version Expo pins for SDK 57), with the same placement and logic.
+- **Decision record:** the owner's location answers are recorded as
+  [decision 0017](decisions/0017-hunt-location-area-map-distance.md):
+  - "Your area" (not a street address);
+  - suggestions while typing;
+  - an interactive map;
+  - distance checks;
+  - the mock provider first.
+
+  Mobile uses native maps (`react-native-maps`; Android needs a Google Maps key from the owner and
+  a development build). None of that is built yet.
+
+Verified:
+- **Monorepo checks:** `pnpm turbo run build typecheck lint test`: 58/58.
+- **Web, real page** (`/hunts/new` on the running dev server, read-only: nothing submitted), at
+  375 and 1280 px:
+  - the slider starts at "No limit";
+  - arrow keys write 7500 into the field;
+  - typing 1234 moves the slider to the nearest stop, announced "$1,234.00";
+  - clearing the field returns to "No limit";
+  - no horizontal overflow;
+  - the screenshot was reviewed.
+- **Mobile:** typecheck + lint only. Not yet run on a device.
 
 ### Step 72 - Owner-supplied mascot poses: every mascot token now has approved art
 

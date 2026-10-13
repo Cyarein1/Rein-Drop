@@ -19,6 +19,13 @@
   flex: 0 1 140px;
 }
 
+/* Max price: the typed field with its slider directly underneath. */
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+}
+
 .sentence {
   font-size: var(--rd-font-size-lg);
   line-height: 1.5;

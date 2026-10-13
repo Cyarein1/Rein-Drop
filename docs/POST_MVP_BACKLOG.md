@@ -41,7 +41,7 @@ fires - **P3** someday / idea.
 | B-17 | Deal workflow: suppress similar noise after Ignore; refresh saved deals when the listing changes; undo Bought entirely; automatic "Missed" (D18, D28) | Ignore reasons show repeated noise patterns | P2 |
 | B-18 | Resale intelligence: comparable sales / resale estimates (D13), seller facts as AI evidence, estimated upside net of selling fees, AI profit coaching | A licensed comparable-sales source exists | P1 (source), P3 (coaching) |
 | B-19 | Ledger depth: returns / write-offs, quantities / lots (D17), multi-currency with FX (D27), profit-over-time chart, full accounting | Users track inventory elsewhere because of it | P2 |
-| B-20 | Geocoding with Azure Maps (decision 0001) and radius verification for sources that can't filter by distance | Distance complaints / wrong-area deals measured | P2 |
+| B-20 | Geocoding with Azure Maps (decision 0001) and radius verification for sources that can't filter by distance - **pulled forward 2026-10-14 by the owner (decision 0017: profile area, suggestions, interactive map, distance checks); tracked in OUTSTANDING "Hunt location"** | Owner request | P1 |
 | B-21 | UI translations (English only), app-store storefront country for locale, time-zone-aware default dates (D24) | Non-English market launch | P3 |
 | B-22 | UI depth: per-period Hunt performance, listing images on deal cards (image host allowlist), native date picker on mobile, persistent live regions for all success banners | Usability testing | P2 |
 | B-23 | Product analytics vendor (D15) + pseudonymised ids, funnel workbook / saved queries, longer event retention, more events (alert / push opened, pause / resume, page views) | First beta cohort - the log provider is enough to start | P1 |

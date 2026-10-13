@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 72 (mascot art for every token)._
+_Last updated: 2026-10-14, after step 73 (max-price slider)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -76,6 +76,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
 - Measure cost / freshness / noise with a controlled window of several Hunts (and Apify / eBay credentials) to decide D7 - step 39.
 
+### Hunt location (decision 0017, owner request 2026-10-14)
+- "Your area" on the profile (label + approximate coordinates, not a street address): data, `GET/PUT /me/area`, Settings on web + mobile, one tap to use it in Create Hunt - step 73.
+- `GeocodingProvider` (mock now, Azure Maps once you add a key) and suggestions while typing in Create Hunt / Settings; store coordinates with the Hunt - step 73.
+- Interactive map under the location with pin + radius circle: web (MapLibre, tiles via the API), mobile native (`react-native-maps`: Apple Maps on iOS, Google Maps on Android) - step 73.
+- For the Android map (you): a Google Maps Platform API key with billing, restricted to the app's Android package + signing certificate; plus an Android package name and an EAS development build (Expo Go can't use the app's own key - same prerequisite as D23) - step 73.
+- Distance checks in matching (listing places geocoded with a place cache) so the radius is enforced, not just shown - step 73.
+- Before production: create the Azure Maps account (you), and check decision 0001's open point on the terms for storing / caching geocoding results - step 73.
+
 ### Matching, analysis, scoring
 - Foundry live test skipped until FOUNDRY_ENDPOINT / FOUNDRY_API_KEY / FOUNDRY_DEPLOYMENT are set; the prompts are unproven on a real model (watch INVALID_OUTPUT / UNGROUNDED_OUTPUT rates) - step 40.
 - AI cost appears only with FOUNDRY_PRICE_INPUT_PER_1M_USD / FOUNDRY_PRICE_OUTPUT_PER_1M_USD from your Azure price sheet - step 40.
@@ -105,6 +113,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
 - Profit mascot shows dollar signs while currency is locale-driven (ZAR users see R) - a currency-neutral variant may be wanted - step 72.
 - Mascot originals (0.7-1.9 MB each, now 14 files) are bundled as-is in the mobile app - export @1x/@2x/@3x before a store build (backlog B-25) - step 72.
+- Max-price slider on a real phone (mobile, step 73): drag, tap-to-step, VoiceOver / TalkBack value, no conflict with the form's scrolling - step 73.
 - Owner check of the new mascot moments on a phone (first scan, waiting, quiet hours, suggestion, cancel plan, exceptional deal, Sale Result) - step 72.
 
 ### Landing page (step 48+, docs/LANDING_BUILD_STATUS.md)
@@ -355,3 +364,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
+| How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |
