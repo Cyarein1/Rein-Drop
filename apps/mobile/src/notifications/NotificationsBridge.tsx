@@ -19,14 +19,16 @@ export function NotificationsBridge() {
   const router = useRouter();
   const { state } = useSessionState();
   const signedIn = state.status === 'authenticated';
-  const refreshed = useRef(false);
+  const userId = signedIn ? state.session.user.userId : null;
+  /** The account this phone's registration was refreshed for (again after an account switch). */
+  const refreshedFor = useRef<string | null>(null);
   const handled = useRef(new Set<string>());
 
   useEffect(() => {
-    if (!signedIn || refreshed.current) return;
-    refreshed.current = true;
+    if (!userId || refreshedFor.current === userId) return;
+    refreshedFor.current = userId;
     void refreshPushRegistration(getApiClient());
-  }, [signedIn]);
+  }, [userId]);
 
   useEffect(() => {
     const Notifications = loadNotifications();

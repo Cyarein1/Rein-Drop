@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,13 +9,17 @@ import { useSessionState } from './SessionProvider';
 
 /**
  * Protects the app's tabs: children render only with an authenticated session.
- * Signed-out and error states always offer a next action (Retry / Settings).
+ * Signed-out and error states always offer a next action (Sign in / Retry / Settings).
+ * The companion signs in to an EXISTING Rein Drop account (decision 0018) - accounts are created
+ * on the web; see docs/strategy/MOBILE_ACCOUNT_ACCESS.md for the store-review assumptions.
  */
 export function SessionGate({ children }: { children: ReactNode }) {
   const { state, refresh, signIn } = useSessionState();
   const router = useRouter();
 
-  if (state.status === 'authenticated') return <>{children}</>;
+  // Keyed by account: switching accounts remounts every screen, so nothing of the previous
+  // account (lists, drafts, cached answers) can show.
+  if (state.status === 'authenticated') return <Fragment key={state.session.user.userId}>{children}</Fragment>;
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
@@ -39,15 +43,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
         <Screen>
           {signIn ? (
             <>
-              <SystemBanner tone="info" title="Sign in to Rein Drop" message={state.reason} />
+              <SystemBanner
+                tone={state.sessionEnded ? 'warning' : 'info'}
+                title={state.sessionEnded ? 'Your session has ended' : 'Sign in to Rein Drop'}
+                message={state.reason}
+              />
               <Text style={[styles.help, font('regular')]}>
-                {"You'll continue on a secure Microsoft page to sign in with your email and password - or to create your account if you're new."}
+                {"Sign in with your Rein Drop account. You'll continue on a secure Microsoft page to enter your email and password."}
               </Text>
               <View style={styles.actions}>
-                <Button onPress={() => void signIn()}>Sign in with email</Button>
-                <Button variant="secondary" onPress={() => void signIn()}>
-                  Create an account
-                </Button>
+                <Button onPress={() => void signIn()}>Sign in</Button>
               </View>
             </>
           ) : (
@@ -69,7 +74,10 @@ export function SessionGate({ children }: { children: ReactNode }) {
     <SafeAreaView style={styles.safeArea}>
       <Screen>
         <SystemBanner tone="error" title="Can't reach Rein Drop" message={state.message} />
-        <Text style={[styles.help, font('regular')]}>API: {apiBaseUrl.url ?? 'not configured'}</Text>
+        <Text style={[styles.help, font('regular')]}>
+          Check your connection and try again. Nothing on your account has changed.
+        </Text>
+        {__DEV__ && <Text style={[styles.help, font('regular')]}>API: {apiBaseUrl.url ?? 'not configured'}</Text>}
         {actions}
       </Screen>
     </SafeAreaView>

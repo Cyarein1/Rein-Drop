@@ -29,6 +29,18 @@ export function tokenSessionState(session: TokenSession | null, now: number): To
 }
 
 /**
+ * What to do when a token refresh fails:
+ * - `sign_out`: the sign-in service refused it (revoked, expired refresh token). Forget the session.
+ * - `use_current`: offline or the service is unreachable, but the access token is still good. Keep it.
+ * - `unavailable`: offline and the access token has run out. Keep the session (no sign-out for a
+ *   network blip) and report a connection problem; the next request tries again.
+ */
+export function afterRefreshFailure(session: TokenSession, refusedBySignInService: boolean, now: number): 'sign_out' | 'use_current' | 'unavailable' {
+  if (refusedBySignInService || now >= session.expiresAt) return 'sign_out';
+  return now < session.accessTokenExpiresAt ? 'use_current' : 'unavailable';
+}
+
+/**
  * The session after a token response: a new one at sign-in (`previous` null), or the same
  * session with a new access token after a refresh (absolute end unchanged).
  */

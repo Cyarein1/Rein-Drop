@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { AccessProvider } from '@/access/AccessProvider';
 import { SessionProvider } from '@/auth/SessionProvider';
 import { CapabilitiesProvider } from '@/capabilities/CapabilitiesProvider';
 import { NotificationsBridge } from '@/notifications/NotificationsBridge';
@@ -35,6 +36,7 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <CapabilitiesProvider>
+      <AccessProvider>
       <NotificationsBridge />
       <Stack screenOptions={headerOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -52,6 +54,7 @@ export default function RootLayout() {
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>
       <StatusBar style="dark" />
+      </AccessProvider>
       </CapabilitiesProvider>
     </SessionProvider>
   );

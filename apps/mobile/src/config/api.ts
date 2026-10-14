@@ -15,6 +15,16 @@ export const apiBaseUrl: ResolvedApiBaseUrl = resolveApiBaseUrl({
 });
 
 let client: ApiClient | null = null;
+const unauthorizedListeners = new Set<() => void>();
+
+/**
+ * Called when the API answers 401 to a signed-in request (session ended, token revoked or the
+ * session's absolute end passed). The session provider uses it to send the person to sign-in.
+ */
+export function onUnauthorized(listener: () => void): () => void {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
 
 /**
  * Shared API client, sending credentials from the active auth provider on every
@@ -27,6 +37,11 @@ export function getApiClient(): ApiClient {
   client ??= createApiClient({
     baseUrl: apiBaseUrl.url,
     getHeaders: () => (authSetup.ok ? authSetup.provider.getApiHeaders() : {}),
+    fetch: async (input, init) => {
+      const response = await fetch(input, init);
+      if (response.status === 401) unauthorizedListeners.forEach((listener) => listener());
+      return response;
+    },
   });
   return client;
 }

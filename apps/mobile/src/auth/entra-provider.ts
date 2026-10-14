@@ -2,8 +2,8 @@ import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { entraApiScope, entraDiscoveryUrl } from '@rein-drop/api-client';
-import { nextTokenSession, tokenSessionState, type TokenSession } from '@rein-drop/client-core';
-import type { MobileAuthProvider, SignInOutcome } from './types';
+import { afterRefreshFailure, nextTokenSession, tokenSessionState, type TokenSession } from '@rein-drop/client-core';
+import { SignInServiceUnreachable, type MobileAuthProvider, type SignInOutcome } from './types';
 
 /**
  * Microsoft Entra External ID on mobile (decision 0013): authorization code + PKCE as a public
@@ -83,10 +83,16 @@ export function createEntraMobileAuthProvider(config: EntraMobileConfig): Mobile
         };
         await save(next);
         return next;
-      } catch {
-        // Refused (revoked / expired) or offline: sign in again.
-        await clear();
-        return null;
+      } catch (err) {
+        // Refused by Entra (TokenError: revoked / expired refresh token): sign in again. Offline or
+        // unreachable: keep the session - a network blip must never sign anyone out.
+        const action = afterRefreshFailure(stored.session, err instanceof AuthSession.TokenError, Date.now());
+        if (action === 'sign_out') {
+          await clear();
+          return null;
+        }
+        if (action === 'use_current') return stored;
+        throw new SignInServiceUnreachable();
       } finally {
         refreshing = null;
       }
@@ -102,7 +108,9 @@ export function createEntraMobileAuthProvider(config: EntraMobileConfig): Mobile
     },
     async signIn(): Promise<SignInOutcome> {
       const doc = await endpoints();
-      const request = new AuthSession.AuthRequest({ clientId: config.clientId, scopes, redirectUri, usePKCE: true, responseType: AuthSession.ResponseType.Code });
+      // prompt=login: always ask who is signing in, so switching accounts on a shared phone never
+      // silently reuses the previous person's browser session.
+      const request = new AuthSession.AuthRequest({ clientId: config.clientId, scopes, redirectUri, usePKCE: true, responseType: AuthSession.ResponseType.Code, prompt: AuthSession.Prompt.Login });
       // promptAsync checks the returned state against the request's.
       const result = await request.promptAsync(doc);
       if (result.type === 'cancel' || result.type === 'dismiss') return 'cancelled';

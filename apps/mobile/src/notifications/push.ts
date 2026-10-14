@@ -24,6 +24,8 @@ export const ALERTS_CHANNEL_ID = 'alerts';
 const DEV_TOKEN_KEY = 'reindrop.devPushToken';
 /** Development fallback without expo-notifications: the user's in-app "on" choice. */
 const DEV_OPT_IN_KEY = 'reindrop.devPushOptIn';
+/** The server id of this phone's registration for the signed-in account (removed again at sign-out). */
+const DEVICE_ID_KEY = 'reindrop.pushDeviceId';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -86,7 +88,7 @@ export async function refreshPushRegistration(api: ApiClient): Promise<PushState
 export async function disablePush(api: ApiClient, deviceId: string): Promise<PushState> {
   try {
     await api.unregisterPushDevice(deviceId);
-    await AsyncStorage.removeItem(DEV_OPT_IN_KEY).catch(() => undefined);
+    await AsyncStorage.multiRemove([DEV_OPT_IN_KEY, DEVICE_ID_KEY]).catch(() => undefined);
     const permission = await permissionStatus();
     return permission.status === 'denied' ? { status: 'denied', canAskAgain: permission.canAskAgain } : { status: 'undetermined' };
   } catch (err) {
@@ -104,7 +106,18 @@ async function register(api: ApiClient): Promise<PushState> {
     deviceName: Device.deviceName ?? Device.modelName ?? null,
     appVersion: Constants.expoConfig?.version ?? null,
   });
+  await AsyncStorage.setItem(DEVICE_ID_KEY, device.id).catch(() => undefined);
   return { status: 'enabled', deviceId: device.id, simulated: device.provider === 'dev_simulated' };
+}
+
+/**
+ * Sign-out / account switch: stop this phone receiving the signed-out account's alerts. Call while
+ * the session is still valid. Best effort - sign-out never waits on the network failing.
+ */
+export async function forgetThisDevice(api: ApiClient): Promise<void> {
+  const deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY).catch(() => null);
+  if (deviceId) await api.unregisterPushDevice(deviceId).catch(() => undefined);
+  await AsyncStorage.multiRemove([DEVICE_ID_KEY, DEV_OPT_IN_KEY]).catch(() => undefined);
 }
 
 async function obtainToken(): Promise<TokenResult> {

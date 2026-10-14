@@ -21,7 +21,9 @@ const CapabilitiesContext = createContext<Record<FeatureKey, Capability>>(OFFLIN
 
 export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   const { state } = useSessionState();
-  const [caps, setCaps] = useState(OFFLINE_CAPABILITIES);
+  // Tagged with the account they were loaded for: after sign-out or an account switch the previous
+  // account's capabilities are never used.
+  const [loaded, setLoaded] = useState<{ userId: string; caps: Record<FeatureKey, Capability> } | null>(null);
   const userId = state.status === 'authenticated' ? state.session.user.userId : null;
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
         (server) => {
           if (cancelled) return;
           // Developer tools are a property of this build, not of the server's environment.
-          setCaps({ ...server, 'dev.tools': OFFLINE_CAPABILITIES['dev.tools'] });
+          setLoaded({ userId, caps: { ...server, 'dev.tools': OFFLINE_CAPABILITIES['dev.tools'] } });
         },
         // Offline / older API: keep the safe default (flags off).
         () => undefined,
@@ -43,6 +45,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
     };
   }, [userId]);
 
+  const caps = loaded && loaded.userId === userId ? loaded.caps : OFFLINE_CAPABILITIES;
   return <CapabilitiesContext.Provider value={caps}>{children}</CapabilitiesContext.Provider>;
 }
 

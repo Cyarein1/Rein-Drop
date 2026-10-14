@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import type { EntitlementEvaluation, NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
-import { accountSiteLine, companionAccessSummary, huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
+import type { NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
+import { accountSiteLine, companionAccessView, companionUsageLines, huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
+import { useAccess } from '@/access/AccessProvider';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
 import { useCan } from '@/capabilities/CapabilitiesProvider';
@@ -30,7 +31,7 @@ const SOURCE_LABEL = {
  * development builds.
  */
 export default function AccountScreen() {
-  const { state: sessionState, refresh, signOut } = useSessionState();
+  const { state: sessionState, refresh, signIn, signOut } = useSessionState();
   const devTools = useCan('dev.tools');
   const router = useRouter();
   const [check, setCheck] = useState<Check>({ state: 'idle' });
@@ -73,9 +74,12 @@ export default function AccountScreen() {
               </Text>
             )}
             {signOut && (
-              <Button variant="secondary" onPress={() => void signOut()}>
-                Sign out
-              </Button>
+              <>
+                <Text style={[styles.muted, font('regular')]}>To use another account, sign out and sign in with it.</Text>
+                <Button variant="secondary" onPress={() => void signOut()}>
+                  Sign out
+                </Button>
+              </>
             )}
           </>
         )}
@@ -83,12 +87,16 @@ export default function AccountScreen() {
           <>
             <SystemBanner
               tone={sessionState.status === 'error' ? 'error' : 'warning'}
-              title="Not signed in"
+              title={sessionState.status === 'unauthenticated' && sessionState.sessionEnded ? 'Your session has ended' : sessionState.status === 'error' ? "Can't reach Rein Drop" : 'Not signed in'}
               message={sessionState.status === 'error' ? sessionState.message : sessionState.reason}
             />
-            <Button variant="secondary" onPress={refresh}>
-              Try again
-            </Button>
+            {sessionState.status === 'unauthenticated' && signIn ? (
+              <Button onPress={() => void signIn()}>Sign in</Button>
+            ) : (
+              <Button variant="secondary" onPress={refresh}>
+                Try again
+              </Button>
+            )}
           </>
         )}
       </Card>
@@ -108,7 +116,7 @@ export default function AccountScreen() {
       )}
 
       {sessionState.status === 'authenticated' ? (
-        <AccessCard />
+        <AccessCard locale={sessionState.session.user.locale} />
       ) : (
         <Card title="Your access">
           <Text style={[styles.muted, font('regular')]}>Sign in to see your access.</Text>
@@ -356,44 +364,54 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Your access - mobile companion (decision 0018): what the account includes now, read from the
- * server. No billing here: no prices, no plan changes, no cancel, no "manage billing on the web".
- * The optional neutral account line shows only when the app is built with EXPO_PUBLIC_ACCOUNT_SITE.
+ * Your access - mobile companion (decision 0018): what the account can use now, from GET /me/access
+ * (the same rules the API and worker enforce). No billing here: no prices, plan changes, cancel or
+ * "manage billing on the web". The optional neutral account line shows only when the app is built
+ * with EXPO_PUBLIC_ACCOUNT_SITE (off until the store review).
  */
-function AccessCard() {
-  const [ent, setEnt] = useState<EntitlementEvaluation | null | 'error'>(null);
-  const load = useCallback(() => {
-    let cancelled = false;
-    getApiClient()
-      .getEntitlements()
-      .then(
-        (e) => !cancelled && setEnt(e),
-        () => !cancelled && setEnt('error'),
+function AccessCard({ locale }: { locale: UserLocale | null }) {
+  const { load, reload } = useAccess();
+  const access = load.status === 'ready' ? load.access : load.status === 'error' ? load.stale : null;
+  if (!access) {
+    if (load.status === 'error') {
+      return (
+        <Card title="Your access">
+          <SystemBanner
+            tone="error"
+            title={load.reason === 'offline' ? "You're offline" : "Couldn't load your access"}
+            message="Your access hasn't changed. Try again when you're connected."
+            action={
+              <Button variant="secondary" onPress={reload}>
+                Try again
+              </Button>
+            }
+          />
+        </Card>
       );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  useFocusEffect(load);
-  if (ent === 'error') {
+    }
     return (
       <Card title="Your access">
-        <SystemBanner tone="error" title="Couldn't load your access" message="Pull down or reopen Settings to try again." />
+        <LoadingState label="Loading your access…" />
       </Card>
     );
   }
-  if (!ent) return <LoadingState label="Loading your access…" />;
-  const sub = ent.subscription;
-  const date = (iso: string) => new Date(iso).toLocaleDateString();
+  const view = companionAccessView(access, huntFormContext(locale).localeTag);
   const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE);
   return (
-    <Card title="Your access" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
-      <Text style={[styles.body, font('regular')]}>{companionAccessSummary(ent)}</Text>
-      {sub?.currentPeriodEnd && sub.cancelAtPeriodEnd && (
-        <Text style={[styles.body, font('regular')]}>{`Your current access continues until ${date(sub.currentPeriodEnd)}.`}</Text>
+    <Card title="Your access" action={<Badge tone={view.tone}>{view.label}</Badge>}>
+      {load.status === 'error' && (
+        <SystemBanner tone="info" title="Showing your last known access" message="Couldn't check for changes - you may be offline." />
       )}
-      {sub?.status === 'PAST_DUE' && <Text style={[styles.body, font('regular')]}>Your account needs attention.</Text>}
-      {!ent.plan.limitsFinal && <Text style={[styles.muted, font('regular')]}>Limits are placeholders while Rein Drop is in beta.</Text>}
+      {view.lines.map((line) => (
+        <Text key={line} style={[styles.body, font('regular')]}>
+          {line}
+        </Text>
+      ))}
+      {companionUsageLines(access).map((line) => (
+        <Text key={line} style={[styles.muted, font('regular')]}>
+          {line}
+        </Text>
+      ))}
       {accountLine && <Text style={[styles.muted, font('regular')]}>{accountLine}</Text>}
     </Card>
   );

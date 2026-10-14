@@ -67,3 +67,7 @@ change - never by quietly bypassing store rules.
 - Teams and workspaces (B-03).
 - A web pricing page (the landing says pricing isn't final - D3).
 - The Sell workspace and photo capture.
+
+## Update - step 81
+
+Mobile account access: the companion signs in to an **existing** account (the mobile "Create an account" button was removed), reads `GET /me/access` and words each state neutrally. Session handling (offline refresh, expiry, sign-out push clean-up, account switching) and the app-store policy assumptions that still need legal / release review are in [strategy/MOBILE_ACCOUNT_ACCESS.md](../strategy/MOBILE_ACCOUNT_ACCESS.md).

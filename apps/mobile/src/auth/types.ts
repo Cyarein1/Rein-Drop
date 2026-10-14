@@ -13,6 +13,14 @@ export interface Session {
 
 export type SignInOutcome = 'signed_in' | 'cancelled';
 
+/** The session is kept, but its token couldn't be refreshed because the sign-in service is unreachable. */
+export class SignInServiceUnreachable extends Error {
+  constructor() {
+    super("Couldn't reach the sign-in service. Check your connection - you're still signed in.");
+    this.name = 'SignInServiceUnreachable';
+  }
+}
+
 export interface MobileAuthProvider {
   readonly id: AuthProviderId;
   /** Credentials the API expects on every request (empty when signed out). */

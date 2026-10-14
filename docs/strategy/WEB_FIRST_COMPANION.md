@@ -51,6 +51,7 @@ as the code.
 
 | Date | Decision | Where |
 |---|---|---|
+| 2026-10-14 | Mobile signs in to an **existing** account only: the "Create an account" button was removed (in-app account creation would bring Apple's in-app account-deletion requirement; accounts are created on the web). Entra hosted page sign-up link: release review (A3) | MOBILE_ACCOUNT_ACCESS.md (step 81) |
 | 2026-10-14 | Strategy adopted: web-first SaaS + mobile companion | Decision 0018 |
 | 2026-10-14 | Mobile tabs: **Deals** (with alerts inbox), **Hunts** (with Create), **Inventory**, **Account**. Home dashboard and Analytics web-only | Decision 0018 |
 | 2026-10-14 | Limit / no-access copy on mobile is **neutral**. An optional "You can manage your account at {site}" line (no purchase wording) sits behind a flag, **off until the store review** | Decision 0018 |
@@ -68,7 +69,7 @@ as the code.
 | B | Mobile billing-free: no prices, plan picker, upgrade or "subscribe on the web"; "Start watching" within current access; neutral limit messages; the optional account line behind a flag | **Done** (device check pending) | 77 |
 | C | Mobile navigation Deals / Hunts / Inventory / Account; Home + Analytics web-only | **Done** (device check pending) | 78 |
 | D | Product families on plans + family-scoped entitlements + small feature-flag mechanism | **Done** - capabilities + flags (78); families, access states, enforcement, `GET /me/access` (79) | 78, 79 |
-| E | Store-compliance review notes, push / deep-link re-check, launch checklist | Not started | - |
+| E | Store-compliance review notes, push / deep-link re-check, launch checklist | **Started** - mobile account access + policy assumptions A1-A10 for legal / release review ([MOBILE_ACCOUNT_ACCESS.md](MOBILE_ACCOUNT_ACCESS.md)); the review itself, deep-link re-check and launch checklist still to do | 81 |
 
 ### Audit findings (step 76)
 
@@ -93,6 +94,7 @@ as the code.
 
 | Step | Date | Change |
 |---|---|---|
+| 81 | 2026-10-14 | **Mobile account access:**<br>- **Access** from `GET /me/access` (AccessProvider: after sign-in, on foreground, on retry), keyed by account.<br>- **Neutral wording** per state (active, trial, needs attention, grace, no paid access, ended, suspended). Notes on the Hunts / Deals tabs; Create hidden while suspended.<br>- **Session:** offline refresh no longer signs out; a 401 mid-use leads to "Your session has ended"; sign-out removes this phone's push registration first; `prompt=login`; screens remount per account.<br>- **Guard test** extended (purchase SDKs, web views, browser outside sign-in, outbound links, sign-up button).<br>- **Docs:** [MOBILE_ACCOUNT_ACCESS.md](MOBILE_ACCOUNT_ACCESS.md) with the store-policy assumptions A1-A10. |
 | 80 | 2026-10-14 | **Web subscription management:**<br>- **`/settings/billing`** on the web (plans, current access, renewal, subscribe via Stripe Checkout, switch / cancel / payment method via the Customer Portal).<br>- **Reconciliation** with Stripe (`POST /billing/sync`; also run on checkout return - the browser's "success" grants nothing).<br>- **Lifecycle tests:** checkout, failed payments, cancellation, renewal, webhook retries, reconciliation.<br>- **Mobile:** unchanged; the guard test now also bans the web billing view.<br>- **Docs:** [BILLING.md](BILLING.md), including the unresolved Stripe configuration P1-P13. |
 | 79 | 2026-10-14 | **Subscriptions and entitlements (phase D):**<br>- **Product families:** SOURCE / SELL / COMPLETE on plans; Sell and Complete plans configured but inactive.<br>- **Access states** per product (free, active, trialing, past_due, grace_period, canceled, expired, suspended, none) in `@rein-drop/access`, shared by API and worker. Grace via `BILLING_GRACE_DAYS` (default 0). A scheduled cancellation keeps access until the period ends.<br>- **Account suspension** (`User.accessSuspended*`).<br>- **`GET /me/access`** (no billing secrets).<br>- **Enforcement:** saved-Hunt limit; suspension on create / edit / activate / resume / restore; worker pauses suspended accounts; `@RequiresProduct('sell')` guard.<br>- **Rules + API contract + DB changes:** [ACCESS_RULES.md](ACCESS_RULES.md). |
 | 78 | 2026-10-14 | **Phase C + capabilities:**<br>- **One feature list** (contracts/capabilities.ts: platforms, built / flagged / unbuilt, rollout flag, entitlement, development-only) evaluated by the API at GET /me/capabilities with FEATURE_FLAGS.<br>- **Mobile tabs** Deals / Hunts / Inventory / Account from MOBILE_TABS; Create in the Hunts header; Inbox in the Deals header.<br>- **Home and Analytics removed from mobile:** / and /create redirect, unknown routes fall back to Deals; deep links unchanged.<br>- **Moved:** the onboarding prompt to the tab layout.<br>- **Developer card and /dev** only in development builds (audit G7).<br>- **Web** nav items tagged with features (unchanged for users).<br>- **Matrix:** [PLATFORM_FEATURE_MATRIX.md](PLATFORM_FEATURE_MATRIX.md). |

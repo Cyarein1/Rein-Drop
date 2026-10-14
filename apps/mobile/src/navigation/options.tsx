@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, type ColorValue } from 'react-native';
 import { fontSize, roles, size } from '@rein-drop/design-tokens';
+import { useCanUseHunts } from '@/access/AccessNotice';
 import { font } from '@/ui';
 
 /** Native header styling from the design tokens (navy on white). */
@@ -39,6 +40,8 @@ export function InboxHeaderButton() {
 
 /** Hunts tab header: Create Hunt (decision 0018 - Create lives in Hunts; opens the modal). */
 export function CreateHuntHeaderButton() {
+  // Hidden while the account is suspended (the API refuses new Hunts then).
+  if (!useCanUseHunts()) return null;
   return (
     <Link href="/hunts/new" asChild>
       <Pressable

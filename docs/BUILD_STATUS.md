@@ -1,11 +1,51 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 80 - web subscription management)_
+_Last updated: 2026-10-14 (step 81 - mobile companion account access)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 81 - Mobile companion account access (decision 0018)
+
+Flow, states, session handling, guards and **store-policy assumptions A1-A10 for legal / release
+review**: [strategy/MOBILE_ACCOUNT_ACCESS.md](strategy/MOBILE_ACCOUNT_ACCESS.md). Reused the
+Entra mobile provider (decision 0013), `GET /me/access` (step 79) and capabilities (step 78).
+
+- **Access:**
+  - `client-core/companion-account.ts`: `companionAccessView` has neutral wording per state
+    (active, scheduled end, trial, needs attention, grace, no paid access, ended, suspended),
+    including "This account doesn't currently have access to paid features." and "Your Hunts,
+    inventory and saved deals are kept.";
+  - `companionUsageLines`;
+  - `accessLoadReducer` / `accessLoadFor` keep each account's load separate (stale answers
+    ignored, last-known access kept offline).
+- **Mobile:**
+  - `access/AccessProvider` loads `/me/access` after sign-in, on foreground and on retry;
+  - `access/AccessNotice` adds notes on Hunts (all non-normal states) and Deals (suspended
+    only), and Create / Start watching are hidden while suspended;
+  - the Account "Your access" card now uses `/me/access`;
+  - the Account card has Sign in when signed out, "Your session has ended", and a
+    switch-account hint.
+- **Session:**
+  - `afterRefreshFailure` (client-core): only an Entra refusal signs out; offline keeps the
+    session;
+  - a 401 mid-use (fetch hook `onUnauthorized`) shows "Your session has ended";
+  - sign-out first removes this phone's push registration (`forgetThisDevice`, registration id
+    remembered);
+  - `prompt=login` at sign-in;
+  - `SessionGate` keyed by user; capabilities and push refresh are tagged by account.
+- **Removed:** the mobile "Create an account" button (sign-in to existing accounts; account
+  deletion isn't built - assumption A3).
+- **Tests:**
+  - `companion-account.spec.ts` (21: every state, a lifecycle journey, no selling words, load
+    transitions across sign-in / sign-out / account switch / offline);
+  - `token-session.spec` (refresh failure);
+  - the mobile guard is extended (purchase SDKs, web views, browser outside sign-in, outbound
+    links, account line never a link, no sign-up button), 9 checks.
+- **Checks:** `pnpm turbo run build typecheck lint test` 66/66. Not run on a device (Entra isn't
+  configured).
 
 ### Step 80 - Web subscription management (decision 0018, Stripe per decision 0014)
 

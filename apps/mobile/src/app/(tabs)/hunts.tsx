@@ -14,6 +14,7 @@ import {
   type ProductStateView,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import { AccessNotice, useCanUseHunts } from '@/access/AccessNotice';
 import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
@@ -30,6 +31,7 @@ export default function HuntsScreen() {
   const { created } = useLocalSearchParams<{ created?: string }>();
   const [filter, setFilter] = useState<HuntListFilter>('all');
   const [state, setState] = useState<State>({ status: 'loading' });
+  const canUseHunts = useCanUseHunts();
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -67,6 +69,7 @@ export default function HuntsScreen() {
   return (
     <Screen description="Everything Rein Drop is watching for you.">
       <LiveSourceBanner />
+      <AccessNotice />
       {state.status === 'ready' && state.suggestion && <ProductState view={state.suggestion} />}
       {createdHunt && (
         <SystemBanner tone="success" title="Hunt saved as a draft" message={`"${createdHunt.name}" is ready. Choose Start watching when you want monitoring to begin.`} />
@@ -99,7 +102,7 @@ export default function HuntsScreen() {
             <EmptyState
               title="No Hunts yet"
               description="A Hunt is a saved search Rein Drop keeps checking on eBay and Facebook Marketplace."
-              action={<Button onPress={() => router.push('/hunts/new')}>Create your first Hunt</Button>}
+              action={canUseHunts ? <Button onPress={() => router.push('/hunts/new')}>Create your first Hunt</Button> : undefined}
             />
           ) : (
             <EmptyState title={`No ${HUNT_FILTERS.find((f) => f.value === filter)!.label.toLowerCase()} Hunts`} />
@@ -134,7 +137,7 @@ export default function HuntsScreen() {
                 <Text style={[styles.body, font('regular')]}>{monitoring.text}</Text>
               </View>
               {counts && <Text style={[styles.body, font('semibold')]}>{counts}</Text>}
-              {hunt.status === 'DRAFT' && (
+              {hunt.status === 'DRAFT' && canUseHunts && (
                 <View>
                   <Button variant="secondary" onPress={() => router.push({ pathname: '/hunts/[id]/start', params: { id: hunt.id } })}>
                     Start watching
@@ -144,7 +147,7 @@ export default function HuntsScreen() {
             </Pressable>
           );
         })}
-      {state.status === 'ready' && state.hunts.length > 0 && (
+      {state.status === 'ready' && state.hunts.length > 0 && canUseHunts && (
         <View>
           <Button variant="secondary" onPress={() => router.push('/hunts/new')}>
             Create Hunt

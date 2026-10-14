@@ -1,15 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { getLocales } from 'expo-localization';
 import { ApiError, detectedLocaleRequest, type AccountIdentity } from '@rein-drop/api-client';
-import { getApiClient } from '@/config/api';
+import { getApiClient, onUnauthorized } from '@/config/api';
+import { forgetThisDevice } from '@/notifications/push';
 import { authSetup } from './provider';
 import type { Session } from './types';
 
 export type SessionState =
   | { status: 'loading' }
   | { status: 'authenticated'; session: Session }
-  /** Auth unavailable or the API rejected the identity (e.g. dev user not seeded). */
-  | { status: 'unauthenticated'; reason: string }
+  /**
+   * Not signed in: never signed in on this phone, signed out, the session ended (expired /
+   * revoked - sessionEnded), auth unavailable, or the API rejected the identity.
+   */
+  | { status: 'unauthenticated'; reason: string; sessionEnded?: boolean }
   /** Could not verify (API unreachable, timeout) - retryable. */
   | { status: 'error'; message: string };
 
@@ -23,11 +27,23 @@ interface SessionContextValue {
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+const SESSION_ENDED = 'Your session has ended. Sign in again to continue - your Hunts, inventory and deals are kept.';
 
 /** Loads the current user from `GET /me` through the auth boundary. */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const signedInBefore = useRef(false);
+
+  // Any 401 while signed in = the session ended (expired, revoked, absolute end): back to sign-in.
+  // Hunts, inventory and deals are untouched - they're on the server.
+  useEffect(
+    () =>
+      onUnauthorized(() =>
+        setState((s) => (s.status === 'authenticated' ? { status: 'unauthenticated', reason: SESSION_ENDED, sessionEnded: true } : s)),
+      ),
+    [],
+  );
 
   useEffect(() => {
     if (!authSetup.ok) {
@@ -43,6 +59,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .then(
         (user) => {
           if (!cancelled) {
+            signedInBefore.current = true;
             setState({
               status: 'authenticated',
               session: { user, provider: provider.id, isDevelopment: provider.id === 'dev' },
@@ -52,7 +69,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         (err: unknown) => {
           if (cancelled) return;
           if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-            setState({ status: 'unauthenticated', reason: err.message });
+            const ended = signedInBefore.current && err.status === 401;
+            setState({ status: 'unauthenticated', reason: ended ? SESSION_ENDED : provider.signIn ? 'Sign in to continue.' : err.message, sessionEnded: ended });
           } else {
             setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
           }
@@ -79,7 +97,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [provider, refresh]);
   const signOut = useCallback(async () => {
     if (!provider?.signOut) return;
+    // While the session still works: stop this phone getting the account's alerts (account switch).
+    await forgetThisDevice(getApiClient()).catch(() => undefined);
     await provider.signOut();
+    signedInBefore.current = false;
     setState({ status: 'unauthenticated', reason: "You're signed out." });
   }, [provider]);
 

@@ -28,7 +28,7 @@ function userFacingText(source) {
 }
 
 // "Purchase" alone is a reseller's stock purchase (inventory) - only subscription purchases count.
-const SELLING = /\b(upgrade|subscribe|in-app purchase|purchase (?:a |the )?(?:plan|subscription)|buy (?:a|the) (?:plan|subscription)|pricing|price tbd|per month|\/ month|checkout|choose a plan|bigger plan|see plans|change plan|cancel plan|manage billing|billing is managed|on the web)\b/i;
+const SELLING = /\b(upgrade|subscribe|unlock|go premium|start (?:a |your )?free trial|restore purchases?|in-app purchase|purchase (?:a |the )?(?:plan|subscription)|buy (?:a|the) (?:plan|subscription)|pricing|price tbd|per month|\/ month|checkout|choose a plan|bigger plan|see plans|change plan|cancel plan|manage billing|billing is managed|on the web)\b/i;
 
 describe('mobile companion never sells (decision 0018)', () => {
   const sources = files(SRC).map((f) => ({ file: path.relative(SRC, f), text: readFileSync(f, 'utf8') }));
@@ -59,6 +59,33 @@ describe('mobile companion never sells (decision 0018)', () => {
     for (const tab of ['deals', 'hunts', 'inventory', 'account']) {
       expect(sources.some(({ file }) => file.replace(/\\/g, '/') === `app/(tabs)/${tab}.tsx`)).toBe(true);
     }
+  });
+
+  it('no purchase SDKs, web views or purchase web pages: nothing can open a checkout inside or outside the app', () => {
+    const pkg = JSON.parse(readFileSync(path.join(SRC, '..', 'package.json'), 'utf8'));
+    const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+    expect(deps.filter((d) => /webview|iap|in-app-purchase|purchases|billing|stripe|revenuecat/i.test(d))).toEqual([]);
+    expect(sources.filter(({ text }) => /react-native-webview|<WebView\b/.test(text)).map((s) => s.file)).toEqual([]);
+    // The system browser is only for signing in (Entra), never for a web page of Rein Drop's.
+    expect(sources.filter(({ file, text }) => /expo-web-browser/.test(text) && !/^auth[\\/]/.test(file)).map((s) => s.file)).toEqual([]);
+    // Outbound links open marketplace listings only - no Rein Drop site, account or payment URL.
+    const opens = sources.flatMap(({ file, text }) => [...text.matchAll(/openURL\(([^)]*)\)/g)].map((m) => `${file}: ${m[1]}`));
+    expect(opens.length).toBeGreaterThan(0); // the scan sees the listing links, so it isn't vacuous
+    expect(opens.filter((o) => !/: view\.(url|sourceUrl!?)$/.test(o))).toEqual([]);
+    expect(sources.filter(({ text }) => /openURL\([^)]*(ACCOUNT_SITE|accountSiteLine)|https?:\/\/[^'"\s]*reindrop/i.test(text)).map((s) => s.file)).toEqual([]);
+  });
+
+  it('the account line is plain text (no link) and only when the build sets EXPO_PUBLIC_ACCOUNT_SITE', () => {
+    const uses = sources.filter(({ text }) => /accountSiteLine\(/.test(text));
+    for (const { file, text } of uses) {
+      expect(text, file).toMatch(/accountSiteLine\(process\.env\.EXPO_PUBLIC_ACCOUNT_SITE\)/);
+      expect(text, file).not.toMatch(/onPress=\{[^}]*accountLine/);
+    }
+  });
+
+  it('signs in to an existing account: no sign-up / create-account button on mobile', () => {
+    const hits = sources.flatMap(({ file, text }) => userFacingText(text).filter((t) => /\b(create an account|sign up|register)\b/i.test(t)).map((t) => `${file}: "${t.trim().slice(0, 80)}"`));
+    expect(hits).toEqual([]);
   });
 
   it('no plan picker, price labels or cancel-plan screen', () => {

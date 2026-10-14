@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextTokenSession, REFRESH_MARGIN_MS, tokenSessionState } from './token-session.js';
+import { afterRefreshFailure, nextTokenSession, REFRESH_MARGIN_MS, tokenSessionState } from './token-session.js';
 
 const NOW = 1_800_000_000_000;
 const WEEK = 7 * 86_400_000;
@@ -25,5 +25,14 @@ describe('token sessions', () => {
     expect(tokenSessionState(s, s.accessTokenExpiresAt + 1)).toBe('refresh');
     expect(tokenSessionState(s, s.expiresAt)).toBe('expired');
     expect(tokenSessionState(null, NOW)).toBe('expired');
+  });
+
+  it('a failed refresh signs out only when the sign-in service refused it - never for being offline', () => {
+    const s = nextTokenSession(null, { accessToken: 'a', expiresInSeconds: 3600 }, NOW, WEEK);
+    const nearlyExpired = s.accessTokenExpiresAt - 60_000;
+    expect(afterRefreshFailure(s, true, nearlyExpired)).toBe('sign_out');
+    expect(afterRefreshFailure(s, false, nearlyExpired)).toBe('use_current');
+    expect(afterRefreshFailure(s, false, s.accessTokenExpiresAt + 1)).toBe('unavailable');
+    expect(afterRefreshFailure(s, false, s.expiresAt)).toBe('sign_out');
   });
 });

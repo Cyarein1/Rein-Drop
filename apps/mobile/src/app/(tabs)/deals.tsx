@@ -5,6 +5,7 @@ import type { DealStatusFilter, DealSummary, MarketplaceKey } from '@rein-drop/a
 import { DEAL_FILTERS, dealCardView, dealsWaitingState, huntFormContext, MARKETPLACE_LABEL, type ProductStateView } from '@rein-drop/client-core';
 import { fontSize, roles } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
+import { AccessNotice } from '@/access/AccessNotice';
 import { DealCard } from '@/components/DealCard';
 import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
@@ -77,6 +78,7 @@ export default function DealsScreen() {
   return (
     <Screen description="Ranked by how strong the opportunity is, then how fresh.">
       <LiveSourceBanner />
+      <AccessNotice only={['suspended']} />
       <ChoiceGroup legend="Show" options={DEAL_FILTERS} value={filter} onChange={change(setFilter)} />
       <ChoiceGroup
         legend="Source"
