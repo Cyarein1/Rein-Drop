@@ -47,6 +47,20 @@ describe('mobile companion never sells (decision 0018)', () => {
     expect(sources.filter(({ text }) => calls.test(text)).map((s) => s.file)).toEqual([]);
   });
 
+  it('web-only features stay off the companion: no analytics screens, Home dashboard or analytics / home API calls', () => {
+    expect(sources.filter(({ file }) => /^app[\\/](analytics|\(tabs\)[\\/]analytics)/.test(file)).map((s) => s.file)).toEqual([]);
+    const webOnlyCalls = /\.(getHome|get\w*Analytics\w*|getMissed\w*)\(/;
+    expect(sources.filter(({ text }) => webOnlyCalls.test(text)).map((s) => s.file)).toEqual([]);
+  });
+
+  it('tabs come from the shared MOBILE_TABS (Deals, Hunts, Inventory, Account), each with a route file', () => {
+    const layout = sources.find(({ file }) => /^app[\\/]\(tabs\)[\\/]_layout\.tsx$/.test(file));
+    expect(layout?.text).toMatch(/MOBILE_TABS\.map/);
+    for (const tab of ['deals', 'hunts', 'inventory', 'account']) {
+      expect(sources.some(({ file }) => file.replace(/\\/g, '/') === `app/(tabs)/${tab}.tsx`)).toBe(true);
+    }
+  });
+
   it('no plan picker, price labels or cancel-plan screen', () => {
     expect(sources.filter(({ text }) => /planGateOptions|priceLabel|cancellationState|cancel-plan/.test(text)).map((s) => s.file)).toEqual([]);
   });

@@ -20,6 +20,7 @@ export * from './seller-snapshot.js';
 export * from './home.js';
 export * from './hunts.js';
 export * from './plans.js';
+export * from './capabilities.js';
 export * from './listings.js';
 export * from './deals.js';
 export * from './notifications.js';

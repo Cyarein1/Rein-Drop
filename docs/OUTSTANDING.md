@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 77 (web-first billing phase B: mobile no longer sells)._
+_Last updated: 2026-10-14, after step 78 (platform capabilities, mobile navigation)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -98,8 +98,8 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - **Apply the step 76 migration to your development database** (`pnpm --filter @rein-drop/db db:deploy`, restart the API) - adds the `UNPAID` subscription status - step 76.
 - Phase B done in step 77 (see Resolved) - check the new mobile Start watching screen, "Your access" card and Hunts-list message on a phone - step 77.
 - `EXPO_PUBLIC_ACCOUNT_SITE` (optional "You can manage your account at {site}" line): decide after the store review whether to turn it on - step 77.
-- Phase C - mobile tabs Deals (with Inbox) / Hunts (with Create) / Inventory / Account; Home dashboard and Analytics web-only - step 76.
-- Mobile Settings "Developer" card (API address, connection check) and the `/dev` UI gallery are reachable in release builds - show them only in development builds (audit G7, planned with phase C) - audit 2026-10-14.
+- Phone check of the step 78 navigation: four tabs, "+" Create in Hunts, bell inbox in Deals, Account tab vs signed-out /settings, notification tap -> deal, old links (/, /analytics, /create) redirecting - step 78.
+- Product families (Source / Sell / Complete) on plans and family-scoped entitlement keys - the rest of phase D - step 78.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
 - Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
 - Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76.
@@ -378,6 +378,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
+| Mobile navigation Home / Hunts / Create / Deals / Analytics with analytics dashboards; mobile Developer card and /dev reachable in release builds (audit G3, G4, G7); no feature-flag mechanism (G6) | Steps 76 audit | Step 78 (capability list + /me/capabilities + FEATURE_FLAGS, tabs Deals / Hunts / Inventory / Account, analytics + Home web-only, dev tools development-only) |
 | Mobile showed prices, a "Choose a plan" picker, "subscribe on the web", "upgrade" / "Choose a bigger plan" / "See plans" and a cancel-plan screen (decision 0018 phase B) | Step 76 audit | Step 77 (companion Start watching, "Your access" card, cancel-plan removed, companion wording, guard test) |
 | Worker monitored any LIVE Hunt regardless of the owner's access; a paid period ending without a webhook (or choosing Free) never paused Hunts above the new limit; Stripe `unpaid` kept access | Found in step 76 audit (decision 0018) | Step 76 (`@rein-drop/access`: scheduler access sweep, Free / dev plan follow-up, `UNPAID` status) |
 | How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |

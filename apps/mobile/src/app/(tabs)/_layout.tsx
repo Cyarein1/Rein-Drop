@@ -1,14 +1,18 @@
-import { Tabs, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { fontSize, radius, roles, size } from '@rein-drop/design-tokens';
+import type { ReactNode } from 'react';
+import { Tabs } from 'expo-router';
+import { MOBILE_TABS } from '@rein-drop/api-client';
+import { fontSize, roles } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { headerOptions, NavIcon, TabHeaderButtons } from '@/navigation/options';
+import { useCapabilities } from '@/capabilities/CapabilitiesProvider';
+import { CreateHuntHeaderButton, headerOptions, InboxHeaderButton, NavIcon } from '@/navigation/options';
+import { useOnboardingPrompt } from '@/onboarding/useOnboardingPrompt';
 import { font } from '@/ui';
 
 /**
- * Bottom navigation: Home - Hunts - central Create - Deals - Analytics
- * (Mobile UI Screenbook, section 1). Settings is in the header of every tab.
- * All tabs are protected: they render only with an authenticated session.
+ * Companion navigation (decision 0018): Deals - Hunts - Inventory - Account, in the order and
+ * availability of the shared MOBILE_TABS / platform capabilities. The inbox opens from Deals and
+ * Create Hunt from Hunts. Home and Analytics are web-only: `/` and `/create` redirect, retired
+ * routes fall back to Deals (+not-found). All tabs require a session.
  */
 export default function TabsLayout() {
   return (
@@ -18,88 +22,48 @@ export default function TabsLayout() {
   );
 }
 
+type IconName = Parameters<typeof NavIcon>[0]['name'];
+const ICONS: Record<(typeof MOBILE_TABS)[number]['name'], IconName> = {
+  deals: { ios: 'tag', android: 'sell' },
+  hunts: { ios: 'scope', android: 'radar' },
+  inventory: { ios: 'shippingbox', android: 'inventory_2' },
+  account: { ios: 'person.crop.circle', android: 'account_circle' },
+};
+const HEADER_RIGHT: Partial<Record<(typeof MOBILE_TABS)[number]['name'], () => ReactNode>> = {
+  deals: () => <InboxHeaderButton />,
+  hunts: () => <CreateHuntHeaderButton />,
+};
+
 function AppTabs() {
+  const caps = useCapabilities();
+  useOnboardingPrompt();
   return (
     <Tabs
+      initialRouteName="deals"
       screenOptions={{
         ...headerOptions(),
-        headerRight: () => <TabHeaderButtons />,
         tabBarActiveTintColor: roles.text,
         tabBarInactiveTintColor: roles.textMuted,
         tabBarStyle: { backgroundColor: roles.background, borderTopColor: roles.border },
         tabBarLabelStyle: { ...font('semibold'), fontSize: fontSize.xs },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <NavIcon name={{ ios: 'house', android: 'home' }} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="hunts"
-        options={{
-          title: 'Hunts',
-          tabBarIcon: ({ color }) => <NavIcon name={{ ios: 'scope', android: 'radar' }} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: 'Create Hunt',
-          // Not a destination: opens the Create Hunt modal on top of the current tab.
-          tabBarButton: (props) => <CreateTabButton style={props.style} />,
-        }}
-      />
-      <Tabs.Screen
-        name="deals"
-        options={{
-          title: 'Deals',
-          tabBarIcon: ({ color }) => <NavIcon name={{ ios: 'tag', android: 'sell' }} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color }) => (
-            <NavIcon name={{ ios: 'chart.bar', android: 'bar_chart' }} color={color} />
-          ),
-        }}
-      />
+      {MOBILE_TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            // A tab whose feature isn't available isn't shown (and can't be navigated to from the bar).
+            href: caps[tab.feature].available ? undefined : null,
+            headerRight: HEADER_RIGHT[tab.name],
+            tabBarIcon: ({ color }) => <NavIcon name={ICONS[tab.name]} color={color} />,
+          }}
+        />
+      ))}
+      {/* Redirect-only routes, never in the bar. */}
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="create" options={{ href: null }} />
     </Tabs>
   );
 }
-
-function CreateTabButton({ style }: { style?: StyleProp<ViewStyle> }) {
-  const router = useRouter();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Create Hunt"
-      onPress={() => router.push('/hunts/new')}
-      style={({ pressed }) => [style, styles.createButton, pressed && styles.pressed]}
-    >
-      <View style={styles.createCircle}>
-        <NavIcon name={{ ios: 'plus', android: 'add' }} color={roles.onAction} size={26} />
-      </View>
-      <Text style={[styles.createLabel, font('semibold')]}>Create</Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  createButton: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: size.touchTarget },
-  createCircle: {
-    width: 44,
-    height: 44,
-    marginTop: -14,
-    borderRadius: radius.full,
-    backgroundColor: roles.action,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createLabel: { color: roles.text, fontSize: fontSize.xs, marginTop: 2 },
-  pressed: { opacity: 0.8 },
-});

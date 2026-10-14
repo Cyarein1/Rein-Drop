@@ -278,17 +278,18 @@ implementation slots into D.
 - [x] Guard test against selling words and billing calls.
 - [ ] Check on a real phone.
 
-**Phase C - mobile navigation** _(awaiting approval)_
-- [ ] Tabs Deals / Hunts / Inventory / Account; Create inside Hunts; inbox inside Deals.
-- [ ] Remove Home and Analytics (tab + stack routes) from mobile; web unchanged.
-- [ ] Fallback for removed routes; notification taps still open deals.
-- [ ] Developer card and `/dev` only in development builds.
-- [ ] Extend the guard test (no analytics dashboards on mobile).
+**Phase C - mobile navigation** _(done, step 78; device check pending)_
+- [x] Tabs Deals / Hunts / Inventory / Account; Create inside Hunts; inbox inside Deals.
+- [x] Remove Home and Analytics (tab + stack routes) from mobile; web unchanged.
+- [x] Fallback for removed routes; notification taps still open deals.
+- [x] Developer card and `/dev` only in development builds.
+- [x] Extend the guard test (no analytics dashboards on mobile).
+- [x] Central platform capability list + `GET /me/capabilities` + rollout flags (`FEATURE_FLAGS`) - step 78.
 
 **Phase D - product families and flags**
 - [ ] `Plan.family` (SOURCE / SELL / COMPLETE), additive migration, seed.
 - [ ] Family-scoped entitlement keys with backwards-compatible aliases.
-- [ ] Server-driven features endpoint; API refuses unfinished features.
+- [x] Server-driven features endpoint (`GET /me/capabilities`, step 78). Unfinished features have no endpoints to refuse.
 - [ ] Clients hide flagged features (no Sell UI anywhere).
 
 **Phase E - compliance and launch**

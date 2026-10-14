@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, View, type ColorValue } from 'react-native';
+import { Pressable, StyleSheet, type ColorValue } from 'react-native';
 import { fontSize, roles, size } from '@rein-drop/design-tokens';
 import { font } from '@/ui';
 
@@ -21,22 +21,6 @@ export function NavIcon({ name, color, size: iconSize = 24 }: { name: SymbolName
   return <SymbolView name={name} tintColor={color} size={iconSize} />;
 }
 
-/** Header button to Settings (Settings is not a bottom tab - Mobile UI Screenbook, section 1). */
-export function SettingsHeaderButton() {
-  return (
-    <Link href="/settings" asChild>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        hitSlop={8}
-        style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-      >
-        <NavIcon name={{ ios: 'gearshape', android: 'settings' }} color={roles.text} />
-      </Pressable>
-    </Link>
-  );
-}
-
 /** Header button to the in-app inbox (alerts). */
 export function InboxHeaderButton() {
   return (
@@ -53,18 +37,22 @@ export function InboxHeaderButton() {
   );
 }
 
-/** Right side of every tab header: inbox, then Settings. */
-export function TabHeaderButtons() {
+/** Hunts tab header: Create Hunt (decision 0018 - Create lives in Hunts; opens the modal). */
+export function CreateHuntHeaderButton() {
   return (
-    <View style={styles.row}>
-      <InboxHeaderButton />
-      <SettingsHeaderButton />
-    </View>
+    <Link href="/hunts/new" asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Create Hunt"
+        hitSlop={8}
+        style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+      >
+        <NavIcon name={{ ios: 'plus', android: 'add' }} color={roles.text} />
+      </Pressable>
+    </Link>
   );
 }
-
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
   headerButton: {
     width: size.touchTarget,
     height: size.touchTarget,

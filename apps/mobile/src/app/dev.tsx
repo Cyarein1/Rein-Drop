@@ -1,4 +1,6 @@
+import { Redirect } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { useCan } from '@/capabilities/CapabilitiesProvider';
 import { MASCOT_TOKENS } from '@rein-drop/design-tokens';
 import { productStateSamples } from '@rein-drop/client-core';
 import { Wordmark } from '@/brand/Wordmark';
@@ -6,8 +8,9 @@ import { ProductState } from '@/components/ProductState';
 import { MascotSlot } from '@/ui/MascotSlot';
 import { Badge, Button, Card, EmptyState, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
 
-/** Developer-only gallery of the mobile UI primitives (not product UI). */
+/** Developer-only gallery of the mobile UI primitives (not product UI). Release builds: redirected (dev.tools). */
 export default function DevScreen() {
+  if (!useCan('dev.tools')) return <Redirect href="/deals" />;
   return (
     <Screen description="Every mobile primitive and variant.">
       <Wordmark height={40} />

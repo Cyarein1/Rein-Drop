@@ -1,8 +1,8 @@
 import { Redirect } from 'expo-router';
 
 /**
- * Placeholder route behind the central Create tab button. The button itself opens the
- * Create Hunt modal; this only runs if someone deep-links to /create.
+ * `/create` - kept only so existing links still work. Creating a Hunt lives in the Hunts tab
+ * (header "+" button, decision 0018); this opens the same Create Hunt modal.
  */
 export default function CreateRedirect() {
   return <Redirect href="/hunts/new" />;

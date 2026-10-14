@@ -37,6 +37,11 @@ import {
   planListSchema,
   updateUserLocaleRequestSchema,
   userLocaleResponseSchema,
+  capabilitiesResponseSchema,
+  capabilityMap,
+  type Capability,
+  type FeatureKey,
+  type Platform,
   geoConfigSchema,
   geoSuggestQuerySchema,
   geoSuggestResponseSchema,
@@ -141,8 +146,13 @@ export {
   ENTRA_DEFAULT_SCOPE_NAME,
   entraApiScope,
   entraDiscoveryUrl,
+  capabilitiesFor,
+  capability,
   detectedLocaleRequest,
+  FEATURES,
   GEO_QUERY_MIN_LENGTH,
+  MOBILE_TABS,
+  mobileTabs,
   kmToUnit,
   PURCHASE_COST_CATEGORIES,
   realizedResult,
@@ -176,6 +186,8 @@ export interface ApiClient {
   getLocale(): Promise<UserLocale | null>;
   /** Set the locale, or report a detected one (`source: 'detected'` never overwrites). */
   updateLocale(input: UpdateUserLocaleRequestInput): Promise<UserLocale | null>;
+  /** Features available to this user on this platform (decision 0018) - complete map, missing = unavailable. */
+  getCapabilities(platform: Platform): Promise<Record<FeatureKey, Capability>>;
   /** What place / map features are available (decision 0017). */
   getGeoConfig(): Promise<GeoConfig>;
   /** Places matching what's been typed (user's country first). */
@@ -334,6 +346,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           response: userLocaleResponseSchema,
         })
       ).locale,
+    getCapabilities: async (platform) =>
+      capabilityMap(await send(http, { method: 'GET', path: '/me/capabilities', query: { platform }, response: capabilitiesResponseSchema })),
     getGeoConfig: () => send(http, { method: 'GET', path: '/geo/config', response: geoConfigSchema }),
     suggestPlaces: async (q, limit) =>
       (

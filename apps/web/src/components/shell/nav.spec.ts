@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { capabilitiesFor } from "@rein-drop/api-client";
 import { BOTTOM_ITEMS, isActive, NAV, SIDEBAR_ITEMS } from "./nav";
 
 describe("isActive", () => {
@@ -29,6 +30,18 @@ describe("isActive", () => {
     expect(isActive("/inventory", NAV.analytics)).toBe(true);
     expect(isActive("/inventory/abc/result", NAV.analytics)).toBe(true);
     expect(isActive("/inventoryx", NAV.analytics)).toBe(false);
+  });
+});
+
+describe("platform capabilities (decision 0018)", () => {
+  const web = capabilitiesFor({ platform: "web", flags: [], entitlements: null, environment: "production" });
+
+  it("every web destination is a feature available on the web - the web stays the complete platform", () => {
+    for (const item of Object.values(NAV)) expect(web[item.feature], item.label).toEqual({ available: true, reason: null });
+  });
+
+  it("web keeps analytics, the Home dashboard and billing (web-only features)", () => {
+    for (const feature of ["analytics", "home.dashboard", "billing.checkout", "billing.manage"] as const) expect(web[feature].available).toBe(true);
   });
 });
 

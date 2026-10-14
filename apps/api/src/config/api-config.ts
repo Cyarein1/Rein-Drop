@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUTH_PROVIDER_IDS, ENTRA_DEFAULT_SCOPE_NAME, type AuthProviderId } from '@rein-drop/contracts';
+import { AUTH_PROVIDER_IDS, ENTRA_DEFAULT_SCOPE_NAME, FEATURE_FLAGS, type AuthProviderId, type FeatureFlag } from '@rein-drop/contracts';
 import type { EntraApiConfig } from '../auth/entra-auth.provider.js';
 import { billingEnvShape, resolveBillingConfig, type BillingConfig } from '../modules/billing/billing-config.js';
 // Config is wiring (like the registry provider): it may name development marketplace scenarios.
@@ -63,6 +63,13 @@ const apiEnvSchema = z.object({
   ...productEventsEnvShape,
   // Geocoding / maps (decision 0017): mock (development) | azure | none (production default).
   ...geoEnvShape,
+  /** Rollout flags that are ON, comma-separated (decision 0018), e.g. "hunts.hot". Default: none. */
+  FEATURE_FLAGS: z
+    .string()
+    .trim()
+    .transform((s) => s.split(',').map((f) => f.trim()).filter(Boolean))
+    .pipe(z.array(z.enum(FEATURE_FLAGS, { error: `must be a comma-separated list of: ${FEATURE_FLAGS.join(', ')}` })))
+    .optional(),
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -90,6 +97,8 @@ export interface ApiConfig {
   readonly productEvents: ProductEventProviderId;
   /** Geocoder for suggestions, areas and Hunt locations (holds the Azure Maps key - never log it). */
   readonly geo: GeoConfig;
+  /** Rollout flags that are on (platform capabilities, decision 0018). */
+  readonly featureFlags: readonly FeatureFlag[];
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -153,5 +162,6 @@ export function loadApiConfig(
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
     productEvents: resolveProductEventProviderId(parsed),
     geo: Object.freeze({ provider: geo.geo.provider, azure: geo.geo.azure ? Object.freeze(geo.geo.azure) : null }),
+    featureFlags: Object.freeze([...new Set(parsed.FEATURE_FLAGS ?? [])]),
   });
 }

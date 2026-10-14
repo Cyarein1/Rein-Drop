@@ -1,13 +1,60 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 77 - web-first billing phase B)_
+_Last updated: 2026-10-14 (step 78 - platform capabilities, mobile navigation)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
 
-### Step 77 - Web-first billing (decision 0018), phase B: the mobile app no longer sells
+### Step 78 - Web vs mobile boundaries (decision 0018): platform capabilities, mobile navigation (phase C)
+
+Matrix: [strategy/PLATFORM_FEATURE_MATRIX.md](strategy/PLATFORM_FEATURE_MATRIX.md). Tracker:
+[strategy/WEB_FIRST_COMPANION.md](strategy/WEB_FIRST_COMPANION.md).
+
+- **Central capability list** (`packages/contracts/src/capabilities.ts`, 22 features):
+  - each feature has platforms, built / flagged / unbuilt status, rollout flag, entitlement and a
+    development-only marker;
+  - `capability()` / `capabilitiesFor()` return availability and the first reason it's off;
+  - `MOBILE_TABS` drives the mobile tab order;
+  - unbuilt features (Sell, photo capture, bulk inventory) are never available, even with their
+    flag on.
+- **API:**
+  - `GET /me/capabilities?platform=web|mobile` evaluates the list with `FEATURE_FLAGS` (new env;
+    comma list; unknown names refused at startup; default none) and the user's plan;
+  - `api-client.getCapabilities()` returns a complete map (missing = unavailable).
+- **Mobile navigation:**
+  - **Deals / Hunts / Inventory / Account**, from `MOBILE_TABS` + capabilities
+    (`CapabilitiesProvider`; offline default = same list, all flags off);
+  - Create Hunt is the "+" in the Hunts header; the inbox is the bell in the Deals header.
+  - **Removed from mobile:**
+    - the Home dashboard (`/` now redirects to Deals);
+    - the Analytics tab, `analytics/hunts|products|missed` and `AnalyticsParts`.
+
+    The web versions are untouched.
+  - The Inventory list moved into the tab (`/inventory` path unchanged).
+  - The Settings screen became the shared **Account** screen: the Account tab and `/settings` (still
+    ungated for sign-in) render it.
+  - Unknown / retired routes fall back to Deals (`+not-found`); `/create` redirects to Create Hunt.
+  - The onboarding prompt moved to the tab layout.
+  - The Developer card and `/dev` show only in development builds (audit G7).
+- **Web:** every nav item now names its feature; a test proves each is available on the web. No
+  user-facing change.
+- **Guard tests:**
+  - contracts `capabilities.spec` (8: complete web set, companion set, unbuilt never available,
+    flag + entitlement, dev only, tab order, partial responses, every feature described);
+  - API config flags;
+  - API `capabilities.int-spec` (3);
+  - mobile guard: no analytics screens / Home or analytics calls; tabs from `MOBILE_TABS`;
+  - web nav spec.
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 66/66;
+- API integration 14 files, 77/77 (fresh Postgres);
+- mobile tests 13/13.
+
+**Not run on a device** - tabs, redirects and deep links need a phone check.
+ - Web-first billing (decision 0018), phase B: the mobile app no longer sells
 
 Tracker: [strategy/WEB_FIRST_COMPANION.md](strategy/WEB_FIRST_COMPANION.md).
 

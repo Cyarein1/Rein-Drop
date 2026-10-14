@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SessionProvider } from '@/auth/SessionProvider';
+import { CapabilitiesProvider } from '@/capabilities/CapabilitiesProvider';
 import { NotificationsBridge } from '@/notifications/NotificationsBridge';
 import { headerOptions } from '@/navigation/options';
 import { interFonts, setInterLoaded } from '@/ui';
@@ -33,27 +34,25 @@ export default function RootLayout() {
 
   return (
     <SessionProvider>
+      <CapabilitiesProvider>
       <NotificationsBridge />
       <Stack screenOptions={headerOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="settings" options={{ title: 'Account' }} />
         <Stack.Screen name="onboarding" options={{ title: 'Set up Rein Drop', presentation: 'modal' }} />
         <Stack.Screen name="hunts/new" options={{ title: 'Create Hunt', presentation: 'modal' }} />
         <Stack.Screen name="hunts/[id]/index" options={{ title: 'Hunt' }} />
         <Stack.Screen name="hunts/[id]/edit" options={{ title: 'Edit Hunt' }} />
         <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
         <Stack.Screen name="deals/[id]" options={{ title: 'Deal' }} />
-        <Stack.Screen name="inventory/index" options={{ title: 'Inventory' }} />
         <Stack.Screen name="inventory/[id]/index" options={{ title: 'Inventory item' }} />
         <Stack.Screen name="inventory/[id]/sell" options={{ title: 'Mark sold' }} />
         <Stack.Screen name="inventory/[id]/result" options={{ title: 'Sale result' }} />
-        <Stack.Screen name="analytics/hunts" options={{ title: 'Hunt analytics' }} />
-        <Stack.Screen name="analytics/products" options={{ title: 'Product analytics' }} />
-        <Stack.Screen name="analytics/missed" options={{ title: 'Missed potential' }} />
         <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>
       <StatusBar style="dark" />
+      </CapabilitiesProvider>
     </SessionProvider>
   );
 }

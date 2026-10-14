@@ -38,6 +38,7 @@ describe('loadApiConfig', () => {
       facebookApify: null,
       productEvents: 'log',
       geo: { provider: 'mock', azure: null },
+      featureFlags: [],
     });
   });
 
@@ -105,6 +106,11 @@ describe('loadApiConfig', () => {
     expect(loadApiConfig({ GEOCODING_PROVIDER: 'azure', AZURE_MAPS_KEY: 'k' }).geo.provider).toBe('azure');
   });
 
+  it('feature flags: none by default, a comma list of known flags, typos refused', () => {
+    expect(loadApiConfig({ FEATURE_FLAGS: ' hunts.hot , sell.workspace,hunts.hot' }).featureFlags).toEqual(['hunts.hot', 'sell.workspace']);
+    expect(problemsFor({ FEATURE_FLAGS: 'hunts.hott' })[0]).toMatch(/^FEATURE_FLAGS(\.\d+)?: must be a comma-separated list of: sell.workspace/);
+  });
+
   it('rejects unknown auth providers', () => {
     expect(problemsFor({ AUTH_PROVIDER: 'magic' })[0]).toMatch(/^AUTH_PROVIDER: must be one of: dev/);
   });
@@ -135,6 +141,7 @@ describe('loadApiConfig', () => {
       facebookApify: null,
       productEvents: 'log',
       geo: { provider: 'mock', azure: null },
+      featureFlags: [],
     });
   });
 
