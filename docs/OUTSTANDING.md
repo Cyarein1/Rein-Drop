@@ -99,6 +99,7 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Phase B done in step 77 (see Resolved) - check the new mobile Start watching screen, "Your access" card and Hunts-list message on a phone - step 77.
 - `EXPO_PUBLIC_ACCOUNT_SITE` (optional "You can manage your account at {site}" line): decide after the store review whether to turn it on - step 77.
 - Phase C - mobile tabs Deals (with Inbox) / Hunts (with Create) / Inventory / Account; Home dashboard and Analytics web-only - step 76.
+- Mobile Settings "Developer" card (API address, connection check) and the `/dev` UI gallery are reachable in release builds - show them only in development builds (audit G7, planned with phase C) - audit 2026-10-14.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
 - Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
 - Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76.
