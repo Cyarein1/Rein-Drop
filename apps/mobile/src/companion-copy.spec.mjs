@@ -15,7 +15,7 @@ const files = (dir) =>
   readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);
     if (statSync(full).isDirectory()) return files(full);
-    return /\.tsx?$/.test(name) && !/\.spec\.tsx?$/.test(name) ? [full] : [];
+    return /\.tsx?$/.test(name) && !/(\.spec|-test|\.d)\.tsx?$/.test(name) ? [full] : [];
   });
 
 /** String literals and JSX text only (comments and identifiers may name billing concepts). */

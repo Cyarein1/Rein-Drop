@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { font } from './fonts';
 
@@ -8,6 +8,9 @@ export interface ScreenProps {
   description?: string;
   /** Scrollable content (default). Set false for screens that manage their own lists. */
   scroll?: boolean;
+  /** Pull to refresh (scrollable screens): called on pull; `refreshing` shows the spinner. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
   children: ReactNode;
 }
 
@@ -16,7 +19,7 @@ export interface ScreenProps {
  * native header, and the header / tab bar own the safe areas, so Screen adds none.
  * Web counterpart: `Page`.
  */
-export function Screen({ description, scroll = true, children }: ScreenProps) {
+export function Screen({ description, scroll = true, onRefresh, refreshing = false, children }: ScreenProps) {
   const intro = description ? (
     <Text style={[styles.description, font('regular')]}>{description}</Text>
   ) : null;
@@ -35,6 +38,7 @@ export function Screen({ description, scroll = true, children }: ScreenProps) {
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={roles.text} accessibilityLabel="Pull to refresh" /> : undefined}
     >
       {intro}
       {children}

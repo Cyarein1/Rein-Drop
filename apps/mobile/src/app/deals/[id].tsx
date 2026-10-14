@@ -11,6 +11,7 @@ import {
   dealDetailView,
   IGNORE_REASON_MAX,
   NEXT_STEP_LABEL,
+  OFFLINE_MESSAGE,
   REASON_EFFECT_LABEL,
   RISK_LEVEL_LABEL,
   SEVERITY_TONE,
@@ -21,8 +22,10 @@ import {
 import { fontSize, radius, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { mascotAssets } from '@/brand/assets';
+import { DealEconomics } from '@/components/DealEconomics';
 import { getApiClient } from '@/config/api';
-import { Badge, Button, Card, Disclosure, font, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
+import { isOffline } from '@/data/useRefreshable';
+import { Badge, Button, Card, Disclosure, font, LoadingState, Screen, SystemBanner, TextInput } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string; notFound: boolean } | { status: 'ready'; deal: DealDetail; version: number };
 
@@ -43,7 +46,7 @@ export default function DealScreen() {
           !cancelled &&
           setLoad({
             status: 'error',
-            message: err instanceof Error ? err.message : String(err),
+            message: isOffline(err) ? OFFLINE_MESSAGE : err instanceof Error ? err.message : String(err),
             notFound: err instanceof ApiError && (err.status === 404 || err.code === 'VALIDATION_FAILED'),
           }),
       );
@@ -235,18 +238,7 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
         )}
       </Card>
 
-      <Card title="Price">
-        {view.priceLines.map(([label, value]) => (
-          <View key={label} style={styles.row}>
-            <Text style={[styles.body, font('regular')]}>{label}</Text>
-            <Text style={[styles.body, font('semibold')]}>{value}</Text>
-          </View>
-        ))}
-        {view.maxPriceNote && <Text style={[styles.body, font('regular')]}>{view.maxPriceNote}</Text>}
-        <Metric label="Upside" value={view.upside.value} estimated={view.upside.estimated} caption={view.upside.caption} />
-        {view.targetNote && <Text style={[styles.muted, font('regular')]}>{view.targetNote}</Text>}
-        {view.notIncluded && <Text style={[styles.muted, font('regular')]}>{view.notIncluded}</Text>}
-      </Card>
+      <DealEconomics view={view} />
 
       <Card title="Risk and condition">
         {deal.risk ? (

@@ -143,6 +143,21 @@ export function upsideView(estimate: DealEstimate, ctx: HuntFormContext): Upside
   };
 }
 
+/** Always shown next to estimates: they are never presented as guaranteed or realized profit. */
+export const ESTIMATE_NOTE = "Estimates, not guaranteed profit. Fees, condition and timing change what you actually make - check the listing before you buy.";
+
+/** Estimated resale value from comparable sales, or why there is none. */
+export function resaleView(estimate: DealEstimate, ctx: HuntFormContext): UpsideView {
+  const { resale } = estimate;
+  if (resale.status !== 'estimated') return { value: 'Not estimated', estimated: false, caption: UNESTIMATED[resale.reason] ?? resale.detail };
+  const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
+  return {
+    value: fmt(resale.typical),
+    estimated: true,
+    caption: `Range ${fmt(resale.low)} to ${fmt(resale.high)}, from ${resale.sampleSize} similar ${resale.sampleSize === 1 ? 'sale' : 'sales'}`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Feed card
 // ---------------------------------------------------------------------------
@@ -265,6 +280,8 @@ export interface DealDetailView extends DealCardView {
   locationText: string | null;
   /** Price breakdown lines, e.g. [["Asking price", "R4 000"], ["Shipping", "R150"], ["Known total", "R4 150"]]. */
   priceLines: [string, string][];
+  /** Estimated resale value (comparable sales). */
+  resale: UpsideView;
   /** Costs never included yet, in words. */
   notIncluded: string | null;
   /** e.g. "R350 under your max, including known costs". */
@@ -323,6 +340,7 @@ export function dealDetailView(deal: DealDetail, ctx: HuntFormContext): DealDeta
     conditionText: deal.listing.conditionText,
     locationText: deal.listing.locationText,
     priceLines,
+    resale: resaleView(deal.estimate, ctx),
     notIncluded: econ && econ.notIncluded.length > 0 ? `Not included: ${joinList(econ.notIncluded.map((c) => COST_LABEL[c] ?? c.replaceAll('_', ' ')))}.` : null,
     maxPriceNote,
     targetNote: econ?.target ? econ.target.detail : null,

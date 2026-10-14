@@ -1,85 +1,58 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import type { InventoryItem } from '@rein-drop/api-client';
 import { huntFormContext, INVENTORY_FILTERS, inventoryEmptyText, inventoryRowView, type InventoryFilter } from '@rein-drop/client-core';
 import { useSessionState } from '@/auth/SessionProvider';
 import { InventoryRow } from '@/components/InventoryRow';
+import { LoadStatus } from '@/components/LoadStatus';
 import { getApiClient } from '@/config/api';
-import { Button, Card, ChoiceGroup, EmptyState, LoadingState, Screen, SystemBanner } from '@/ui';
+import { useRefreshable } from '@/data/useRefreshable';
+import { Button, Card, ChoiceGroup, EmptyState, Screen, SystemBanner } from '@/ui';
 
 const PAGE_SIZE = 20;
 
-type State =
-  | { status: 'loading' }
-  | { status: 'ready'; items: InventoryItem[]; cursor: string | null; more: 'idle' | 'loading' | string }
-  | { status: 'error'; message: string };
-
-/** Inventory (screen 21): bought items, holding time, Mark sold; sold items with realized results. */
+/**
+ * Inventory (screen 21): bought items, holding time, Mark sold; sold items with realized results.
+ * Source purchase tracking only - product photos and listing workflows arrive with the Sell
+ * workspace (capabilities `inventory.photos` / `sell.workspace`, not built), so nothing of them shows.
+ */
 export default function InventoryScreen() {
   const router = useRouter();
   const { state: session } = useSessionState();
   const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
   const [filter, setFilter] = useState<InventoryFilter>('holding');
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const [more, setMore] = useState<'idle' | 'loading' | string>('idle');
 
-  const load = useCallback(() => {
-    let cancelled = false;
-    getApiClient()
-      .listInventory({ status: filter, limit: PAGE_SIZE })
-      .then(
-        (page) => !cancelled && setState({ status: 'ready', items: page.items, cursor: page.nextCursor, more: 'idle' }),
-        (err: unknown) => !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [filter]);
-  // Reload on focus (e.g. back from Mark sold) and when the filter changes.
-  useFocusEffect(load);
+  const fetch = useCallback(() => getApiClient().listInventory({ status: filter, limit: PAGE_SIZE }), [filter]);
+  const { state, refresh, retry, update } = useRefreshable(fetch, filter);
+  const page = state.status === 'ready' ? state.data : null;
 
   const showMore = async () => {
-    if (state.status !== 'ready' || !state.cursor) return;
-    setState({ ...state, more: 'loading' });
+    if (!page?.nextCursor) return;
+    setMore('loading');
     try {
-      const page = await getApiClient().listInventory({ status: filter, limit: PAGE_SIZE, cursor: state.cursor });
-      setState({ status: 'ready', items: [...state.items, ...page.items.filter((i) => !state.items.some((p) => p.id === i.id))], cursor: page.nextCursor, more: 'idle' });
+      const next = await getApiClient().listInventory({ status: filter, limit: PAGE_SIZE, cursor: page.nextCursor });
+      update((p) => ({ ...p, items: [...p.items, ...next.items.filter((i: InventoryItem) => !p.items.some((x) => x.id === i.id))], nextCursor: next.nextCursor }));
+      setMore('idle');
     } catch (err) {
-      setState({ ...state, more: err instanceof Error ? err.message : String(err) });
+      setMore(err instanceof Error ? err.message : String(err));
     }
   };
 
   const empty = inventoryEmptyText(filter);
   return (
-    <Screen description="What you bought, how long you've held it, and what it sold for.">
+    <Screen description="What you bought, how long you've held it, and what it sold for." onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
       <ChoiceGroup
         legend="Show"
         options={INVENTORY_FILTERS}
         value={filter}
         onChange={(v) => {
-          setState({ status: 'loading' });
+          setMore('idle');
           setFilter(v);
         }}
       />
-      {state.status === 'loading' && <LoadingState label="Loading your inventory…" />}
-      {state.status === 'error' && (
-        <SystemBanner
-          tone="error"
-          title="Couldn't load your inventory"
-          message={state.message}
-          action={
-            <Button
-              variant="secondary"
-              onPress={() => {
-                setState({ status: 'loading' });
-                load();
-              }}
-            >
-              Try again
-            </Button>
-          }
-        />
-      )}
-      {state.status === 'ready' && state.items.length === 0 && (
+      <LoadStatus state={state} what="inventory" onRetry={retry} />
+      {page && page.items.length === 0 && (
         <Card>
           <EmptyState
             title={empty.title}
@@ -98,12 +71,10 @@ export default function InventoryScreen() {
           />
         </Card>
       )}
-      {state.status === 'ready' && state.items.map((item) => <InventoryRow key={item.id} view={inventoryRowView(item, context)} />)}
-      {state.status === 'ready' && state.more !== 'idle' && state.more !== 'loading' && (
-        <SystemBanner tone="error" title="Couldn't load more" message={state.more} />
-      )}
-      {state.status === 'ready' && state.cursor && (
-        <Button variant="secondary" loading={state.more === 'loading'} onPress={showMore}>
+      {page?.items.map((item) => <InventoryRow key={item.id} view={inventoryRowView(item, context)} />)}
+      {more !== 'idle' && more !== 'loading' && <SystemBanner tone="error" title="Couldn't load more" message={more} />}
+      {page?.nextCursor && (
+        <Button variant="secondary" loading={more === 'loading'} onPress={showMore}>
           Show more
         </Button>
       )}

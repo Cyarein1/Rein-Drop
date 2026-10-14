@@ -85,6 +85,39 @@ available isn't shown.
 - **Retired:** `/analytics*` (now web-only) and any unknown route fall back to Deals (`+not-found`).
 - **Moved:** the onboarding prompt (once per launch) moved from the old Home tab to the tab layout.
 
+## Companion experience (step 82)
+
+| Tab | Quick decisions and essentials |
+|---|---|
+| **Deals** | Feed cards: price, known costs, source, freshness, strength, confidence, upside labelled **Estimated**. **Save** and **Not for me** right on the card (with Undo); filters To review / Saved / Bought / Ignored / Unavailable. Deal detail: **Price and estimates** (asking price, known costs, estimated resale value with range and number of similar sales, potential upside with range and excluded costs, and "Estimates, not guaranteed profit…"), risk and condition, seller questions, **View on {marketplace} ↗**, Save / Ignore / Bought |
+| **Hunts** | List with status and monitoring; Start watching for drafts; detail with pause / resume / archive; Create / Edit (hidden while suspended) |
+| **Inventory** | Holding / listed / sold, holding time, Mark sold, sale result (realized - these are actuals, not estimates). Photos and listing workflows: only with the Sell workspace (`inventory.photos` / `sell.workspace`, not built - not shown) |
+| **Account** | Email, your access (read-only), notifications on this phone, notification preferences, your area, Seller Snapshot, sign-out |
+
+**Unreliable connections:**
+- Every tab is pull-to-refresh.
+- A failed refresh keeps what's on screen with "Showing what was loaded earlier" (client-core `Refreshable`). Only a failed first load shows an error, with offline wording and Try again.
+- The figures and the server's decisions (which list a deal belongs to after an action, access, limits) are never recalculated on the phone: actions reload from the API.
+
+**Tests:**
+- Component tests (jest-expo + Testing Library) for `DealCard`, `DealEconomics` and `LoadStatus`.
+- Navigation tests (Expo Router `renderRouter`): the real tabs layout and redirects, tab order, tab switching, header shortcuts, retired / web-only routes landing on Deals, deep links, and hidden unavailable tabs.
+- The guard test (no selling, no web-only calls).
+
+## Moved to web only (intentionally)
+
+| Was on mobile | Now | Since |
+|---|---|---|
+| Home dashboard (`/` tab) | Web Home. Mobile opens on Deals; `/` redirects | Step 78 |
+| Analytics (overview, Hunt funnel, products, missed potential) | Web Analytics. `/analytics*` lands on Deals | Step 78 |
+| Plan picker with prices, "subscribe / upgrade", development billing confirmation in Start watching | Web Plans & billing (`/settings/billing`) and the web plan gate | Step 77 |
+| "Plan & billing" card and the cancel-plan screen | Web Plans & billing; Stripe Customer Portal | Step 77 |
+| "Create an account" button | Accounts are created on the web (account deletion isn't built - Apple 5.1.1(v), see MOBILE_ACCOUNT_ACCESS.md) | Step 81 |
+| Developer card and `/dev` in release builds | Development builds only | Step 78 |
+
+Never built on mobile (web-only by design): bulk management, advanced integrations, team
+administration and billing management. Step 82 moved nothing else to the web.
+
 ## Web
 
 Unchanged: Home, Hunts, Create Hunt, Deals, Analytics (incl. Inventory), Settings (incl. billing).

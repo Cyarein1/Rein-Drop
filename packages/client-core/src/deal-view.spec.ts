@@ -8,6 +8,8 @@ import {
   dealActions,
   dealCardView,
   dealDetailView,
+  ESTIMATE_NOTE,
+  resaleView,
   upsideView,
 } from './deal-view.js';
 
@@ -142,6 +144,25 @@ describe('deal detail', () => {
     );
     expect(nbsp(over.maxPriceNote!)).toBe('Within your max of R 4 500,00, but R 50,00 over once known costs are added');
     expect(over.decisions[0]).toMatch(/^You ignored it .+: "Too far"\.$/);
+  });
+});
+
+describe('estimated resale and the estimate note', () => {
+  it('shows the resale estimate with its range and sample size, labelled as an estimate', () => {
+    const r = resaleView({ ...deal.estimate, resale: { status: 'estimated', basis: 'comparable_sales', low: ZAR(450_000), typical: ZAR(500_000), high: ZAR(560_000), sampleSize: 12 } }, ZA);
+    expect(r.estimated).toBe(true);
+    expect(nbsp(r.value)).toBe('R 5 000,00');
+    expect(nbsp(r.caption)).toBe('Range R 4 500,00 to R 5 600,00, from 12 similar sales');
+  });
+
+  it('says why there is no estimate instead of inventing one', () => {
+    expect(dealDetailView(deal, ZA).resale).toEqual({ value: 'Not estimated', estimated: false, caption: 'No resale price data yet' });
+  });
+
+  it('never presents an estimate as guaranteed or realized profit', () => {
+    expect(ESTIMATE_NOTE).toMatch(/not guaranteed profit/i);
+    const words = JSON.stringify(dealDetailView(deal, ZA));
+    expect(words).not.toMatch(/guaranteed|realized profit|you will (make|earn)/i);
   });
 });
 

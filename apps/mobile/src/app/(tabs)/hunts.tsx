@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Hunt, HuntActivity } from '@rein-drop/api-client';
 import {
@@ -15,59 +15,42 @@ import {
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
 import { AccessNotice, useCanUseHunts } from '@/access/AccessNotice';
+import { LoadStatus } from '@/components/LoadStatus';
 import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
-import { Badge, Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { useRefreshable } from '@/data/useRefreshable';
+import { Badge, Button, Card, ChoiceGroup, EmptyState, font, Screen, SystemBanner } from '@/ui';
 
-type State =
-  | { status: 'loading' }
-  | { status: 'ready'; hunts: Hunt[]; activity: Map<string, HuntActivity>; suggestion: ProductStateView | null }
-  | { status: 'error'; message: string };
+type Data = { hunts: Hunt[]; activity: Map<string, HuntActivity>; suggestion: ProductStateView | null };
 
 /** Hunts by state (Active / Paused / Draft / Archived), with monitoring and simple counts. */
 export default function HuntsScreen() {
   const router = useRouter();
   const { created } = useLocalSearchParams<{ created?: string }>();
   const [filter, setFilter] = useState<HuntListFilter>('all');
-  const [state, setState] = useState<State>({ status: 'loading' });
   const canUseHunts = useCanUseHunts();
 
-  const load = useCallback(() => {
-    let cancelled = false;
+  const fetch = useCallback(async (): Promise<Data> => {
     const api = getApiClient();
-    Promise.all([
+    const [page, activity, entitlements] = await Promise.all([
       api.listHunts({ limit: 100, ...(filter === 'all' ? {} : { status: filter }) }),
       api.listHuntActivity(),
-      // The plan suggestion needs every Hunt (drafts included), so only on the "All" view.
+      // The limit suggestion needs every Hunt (drafts included), so only on the "All" view.
       filter === 'all' ? api.getEntitlements().catch(() => null) : Promise.resolve(null),
-    ]).then(
-      ([page, activity, entitlements]) =>
-        !cancelled &&
-        setState({
-          status: 'ready',
-          hunts: page.items,
-          activity: new Map(activity.map((a) => [a.huntId, a])),
-          suggestion: entitlements ? planLimitState(entitlements, page.items, 'companion') : null,
-        }),
-      (err: unknown) => !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
-    );
-    return () => {
-      cancelled = true;
+    ]);
+    return {
+      hunts: page.items,
+      activity: new Map(activity.map((a) => [a.huntId, a])),
+      suggestion: entitlements ? planLimitState(entitlements, page.items, 'companion') : null,
     };
   }, [filter]);
-
-  // Reload whenever the tab comes into focus (e.g. after editing or pausing a hunt) or the filter changes.
-  useFocusEffect(load);
-
-  const retry = () => {
-    setState({ status: 'loading' });
-    load();
-  };
+  // Reloads on focus (e.g. after editing or pausing a Hunt) and when the filter changes.
+  const { state: load, refresh, retry } = useRefreshable(fetch, filter);
+  const state = load.status === 'ready' ? { status: 'ready' as const, ...load.data } : load;
   const createdHunt = state.status === 'ready' && created ? state.hunts.find((h) => h.id === created) : undefined;
-
   return (
-    <Screen description="Everything Rein Drop is watching for you.">
+    <Screen description="Everything Rein Drop is watching for you." onRefresh={refresh} refreshing={load.status === 'ready' && load.refreshing}>
       <LiveSourceBanner />
       <AccessNotice />
       {state.status === 'ready' && state.suggestion && <ProductState view={state.suggestion} />}
@@ -78,24 +61,9 @@ export default function HuntsScreen() {
         legend="Show"
         options={HUNT_FILTERS}
         value={filter}
-        onChange={(v) => {
-          setState({ status: 'loading' });
-          setFilter(v);
-        }}
+        onChange={setFilter}
       />
-      {state.status === 'loading' && <LoadingState label="Loading your Hunts…" />}
-      {state.status === 'error' && (
-        <SystemBanner
-          tone="error"
-          title="Couldn't load your Hunts"
-          message={state.message}
-          action={
-            <Button variant="secondary" onPress={retry}>
-              Try again
-            </Button>
-          }
-        />
-      )}
+      <LoadStatus state={load} what="Hunts" onRetry={retry} />
       {state.status === 'ready' && state.hunts.length === 0 && (
         <Card>
           {filter === 'all' ? (

@@ -34,9 +34,15 @@
     "react-native-screens": "~4.26.2"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "0.86.3",
+    "@testing-library/react-native": "~13.3.3",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
+    "jest": "^29.7.0",
+    "jest-expo": "~57.0.6",
+    "react-test-renderer": "19.2.3",
     "typescript": "~6.0.3",
     "vitest": "^4.1.11"
   },
@@ -49,7 +55,22 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "test": "vitest run"
+    "test": "vitest run && jest"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*-test.tsx"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(?:.pnpm/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?[/+].*|@expo-google-fonts[/+].*|react-navigation|@react-navigation[/+].*|react-native-maps|country-to-currency|standard-navigation))"
+    ]
   },
   "private": true
 }

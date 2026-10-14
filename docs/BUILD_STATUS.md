@@ -1,11 +1,52 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 81 - mobile companion account access)_
+_Last updated: 2026-10-14 (step 82 - streamlined mobile companion)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 82 - Streamlined mobile companion (decision 0018)
+
+Audited against [strategy/PLATFORM_FEATURE_MATRIX.md](strategy/PLATFORM_FEATURE_MATRIX.md). The
+four tabs, the web-only split and the billing-free app were already in place (steps 77-81), so
+this step sharpened quick decisions and bad-connection behaviour and added component and
+navigation tests. Nothing new was moved to the web; the list of what was moved earlier is in
+the matrix ("Moved to web only").
+
+- **Deal economics:**
+  - `client-core/deal-view`: `resaleView` (estimated resale value: range and number of similar
+    sales, or "Not estimated" and why), `DealDetailView.resale`, and `ESTIMATE_NOTE` ("Estimates,
+    not guaranteed profit…");
+  - mobile `components/DealEconomics` ("Price and estimates": asking price, known costs, resale
+    value and potential upside both labelled Estimated, excluded costs, the note) replaces the
+    Price card on deal detail.
+- **Quick decisions:** `DealCard` has Save and "Not for me" below the card's pressable area (no
+  nested buttons; each named for the deal). The feed shows a confirmation with Undo and reloads
+  from the API (no client-side list rules).
+- **Unreliable connections:**
+  - `client-core/refreshable.ts` (`Refreshable`, `OFFLINE_MESSAGE`): a failed refresh keeps the
+    content with a note;
+  - mobile `data/useRefreshable` (focus reload, pull-to-refresh, retry, in-place updates) and
+    `components/LoadStatus`;
+  - `Screen` gained `onRefresh` / `refreshing` (RefreshControl);
+  - Deals, Hunts and Inventory use them; deal detail uses the offline wording.
+- **Tests:**
+  - new jest-expo + Testing Library setup for the mobile app: `jest-expo` 57, `jest` 29,
+    `@testing-library/react-native` 13.3 (the version Expo Router 57's `renderRouter` supports),
+    `react-test-renderer` 19.2.3; config in `apps/mobile/package.json`, with the pnpm-aware
+    `transformIgnorePatterns` and `jest.setup.js` (AsyncStorage mock); `pnpm --filter mobile test`
+    runs vitest and then jest;
+  - component tests `DealCard-test` (5), `DealEconomics-test` (3) and `LoadStatus-test` (4);
+  - `navigation-test` (11): the real tabs layout and redirects, tab order Deals / Hunts /
+    Inventory / Account, switching tabs, Inbox and Create Hunt shortcuts, `/analytics*`,
+    `/settings/billing` and `/home` landing on Deals, `/create`, a deal deep link, and a hidden
+    unavailable tab;
+  - client-core: `refreshable.spec` (5) and the deal-view estimates (3);
+  - the mobile guard ignores test files.
+- **Checks:** `pnpm turbo run build typecheck lint test` 66/66 (mobile: vitest 16 + jest 23). Not
+  checked on a phone.
 
 ### Step 81 - Mobile companion account access (decision 0018)
 
