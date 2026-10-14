@@ -5,6 +5,7 @@ import { editContext, huntFormContext, huntFormValues } from "@rein-drop/client-
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Page, SystemBanner } from "@/components/ui";
+import { loadLocationSupport } from "@/geo/load";
 import { CreateHuntFlow } from "../../new/CreateHuntFlow";
 
 export const metadata: Metadata = { title: "Edit Hunt" };
@@ -39,6 +40,7 @@ async function EditHuntLoader({ params }: { params: PageProps<"/hunts/[id]/edit"
     );
   }
   const context = editContext(hunt, huntFormContext(session.user.locale));
+  const { geo, area } = await loadLocationSupport(api);
   return (
     <CreateHuntFlow
       initialValues={huntFormValues(hunt, context)}
@@ -46,6 +48,8 @@ async function EditHuntLoader({ params }: { params: PageProps<"/hunts/[id]/edit"
       prefilled={[]}
       queryPlaceholder=""
       editing={hunt}
+      geo={geo}
+      area={area}
     />
   );
 }

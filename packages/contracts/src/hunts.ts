@@ -10,6 +10,7 @@ import {
   pageSchema,
   type MarketplaceKey,
 } from './common.js';
+import { geoPointSchema } from './geo.js';
 import { sourceStatusSchema } from './marketplace-health.js';
 
 /**
@@ -70,12 +71,14 @@ const huntMarketplaces = z
   .refine((keys) => new Set(keys).size === keys.length, 'Marketplaces must not repeat');
 
 /**
- * Where to look. Free text until a geocoding provider is chosen (TODO(geo)).
- * Radius in kilometres (display in miles can come later).
+ * Where to look (decision 0017). `text` is the label (picked suggestion or typed); `point` its
+ * approximate coordinates - from the picked suggestion or the moved map pin, otherwise the API
+ * places the text on save (null when it can't: distance then stays unchecked). Radius in km.
  */
 export const huntLocationSchema = z.object({
   text: z.string().trim().min(2, 'Enter a city, area or postal code').max(HUNT_LOCATION_MAX_LENGTH),
   radiusKm: z.number().int().min(1).max(HUNT_RADIUS_KM_MAX).nullable(),
+  point: geoPointSchema.nullable().default(null),
 });
 export type HuntLocation = z.infer<typeof huntLocationSchema>;
 

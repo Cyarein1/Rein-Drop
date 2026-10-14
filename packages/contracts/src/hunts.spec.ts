@@ -109,7 +109,7 @@ describe('lifecycle', () => {
     expect(huntLiveReadinessProblems({ marketplaces: ['ebay'], location: null })).toEqual([]);
     expect(huntLiveReadinessProblems({ marketplaces: ['facebook'], location: null })).toHaveLength(1);
     expect(
-      huntLiveReadinessProblems({ marketplaces: ['facebook'], location: { text: 'Cape Town', radiusKm: 25 } }),
+      huntLiveReadinessProblems({ marketplaces: ['facebook'], location: { text: 'Cape Town', radiusKm: 25, point: null } }),
     ).toEqual([]);
   });
 });

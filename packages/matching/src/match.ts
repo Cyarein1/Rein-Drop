@@ -8,7 +8,7 @@ import { containsPhrase, isModelToken, significantTokens, tokenMatches, tokenize
  *
  * Bump MATCHER_VERSION whenever the rules change, so stored matches can be re-evaluated.
  */
-export const MATCHER_VERSION = 1;
+export const MATCHER_VERSION = 2;
 
 export const CHECK_NAMES = [
   'availability',
@@ -39,13 +39,19 @@ export interface MatchCheck {
 
 export type HuntTarget = { kind: 'profit'; amount: Money } | { kind: 'margin'; percent: number };
 
+export interface MatchPoint {
+  lat: number;
+  lng: number;
+}
+
 export interface MatchHunt {
   query: string;
   /** Marketplaces the hunt is enabled on. */
   marketplaces: readonly MarketplaceId[];
   /** Empty = any condition. */
   conditions: readonly ListingCondition[];
-  location: { text: string; radiusKm: number | null } | null;
+  /** `point` = the location's coordinates (decision 0017); null when it couldn't be placed. */
+  location: { text: string; radiusKm: number | null; point: MatchPoint | null } | null;
   maxPrice: Money | null;
   exclusions: readonly string[];
   target: HuntTarget | null;
@@ -58,11 +64,27 @@ export interface MatchListing {
   price: Money | null;
   conditionText: string | null;
   status: ListingStatus;
+  /** Where the listing is, from its place text via the place cache; null when unknown / unplaced. */
+  point?: MatchPoint | null;
 }
 
 export interface MatchContext {
   /** True when the source search applied the hunt's location (and radius, if any). */
   locationEnforcedBySource: boolean;
+  /**
+   * The listing's marketplace is local pickup (Facebook Marketplace). Distance only matters there;
+   * shipped marketplaces (eBay) are not distance-checked. Defaults to true (the cautious reading).
+   */
+  localPickup?: boolean;
+}
+
+const EARTH_RADIUS_KM = 6371.0088;
+
+/** Great-circle distance in km (same formula as @rein-drop/geo distanceKm; no I/O dependency here). */
+export function distanceBetweenKm(a: MatchPoint, b: MatchPoint): number {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 /** Inputs the valuation stage needs. No resale estimate exists before AI / market data. */
@@ -101,7 +123,7 @@ export function evaluateMatch(hunt: MatchHunt, listing: MatchListing, context: M
     relevance.check,
     accessoryCheck(hunt.query, listing.title),
     conditionCheck(hunt.conditions, listing.conditionText),
-    geographyCheck(hunt.location, context),
+    geographyCheck(hunt.location, listing.point ?? null, context),
     priceCheck(hunt.maxPrice, listing.price),
     exclusionsCheck(hunt.exclusions, listing),
     hunt.target
@@ -199,14 +221,34 @@ function conditionCheck(wanted: readonly ListingCondition[], conditionText: stri
     : { check: 'condition', outcome: 'fail', code: 'condition_not_wanted', detail: `Condition ${category} isn't one you chose` };
 }
 
-function geographyCheck(location: MatchHunt['location'], context: MatchContext): MatchCheck {
+/**
+ * Distance (decision 0017). Only for local-pickup marketplaces: a listing outside the Hunt's radius
+ * FAILS; inside passes with its distance. Without coordinates on either side it stays unverified
+ * (never a reject on missing data). Distances in km here; the apps convert for display.
+ */
+function geographyCheck(location: MatchHunt['location'], listingPoint: MatchPoint | null, context: MatchContext): MatchCheck {
   if (!location) return { check: 'geography', outcome: 'not_applicable', code: 'no_location', detail: 'No location set' };
+  if (context.localPickup === false) {
+    return { check: 'geography', outcome: 'not_applicable', code: 'ships', detail: 'Shipped marketplace - distance doesn\'t apply' };
+  }
   if (context.locationEnforcedBySource) {
     const area = location.radiusKm ? `within ${location.radiusKm} km of ${location.text}` : `around ${location.text}`;
     return { check: 'geography', outcome: 'pass', code: 'enforced_by_source', detail: `Found by a search ${area}` };
   }
-  // TODO(geo): verify distance once geocoding (Azure Maps, decision 0001) exists.
-  return { check: 'geography', outcome: 'unverified', code: 'not_checked', detail: 'Distance not checked yet' };
+  if (!location.point) {
+    return { check: 'geography', outcome: 'unverified', code: 'hunt_not_placed', detail: `Couldn't place "${location.text}" on the map, so distance isn't checked` };
+  }
+  if (!listingPoint) {
+    return { check: 'geography', outcome: 'unverified', code: 'listing_not_placed', detail: 'The listing\'s location is unknown, so distance isn\'t checked' };
+  }
+  const km = distanceBetweenKm(location.point, listingPoint);
+  const about = km < 1 ? 'Under 1 km' : `About ${Math.round(km)} km`;
+  if (location.radiusKm === null) {
+    return { check: 'geography', outcome: 'pass', code: 'distance_known', detail: `${about} from ${location.text}` };
+  }
+  return km <= location.radiusKm
+    ? { check: 'geography', outcome: 'pass', code: 'within_radius', detail: `${about} from ${location.text} (within ${location.radiusKm} km)` }
+    : { check: 'geography', outcome: 'fail', code: 'outside_radius', detail: `${about} from ${location.text} - outside your ${location.radiusKm} km` };
 }
 
 function priceCheck(maxPrice: Money | null, price: Money | null): MatchCheck {

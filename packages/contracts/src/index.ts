@@ -15,6 +15,7 @@ export * from './health.js';
 export * from './account.js';
 export * from './auth.js';
 export * from './locale.js';
+export * from './geo.js';
 export * from './seller-snapshot.js';
 export * from './home.js';
 export * from './hunts.js';

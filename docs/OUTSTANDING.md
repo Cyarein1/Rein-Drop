@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 73 (max-price slider)._
+_Last updated: 2026-10-14, after step 74 (Hunt location: area, suggestions, map, distance)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -76,13 +76,16 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - eBay Browse quota: one page of up to 200 results per Hunt check - size it with prompt 36 - step 37.
 - Measure cost / freshness / noise with a controlled window of several Hunts (and Apify / eBay credentials) to decide D7 - step 39.
 
-### Hunt location (decision 0017, owner request 2026-10-14)
-- "Your area" on the profile (label + approximate coordinates, not a street address): data, `GET/PUT /me/area`, Settings on web + mobile, one tap to use it in Create Hunt - step 73.
-- `GeocodingProvider` (mock now, Azure Maps once you add a key) and suggestions while typing in Create Hunt / Settings; store coordinates with the Hunt - step 73.
-- Interactive map under the location with pin + radius circle: web (MapLibre, tiles via the API), mobile native (`react-native-maps`: Apple Maps on iOS, Google Maps on Android) - step 73.
-- For the Android map (you): a Google Maps Platform API key with billing, restricted to the app's Android package + signing certificate; plus an Android package name and an EAS development build (Expo Go can't use the app's own key - same prerequisite as D23) - step 73.
-- Distance checks in matching (listing places geocoded with a place cache) so the radius is enforced, not just shown - step 73.
-- Before production: create the Azure Maps account (you), and check decision 0001's open point on the terms for storing / caching geocoding results - step 73.
+### Hunt location (decision 0017 - built in step 74 on mocks; these are the TODO(geo) items)
+- **Apply the step 74 migration to your development database** (`pnpm --filter @rein-drop/db db:deploy`, then restart the API) - until then the dev API returns 500 on Hunts / Settings - step 74.
+- **Azure Maps (you):** create the account, set `GEOCODING_PROVIDER=azure` + `AZURE_MAPS_KEY` (Key Vault in production) for API and worker, then run a live check of suggestions, geocoding and web map tiles - the Azure provider is unit-tested with fake responses only. Confirm the exact map attribution wording - step 74.
+- **Azure Maps terms on storing / caching results** (decision 0001 point 1) - the place cache and saved coordinates rely on it - before production use - step 74.
+- **Google Maps key for Android (you):** Google Maps Platform key with billing, restricted to the app's package + signing certificate, as `GOOGLE_MAPS_ANDROID_API_KEY` for EAS builds (`app.config.ts`); plus an Android package name and a development build (same prerequisite as D23). Expo Go works without it; iPhone uses Apple Maps - step 74.
+- Development map tiles come from OpenStreetMap's public tile server (light development use with attribution only) - production uses Azure tiles via the API, or shows no map without a key - step 74.
+- The mock place list is ~70 real places (development only); places outside it aren't suggested or placed until Azure is on - step 74.
+- Mobile location field, map and "Your area" not yet run on a device (typecheck + lint only) - step 74.
+- Privacy: "Your area" (approximate) is new personal data - add it to the app privacy notice / retention decisions (D38) with the legal review - step 74.
+- The web map is a visual aid: the pin can't be moved by keyboard (Leaflet); the location field is the accessible way to set the centre. A manual screen-reader pass of the combobox is still to do - step 74.
 
 ### Matching, analysis, scoring
 - Foundry live test skipped until FOUNDRY_ENDPOINT / FOUNDRY_API_KEY / FOUNDRY_DEPLOYMENT are set; the prompts are unproven on a real model (watch INVALID_OUTPUT / UNGROUNDED_OUTPUT rates) - step 40.
@@ -365,3 +368,4 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
 | How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |
+| Hunt location was free text only; distance never checked ("Distance not checked yet"); B-20. Also the step 73 plan items: "Your area" on the profile, GeocodingProvider + suggestions, interactive map (web + native mobile), distance checks with a place cache | Steps 13 / 21 / 73 | Step 74 (your area, suggestions, map, distance checks on mocks - live providers are the TODO(geo) items above) |

@@ -7,12 +7,18 @@ import {
   buildUpdateHuntRequest,
   huntReview,
   mapHuntErrors,
+  applyArea,
+  mapCaption,
+  movePin,
   needsLocation,
+  pickPlace,
   priceSlider,
   priceSliderEnds,
   priceSliderPosition,
   priceSliderText,
   priceSliderValueText,
+  radiusKmForMap,
+  typeLocation,
   type HuntFormContext,
   type HuntFormErrors,
   type HuntFormField,
@@ -21,6 +27,9 @@ import {
 } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
+import { LocationField } from '@/geo/LocationField';
+import { LocationMap } from '@/geo/LocationMap';
+import { useLocationSupport } from '@/geo/useLocationSupport';
 import { Button, Card, ChoiceGroup, Disclosure, font, Screen, Slider, SystemBanner, TextInput } from '@/ui';
 
 type ConditionChoice = HuntCondition | 'any';
@@ -70,6 +79,14 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   const note = (field: HuntFormField) => prefilled.find((p) => p.field === field)?.note;
   const hint = (field: HuntFormField, text?: string) =>
     [note(field) && `${note(field)} - change it anytime`, text].filter(Boolean).join('. ') || undefined;
+
+  // Location: text + point move together (decision 0017); suggestions / map / area from the API.
+  const { geo, area } = useLocationSupport();
+  const setLocation = (next: HuntFormValues) => {
+    setValues((v) => ({ ...v, locationText: next.locationText, locationPoint: next.locationPoint }));
+    setErrors((e) => ({ ...e, locationText: undefined, form: undefined }));
+  };
+  const mapRadiusKm = radiusKmForMap(values.radius, context.distanceUnit);
 
   // Max-price slider, synced with the typed field (the field stays the source of truth).
   const slider = useMemo(() => priceSlider(context.currency), [context.currency]);
@@ -249,13 +266,17 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
 
       {needsLocation(values) && (
         <>
-          <TextInput
+          <LocationField
             label="Location"
             hint="Facebook Marketplace is local pickup - needed before this Hunt can start watching"
-            placeholder="City, area or postal code"
+            placeholder={geo.suggestions ? 'Start typing a suburb, town or postal code' : 'City, area or postal code'}
             value={values.locationText}
-            onChangeText={(t) => set('locationText', t)}
+            onType={(text) => setLocation(typeLocation(values, text))}
+            onPick={(place) => setLocation(pickPlace(values, place))}
             error={errors.locationText}
+            suggestions={geo.suggestions}
+            area={area}
+            onUseArea={(a) => setLocation(applyArea(values, a))}
           />
           <TextInput
             label={`Radius (${context.distanceUnit})`}
@@ -265,6 +286,17 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
             onChangeText={(t) => set('radius', t)}
             error={errors.radius}
           />
+          {geo.provider !== 'none' && values.locationPoint && (
+            <LocationMap
+              point={values.locationPoint}
+              radiusKm={mapRadiusKm}
+              onMovePin={(point) => setLocation(movePin(values, point))}
+              caption={mapCaption(values.locationText, mapRadiusKm, values.radius, context.distanceUnit)}
+            />
+          )}
+          {!area && geo.suggestions && (
+            <Text style={[styles.tip, font('regular')]}>Tip: save your area in Settings to fill this in with one tap next time.</Text>
+          )}
         </>
       )}
 
@@ -346,6 +378,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
 
 const styles = StyleSheet.create({
   price: { gap: space[1], alignSelf: 'stretch' },
+  tip: { color: roles.textMuted, fontSize: fontSize.sm },
   sentence: { color: roles.text, fontSize: fontSize.lg, lineHeight: 26 },
   reviewRow: {
     flexDirection: 'row',

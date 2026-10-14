@@ -26,6 +26,7 @@ describe('loadWorkerConfig', () => {
       ebayApi: null,
       facebookApify: null,
       productEvents: 'log',
+      geo: { provider: 'mock', azure: null },
     });
   });
 

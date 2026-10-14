@@ -6,6 +6,8 @@ import { billingPortalFormAction } from "../billing-actions";
 import { Protected } from "@/auth/Protected";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { PlaceholderNotice } from "../placeholder-notice";
+import { loadLocationSupport } from "@/geo/load";
+import { AreaSettings } from "./AreaSettings";
 import { NotificationSettings } from "./NotificationSettings";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -18,6 +20,8 @@ export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
         <PlaceholderNotice>Most settings sections are listed but not editable yet.</PlaceholderNotice>
 
         <AccountCard />
+
+        <AreaCard />
 
         <SellerSnapshotCard />
 
@@ -183,6 +187,19 @@ async function AccountCard() {
         </form>
       )}
     </Card>
+  );
+}
+
+/** "Your area" (decision 0017): the default location for new Hunts. */
+async function AreaCard() {
+  const api = await getServerApiClient();
+  const { geo, area } = await loadLocationSupport(api);
+  return (
+    <section id="your-area" aria-label="Your area">
+      <Card title="Your area">
+        <AreaSettings initial={area} geo={geo} />
+      </Card>
+    </section>
   );
 }
 

@@ -23,6 +23,7 @@ import {
   resolveDatabaseUrl,
   type NodeEnv,
 } from '@rein-drop/env';
+import { geoEnvShape, resolveGeoConfig, type GeoConfig } from '@rein-drop/geo';
 import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 
 const devScenarioSchema = z
@@ -60,6 +61,8 @@ const apiEnvSchema = z.object({
   ...facebookEnvShape,
   // Product events (beta telemetry): log (default) | none.
   ...productEventsEnvShape,
+  // Geocoding / maps (decision 0017): mock (development) | azure | none (production default).
+  ...geoEnvShape,
 });
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
@@ -85,6 +88,8 @@ export interface ApiConfig {
   readonly facebookApify: ApifyMarketplaceConfig | null;
   /** Where product events go (log line by default; a vendor once D15 is decided). */
   readonly productEvents: ProductEventProviderId;
+  /** Geocoder for suggestions, areas and Hunt locations (holds the Azure Maps key - never log it). */
+  readonly geo: GeoConfig;
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -100,7 +105,8 @@ export function loadApiConfig(
   const ebay = resolveEbaySource(parsed, parsed.NODE_ENV);
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
   const billing = resolveBillingConfig(parsed, parsed.NODE_ENV);
-  const problems: string[] = [...ebay.problems, ...facebook.problems, ...billing.problems];
+  const geo = resolveGeoConfig(parsed, parsed.NODE_ENV);
+  const problems: string[] = [...ebay.problems, ...facebook.problems, ...billing.problems, ...geo.problems];
   const authProvider: AuthProviderId = parsed.AUTH_PROVIDER ?? (parsed.NODE_ENV === 'production' ? 'entra' : 'dev');
   let entra: EntraApiConfig | null = null;
   if (authProvider === 'entra') {
@@ -146,5 +152,6 @@ export function loadApiConfig(
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
     productEvents: resolveProductEventProviderId(parsed),
+    geo: Object.freeze({ provider: geo.geo.provider, azure: geo.geo.azure ? Object.freeze(geo.geo.azure) : null }),
   });
 }

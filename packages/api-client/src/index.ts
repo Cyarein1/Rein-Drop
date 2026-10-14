@@ -37,6 +37,15 @@ import {
   planListSchema,
   updateUserLocaleRequestSchema,
   userLocaleResponseSchema,
+  geoConfigSchema,
+  geoSuggestQuerySchema,
+  geoSuggestResponseSchema,
+  updateUserAreaRequestSchema,
+  userAreaResponseSchema,
+  type GeoConfig,
+  type GeoPlace,
+  type UpdateUserAreaRequestInput,
+  type UserArea,
   huntPageSchema,
   huntSchema,
   ignoreDealRequestSchema,
@@ -133,6 +142,7 @@ export {
   entraApiScope,
   entraDiscoveryUrl,
   detectedLocaleRequest,
+  GEO_QUERY_MIN_LENGTH,
   kmToUnit,
   PURCHASE_COST_CATEGORIES,
   realizedResult,
@@ -166,6 +176,14 @@ export interface ApiClient {
   getLocale(): Promise<UserLocale | null>;
   /** Set the locale, or report a detected one (`source: 'detected'` never overwrites). */
   updateLocale(input: UpdateUserLocaleRequestInput): Promise<UserLocale | null>;
+  /** What place / map features are available (decision 0017). */
+  getGeoConfig(): Promise<GeoConfig>;
+  /** Places matching what's been typed (user's country first). */
+  suggestPlaces(query: string, limit?: number): Promise<GeoPlace[]>;
+  /** "Your area" on the profile (null until set). */
+  getMyArea(): Promise<UserArea | null>;
+  setMyArea(input: UpdateUserAreaRequestInput): Promise<UserArea | null>;
+  clearMyArea(): Promise<void>;
   /** The five onboarding answers (unanswered = null/empty). */
   getSellerSnapshot(): Promise<SellerSnapshot>;
   /** Save one or more onboarding answers; returns the updated snapshot. */
@@ -316,6 +334,29 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           response: userLocaleResponseSchema,
         })
       ).locale,
+    getGeoConfig: () => send(http, { method: 'GET', path: '/geo/config', response: geoConfigSchema }),
+    suggestPlaces: async (q, limit) =>
+      (
+        await send(http, {
+          method: 'GET',
+          path: '/geo/suggest',
+          query: validateInput(geoSuggestQuerySchema, { q, ...(limit ? { limit } : {}) }, 'query'),
+          response: geoSuggestResponseSchema,
+        })
+      ).places,
+    getMyArea: async () => (await send(http, { method: 'GET', path: '/me/area', response: userAreaResponseSchema })).area,
+    setMyArea: async (input) =>
+      (
+        await send(http, {
+          method: 'PUT',
+          path: '/me/area',
+          body: validateInput(updateUserAreaRequestSchema, input, 'body'),
+          response: userAreaResponseSchema,
+        })
+      ).area,
+    clearMyArea: async () => {
+      await send(http, { method: 'DELETE', path: '/me/area', response: userAreaResponseSchema });
+    },
     getSellerSnapshot: () =>
       send(http, { method: 'GET', path: '/me/seller-snapshot', response: sellerSnapshotSchema }),
     updateSellerSnapshot: async (input) =>

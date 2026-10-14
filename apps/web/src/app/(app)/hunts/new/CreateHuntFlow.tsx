@@ -2,12 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import type { CreateHuntRequest, Hunt, HuntCondition, MarketplaceKey, UpdateHuntRequest } from "@rein-drop/api-client";
+import Link from "next/link";
+import type { CreateHuntRequest, GeoConfig, Hunt, HuntCondition, MarketplaceKey, UpdateHuntRequest, UserArea } from "@rein-drop/api-client";
 import {
   buildCreateHuntRequest,
   buildUpdateHuntRequest,
   huntReview,
+  mapCaption,
+  movePin,
   needsLocation,
+  pickPlace,
+  radiusKmForMap,
+  typeLocation,
+  applyArea,
   priceSlider,
   priceSliderEnds,
   priceSliderPosition,
@@ -30,6 +37,8 @@ import {
   SystemBanner,
   TextInput,
 } from "@/components/ui";
+import { LocationField } from "@/geo/LocationField";
+import { LocationMap } from "@/geo/LocationMap";
 import { updateHuntAction } from "../[id]/actions";
 import { saveHuntDraft } from "./actions";
 import styles from "./CreateHuntFlow.module.css";
@@ -60,6 +69,10 @@ export interface CreateHuntFlowProps {
   queryPlaceholder: string;
   /** Edit an existing hunt instead of creating one: same form and review, saved with PATCH. */
   editing?: Hunt;
+  /** Place suggestions / map availability (decision 0017). */
+  geo: GeoConfig;
+  /** The profile's area, for "Use my area". */
+  area: UserArea | null;
 }
 
 /**
@@ -67,7 +80,7 @@ export interface CreateHuntFlowProps {
  * started: "Start watching" arrives with plan selection. With , the same form edits a
  * hunt (same id, recorded in its history) and the review saves the changes.
  */
-export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceholder, editing }: CreateHuntFlowProps) {
+export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceholder, editing, geo, area }: CreateHuntFlowProps) {
   const router = useRouter();
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<HuntFormErrors>({});
@@ -82,6 +95,13 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
   const [heldPosition, setHeldPosition] = useState(() => priceSliderPosition(slider, initialValues.maxPrice, context.currency) ?? slider.max);
   const sliderPosition = priceSliderPosition(slider, values.maxPrice, context.currency) ?? heldPosition;
   const sliderEnds = priceSliderEnds(slider, context.currency, context.localeTag);
+  // Location: text + point move together (decision 0017).
+  const setLocation = (next: HuntFormValues) => {
+    setValues((v) => ({ ...v, locationText: next.locationText, locationPoint: next.locationPoint }));
+    setErrors((e) => ({ ...e, locationText: undefined, form: undefined }));
+  };
+  const mapRadiusKm = radiusKmForMap(values.radius, context.distanceUnit);
+
   const setMaxPrice = (text: string) => {
     const position = priceSliderPosition(slider, text, context.currency);
     if (position !== null) setHeldPosition(position);
@@ -265,25 +285,46 @@ export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceho
         />
 
         {needsLocation(values) && (
-          <div className={styles.row}>
-            <TextInput
-              label="Location"
-              hint="Facebook Marketplace is local pickup - needed before this Hunt can start watching"
-              placeholder="City, area or postal code"
-              value={values.locationText}
-              onChange={(e) => set("locationText", e.target.value)}
-              error={errors.locationText}
-              className={styles.grow}
-            />
-            <TextInput
-              label={`Radius (${context.distanceUnit})`}
-              inputMode="numeric"
-              placeholder={context.distanceUnit === "mi" ? "25" : "40"}
-              value={values.radius}
-              onChange={(e) => set("radius", e.target.value)}
-              error={errors.radius}
-              className={styles.radius}
-            />
+          <div className={styles.location}>
+            <div className={styles.row}>
+              <LocationField
+                label="Location"
+                hint="Facebook Marketplace is local pickup - needed before this Hunt can start watching"
+                placeholder={geo.suggestions ? "Start typing a suburb, town or postal code" : "City, area or postal code"}
+                value={values.locationText}
+                onType={(text) => setLocation(typeLocation(values, text))}
+                onPick={(place) => setLocation(pickPlace(values, place))}
+                error={errors.locationText}
+                suggestions={geo.suggestions}
+                area={area}
+                onUseArea={(a) => setLocation(applyArea(values, a))}
+                className={styles.grow}
+              />
+              <TextInput
+                label={`Radius (${context.distanceUnit})`}
+                inputMode="numeric"
+                placeholder={context.distanceUnit === "mi" ? "25" : "40"}
+                value={values.radius}
+                onChange={(e) => set("radius", e.target.value)}
+                error={errors.radius}
+                className={styles.radius}
+              />
+            </div>
+            {geo.tiles && values.locationPoint && (
+              <LocationMap
+                point={values.locationPoint}
+                radiusKm={mapRadiusKm}
+                tiles={geo.tiles}
+                attribution={geo.attribution ?? ""}
+                onMovePin={(point) => setLocation(movePin(values, point))}
+                caption={mapCaption(values.locationText, mapRadiusKm, values.radius, context.distanceUnit)}
+              />
+            )}
+            {!area && geo.suggestions && (
+              <p className={styles.muted}>
+                Tip: save <Link href="/settings#your-area">your area</Link> in Settings to fill this in with one tap next time.
+              </p>
+            )}
           </div>
         )}
 

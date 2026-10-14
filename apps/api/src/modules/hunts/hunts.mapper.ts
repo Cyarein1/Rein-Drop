@@ -57,7 +57,13 @@ export function toHunt(row: HuntRow): Hunt {
     status: row.status,
     priority: row.priority,
     marketplaces,
-    location: row.locationText ? { text: row.locationText, radiusKm: row.radiusKm } : null,
+    location: row.locationText
+      ? {
+          text: row.locationText,
+          radiusKm: row.radiusKm,
+          point: row.locationLat !== null && row.locationLng !== null ? { lat: row.locationLat, lng: row.locationLng } : null,
+        }
+      : null,
     conditions: row.conditions.filter(isCondition),
     maxPrice: row.maxPriceMinor !== null && currency ? { amountMinor: row.maxPriceMinor, currency } : null,
     target,
@@ -94,6 +100,8 @@ export function toHuntColumns(c: HuntCriteria) {
     priority: c.priority,
     locationText: c.location?.text ?? null,
     radiusKm: c.location?.radiusKm ?? null,
+    locationLat: c.location?.point?.lat ?? null,
+    locationLng: c.location?.point?.lng ?? null,
     conditions: c.conditions,
     maxPriceMinor: c.maxPrice?.amountMinor ?? null,
     priceCurrency: c.maxPrice?.currency ?? (c.target?.kind === 'profit' ? c.target.amount.currency : null),

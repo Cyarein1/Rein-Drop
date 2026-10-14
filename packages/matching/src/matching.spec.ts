@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { classifyCondition } from './condition.js';
 import { canonicalOf, dedupeKeyFor } from './dedupe.js';
-import { evaluateMatch, type MatchHunt, type MatchListing } from './match.js';
+import { evaluateMatch, type MatchContext, type MatchHunt, type MatchListing } from './match.js';
 import { containsPhrase, significantTokens } from './text.js';
 
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
@@ -10,7 +10,7 @@ const hunt: MatchHunt = {
   query: 'iPhone 13',
   marketplaces: ['ebay', 'facebook'],
   conditions: [],
-  location: { text: 'Cape Town', radiusKm: 40 },
+  location: { text: 'Cape Town', radiusKm: 40, point: { lat: -33.9249, lng: 18.4241 } },
   maxPrice: ZAR(450_000),
   exclusions: [],
   target: null,
@@ -23,8 +23,8 @@ const listing: MatchListing = {
   conditionText: 'Used - good',
   status: 'ACTIVE',
 };
-const ctx = { locationEnforcedBySource: true };
-const check = (h: Partial<MatchHunt>, l: Partial<MatchListing> = {}, c = ctx) => evaluateMatch({ ...hunt, ...h }, { ...listing, ...l }, c);
+const ctx: MatchContext = { locationEnforcedBySource: true };
+const check = (h: Partial<MatchHunt>, l: Partial<MatchListing> = {}, c: MatchContext = ctx) => evaluateMatch({ ...hunt, ...h }, { ...listing, ...l }, c);
 const outcome = (e: ReturnType<typeof evaluateMatch>, name: string) => e.checks.find((c) => c.check === name)!;
 
 describe('text helpers', () => {
@@ -128,10 +128,41 @@ describe('evaluateMatch', () => {
     expect(check({ marketplaces: ['ebay'] }).failed).toEqual(['marketplace']);
   });
 
-  it('reports geography honestly: enforced by the source, or not checked (no geocoding yet)', () => {
-    expect(outcome(check({}, {}, { locationEnforcedBySource: false }), 'geography')).toMatchObject({ outcome: 'unverified', code: 'not_checked' });
-    expect(outcome(check({ location: null }), 'geography').outcome).toBe('not_applicable');
-    expect(check({}, {}, { locationEnforcedBySource: false }).matched).toBe(true);
+  describe('geography (distance checks, decision 0017)', () => {
+    const local = { locationEnforcedBySource: false, localPickup: true };
+    const BELLVILLE = { lat: -33.8995, lng: 18.6292 }; // ~19 km from Cape Town centre
+    const STELLENBOSCH = { lat: -33.9321, lng: 18.8602 }; // ~40 km
+    const DURBAN = { lat: -29.8587, lng: 31.0218 }; // ~1,270 km
+
+    it('passes a listing inside the radius, with its distance', () => {
+      const result = check({}, { point: BELLVILLE }, local);
+      expect(result.matched).toBe(true);
+      expect(outcome(result, 'geography')).toMatchObject({ outcome: 'pass', code: 'within_radius', detail: 'About 19 km from Cape Town (within 40 km)' });
+    });
+
+    it('rejects a listing outside the radius', () => {
+      const result = check({}, { point: DURBAN }, local);
+      expect(result.failed).toEqual(['geography']);
+      expect(outcome(result, 'geography')).toMatchObject({ outcome: 'fail', code: 'outside_radius' });
+      expect(outcome(result, 'geography').detail).toMatch(/^About 1\d{3} km from Cape Town - outside your 40 km$/);
+      expect(check({ location: { ...hunt.location!, radiusKm: 35 } }, { point: STELLENBOSCH }, local).matched).toBe(false);
+    });
+
+    it('without a radius: passes and reports the distance', () => {
+      expect(outcome(check({ location: { ...hunt.location!, radiusKm: null } }, { point: DURBAN }, local), 'geography')).toMatchObject({ outcome: 'pass', code: 'distance_known' });
+    });
+
+    it('never rejects on missing coordinates (unverified, with the reason)', () => {
+      expect(outcome(check({}, { point: null }, local), 'geography')).toMatchObject({ outcome: 'unverified', code: 'listing_not_placed' });
+      expect(outcome(check({ location: { ...hunt.location!, point: null } }, { point: BELLVILLE }, local), 'geography')).toMatchObject({ outcome: 'unverified', code: 'hunt_not_placed' });
+      expect(check({}, { point: null }, local).matched).toBe(true);
+    });
+
+    it('shipped marketplaces are not distance-checked; a source-enforced search passes', () => {
+      expect(outcome(check({}, { marketplace: 'ebay', point: DURBAN }, { locationEnforcedBySource: false, localPickup: false }), 'geography')).toMatchObject({ outcome: 'not_applicable', code: 'ships' });
+      expect(outcome(check({}, { point: DURBAN }), 'geography')).toMatchObject({ outcome: 'pass', code: 'enforced_by_source' });
+      expect(outcome(check({ location: null }), 'geography').outcome).toBe('not_applicable');
+    });
   });
 
   it('records target economics inputs for the valuation stage without judging them', () => {

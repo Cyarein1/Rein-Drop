@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
 import { LOCAL_DATABASE_URL } from '@rein-drop/env';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
+import { MATCHER_VERSION } from '@rein-drop/matching';
 import { DevEbayAdapter, DevFacebookDataProvider, FacebookAdapter, type DevScenario } from '@rein-drop/marketplace-core/adapters';
 import { HuntScheduler } from '../src/pipeline/hunt-scheduler.js';
 import { HUNT_POLL_USAGE_KEY, MarketplaceSearchHandler } from '../src/pipeline/marketplace-search.handler.js';
@@ -163,7 +164,7 @@ describe('worker pipeline (integration, real database)', () => {
     expect(b.length).toBeGreaterThan(0);
 
     for (const m of [...a, ...b]) {
-      expect(m).toMatchObject({ status: 'NEW', matcherVersion: 1, statusReason: null });
+      expect(m).toMatchObject({ status: 'NEW', matcherVersion: MATCHER_VERSION, statusReason: null });
       expect(m.listing.title.toLowerCase()).toContain('iphone 13');
       expect(m.relevanceScore).toBe(100);
       const reasons = m.reasons as { check: string; outcome: string }[];
@@ -179,7 +180,8 @@ describe('worker pipeline (integration, real database)', () => {
     // Geography: Facebook applied location + radius; the eBay dev source can't do radius.
     const geo = (m: (typeof a)[number]) => (m.reasons as { check: string; code: string }[]).find((r) => r.check === 'geography')!.code;
     expect(new Set(a.filter((m) => m.listing.marketplaceId === market.facebook).map(geo))).toEqual(new Set(['enforced_by_source']));
-    expect(new Set(a.filter((m) => m.listing.marketplaceId === market.ebay).map(geo))).toEqual(new Set(['not_checked']));
+    // eBay ships: distance doesn't apply (decision 0017).
+    expect(new Set(a.filter((m) => m.listing.marketplaceId === market.ebay).map(geo))).toEqual(new Set(['ships']));
 
     const runs = await prisma.searchRun.findMany({ where: { huntIds: { has: huntA } } });
     for (const run of runs) {

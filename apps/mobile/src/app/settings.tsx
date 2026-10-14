@@ -6,6 +6,7 @@ import { huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapsh
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
+import { AreaSettings } from '@/geo/AreaSettings';
 import { PushCard } from '@/notifications/PushCard';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
@@ -85,6 +86,12 @@ export default function SettingsScreen() {
           </>
         )}
       </Card>
+
+      {sessionState.status === 'authenticated' && (
+        <Card title="Your area">
+          <AreaSettings />
+        </Card>
+      )}
 
       {sessionState.status === 'authenticated' ? (
         <SellerSnapshotCard locale={sessionState.session.user.locale} />

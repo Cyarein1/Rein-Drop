@@ -8,6 +8,7 @@ import {
   type ApiErrorDetail,
   type CreateHuntRequest,
   type DistanceUnit,
+  type GeoPoint,
   type HuntCondition,
   type MarketplaceKey,
   type SellerSnapshot,
@@ -27,6 +28,11 @@ export interface HuntFormValues {
   query: string;
   marketplaces: MarketplaceKey[];
   locationText: string;
+  /**
+   * Coordinates of the location (decision 0017): from a picked suggestion, "Use my area" or the
+   * moved map pin. Cleared when the text is typed over; the API then places the text on save.
+   */
+  locationPoint: GeoPoint | null;
   /** In the user's distance unit. */
   radius: string;
   /** Empty = any condition. */
@@ -61,6 +67,7 @@ export const EMPTY_HUNT_FORM: HuntFormValues = {
   query: '',
   marketplaces: [],
   locationText: '',
+  locationPoint: null,
   radius: '',
   conditions: [],
   maxPrice: '',
@@ -203,7 +210,7 @@ export function buildCreateHuntRequest(
         radiusKm = unitToKm(radius, ctx.distanceUnit);
       }
     }
-    if (text) location = { text, radiusKm };
+    if (text) location = { text, radiusKm, point: values.locationPoint };
     else if (radiusText) errors.locationText = 'Add a location for the radius';
   }
 

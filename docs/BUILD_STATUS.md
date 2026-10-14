@@ -1,11 +1,72 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 73 - max-price slider in Create / Edit Hunt)_
+_Last updated: 2026-10-14 (step 74 - Hunt location: your area, suggestions, map, distance checks)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 74 - Hunt location: "Your area", suggestions while typing, interactive map, distance checks
+
+Decision 0017. Built against mocks wherever an owner account is missing; each mock is labelled
+TODO(geo) and listed in OUTSTANDING.
+
+- **New package `@rein-drop/geo`** (14 tests):
+  - a `GeocodingProvider` interface;
+  - a **mock** over a built-in list of ~70 real places with real coordinates (South Africa first,
+    then US / UK and a few others). It is refused in production;
+  - an **Azure Maps** provider (Geocoding 2025-01-01, areas only, plus a server-side tile fetch).
+    It is written and unit-tested with fake responses, **not yet run live** (TODO: owner key);
+  - **`none`**: the production default without a key - free-text locations, as before;
+  - distance maths, and rounding to ~110 m (an area, never a doorstep).
+- **Database** (migration `20261014001821_hunt_location_geo`, additive, CHECK constraints):
+  - `User.area*` (label, lat / lng, postal code);
+  - `Hunt.locationLat/Lng`;
+  - `GeoPlaceCache` (listing places looked up once, misses included).
+- **API:**
+  - new endpoints: `GET /geo/config`, `GET /geo/suggest` (user's country first, rate limited),
+    `GET /geo/tiles/:z/:x/:y` (Azure mode) and `GET` / `PUT` / `DELETE /me/area`;
+  - Hunts store coordinates: the picked / pinned point, else the text placed on save, else none.
+- **Matching (matcher v2) - distance only for local-pickup marketplaces:**
+  - inside the radius passes ("About 19 km from Cape Town");
+  - outside **fails**;
+  - unknown places stay unverified (never rejected on missing data);
+  - eBay ships, so it isn't distance-checked;
+  - the worker places listing locations through the cache: each place once, at most 25 new
+    lookups per run.
+- **Web:**
+  - an accessible location combobox (debounced suggestions, arrow keys / Enter / Escape, announced
+    count);
+  - "Use my area";
+  - a Leaflet map with a draggable orange pin and the radius circle. In development the tiles come
+    from OpenStreetMap; with Azure they come through a web -> API proxy, so the key stays
+    server-side;
+  - a "Your area" card in Settings.
+- **Mobile:**
+  - the same field;
+  - native map with `react-native-maps` 1.27.2 (Apple Maps on iPhone, Google Maps on Android);
+  - "Your area" in Settings;
+  - `app.config.ts` reads `GOOGLE_MAPS_ANDROID_API_KEY` (TODO: owner key; Expo Go works
+    without it).
+- **Dev helper:** `NEXT_DIST_DIR` lets a second `next dev` run beside yours (Next 16 locks one per
+  build folder).
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 62/62.
+- **Integration on a fresh Postgres** (the preview database, migrations 1-24):
+  - API 13 files, 73/73, including the new geo spec;
+  - worker 6 files, 42/42, including the new distance spec: Bellville passes at ~19 km, Durban is
+    rejected, an unknown place is unverified, and a second run makes no new lookups.
+- **Browser walk-through** at 375 / 1280 px on the agent's own servers (3101 / 4100 / 5433):
+  - suggestions, keyboard pick, map tiles, "Use my area", the 25 km circle, re-picking moves the
+    map;
+  - no overflow and no console errors;
+  - the saved draft has the label, radius and Cape Town coordinates;
+  - screenshots were reviewed.
+- **Mobile:** typecheck + lint only - not run on a device.
+- **Your dev database does NOT have the migration yet:** your API returns 500 until you run
+  `pnpm --filter @rein-drop/db db:deploy`.
 
 ### Step 73 - Max-price slider in Create / Edit Hunt (web + mobile)
 

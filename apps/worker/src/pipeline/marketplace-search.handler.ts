@@ -16,6 +16,7 @@ import { ANALYSIS_JOB_TYPE, type AnalysisJobPayload } from './deal-analysis.hand
 import { DeferJobError, PermanentJobError, RetryableJobError, type JobHandler } from '../queue/job-runner.js';
 import { isCoolingDown, type HealthOutcome, type HealthState } from '../health/source-health.js';
 import type { SourceHealthPort } from '../health/source-health.store.js';
+import type { ListingPlaces } from './listing-places.js';
 import { MatchStage, type MatchStageSummary } from './match-stage.js';
 import { SEARCH_JOB_TYPE, type SearchJobPayload } from './search-plan.js';
 
@@ -33,6 +34,8 @@ export interface MarketplaceSearchHandlerOptions {
   searchTimeoutMs?: number;
   /** Slow-search threshold used when no health store is configured (the store has its own policy). */
   slowMs?: number;
+  /** Listing places for distance checks (decision 0017). Omit = distance stays unchecked. */
+  places?: ListingPlaces;
 }
 
 /** How one search went, for the source's health and the hunts' poll status. */
@@ -82,7 +85,7 @@ export class MarketplaceSearchHandler implements JobHandler<SearchJobPayload> {
     private readonly options: MarketplaceSearchHandlerOptions,
     private readonly clock: Clock = () => new Date(),
   ) {
-    this.matchStage = new MatchStage(prisma, clock);
+    this.matchStage = new MatchStage(prisma, clock, options.places ?? null);
   }
 
   async handle(job: LeasedJob<SearchJobPayload>): Promise<void> {

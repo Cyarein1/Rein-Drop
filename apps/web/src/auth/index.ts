@@ -52,6 +52,17 @@ async function reportDetectedLocale(headersPromise: Promise<Record<string, strin
   }
 }
 
+/**
+ * Base URL + auth headers acting as the current user, for the rare raw call the typed client
+ * can't make (binary map tiles). Verifies the session first.
+ */
+export async function getServerApiRequest(): Promise<{ baseUrl: string; headers: Record<string, string> }> {
+  await verifySession();
+  const setup = getAuthSetup();
+  if (!setup.ok) redirect("/sign-in");
+  return { baseUrl: apiBaseUrl(), headers: await setup.provider.getApiHeaders() };
+}
+
 /** API client acting as the current user. Verifies the session first. */
 export const getServerApiClient = cache(async (): Promise<ApiClient> => {
   await verifySession();

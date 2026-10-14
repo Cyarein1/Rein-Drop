@@ -19,6 +19,13 @@
   flex: 0 1 140px;
 }
 
+/* Location: field + radius, then the map and a tip. */
+.location {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+
 /* Max price: the typed field with its slider directly underneath. */
 .price {
   display: flex;

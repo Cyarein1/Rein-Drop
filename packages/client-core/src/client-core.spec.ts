@@ -114,7 +114,7 @@ describe('buildCreateHuntRequest', () => {
       request: {
         query: 'Steam Deck OLED',
         marketplaces: ['ebay', 'facebook'],
-        location: { text: 'Austin, TX', radiusKm: 40 },
+        location: { text: 'Austin, TX', radiusKm: 40, point: null },
         conditions: ['used'],
         maxPrice: { amountMinor: 35000, currency: 'USD' },
         target: { kind: 'margin', percent: 30 },
@@ -172,7 +172,7 @@ describe('huntReview', () => {
       {
         query: 'Steam Deck OLED',
         marketplaces: ['ebay', 'facebook'],
-        location: { text: 'Austin, TX', radiusKm: 40 },
+        location: { text: 'Austin, TX', radiusKm: 40, point: null },
         conditions: ['used', 'refurbished'],
         maxPrice: { amountMinor: 35000, currency: 'USD' },
         target: { kind: 'profit', amount: { amountMinor: 8000, currency: 'USD' } },

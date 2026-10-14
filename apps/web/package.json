@@ -21,6 +21,7 @@
     "@rein-drop/contracts": "workspace:*",
     "@rein-drop/design-tokens": "workspace:*",
     "jose": "^6.2.12",
+    "leaflet": "1.9.4",
     "lucide-react": "^1.52.0",
     "next": "16.4.0",
     "openid-client": "^6.8.8",
@@ -30,6 +31,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

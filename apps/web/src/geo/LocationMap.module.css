@@ -1,0 +1,41 @@
+.figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-2);
+}
+
+/* Fixed height: no layout shift when the map loads. */
+.map {
+  height: 280px;
+  border-radius: var(--rd-radius-md);
+  border: 1px solid var(--rd-neutral-border);
+  overflow: hidden;
+  background: var(--rd-wash-sky);
+  /* Keep Leaflet's panes under the page's sticky header and the suggestion list. */
+  z-index: 0;
+  position: relative;
+}
+
+.caption {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* The pin: an orange drop with a white ring (brand colours, no image file). */
+.pinIcon {
+  background: transparent;
+  border: 0;
+}
+
+.pin {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--rd-color-orange);
+  border: 3px solid var(--rd-color-canvas);
+  box-shadow: var(--rd-shadow-md);
+  transform: rotate(-45deg);
+  cursor: grab;
+}

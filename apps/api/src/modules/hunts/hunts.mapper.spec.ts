@@ -12,6 +12,8 @@ function row(overrides: Partial<HuntRow> = {}): HuntRow {
     priority: 'NORMAL',
     locationText: null,
     radiusKm: null,
+    locationLat: null,
+    locationLng: null,
     conditions: [],
     maxPriceMinor: null,
     priceCurrency: null,
@@ -72,6 +74,13 @@ describe('toHunt', () => {
 
   it('maps a margin target', () => {
     expect(toHunt(row({ targetMarginPercent: 30 })).target).toEqual({ kind: 'margin', percent: 30 });
+  });
+
+  it('maps location coordinates both ways (null when not placed)', () => {
+    expect(toHunt(row({ locationText: 'Cape Town', radiusKm: 40 })).location).toEqual({ text: 'Cape Town', radiusKm: 40, point: null });
+    const placed = toHunt(row({ locationText: 'Sandton', radiusKm: 25, locationLat: -26.108, locationLng: 28.057 }));
+    expect(placed.location?.point).toEqual({ lat: -26.108, lng: 28.057 });
+    expect(toHuntColumns(criteriaOf(placed))).toMatchObject({ locationText: 'Sandton', radiusKm: 25, locationLat: -26.108, locationLng: 28.057 });
   });
 });
 

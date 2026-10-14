@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AI_PROVIDER_IDS, DEFAULT_AI_PROVIDER, foundryEnvShape, foundryWorstCaseMs, resolveFoundryConfig, type AIProviderId, type FoundryConfig } from '@rein-drop/ai-core';
+import { geoEnvShape, resolveGeoConfig, type GeoConfig } from '@rein-drop/geo';
 import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 // Config is wiring (like the registry): it may name development marketplace scenarios.
 import {
@@ -77,6 +78,8 @@ const workerEnvSchema = z.object({
   ...foundryEnvShape,
   // Product events (beta telemetry): log (default) | none.
   ...productEventsEnvShape,
+  // Geocoding for distance checks (decision 0017): mock (development) | azure | none (production default).
+  ...geoEnvShape,
 });
 
 /** Validated, typed worker configuration. Inject with `@Inject(WORKER_CONFIG)`. */
@@ -121,6 +124,8 @@ export interface WorkerConfig {
   readonly facebookApify: ApifyMarketplaceConfig | null;
   /** Where product events go (log line by default; a vendor once D15 is decided). */
   readonly productEvents: ProductEventProviderId;
+  /** Geocoder for listing places in distance checks (holds the Azure Maps key - never log it). */
+  readonly geo: GeoConfig;
 }
 
 export const WORKER_CONFIG = Symbol('WORKER_CONFIG');
@@ -136,7 +141,8 @@ export function loadWorkerConfig(
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
   const aiProvider = parsed.AI_PROVIDER ?? DEFAULT_AI_PROVIDER;
   const ai = resolveFoundryConfig(aiProvider, parsed);
-  const problems = [...ebay.problems, ...facebook.problems, ...ai.problems];
+  const geo = resolveGeoConfig(parsed, parsed.NODE_ENV);
+  const problems = [...ebay.problems, ...facebook.problems, ...ai.problems, ...geo.problems];
   // A job must finish within its lease, or a second worker could pick it up while it still runs.
   if (ai.foundry && foundryWorstCaseMs(ai.foundry) > parsed.WORKER_JOB_LEASE_MS) {
     problems.push(
@@ -189,5 +195,6 @@ export function loadWorkerConfig(
     ebayApi: ebay.api ? Object.freeze(ebay.api) : null,
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
     productEvents: resolveProductEventProviderId(parsed),
+    geo: Object.freeze({ provider: geo.geo.provider, azure: geo.geo.azure ? Object.freeze(geo.geo.azure) : null }),
   });
 }

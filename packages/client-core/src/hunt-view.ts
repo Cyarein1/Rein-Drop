@@ -209,6 +209,7 @@ export function huntFormValues(hunt: Hunt, ctx: HuntFormContext): HuntFormValues
     query: hunt.query,
     marketplaces: [...hunt.marketplaces],
     locationText: hunt.location?.text ?? '',
+    locationPoint: hunt.location?.point ?? null,
     radius: hunt.location?.radiusKm ? String(kmToUnit(hunt.location.radiusKm, ctx.distanceUnit)) : '',
     conditions: [...hunt.conditions],
     maxPrice: hunt.maxPrice ? moneyToInput(hunt.maxPrice) : '',

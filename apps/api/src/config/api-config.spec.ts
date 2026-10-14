@@ -37,6 +37,7 @@ describe('loadApiConfig', () => {
       ebayApi: null,
       facebookApify: null,
       productEvents: 'log',
+      geo: { provider: 'mock', azure: null },
     });
   });
 
@@ -95,6 +96,15 @@ describe('loadApiConfig', () => {
     expect(problems).not.toContain('secret-value-123');
   });
 
+  it('geocoding: mock in development, none (free text) by default in production, mock refused there', () => {
+    expect(loadApiConfig({ ...ENTRA, NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', ...EBAY }).geo).toEqual({ provider: 'none', azure: null });
+    expect(problemsFor({ ...ENTRA, NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', ...EBAY, GEOCODING_PROVIDER: 'mock' })).toEqual([
+      'GEOCODING_PROVIDER: "mock" is development-only (made-up place list), not allowed when NODE_ENV=production',
+    ]);
+    expect(problemsFor({ GEOCODING_PROVIDER: 'azure' })).toEqual(['AZURE_MAPS_KEY: required when GEOCODING_PROVIDER=azure']);
+    expect(loadApiConfig({ GEOCODING_PROVIDER: 'azure', AZURE_MAPS_KEY: 'k' }).geo.provider).toBe('azure');
+  });
+
   it('rejects unknown auth providers', () => {
     expect(problemsFor({ AUTH_PROVIDER: 'magic' })[0]).toMatch(/^AUTH_PROVIDER: must be one of: dev/);
   });
@@ -124,6 +134,7 @@ describe('loadApiConfig', () => {
       ebayApi: null,
       facebookApify: null,
       productEvents: 'log',
+      geo: { provider: 'mock', azure: null },
     });
   });
 

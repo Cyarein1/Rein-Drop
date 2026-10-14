@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, Module, OnApplicationShutdown } from '@nestjs/common';
 import { createAIProvider, type AIProvider } from '@rein-drop/ai-core';
 import { createPrismaClient, type PrismaClient } from '@rein-drop/db';
+import { createGeocodingProvider } from '@rein-drop/geo';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
 import { DEFAULT_SCORING_POLICY } from '@rein-drop/scoring';
 import { createProductEventProvider, ProductEvents } from '@rein-drop/telemetry';
@@ -14,6 +15,7 @@ import { ANALYSIS_QUEUE, ANALYSIS_RUNNER, DealAnalysisHandler } from './deal-ana
 import { SourceHealthStore } from '../health/source-health.store.js';
 import { HuntScheduler } from './hunt-scheduler.js';
 import { createWorkerMarketplaceRegistry } from './marketplace-registry.js';
+import { ListingPlaces } from './listing-places.js';
 import { MarketplaceSearchHandler } from './marketplace-search.handler.js';
 import { PipelineService } from './pipeline.service.js';
 import { SEARCH_QUEUE } from './search-plan.js';
@@ -78,6 +80,8 @@ function createProductEvents(c: WorkerConfig): ProductEvents {
             analysis: { queue: q, queueName: ANALYSIS_QUEUE, maxAttempts: c.pipeline.maxAttempts },
             health,
             searchTimeoutMs: c.pipeline.searchTimeoutMs,
+            // Distance checks (decision 0017): listing places via the cache; `none` = unchecked.
+            places: new ListingPlaces(p, createGeocodingProvider(c.geo), clock),
           },
           clock,
         ),

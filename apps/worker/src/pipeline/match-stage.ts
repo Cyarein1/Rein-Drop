@@ -1,7 +1,9 @@
 import { Prisma, type Hunt, type HuntMatch, type Listing, type PrismaClient } from '@rein-drop/db';
 import { LISTING_CONDITIONS, type ListingCondition, type MarketplaceId } from '@rein-drop/marketplace-core';
-import { canonicalOf, evaluateMatch, type HuntTarget, type MatchHunt, type MatchListing } from '@rein-drop/matching';
+import { LOCAL_MARKETPLACES, type MarketplaceKey } from '@rein-drop/contracts';
+import { canonicalOf, evaluateMatch, type HuntTarget, type MatchHunt, type MatchListing, type MatchPoint } from '@rein-drop/matching';
 import type { Clock } from '../queue/job-queue.js';
+import type { ListingPlaces } from './listing-places.js';
 
 export interface MatchStageInput {
   runId: string;
@@ -45,6 +47,8 @@ export class MatchStage {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly clock: Clock = () => new Date(),
+    /** Listing places for distance checks (decision 0017); absent = distance stays unchecked. */
+    private readonly places: ListingPlaces | null = null,
   ) {}
 
   async run(input: MatchStageInput): Promise<MatchStageResult> {
@@ -64,7 +68,7 @@ export class MatchStage {
       this.prisma.listing.findMany({ where: { id: { in: listingIds } } }),
       this.prisma.hunt.findMany({
         where: { id: { in: input.huntIds } },
-        include: { marketplaces: { where: { isEnabled: true }, select: { marketplace: { select: { key: true } } } } },
+        include: { marketplaces: { where: { isEnabled: true }, select: { marketplace: { select: { key: true } } } }, user: { select: { countryCode: true } } },
       }),
       this.prisma.huntMatch.findMany({ where: { huntId: { in: input.huntIds }, listingId: { in: listingIds } } }),
     ]);
@@ -72,6 +76,8 @@ export class MatchStage {
     const summary: MatchStageSummary = { matchedCount: 0, newMatchCount: 0, rejectedCount: 0, duplicateCount: 0, rejectionSummary: {} };
     const openMatchIds: string[] = [];
     const now = this.clock();
+    const localPickup = (LOCAL_MARKETPLACES as readonly string[]).includes(input.marketplace as MarketplaceKey);
+    const placesByCountry = await this.listingPlaces(hunts, listings, localPickup, input.locationEnforcedBySource);
 
     for (const hunt of hunts) {
       const criteria = toMatchHunt(hunt);
@@ -85,8 +91,10 @@ export class MatchStage {
           continue;
         }
 
-        const result = evaluateMatch(criteria, toMatchListing(listing, input.marketplace), {
+        const point = listing.locationText ? (placesByCountry.get(hunt.user.countryCode ?? '')?.get(listing.locationText.trim()) ?? null) : null;
+        const result = evaluateMatch(criteria, { ...toMatchListing(listing, input.marketplace), point }, {
           locationEnforcedBySource: input.locationEnforcedBySource,
+          localPickup,
         });
         const evaluation = {
           reasons: result.checks as unknown as Prisma.InputJsonValue,
@@ -127,6 +135,24 @@ export class MatchStage {
     }
     summary.newMatchCount = await this.prisma.huntMatch.count({ where: { firstSearchRunId: input.runId } });
     return { summary, openMatchIds };
+  }
+
+  /**
+   * Listing coordinates per hunt-owner country, only when some hunt actually needs a distance check:
+   * a local-pickup marketplace the source didn't filter by area, and a placed hunt location.
+   */
+  private async listingPlaces(
+    hunts: (HuntWithMarketplaces & { user: { countryCode: string | null } })[],
+    listings: Listing[],
+    localPickup: boolean,
+    enforcedBySource: boolean,
+  ): Promise<Map<string, Map<string, MatchPoint | null>>> {
+    const byCountry = new Map<string, Map<string, MatchPoint | null>>();
+    if (!this.places || !localPickup || enforcedBySource) return byCountry;
+    const texts = listings.map((l) => l.locationText).filter((t): t is string => Boolean(t));
+    const countries = new Set(hunts.filter((h) => h.locationLat !== null).map((h) => h.user.countryCode ?? ''));
+    for (const country of countries) byCountry.set(country, await this.places.resolve(texts, country || null));
+    return byCountry;
   }
 
   /**
@@ -182,7 +208,13 @@ export function toMatchHunt(hunt: HuntWithMarketplaces): MatchHunt {
     query: hunt.query,
     marketplaces: hunt.marketplaces.map((m) => m.marketplace.key as MarketplaceId),
     conditions: hunt.conditions.filter((c): c is ListingCondition => (LISTING_CONDITIONS as readonly string[]).includes(c)),
-    location: hunt.locationText ? { text: hunt.locationText, radiusKm: hunt.radiusKm } : null,
+    location: hunt.locationText
+      ? {
+          text: hunt.locationText,
+          radiusKm: hunt.radiusKm,
+          point: hunt.locationLat !== null && hunt.locationLng !== null ? { lat: hunt.locationLat, lng: hunt.locationLng } : null,
+        }
+      : null,
     maxPrice: hunt.maxPriceMinor !== null && hunt.priceCurrency ? { amountMinor: hunt.maxPriceMinor, currency: hunt.priceCurrency } : null,
     exclusions: hunt.exclusions,
     target,

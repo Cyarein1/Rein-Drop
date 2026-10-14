@@ -204,6 +204,14 @@ model User {
   language     String?
   /// "detected" | "user" - a detected region never overwrites the user's own choice.
   regionSource String?
+  /// "Your area" (decision 0017): a place label (suburb / city / postal code), never a street
+  /// address. Offered as the default location in Create Hunt.
+  areaLabel      String?
+  /// Approximate coordinates of the area (rounded to ~110 m); null when it couldn't be placed.
+  areaLat        Float?
+  areaLng        Float?
+  areaPostalCode String?
+  areaUpdatedAt  DateTime? @db.Timestamptz(3)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
@@ -407,7 +415,8 @@ model Listing {
   currency       String?       @db.Char(3)
   /// Source wording, not yet normalized. TODO(marketplace): normalized condition scale.
   conditionText  String?
-  /// Source wording. TODO(marketplace): structured location once needed for distance search.
+  /// Source wording ("Cape Town, WC", "Austin, Texas"). Placed for distance checks through
+  /// GeoPlaceCache (decision 0017) - coordinates are not copied onto every listing.
   locationText   String?
   imageUrls      String[]
   status         ListingStatus @default(UNKNOWN)
@@ -440,6 +449,24 @@ model Listing {
   @@index([duplicateOfId])
 }
 
+/// Place text -> coordinates, looked up once per distinct place (decision 0017): listing places
+/// ("Cape Town, WC") for the distance check, so the geocoder is called per place, never per
+/// listing. A miss is stored too (lat/lng null) and retried after a while.
+model GeoPlaceCache {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  /// @rein-drop/geo placeKey: "<COUNTRY>|<normalized text>".
+  key         String   @unique
+  /// mock | azure - a cached answer is only reused from the provider that gave it.
+  provider    String
+  label       String?
+  lat         Float?
+  lng         Float?
+  countryCode String?  @db.Char(2)
+  resolvedAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([resolvedAt])
+}
+
 // ---------------------------------------------------------------------------
 // Hunts (saved sourcing searches) & matches
 // ---------------------------------------------------------------------------
@@ -455,9 +482,13 @@ model Hunt {
   status   HuntStatus   @default(DRAFT)
   priority HuntPriority @default(NORMAL)
 
-  /// Free-text place (city / area / postal code) until geocoding exists. Null = no location.
+  /// Place label (city / area / postal code) as chosen or typed. Null = no location.
   locationText        String?
   radiusKm            Int?
+  /// Coordinates of the location (rounded to ~110 m) from a picked suggestion, the moved map pin
+  /// or geocoding on save; null when it couldn't be placed (distance then stays unchecked).
+  locationLat         Float?
+  locationLng         Float?
   /// Accepted listing conditions (contract values); empty = any.
   conditions          String[] @default([])
   /// Max acquisition price in minor units.

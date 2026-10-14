@@ -24,6 +24,7 @@ import {
   ValidationFailedException,
 } from '../../common/errors/app.exception.js';
 import { PRISMA } from '../../database/database.module.js';
+import { GeoService } from '../geo/geo.service.js';
 import { PlansService } from '../plans/plans.service.js';
 import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
 import { loadHuntActivity } from './hunt-activity.js';
@@ -63,6 +64,7 @@ export class HuntsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly plans: PlansService,
     @Inject(PRODUCT_EVENTS) private readonly productEvents: ProductEvents,
+    private readonly geo: GeoService,
   ) {}
 
   /** Newest first. Without a status filter, archived hunts are left out. */
@@ -91,7 +93,9 @@ export class HuntsService {
 
   /** Creates a DRAFT. Activation is a separate step (plan gate goes there later). */
   async create(userId: string, request: CreateHuntRequest): Promise<Hunt> {
-    const criteria: HuntCriteria = { ...request, name: request.name ?? defaultHuntName(request.query) };
+    // Coordinates for the distance check: the picked / pinned point, else the text placed now.
+    const location = await this.geo.withPoint(request.location, userId);
+    const criteria: HuntCriteria = { ...request, location, name: request.name ?? defaultHuntName(request.query) };
     const hunt = await this.prisma.$transaction(async (tx) => {
       const marketplaceIds = await this.resolveMarketplaces(tx, criteria.marketplaces);
       const row = await tx.hunt.create({
@@ -119,6 +123,8 @@ export class HuntsService {
    * a LIVE hunt must stay live-ready. Records an EDITED event with the changes.
    */
   async update(userId: string, huntId: string, request: UpdateHuntRequest): Promise<Hunt> {
+    // Placed before the transaction (a network call must not hold a database transaction open).
+    if (request.location !== undefined) request = { ...request, location: await this.geo.withPoint(request.location, userId) };
     return this.prisma.$transaction(async (tx) => {
       const row = await this.findOwned(tx, userId, huntId);
       if (row.status === 'ARCHIVED') {

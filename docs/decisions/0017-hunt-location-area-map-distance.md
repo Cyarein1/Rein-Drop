@@ -1,7 +1,10 @@
 # 0017 - Hunt location: profile area, suggestions, interactive map, distance checks
 
-- **Status:** Accepted (2026-10-14) by the product owner, including native maps on mobile. Nothing
-  beyond the price slider is built yet.
+- **Status:** Accepted (2026-10-14) by the product owner, including native maps on mobile.
+  **Built in step 74** against the mock geocoder. Azure Maps and the Android Google Maps key are
+  the owner's TODOs.
+- **Change from the proposal:** the web map uses **Leaflet** (raster tiles, ~40 KB), not MapLibre -
+  a pin and a circle don't need vector maps.
 - **Builds on:** [0001](0001-geocoding-azure-maps.md) (Azure Maps behind a `GeocodingProvider`,
   mock provider in development, key on the server only).
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { huntFormDefaults, queryPlaceholder } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
+import { loadLocationSupport } from "@/geo/load";
 import { CreateHuntFlow } from "./CreateHuntFlow";
 
 export const metadata: Metadata = { title: "Create Hunt" };
@@ -21,6 +22,7 @@ async function CreateHuntLoader() {
   // The snapshot only provides defaults - the form still works without it.
   const snapshot = await api.getSellerSnapshot().catch(() => null);
   const { values, context, prefilled } = huntFormDefaults(snapshot, session.user.locale);
+  const { geo, area } = await loadLocationSupport(api);
 
   return (
     <CreateHuntFlow
@@ -28,6 +30,8 @@ async function CreateHuntLoader() {
       context={context}
       prefilled={prefilled}
       queryPlaceholder={queryPlaceholder(snapshot)}
+      geo={geo}
+      area={area}
     />
   );
 }

@@ -5,6 +5,7 @@
 export {
   CHECK_NAMES,
   MATCHER_VERSION,
+  distanceBetweenKm,
   evaluateMatch,
   type CheckName,
   type CheckOutcome,
@@ -15,6 +16,7 @@ export {
   type MatchEvaluation,
   type MatchHunt,
   type MatchListing,
+  type MatchPoint,
 } from './match.js';
 export { classifyCondition, type ConditionCategory } from './condition.js';
 export { MIN_DEDUPE_TITLE_WORDS, canonicalOf, dedupeKeyFor, type DedupeCandidate, type DedupeInput } from './dedupe.js';
