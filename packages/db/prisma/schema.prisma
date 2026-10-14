@@ -898,8 +898,8 @@ model Cost {
 // Plans, entitlements, billing & usage
 // ---------------------------------------------------------------------------
 
-/// TODO(billing): prices live with the billing provider (Stripe is the leading candidate, TBD);
-/// no price columns until that is decided.
+/// Prices live with the billing provider (Stripe, decision 0014; STRIPE_PRICE_IDS maps plan codes to
+/// prices), so there are no price columns here.
 model Plan {
   id                String   @id @default(uuid(7)) @db.Uuid
   code              String   @unique

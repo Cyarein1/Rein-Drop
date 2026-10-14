@@ -45,6 +45,8 @@ export interface BillingProvider {
   parseWebhook(rawBody: Buffer, signature: string | undefined): BillingWebhookEvent;
   /** The subscription as the provider sees it NOW (null when it no longer exists). */
   getSubscription(id: string): Promise<ProviderSubscription | null>;
+  /** Every subscription of a customer as the provider sees it now (reconciliation without webhooks). */
+  listCustomerSubscriptions(customerId: string): Promise<ProviderSubscription[]>;
   /** Current prices for these price ids (missing / inactive ones are left out). */
   getPrices(priceIds: readonly string[]): Promise<Map<string, Extract<PlanPricing, { status: 'priced' }>>>;
 }

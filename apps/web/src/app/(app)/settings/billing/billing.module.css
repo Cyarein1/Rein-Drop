@@ -1,0 +1,44 @@
+.planName {
+  font-size: var(--rd-font-size-xl);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.usage,
+.lines {
+  margin: 0;
+  padding-left: var(--rd-space-5);
+  display: grid;
+  gap: var(--rd-space-1);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-3);
+}
+
+.plans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-4);
+}
+
+.heading {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.current {
+  box-shadow: inset 0 0 0 2px var(--rd-color-orange);
+}
+
+.price {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+}
+
+.muted {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}

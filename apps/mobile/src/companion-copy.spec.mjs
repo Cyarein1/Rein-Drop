@@ -43,7 +43,7 @@ describe('mobile companion never sells (decision 0018)', () => {
   });
 
   it('no billing calls: checkout, portal, plan choice, development billing, plan list', () => {
-    const calls = /\.(startCheckout|createCheckout|openBillingPortal|billingPortal|chooseFreePlan|confirmDevBilling|listPlans|getBillingInfo)\(/;
+    const calls = /\.(startCheckout|createCheckout|openBillingPortal|billingPortal|chooseFreePlan|confirmDevBilling|listPlans|getBillingInfo|syncBilling)\(/;
     expect(sources.filter(({ text }) => calls.test(text)).map((s) => s.file)).toEqual([]);
   });
 
@@ -62,6 +62,6 @@ describe('mobile companion never sells (decision 0018)', () => {
   });
 
   it('no plan picker, price labels or cancel-plan screen', () => {
-    expect(sources.filter(({ text }) => /planGateOptions|priceLabel|cancellationState|cancel-plan/.test(text)).map((s) => s.file)).toEqual([]);
+    expect(sources.filter(({ text }) => /planGateOptions|priceLabel|cancellationState|cancel-plan|billingStatusView|planCards|checkoutReturnView|syncBilling/.test(text)).map((s) => s.file)).toEqual([]);
   });
 });

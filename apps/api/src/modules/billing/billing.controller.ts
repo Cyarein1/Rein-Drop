@@ -50,6 +50,18 @@ export class BillingController {
     return { url: await this.billing.portal(user.userId, body) };
   }
 
+  /**
+   * Re-check the account's subscription with the provider now (server to server) - e.g. right after
+   * checkout returns, before the webhook may have arrived. Grants only what the provider confirms.
+   */
+  @Throttle(STRICT_LIMIT)
+  @Post('sync')
+  @HttpCode(HttpStatus.OK)
+  async sync(@CurrentUser() user: Principal): Promise<{ subscription: SubscriptionSummary | null }> {
+    await this.billing.reconcile(user.userId);
+    return { subscription: await this.subscriptions.current(user.userId) };
+  }
+
   /** Choose the Free plan (no card, no charge) - works in every billing mode. */
   @Throttle(STRICT_LIMIT)
   @Post('free')

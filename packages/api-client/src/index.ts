@@ -38,6 +38,9 @@ import {
   updateUserLocaleRequestSchema,
   userLocaleResponseSchema,
   capabilitiesResponseSchema,
+  accessResponseSchema,
+  subscriptionSummarySchema,
+  type AccessResponse,
   capabilityMap,
   type Capability,
   type FeatureKey,
@@ -229,6 +232,10 @@ export interface ApiClient {
   getEntitlements(): Promise<EntitlementEvaluation>;
   /** How plans are bought here (stripe | development) and whether there is billing to manage. */
   getBillingInfo(): Promise<BillingInfo>;
+  /** Re-check the subscription with the provider now (server to server) - e.g. after checkout returns. */
+  syncBilling(): Promise<SubscriptionSummary | null>;
+  /** Effective access per product (Source / Sell), states and usage (decision 0018). */
+  getAccess(): Promise<AccessResponse>;
   /** Hosted Stripe Checkout URL for a paid plan. Nothing changes until Stripe confirms payment. */
   startCheckout(planCode: string, returnPath: string): Promise<string>;
   /** Hosted billing portal URL (payment method, invoices, change plan, cancel). */
@@ -423,6 +430,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getEntitlements: () =>
       send(http, { method: 'GET', path: '/me/entitlements', response: entitlementEvaluationSchema }),
     getBillingInfo: () => send(http, { method: 'GET', path: '/billing', response: billingInfoSchema }),
+    syncBilling: async () =>
+      (await send(http, { method: 'POST', path: '/billing/sync', response: z.object({ subscription: subscriptionSummarySchema.nullable() }) })).subscription,
+    getAccess: () => send(http, { method: 'GET', path: '/me/access', response: accessResponseSchema }),
     startCheckout: async (planCode, returnPath) =>
       (
         await send(http, {

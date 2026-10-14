@@ -1,11 +1,47 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 79 - subscriptions and entitlements)_
+_Last updated: 2026-10-14 (step 80 - web subscription management)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 80 - Web subscription management (decision 0018, Stripe per decision 0014)
+
+Architecture, guarantees, tests and the **unresolved Stripe configuration (P1-P13)**:
+[strategy/BILLING.md](strategy/BILLING.md). The existing Stripe provider was inspected, kept and
+extended; nothing was replaced.
+
+- **Reconciliation:**
+  - `BillingProvider.listCustomerSubscriptions` (Stripe: `subscriptions.list`, status all);
+  - `BillingService.reconcile(userId)` re-reads every subscription of the user's customer and
+    syncs it; one failure doesn't stop the others; a no-op in development mode;
+  - `POST /billing/sync` (strict throttle) returns the subscription summary.
+- **Web page `/settings/billing`** ("Plans & billing", linked from Settings), using the design
+  system (Page / Card / Badge / Button / SystemBanner):
+  - current plan with a state badge, renewal / end / retrying / grace lines, live and saved Hunt
+    use;
+  - Manage billing / Update payment method (Portal), Cancel plan, Refresh status;
+  - a card per plan: price from Stripe, what it includes, and Subscribe (Checkout) / Switch
+    (Portal plan change) / downgrade note / unavailable reason;
+  - on `?checkout=success` the server reconciles with Stripe first, and the page says
+    "Confirming your payment" until Stripe confirms. The browser's success alone grants nothing.
+- **Shared code:**
+  - `client-core/billing-view.ts` (web only; banned in the mobile guard test);
+  - api-client `syncBilling()` / `getAccess()`;
+  - plan descriptions now include the saved-Hunt limit.
+- **Tests:**
+  - `apps/api/test/billing-lifecycle.int-spec.ts` (8): checkout success via sync + idempotent late
+    webhook, incomplete, renewal, past due -> recovery -> unpaid, scheduled cancel -> deleted,
+    webhook 500 retry / duplicate / out-of-order, reconciliation of a lost webhook and a
+    hand-edited row, Ultimate reaching `/me/access` + `/me/entitlements`;
+  - `billing-view.spec.ts` (5).
+- **Checks:**
+  - `pnpm turbo run build typecheck lint test` 66/66;
+  - API integration 100/100 on the preview database (5433);
+  - read-only look at the page on the user's dev server at 1280 and 390 px (no horizontal
+    overflow).
 
 ### Step 79 - Subscriptions and entitlements: Source / Sell / Complete, access states, enforcement (decision 0018, phase D)
 

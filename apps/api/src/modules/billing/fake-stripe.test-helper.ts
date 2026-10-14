@@ -81,6 +81,11 @@ export function fakeStripe() {
     if (call.method === 'POST' && url.pathname === '/v1/billing_portal/sessions') {
       return json(200, { id: `bps_${++n}`, object: 'billing_portal.session', url: `https://billing.stripe.com/p/session/test_${n}` });
     }
+    if (call.method === 'GET' && url.pathname === '/v1/subscriptions') {
+      const customer = url.searchParams.get('customer');
+      const data = [...subscriptions.values()].filter((s) => s.customer === customer).map(subscriptionObject);
+      return json(200, { object: 'list', data, has_more: false, url: '/v1/subscriptions' });
+    }
     if (call.method === 'GET' && resource === 'subscriptions' && id) {
       const s = subscriptions.get(id);
       return s ? json(200, subscriptionObject(s)) : notFound(`subscription: '${id}'`);

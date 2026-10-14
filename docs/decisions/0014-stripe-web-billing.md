@@ -53,3 +53,11 @@ while Free keeps working without a card. The owner approved **Stripe** for web b
 - Downgrade enforcement covers the active-Hunt limit only; marketplaces / priority not in the new
   plan are not yet enforced on running hunts (OUTSTANDING).
 - Tax, trials, coupons and proration settings are Stripe-side configuration, not code.
+
+## Update - step 80
+
+- **Reconciliation** outside webhooks: `POST /billing/sync` (`BillingService.reconcile`) re-reads
+  all of the user's Stripe subscriptions. After `?checkout=success` the web billing page calls it
+  server-side instead of only waiting for the webhook. It still grants only what Stripe reports.
+- Web management page `/settings/billing`. Full architecture and the unresolved configuration:
+  [strategy/BILLING.md](../strategy/BILLING.md).

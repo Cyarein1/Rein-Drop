@@ -7,6 +7,7 @@ export * from './hunt-form.js';
 export * from './price-slider.js';
 export * from './location-field.js';
 export * from './companion-access.js';
+export * from './billing-view.js';
 export * from './plan-gate.js';
 export * from './seller-snapshot-flow.js';
 export * from './deal-view.js';

@@ -84,6 +84,7 @@ async function PlanCard() {
       {renewal && <p>{renewal}</p>}
       {!ent.plan.limitsFinal && <p style={muted}>Limits are placeholders until plans are final.</p>}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <ButtonLink href="/settings/billing">Plans & billing</ButtonLink>
         {billing.canManage && (
           // Payment method, invoices, plan changes and cancellation live in Stripe's billing portal.
           <form action={billingPortalFormAction}>

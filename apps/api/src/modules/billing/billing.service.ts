@@ -147,6 +147,35 @@ export class BillingService {
   }
 
   // -------------------------------------------------------------------------
+  // Reconciliation (server-side confirmation, no webhook needed)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Re-reads the account's subscriptions from the provider (server to server - never from what the
+   * browser says) and mirrors them with the same idempotent `sync` the webhooks use. Covers a
+   * delayed / lost webhook, the moment after checkout returns, and drift. Plan-change listeners run
+   * afterwards (Hunts above a lower limit pause). Development mode / no customer: nothing to do.
+   */
+  async reconcile(userId: string): Promise<{ checked: number; failed: number }> {
+    if (this.config.billing.provider !== 'stripe' || !this.provider) return { checked: 0, failed: 0 };
+    const customer = await this.prisma.billingCustomer.findUnique({ where: { provider_userId: { provider: STRIPE_PROVIDER, userId } } });
+    if (!customer) return { checked: 0, failed: 0 };
+    const subscriptions = await this.provider.listCustomerSubscriptions(customer.providerCustomerId);
+    let failed = 0;
+    for (const sub of subscriptions) {
+      try {
+        await this.sync(sub.id, sub);
+      } catch (err) {
+        // e.g. a price missing from STRIPE_PRICE_IDS: the others still reconcile; the webhook retries this one.
+        failed += 1;
+        this.logger.warn(`Reconcile of a subscription failed: ${describe(err)}`);
+      }
+    }
+    for (const listener of this.planChangedListeners) await listener(userId);
+    return { checked: subscriptions.length, failed };
+  }
+
+  // -------------------------------------------------------------------------
   // Webhooks
   // -------------------------------------------------------------------------
 

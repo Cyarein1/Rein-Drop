@@ -32,6 +32,7 @@ describe('describeEntitlements', () => {
   it('describes limits in plain words from server data', () => {
     expect(describeEntitlements(ent())).toEqual([
       '1 live Hunt',
+      'Up to 10 saved Hunts',
       'eBay and Facebook Marketplace',
       'Hot Hunts: coming later',
       'Normal monitoring priority',

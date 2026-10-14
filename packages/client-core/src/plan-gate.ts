@@ -20,6 +20,7 @@ export function describeEntitlements(e: PlanEntitlements): string[] {
   const hunts = e.activeHunts.limit;
   return [
     hunts === null ? 'Unlimited live Hunts' : `${hunts} live ${hunts === 1 ? 'Hunt' : 'Hunts'}`,
+    e.savedHunts.limit === null ? 'Unlimited saved Hunts' : `Up to ${e.savedHunts.limit} saved ${e.savedHunts.limit === 1 ? 'Hunt' : 'Hunts'}`,
     e.marketplaces.length ? e.marketplaces.map((m) => MARKETPLACE_LABEL[m] ?? m).join(' and ') : 'No marketplaces',
     e.hotHunts.available
       ? `Hot Hunts${e.hotHunts.limit === null ? '' : `: ${e.hotHunts.limit}`}`

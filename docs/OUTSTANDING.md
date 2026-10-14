@@ -106,12 +106,14 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Checkout refuses a second paid plan of ANY family (`currentPaid`) - when Sell is sold, allow one paid subscription per product (Source + Sell) or Complete instead - step 79.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
 - Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
-- Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76.
+- Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76. (Web plans / billing page: done in step 80, see Resolved.)
 - The access sweep runs every 5 minutes per worker and checks every owner of LIVE Hunts one by one - fine at beta scale; batch it if owners reach the thousands - step 76.
 
 ### Plans and billing
-- Stripe set-up for real: products / prices, Customer Portal configuration, webhook endpoint + secret, tax settings; test-mode run with the Stripe CLI - step 42.
+- Stripe set-up for real: products / prices, Customer Portal configuration, webhook endpoint + secret, tax settings; test-mode run with the Stripe CLI - step 42. **Full list P1-P13 in [strategy/BILLING.md](strategy/BILLING.md) section 5** (account, prices + `STRIPE_PRICE_IDS`, keys in Key Vault, webhook events, Portal plan switching / cancel at period end / proration, dunning vs `BILLING_GRACE_DAYS`, tax, trials, `WEB_APP_URL`) - step 80.
 - Stripe integration not exercised against Stripe itself (tests use a fake Stripe API) - step 42.
+- Scheduled reconciliation (nightly `BillingService.reconcile` for paid users) as a safety net beyond webhooks + on-demand sync - optional, not built - step 80.
+- Check `/settings/billing` in a browser after Stripe test mode is configured: subscribe, return, switch plan, cancel, update payment method - step 80.
 
 ### Platform and API
 - Acceptance run on a real device (mobile) and with real providers (eBay API, Apify, Foundry, Entra, Stripe) - docs/LOCAL_MVP_ACCEPTANCE.md "Configurations" - step 44.
@@ -384,6 +386,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
 | Product families (Source / Sell / Complete), access states (trial, grace, past due, canceled, expired, suspended), backend enforcement beyond live Hunts (saved Hunts, suspension, Sell guard), effective-access endpoint (audit G5, G8 partly, G9 partly) | Step 76 audit | Step 79 (ACCESS_RULES.md) |
 | Mobile navigation Home / Hunts / Create / Deals / Analytics with analytics dashboards; mobile Developer card and /dev reachable in release builds (audit G3, G4, G7); no feature-flag mechanism (G6) | Steps 76 audit | Step 78 (capability list + /me/capabilities + FEATURE_FLAGS, tabs Deals / Hunts / Inventory / Account, analytics + Home web-only, dev tools development-only) |
+| No web page to see plans / current access / renewal and manage a subscription; subscription state reconciled only through webhooks; "web pricing page (D3)" | Step 76 / step 79 | Step 80 (`/settings/billing`, `POST /billing/sync` reconciliation, lifecycle tests - strategy/BILLING.md) |
 | Mobile showed prices, a "Choose a plan" picker, "subscribe on the web", "upgrade" / "Choose a bigger plan" / "See plans" and a cancel-plan screen (decision 0018 phase B) | Step 76 audit | Step 77 (companion Start watching, "Your access" card, cancel-plan removed, companion wording, guard test) |
 | Worker monitored any LIVE Hunt regardless of the owner's access; a paid period ending without a webhook (or choosing Free) never paused Hunts above the new limit; Stripe `unpaid` kept access | Found in step 76 audit (decision 0018) | Step 76 (`@rein-drop/access`: scheduler access sweep, Free / dev plan follow-up, `UNPAID` status) |
 | How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |

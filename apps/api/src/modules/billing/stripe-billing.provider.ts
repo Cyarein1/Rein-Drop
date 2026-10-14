@@ -19,6 +19,22 @@ const STATUS: Record<string, BillingStatus> = {
   paused: 'PAUSED',
 };
 
+/** A Stripe subscription -> the provider-neutral shape (one price per subscription). */
+function toProviderSubscription(sub: Stripe.Subscription): ProviderSubscription {
+  const item = sub.items.data[0];
+  return {
+    id: sub.id,
+    customerId: idOf(sub.customer)!,
+    status: mapStripeStatus(sub.status),
+    priceId: item?.price.id ?? null,
+    currentPeriodStart: date(item?.current_period_start),
+    currentPeriodEnd: date(item?.current_period_end),
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    canceledAt: date(sub.canceled_at),
+    userId: sub.metadata?.reindrop_user_id ?? null,
+  };
+}
+
 /** Stripe status -> Rein Drop status (unknown future statuses are not entitled). */
 export function mapStripeStatus(status: string): BillingStatus {
   return STATUS[status] ?? 'INCOMPLETE';
@@ -106,18 +122,13 @@ export class StripeBillingProvider implements BillingProvider {
       if (err instanceof Stripe.errors.StripeInvalidRequestError && err.statusCode === 404) return null;
       throw err;
     }
-    const item = sub.items.data[0];
-    return {
-      id: sub.id,
-      customerId: idOf(sub.customer)!,
-      status: mapStripeStatus(sub.status),
-      priceId: item?.price.id ?? null,
-      currentPeriodStart: date(item?.current_period_start),
-      currentPeriodEnd: date(item?.current_period_end),
-      cancelAtPeriodEnd: sub.cancel_at_period_end,
-      canceledAt: date(sub.canceled_at),
-      userId: sub.metadata?.reindrop_user_id ?? null,
-    };
+    return toProviderSubscription(sub);
+  }
+
+  async listCustomerSubscriptions(customerId: string): Promise<ProviderSubscription[]> {
+    // status "all" includes canceled / past due / unpaid ones, so an ended subscription is seen too.
+    const page = await this.stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 20 });
+    return page.data.map(toProviderSubscription);
   }
 
   async getPrices(priceIds: readonly string[]) {

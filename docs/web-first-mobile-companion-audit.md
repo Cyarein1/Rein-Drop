@@ -304,4 +304,4 @@ implementation slots into D.
 **Policy (owner)**
 - [ ] Trial and grace policy.
 - [ ] Analytics-history / seat enforcement.
-- [ ] Web pricing page (D3).
+- [x] Web pricing page (D3). Done in step 80: `/settings/billing` with plans, current access and management (strategy/BILLING.md).
