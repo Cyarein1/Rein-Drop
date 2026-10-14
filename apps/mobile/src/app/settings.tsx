@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import type { EntitlementEvaluation, NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
-import { huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
+import { accountSiteLine, companionAccessSummary, huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
@@ -102,10 +102,10 @@ export default function SettingsScreen() {
       )}
 
       {sessionState.status === 'authenticated' ? (
-        <PlanCard />
+        <AccessCard />
       ) : (
-        <Card title="Plan & billing">
-          <Text style={[styles.muted, font('regular')]}>Sign in to see your plan.</Text>
+        <Card title="Your access">
+          <Text style={[styles.muted, font('regular')]}>Sign in to see your access.</Text>
         </Card>
       )}
 
@@ -348,9 +348,12 @@ const styles = StyleSheet.create({
   muted: { color: roles.textMuted, fontSize: fontSize.sm },
 });
 
-/** Current plan and its live-Hunt use; cancellation is a placeholder flow until billing exists (D2). */
-function PlanCard() {
-  const router = useRouter();
+/**
+ * Your access - mobile companion (decision 0018): what the account includes now, read from the
+ * server. No billing here: no prices, no plan changes, no cancel, no "manage billing on the web".
+ * The optional neutral account line shows only when the app is built with EXPO_PUBLIC_ACCOUNT_SITE.
+ */
+function AccessCard() {
   const [ent, setEnt] = useState<EntitlementEvaluation | null | 'error'>(null);
   const load = useCallback(() => {
     let cancelled = false;
@@ -367,37 +370,24 @@ function PlanCard() {
   useFocusEffect(load);
   if (ent === 'error') {
     return (
-      <Card title="Plan & billing">
-        <SystemBanner tone="error" title="Couldn't load your plan" message="Pull down or reopen Settings to try again." />
+      <Card title="Your access">
+        <SystemBanner tone="error" title="Couldn't load your access" message="Pull down or reopen Settings to try again." />
       </Card>
     );
   }
-  if (!ent) return <LoadingState label="Loading your plan…" />;
-  const limit = ent.entitlements.activeHunts.limit;
+  if (!ent) return <LoadingState label="Loading your access…" />;
+  const sub = ent.subscription;
+  const date = (iso: string) => new Date(iso).toLocaleDateString();
+  const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE);
   return (
-    <Card title="Plan & billing" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
-      <Text style={[styles.body, font('regular')]}>
-        {limit === null
-          ? `${ent.usage.activeHunts} live Hunts (no limit)`
-          : `${ent.usage.activeHunts} of ${limit} live ${limit === 1 ? 'Hunt' : 'Hunts'} in use`}
-      </Text>
-      {ent.subscription?.provider === 'stripe' && ent.subscription.currentPeriodEnd && (
-        <Text style={[styles.body, font('regular')]}>
-          {ent.subscription.cancelAtPeriodEnd
-            ? `Cancelled - ends ${new Date(ent.subscription.currentPeriodEnd).toLocaleDateString()}, then you move to Free.`
-            : ent.subscription.status === 'PAST_DUE'
-              ? "Your last payment didn't go through - update it on the web (Settings -> Manage billing)."
-              : `Renews ${new Date(ent.subscription.currentPeriodEnd).toLocaleDateString()}. Billing is managed on the web.`}
-        </Text>
+    <Card title="Your access" action={<Badge tone="neutral">{ent.plan.name}</Badge>}>
+      <Text style={[styles.body, font('regular')]}>{companionAccessSummary(ent)}</Text>
+      {sub?.currentPeriodEnd && sub.cancelAtPeriodEnd && (
+        <Text style={[styles.body, font('regular')]}>{`Your current access continues until ${date(sub.currentPeriodEnd)}.`}</Text>
       )}
-      {!ent.plan.limitsFinal && <Text style={[styles.muted, font('regular')]}>Limits are placeholders until plans are final.</Text>}
-      {ent.plan.code !== 'free' && (
-        <View style={{ alignSelf: 'flex-start' }}>
-          <Button variant="text" onPress={() => router.push('/cancel-plan')}>
-            Cancel plan
-          </Button>
-        </View>
-      )}
+      {sub?.status === 'PAST_DUE' && <Text style={[styles.body, font('regular')]}>Your account needs attention.</Text>}
+      {!ent.plan.limitsFinal && <Text style={[styles.muted, font('regular')]}>Limits are placeholders while Rein Drop is in beta.</Text>}
+      {accountLine && <Text style={[styles.muted, font('regular')]}>{accountLine}</Text>}
     </Card>
   );
 }

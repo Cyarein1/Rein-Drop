@@ -1,7 +1,9 @@
 # 0018 - Web-first billing, mobile companion apps
 
 - **Status:** Accepted (2026-10-14) by the product owner ("Rein Drop - Web-first billing & mobile
-  companion strategy"). Implemented in phases A-E (below); BUILD_STATUS records each step.
+  companion strategy"). Implemented in phases A-E (below).
+- **Progress:** tracked in [strategy/WEB_FIRST_COMPANION.md](../strategy/WEB_FIRST_COMPANION.md) -
+  the strategy verbatim, the phase tracker and the change log.
 - **Builds on:** [0003](0003-plans-entitlements-placeholders.md) (plans and entitlements),
   [0014](0014-stripe-web-billing.md) (Stripe web billing). It **replaces** D2's default ("the app
   sells nothing") with a stricter one: the app doesn't *mention* buying at all.

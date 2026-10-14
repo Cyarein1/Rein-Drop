@@ -214,7 +214,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
           <Button onPress={() => save('start')} loading={saving === 'start'} disabled={saving !== null} fullWidth>
             Start watching
           </Button>
-          <Text style={[styles.muted, font('regular')]}>Saves your Hunt, then you choose a plan.</Text>
+          <Text style={[styles.muted, font('regular')]}>Saves your Hunt, then starts watching within your current access.</Text>
         </View>
         <Button
           variant="secondary"

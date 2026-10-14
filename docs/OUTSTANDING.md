@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 76 (web-first billing phase A: server-side access)._
+_Last updated: 2026-10-14, after step 77 (web-first billing phase B: mobile no longer sells)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -96,7 +96,8 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
 ### Web-first billing & mobile companion (decision 0018)
 - **Apply the step 76 migration to your development database** (`pnpm --filter @rein-drop/db db:deploy`, restart the API) - adds the `UNPAID` subscription status - step 76.
-- Phase B - mobile billing-free: remove prices / plan picker ("Choose a plan"), "subscribe on the web", "upgrade", "Choose a bigger plan", "See plans", mobile cancel-plan copy; "Start watching" activates within current access; neutral limit / no-access messages; the optional "manage your account at {site}" line behind a flag, off until the store review - step 76.
+- Phase B done in step 77 (see Resolved) - check the new mobile Start watching screen, "Your access" card and Hunts-list message on a phone - step 77.
+- `EXPO_PUBLIC_ACCOUNT_SITE` (optional "You can manage your account at {site}" line): decide after the store review whether to turn it on - step 77.
 - Phase C - mobile tabs Deals (with Inbox) / Hunts (with Create) / Inventory / Account; Home dashboard and Analytics web-only - step 76.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
 - Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
@@ -376,6 +377,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
+| Mobile showed prices, a "Choose a plan" picker, "subscribe on the web", "upgrade" / "Choose a bigger plan" / "See plans" and a cancel-plan screen (decision 0018 phase B) | Step 76 audit | Step 77 (companion Start watching, "Your access" card, cancel-plan removed, companion wording, guard test) |
 | Worker monitored any LIVE Hunt regardless of the owner's access; a paid period ending without a webhook (or choosing Free) never paused Hunts above the new limit; Stripe `unpaid` kept access | Found in step 76 audit (decision 0018) | Step 76 (`@rein-drop/access`: scheduler access sweep, Free / dev plan follow-up, `UNPAID` status) |
 | How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |
 | Hunt location was free text only; distance never checked ("Distance not checked yet"); B-20. Also the step 73 plan items: "Your area" on the profile, GeocodingProvider + suggestions, interactive map (web + native mobile), distance checks with a place cache | Steps 13 / 21 / 73 | Step 74 (your area, suggestions, map, distance checks on mocks - live providers are the TODO(geo) items above) |

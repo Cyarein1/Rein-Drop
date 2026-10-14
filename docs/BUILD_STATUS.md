@@ -1,13 +1,53 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 74 - Hunt location: your area, suggestions, map, distance checks)_
+_Last updated: 2026-10-14 (step 77 - web-first billing phase B)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
 
-### Step 76 - Web-first billing (decision 0018), phase A: the backend is the authority on access
+### Step 77 - Web-first billing (decision 0018), phase B: the mobile app no longer sells
+
+Tracker: [strategy/WEB_FIRST_COMPANION.md](strategy/WEB_FIRST_COMPANION.md).
+
+- **Start watching (mobile)** is a companion screen:
+  - "Your current access includes N live Hunts (M in use)" and **Start watching** - the server
+    decides access; no subscription = Free, so nothing is chosen or bought;
+  - when blocked, neutral reasons (e.g. "Your current access includes 1 live Hunt, and 1 is live.
+    Pause another Hunt to watch this one - it stays saved as a draft.") with only actions inside the
+    access (**Manage live Hunts**, **Edit this Hunt**);
+  - removed: the plan picker, prices ("R 199,00 / month"), "Choose {plan}", "Paid plans are bought
+    on the web", "You can upgrade later", and the development billing confirmation.
+- **Settings:** "Plan & billing" -> **"Your access"**:
+  - plan name and Hunts in use;
+  - "continues until {date}" for a scheduled end;
+  - "needs attention" when past due.
+
+  No cancel, "manage billing" or "billing is managed on the web". The mobile **cancel-plan screen
+  is removed**.
+- **Shared wording:**
+  - `planLimitState` / `reducedMonitoringState` take a surface; the companion variant drops "or
+    upgrade", "See options" (plan gate) and "See plans";
+  - the web is unchanged;
+  - new `client-core/companion-access` (access summary, neutral reasons, actions, account line,
+    selling-word list).
+- **Optional account line:** "You can manage your account at {site}." appears only when the app is
+  built with `EXPO_PUBLIC_ACCOUNT_SITE` - unset by default, pending the store review
+  (`.env.example` documents it).
+- **Guard test** (`apps/mobile/src/companion-copy.spec.mjs`) scans every mobile source file. It
+  fails on selling words in user-facing text, on billing calls (checkout, portal, choose Free, dev
+  billing, plan list, billing info), and on the plan picker, price labels or cancel-plan screen. It
+  was proven by catching inventory "Purchase â€¦" labels before being narrowed to subscription
+  purchases.
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 66/66;
+- client-core companion tests 4/4;
+- mobile tests 11/11.
+
+**Not run on a device yet** (typecheck, lint and tests only).
+ - Web-first billing (decision 0018), phase A: the backend is the authority on access
 
 The owner adopted the "web-first billing & mobile companion" strategy. An audit against it found
 billing already web-only (Stripe), with one account and subscription shared by web and mobile, but
@@ -56,7 +96,7 @@ Verified:
 - **Your dev database needs this migration** (`pnpm --filter @rein-drop/db db:deploy`, then restart
   the API).
 
-### Step 75 - Fix: web dev page kept reloading ("Checking your session…")
+### Step 75 - Fix: web dev page kept reloading ("Checking your sessionâ€¦")
 
 - **Symptom:** the owner's web dev server (:3000) reloaded the page about once a second, so the
   session placeholder flashed.
@@ -196,7 +236,7 @@ Verified:
   - the Analytics recommendation (thinking pose).
 - **Display fixes:**
   - mobile deal banner: the art now uses `resizeMode: 'contain'` (the default would crop it);
-  - web deal banner: the art keeps its proportions instead of a forced 72×72.
+  - web deal banner: the art keeps its proportions instead of a forced 72Ã—72.
 - **Landing:** thinking, magnifier, surprised and celebrating are generated as WebP (87-149 KB)
   and registered in `landingImages`. They are **not placed** in any section yet; that would be a
   landing design change. Two landing poses are still missing (phone / alert, planning).
@@ -247,8 +287,8 @@ sweep and an interaction profile, then fixed what was measured:
   in-page links, so anchors stay exact.
 - **Target size:** the consent checkbox is now 24 px.
 
-**Results (real-throttled mobile):** Performance 91 → 96, LCP 2.4 → 2.1 s, TBT 220 → 100 ms, CLS 0.
-Best Practices is 100. There's no overflow at any width, and every interaction is ≤ 152 ms at 4×
+**Results (real-throttled mobile):** Performance 91 â†’ 96, LCP 2.4 â†’ 2.1 s, TBT 220 â†’ 100 ms, CLS 0.
+Best Practices is 100. There's no overflow at any width, and every interaction is â‰¤ 152 ms at 4Ã—
 CPU. Reduced motion is unaffected.
 
 Verified: landing check 254/254, monorepo 58/58. Details:
@@ -260,7 +300,7 @@ Verified: landing check 254/254, monorepo 58/58. Details:
 - **Public origin:** canonical, sitemap, robots allow-list and structured data
   (Organization / WebSite / FAQPage mirroring the page) only when `SITE_URL` is set. Without it:
   noindex, block-all robots, an empty sitemap, no structured data.
-- **Social image:** a 1200×630 PNG prerendered at build, from approved brand art and the hero's
+- **Social image:** a 1200Ã—630 PNG prerendered at build, from approved brand art and the hero's
   words, in Inter.
 - **Build cache:** `apps/web/turbo.json` now declares the web's build-time variables (`SITE_URL`,
   `CONTACT_EMAIL`, store URLs). Turbo's strict mode could otherwise drop them or reuse a build
@@ -377,8 +417,8 @@ browser check (198/198, with the demo checks). Details:
 
 ### Step 62 - Landing 15: interactive Hunt demo
 
-"Try a sample Hunt" is now interactive, built on the step 61 model: product → Hunt → scan → deal.
-- **On screen:** progress, Back / Start over, and the always-visible "Illustrative demo — not live
+"Try a sample Hunt" is now interactive, built on the step 61 model: product â†’ Hunt â†’ scan â†’ deal.
+- **On screen:** progress, Back / Start over, and the always-visible "Illustrative demo â€” not live
   listings" label.
 - **Accessibility:** focus moves to each new heading, and the scan is announced politely.
 - **Speed:** about 2 s per scan, deterministic, with an instant result under reduced motion or Skip.
@@ -389,8 +429,8 @@ Verified: web tests 142/142, typecheck, lint, build; landing browser check 198/1
 
 Typed fixtures for three products (iPhone 13 Pro, PlayStation 5, MacBook Air M2): made-up
 listings, illustrative resale estimates per condition, and explicit "demo / estimate / gross - not
-profit" disclaimers. A pure finite-state model drives it: choose → configure → scan → candidate
-(or no match) → evaluation. There is no network, AI, clock or randomness, and no UI yet
+profit" disclaimers. A pure finite-state model drives it: choose â†’ configure â†’ scan â†’ candidate
+(or no match) â†’ evaluation. There is no network, AI, clock or randomness, and no UI yet
 (Landing 15). Verified: 41 new tests (and a mutation check), web 136/136, typecheck, lint and
 build. Details: [LANDING_BUILD_STATUS.md](LANDING_BUILD_STATUS.md).
 
@@ -1113,7 +1153,7 @@ Rules in [decision 0009](decisions/0009-source-health.md).
   lines and marketplace rows never say "OK" while a source is degraded; deals say updates may be
   late.
 - Web + mobile: the source banner on Home, Hunts and Deals; Hunt detail rows show "Slow right
-  now" / "Not responding · tries again in 4 min".
+  now" / "Not responding Â· tries again in 4 min".
 
 **What works (verified)**
 
@@ -1366,8 +1406,8 @@ Backend only; the inventory and sale screens are Build Prompt 29. Rules in
   `GET /hunts/:id/activity` (404 for another user's hunt). "Scanning" = LIVE and at least one
   enabled marketplace never checked.
 - client-core `hunt-view.ts`: status labels (LIVE shown as "Active"), list tabs (All / Active /
-  Paused / Draft / Archived; All hides archived), monitoring line ("Watching · last checked 5 min
-  ago", "Checking eBay and Facebook Marketplace for the first time…", failing sources), counts
+  Paused / Draft / Archived; All hides archived), monitoring line ("Watching Â· last checked 5 min
+  ago", "Checking eBay and Facebook Marketplace for the first timeâ€¦", failing sources), counts
   line, per-marketplace rows, criteria (same sentence as the Create review), actions per state
   (Draft: Start watching / Edit / Archive; Active: Pause / Edit / Archive; Paused: Resume / Edit /
   Archive; Archived: Restore only), confirmation copy, history labels, `huntFormValues` +
@@ -2434,7 +2474,7 @@ exactly five questions; the gate is not one of them.
     orange bar + bold label; Create = navy focus-style ring. `/hunts/new` activates Create, not Hunts.
   - Accessibility: skip link, single `<main id="main-content">`, labelled `nav` landmarks (only one
     visible/in the a11y tree at a time), text labels on every icon, 48px targets, focus-visible
-    outlines, per-page `<title>` (`%s · Rein Drop`) for route announcements.
+    outlines, per-page `<title>` (`%s Â· Rein Drop`) for route announcements.
 - UI: `ButtonLink` primitive; `Page` no longer renders `<main>` (layouts own the landmark).
 - Icons: `lucide-react` (generic UI icons). Vitest added to web.
 

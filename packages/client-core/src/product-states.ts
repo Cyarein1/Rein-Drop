@@ -117,7 +117,10 @@ export function dealsWaitingState(
 // After-hours / reduced monitoring (placeholder: the API reports 'normal' until D22 / D7)
 // ---------------------------------------------------------------------------
 
-export function reducedMonitoringState(monitoring: Home['monitoring'], now: Date, ctx: { localeTag: string }): ProductStateView | null {
+/** Where a view is shown: the full web app, or a mobile companion app (no selling - decision 0018). */
+export type Surface = 'web' | 'companion';
+
+export function reducedMonitoringState(monitoring: Home['monitoring'], now: Date, ctx: { localeTag: string }, surface: Surface = 'web'): ProductStateView | null {
   if (monitoring.mode !== 'reduced') return null;
   let resumes: string | null = null;
   if (monitoring.resumesAt) {
@@ -130,13 +133,19 @@ export function reducedMonitoringState(monitoring: Home['monitoring'], now: Date
   const cadence = monitoring.checksEveryMinutes ? `every ${monitoring.checksEveryMinutes} min` : 'less often';
   return {
     state: 'reducedMonitoring',
-    title: monitoring.reason === 'plan_cadence' ? 'Checking at your plan’s pace' : 'Quiet hours - checking less often',
+    title:
+      monitoring.reason === 'plan_cadence'
+        ? surface === 'companion'
+          ? 'Checking at your access’s pace'
+          : 'Checking at your plan’s pace'
+        : 'Quiet hours - checking less often',
     body:
       monitoring.reason === 'plan_cadence'
-        ? `Your plan checks marketplaces ${cadence}. Strong deals still reach you as soon as they're found.`
+        ? `${surface === 'companion' ? 'Your current access checks' : 'Your plan checks'} marketplaces ${cadence}. Strong deals still reach you as soon as they're found.`
         : `Rein Drop checks ${cadence} overnight${resumes ? ` and goes back to normal at ${resumes}` : ''}. Strong deals still reach you as soon as they're found.`,
     details: [],
-    actions: monitoring.reason === 'plan_cadence' ? [{ label: 'See plans', path: '/settings', variant: 'secondary' }] : [],
+    // The companion apps never point to plans (decision 0018).
+    actions: monitoring.reason === 'plan_cadence' && surface === 'web' ? [{ label: 'See plans', path: '/settings', variant: 'secondary' }] : [],
     live: false,
   };
 }
@@ -149,16 +158,32 @@ export function reducedMonitoringState(monitoring: Home['monitoring'], now: Date
  * At the plan's live-Hunt limit with drafts waiting (Screenbook frame 33 "Limit reached: draft
  * preserved, pause Hunt or upgrade"). Null when there's room or nothing waiting.
  */
-export function planLimitState(entitlements: Pick<EntitlementEvaluation, 'usage' | 'remaining' | 'entitlements'>, hunts: readonly Pick<Hunt, 'id' | 'name' | 'status'>[]): ProductStateView | null {
+export function planLimitState(
+  entitlements: Pick<EntitlementEvaluation, 'usage' | 'remaining' | 'entitlements'>,
+  hunts: readonly Pick<Hunt, 'id' | 'name' | 'status'>[],
+  surface: Surface = 'web',
+): ProductStateView | null {
   const limit = entitlements.entitlements.activeHunts.limit;
   const drafts = hunts.filter((h) => h.status === 'DRAFT');
   const live = hunts.filter((h) => h.status === 'LIVE');
   if (limit === null || entitlements.remaining.activeHunts !== 0 || drafts.length === 0 || live.length === 0) return null;
   const first = drafts[0]!;
+  const waiting = `${drafts.length === 1 ? `"${first.name}" is` : `${drafts.length} drafts are`} saved and ready. Pause ${live.length === 1 ? `"${live[0]!.name}"` : 'a live Hunt'} to watch ${drafts.length === 1 ? 'it' : 'one'} instead`;
+  if (surface === 'companion') {
+    // Decision 0018: neutral "current access" wording, only actions inside that access.
+    return {
+      state: 'suggestion',
+      title: `Your current access watches ${limit} ${limit === 1 ? 'Hunt' : 'Hunts'} at a time`,
+      body: `${waiting}. Nothing is lost.`,
+      details: [],
+      actions: [{ label: 'Manage live Hunts', path: '/hunts?status=LIVE', variant: 'primary' }],
+      live: false,
+    };
+  }
   return {
     state: 'suggestion',
     title: `Your plan watches ${limit} ${limit === 1 ? 'Hunt' : 'Hunts'} at a time`,
-    body: `${drafts.length === 1 ? `"${first.name}" is` : `${drafts.length} drafts are`} saved and ready. Pause ${live.length === 1 ? `"${live[0]!.name}"` : 'a live Hunt'} to watch ${drafts.length === 1 ? 'it' : 'one'} instead, or upgrade to watch more. Nothing is lost either way.`,
+    body: `${waiting}, or upgrade to watch more. Nothing is lost either way.`,
     details: [],
     actions: [
       { label: 'See options', path: `/hunts/${first.id}/start`, variant: 'primary' },

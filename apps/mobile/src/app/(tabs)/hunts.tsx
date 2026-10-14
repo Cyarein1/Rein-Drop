@@ -46,7 +46,7 @@ export default function HuntsScreen() {
           status: 'ready',
           hunts: page.items,
           activity: new Map(activity.map((a) => [a.huntId, a])),
-          suggestion: entitlements ? planLimitState(entitlements, page.items) : null,
+          suggestion: entitlements ? planLimitState(entitlements, page.items, 'companion') : null,
         }),
       (err: unknown) => !cancelled && setState({ status: 'error', message: err instanceof Error ? err.message : String(err) }),
     );

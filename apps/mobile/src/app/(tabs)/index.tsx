@@ -109,7 +109,7 @@ export default function HomeScreen() {
   const { home, loadedAt } = state;
   const anyHunts = home.hunts.live + home.hunts.paused + home.hunts.drafts > 0;
   const rec = home.recommendation;
-  const reduced = reducedMonitoringState(home.monitoring, loadedAt, context);
+  const reduced = reducedMonitoringState(home.monitoring, loadedAt, context, 'companion');
 
   // Brand-new account: one welcoming step, not five empty sections.
   if (!anyHunts) {

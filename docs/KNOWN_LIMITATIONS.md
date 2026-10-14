@@ -34,7 +34,7 @@ Each has the backlog item (B-xx, [POST_MVP_BACKLOG.md](POST_MVP_BACKLOG.md)) or 
 
 **Plans and billing**
 - Plan limits and prices are placeholders until D3; paid plans show "Price TBD" when no price is set.
-- Paid plans are bought on the **web** only; the mobile app sells nothing (D2, B-14). Invoices and
+- Paid plans are bought and managed on the **web** only. The mobile apps are companions that don't mention buying at all: no prices, plan picker or "subscribe on the web"; limits are explained as "your current access" (decision 0018, step 77). Store-compliance review before public release (phase E). Invoices and
   receipts are Stripe's (Customer Portal).
 - After a downgrade, the most recently started Hunts above the new limit are paused automatically
   (nothing is deleted); you can't choose which stay live yet (B-15).
