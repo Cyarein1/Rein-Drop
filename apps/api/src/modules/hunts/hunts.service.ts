@@ -24,7 +24,9 @@ import {
   AppException,
   ValidationFailedException,
 } from '../../common/errors/app.exception.js';
+import { API_CONFIG, type ApiConfig } from '../../config/api-config.js';
 import { PRISMA } from '../../database/database.module.js';
+import { AccessService } from '../access/access.service.js';
 import { GeoService } from '../geo/geo.service.js';
 import { PlansService } from '../plans/plans.service.js';
 import { PRODUCT_EVENTS } from '../telemetry/telemetry.tokens.js';
@@ -66,6 +68,8 @@ export class HuntsService {
     private readonly plans: PlansService,
     @Inject(PRODUCT_EVENTS) private readonly productEvents: ProductEvents,
     private readonly geo: GeoService,
+    private readonly access: AccessService,
+    @Inject(API_CONFIG) private readonly config: ApiConfig,
   ) {}
 
   /** Newest first. Without a status filter, archived hunts are left out. */
@@ -98,6 +102,9 @@ export class HuntsService {
     const location = await this.geo.withPoint(request.location, userId);
     const criteria: HuntCriteria = { ...request, location, name: request.name ?? defaultHuntName(request.query) };
     const hunt = await this.prisma.$transaction(async (tx) => {
+      // Same per-user lock as go-live: two concurrent creates can't both pass the saved-Hunt limit.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
+      await this.access.assertCanSaveHunt(userId, tx);
       const marketplaceIds = await this.resolveMarketplaces(tx, criteria.marketplaces);
       const row = await tx.hunt.create({
         data: {
@@ -127,6 +134,7 @@ export class HuntsService {
     // Placed before the transaction (a network call must not hold a database transaction open).
     if (request.location !== undefined) request = { ...request, location: await this.geo.withPoint(request.location, userId) };
     return this.prisma.$transaction(async (tx) => {
+      await this.access.assertNotSuspended(userId, tx);
       const row = await this.findOwned(tx, userId, huntId);
       if (row.status === 'ARCHIVED') {
         throw new AppException('CONFLICT', 'Archived hunts cannot be edited', HttpStatus.CONFLICT);
@@ -190,6 +198,9 @@ export class HuntsService {
         );
       }
       const to = action === 'restore' ? await this.statusBeforeArchive(tx, row.id) : HUNT_TRANSITIONS[action].to;
+      // Pause / archive always work (they only reduce usage); anything that adds usage needs access.
+      if (action === 'restore') await this.access.assertCanSaveHunt(userId, tx);
+      else if (to === 'LIVE') await this.access.assertNotSuspended(userId, tx);
       if (to === 'LIVE') {
         // Serialize go-live per user so two concurrent activations cannot both pass the limit.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
@@ -237,7 +248,7 @@ export class HuntsService {
    */
   async enforcePlanLimit(userId: string): Promise<string[]> {
     // Shared with the worker's scheduled access sweep (@rein-drop/access, decision 0018).
-    return enforceActiveHuntLimit(this.prisma, userId);
+    return enforceActiveHuntLimit(this.prisma, userId, new Date(), this.config.accessPolicy);
   }
 
   /** Preview: could this hunt go live now, and if not, why (same rules as activation). */

@@ -10,6 +10,12 @@ export const API_ERROR_CODES = [
   'CONFLICT',
   /** A hunt cannot go live (plan limits or readiness) - see `activationBlock`. HTTP 409. */
   'ACTIVATION_BLOCKED',
+  /** The account's access is suspended by Rein Drop (decision 0018). HTTP 403. Data is kept. */
+  'ACCOUNT_SUSPENDED',
+  /** The operation belongs to a product the account doesn't have (e.g. Sell). HTTP 403. */
+  'PRODUCT_NOT_INCLUDED',
+  /** A plan limit other than live Hunts was reached (e.g. saved Hunts). HTTP 409. */
+  'LIMIT_REACHED',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
   'NOT_IMPLEMENTED',

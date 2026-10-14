@@ -61,7 +61,7 @@ function createProductEvents(c: WorkerConfig): ProductEvents {
       provide: HuntScheduler,
       inject: [PRISMA, JOB_QUEUE, WORKER_CONFIG, SourceHealthStore, CLOCK],
       useFactory: (p: PrismaClient, q: JobQueue, c: WorkerConfig, health: SourceHealthStore, clock: Clock) =>
-        new HuntScheduler(p, q, { pollIntervalMs: c.pipeline.pollIntervalMs, maxAttempts: c.pipeline.maxAttempts, batchSize: 200, health }, clock),
+        new HuntScheduler(p, q, { pollIntervalMs: c.pipeline.pollIntervalMs, maxAttempts: c.pipeline.maxAttempts, batchSize: 200, health, accessPolicy: c.accessPolicy }, clock),
     },
     {
       provide: SourceHealthStore,

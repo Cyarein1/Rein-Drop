@@ -27,6 +27,7 @@ describe('loadWorkerConfig', () => {
       facebookApify: null,
       productEvents: 'log',
       geo: { provider: 'mock', azure: null },
+      accessPolicy: { graceDays: 0 },
     });
   });
 

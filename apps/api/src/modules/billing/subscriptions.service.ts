@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { currentSubscriptionWhere, ENTITLED_STATUSES as SHARED_ENTITLED_STATUSES } from '@rein-drop/access';
+import { currentSubscriptionWhere, effectivePlanId, ENTITLED_STATUSES as SHARED_ENTITLED_STATUSES } from '@rein-drop/access';
 import type { SubscriptionSummary } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient, SubscriptionStatus } from '@rein-drop/db';
 import type { ProductEvents } from '@rein-drop/telemetry';
@@ -38,12 +38,9 @@ export class SubscriptionsService {
 
   /** Plan id of the user's current subscription, or null (= free plan). */
   async activePlanId(userId: string, db: Db = this.prisma): Promise<string | null> {
-    const subscription = await db.subscription.findFirst({
-      where: CURRENT_WHERE(userId),
-      orderBy: { createdAt: 'desc' },
-      select: { planId: true },
-    });
-    return subscription?.planId ?? null;
+    // The shared resolver (decision 0018): current paid / trial / grace subscription's Source plan,
+    // else Free. Null only when the account is suspended or plans aren't seeded.
+    return effectivePlanId(db, userId, new Date(), this.config.accessPolicy);
   }
 
   /** The user's current subscription, or null when they have not chosen a plan yet. */

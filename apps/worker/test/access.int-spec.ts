@@ -97,6 +97,24 @@ describe('server-side access lifecycle (integration, real database)', () => {
     expect(await statuses(hunts)).toEqual(['LIVE', 'PAUSED', 'PAUSED']);
   });
 
+  it('a suspended account: every LIVE Hunt pauses (even within limits), recorded as account_suspended; data kept', async () => {
+    const { userId, hunts } = await owner({ status: 'ACTIVE' });
+    await prisma.user.update({ where: { id: userId }, data: { accessSuspendedAt: now, accessSuspendedReason: 'test' } });
+    await sweepActiveHuntLimits(prisma, now, [userId]);
+    expect(await statuses(hunts)).toEqual(['PAUSED', 'PAUSED', 'PAUSED']);
+    const events = await prisma.huntEvent.findMany({ where: { huntId: { in: hunts }, type: 'PAUSED' } });
+    expect(events.map((e) => (e.changes as { reason: string }).reason)).toEqual(['account_suspended', 'account_suspended', 'account_suspended']);
+    expect(await prisma.hunt.count({ where: { userId } })).toBe(3);
+  });
+
+  it('grace period (when configured) keeps paid monitoring until it ends, then pauses the extras', async () => {
+    const { userId, hunts } = await owner({ status: 'ACTIVE', periodEnd: new Date(now.getTime() - DAY) });
+    await sweepActiveHuntLimits(prisma, now, [userId], { graceDays: 3 });
+    expect(await statuses(hunts)).toEqual(['LIVE', 'LIVE', 'LIVE']);
+    await sweepActiveHuntLimits(prisma, new Date(now.getTime() + 3 * DAY), [userId], { graceDays: 3 });
+    expect(await statuses(hunts)).toEqual(['LIVE', 'PAUSED', 'PAUSED']);
+  });
+
   it('the scheduler sweeps before planning: Hunts without access are never monitored', async () => {
     const { userId, hunts } = await owner({ status: 'UNPAID' });
     const scheduler = new HuntScheduler(prisma, new PostgresJobQueue(prisma, () => now), { pollIntervalMs: 15 * 60_000, maxAttempts: 3, batchSize: 50, queue: TAG, onlyUserIds: [userId] }, () => now);

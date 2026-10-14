@@ -23,6 +23,7 @@ import {
   resolveDatabaseUrl,
   type NodeEnv,
 } from '@rein-drop/env';
+import type { AccessPolicy } from '@rein-drop/access';
 import { geoEnvShape, resolveGeoConfig, type GeoConfig } from '@rein-drop/geo';
 import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 
@@ -63,6 +64,8 @@ const apiEnvSchema = z.object({
   ...productEventsEnvShape,
   // Geocoding / maps (decision 0017): mock (development) | azure | none (production default).
   ...geoEnvShape,
+  /** Days of continued access after paid access ends involuntarily (decision 0018). 0 = no grace. */
+  BILLING_GRACE_DAYS: intSchema({ min: 0, max: 30, default: 0 }),
   /** Rollout flags that are ON, comma-separated (decision 0018), e.g. "hunts.hot". Default: none. */
   FEATURE_FLAGS: z
     .string()
@@ -97,6 +100,8 @@ export interface ApiConfig {
   readonly productEvents: ProductEventProviderId;
   /** Geocoder for suggestions, areas and Hunt locations (holds the Azure Maps key - never log it). */
   readonly geo: GeoConfig;
+  /** Effective-access policy shared by API and worker (@rein-drop/access). */
+  readonly accessPolicy: AccessPolicy;
   /** Rollout flags that are on (platform capabilities, decision 0018). */
   readonly featureFlags: readonly FeatureFlag[];
 }
@@ -162,6 +167,7 @@ export function loadApiConfig(
     facebookApify: facebook.apify ? Object.freeze(facebook.apify) : null,
     productEvents: resolveProductEventProviderId(parsed),
     geo: Object.freeze({ provider: geo.geo.provider, azure: geo.geo.azure ? Object.freeze(geo.geo.azure) : null }),
+    accessPolicy: Object.freeze({ graceDays: parsed.BILLING_GRACE_DAYS }),
     featureFlags: Object.freeze([...new Set(parsed.FEATURE_FLAGS ?? [])]),
   });
 }

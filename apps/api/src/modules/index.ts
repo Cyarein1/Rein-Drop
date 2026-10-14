@@ -1,4 +1,5 @@
 import { UsersModule } from './users/users.module.js';
+import { AccessModule } from './access/access.module.js';
 import { GeoModule } from './geo/geo.module.js';
 import { SellerProfileModule } from './seller-profile/seller-profile.module.js';
 import { HuntsModule } from './hunts/hunts.module.js';
@@ -24,6 +25,8 @@ export const DOMAIN_MODULES = [
   // Cross-cutting (global, no tables): product events recorded by the modules below.
   TelemetryModule,
   UsersModule,
+  // Effective access per product (global: Hunts and the product guard use it).
+  AccessModule,
   // Places, "Your area" and map tiles (global: Hunts place locations on save).
   GeoModule,
   SellerProfileModule,

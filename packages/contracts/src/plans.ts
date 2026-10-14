@@ -14,6 +14,10 @@ import { huntLiveReadinessProblems, huntPrioritySchema, type HuntPriority, type 
 export const ENTITLEMENT_KEYS = {
   /** limit = max LIVE hunts (null = unlimited). */
   activeHuntsMax: 'hunts.active.max',
+  /** limit = max saved (non-archived) Hunts: drafts, live and paused (null = unlimited; no row = unlimited). */
+  savedHuntsMax: 'hunts.saved.max',
+  /** Sell product (Sell / Complete plans): limit = max active listings (null = unlimited). Sell isn't built yet. */
+  sellListingsMax: 'sell.listings.max',
   /** One row per allowed marketplace: `marketplace.<key>`. */
   marketplacePrefix: 'marketplace.',
   /** limit 1 = Hot Hunts available on this plan (future feature flag). */
@@ -28,8 +32,18 @@ export const ENTITLEMENT_KEYS = {
   seatsMax: 'seats.max',
 } as const;
 
+/** Rein Drop products (decision 0018). A plan's family says which products it grants. */
+export const PRODUCT_FAMILIES = ['SOURCE', 'SELL', 'COMPLETE'] as const;
+export type ProductFamily = (typeof PRODUCT_FAMILIES)[number];
+export const PRODUCTS = ['source', 'sell'] as const;
+export type Product = (typeof PRODUCTS)[number];
+/** Which plan families grant a product: Complete grants both. */
+export const FAMILIES_GRANTING: Record<Product, readonly ProductFamily[]> = { source: ['SOURCE', 'COMPLETE'], sell: ['SELL', 'COMPLETE'] };
+
 export const planEntitlementsSchema = z.object({
   activeHunts: z.object({ limit: z.number().int().min(0).nullable() }),
+  /** Saved (non-archived) Hunts. Null = unlimited. */
+  savedHunts: z.object({ limit: z.number().int().min(0).nullable() }),
   marketplaces: z.array(marketplaceKeySchema),
   /** Hot Hunts are a future feature: `available` stays false until they ship. */
   hotHunts: z.object({ available: z.boolean(), limit: z.number().int().min(0).nullable() }),
@@ -60,6 +74,7 @@ export type PlanPricing = z.infer<typeof planPricingSchema>;
 export const planSchema = z.object({
   code: z.string(),
   name: z.string(),
+  family: z.enum(PRODUCT_FAMILIES),
   pricing: planPricingSchema,
   /** False while limits are placeholders. */
   limitsFinal: z.boolean(),
@@ -130,6 +145,74 @@ export const devBillingConfirmResponseSchema = z.object({ subscription: subscrip
 export type DevBillingConfirmResponse = z.infer<typeof devBillingConfirmResponseSchema>;
 
 /** `GET /me/entitlements` - the caller's plan, what it allows, and current usage. */
+// ---------------------------------------------------------------------------
+// Effective access (decision 0018) - GET /me/access
+// ---------------------------------------------------------------------------
+
+/**
+ * Effective access state of one product for the account (rules: docs/strategy/ACCESS_RULES.md):
+ * - free           Source at the Free plan (no paid subscription).
+ * - active / trialing   paid and current.
+ * - past_due       renewal failed, the provider is retrying - access kept (D36).
+ * - grace_period   paid access ended (not by the user's own cancellation) - kept for the configured
+ *                  grace days (default 0 = no grace).
+ * - canceled       the user's cancellation took effect (a scheduled one keeps access until then).
+ * - expired        paid access ended (retries exhausted, period over, ended at the provider).
+ * - suspended      access revoked by Rein Drop - nothing runs; data kept.
+ * - none           no access to this product (e.g. Sell without a Sell / Complete plan).
+ */
+export const ACCESS_STATES = ['free', 'active', 'trialing', 'past_due', 'grace_period', 'canceled', 'expired', 'suspended', 'none'] as const;
+export type AccessState = (typeof ACCESS_STATES)[number];
+
+const usageLimitSchema = z.object({
+  /** Null = unlimited. */
+  limit: z.number().int().min(0).nullable(),
+  used: z.number().int().min(0),
+  /** Null = unlimited. */
+  remaining: z.number().int().min(0).nullable(),
+});
+
+const productAccessBase = {
+  state: z.enum(ACCESS_STATES),
+  /** The product's features are usable right now (free counts for Source). */
+  hasAccess: z.boolean(),
+  /** Access comes from a paid (or trial) subscription. */
+  paid: z.boolean(),
+  plan: z.object({ code: z.string(), name: z.string(), family: z.enum(PRODUCT_FAMILIES) }).nullable(),
+  /** End of the current paid period, if any. */
+  periodEndsAt: isoDateTimeSchema.nullable(),
+  /** A cancellation is scheduled for periodEndsAt (access continues until then). */
+  cancelsAtPeriodEnd: z.boolean(),
+  /** When a grace period ends (state grace_period). */
+  graceEndsAt: isoDateTimeSchema.nullable(),
+};
+
+export const accessResponseSchema = z.object({
+  /** Access revoked by Rein Drop: every product is suspended; data is kept. */
+  suspended: z.boolean(),
+  products: z.object({
+    source: z.object({
+      ...productAccessBase,
+      limits: z.object({
+        activeHunts: usageLimitSchema,
+        savedHunts: usageLimitSchema,
+        marketplaces: z.array(marketplaceKeySchema),
+        monitoringPriority: huntPrioritySchema,
+        hotHunts: z.object({ available: z.boolean(), limit: z.number().int().min(0).nullable() }),
+        analyticsHistoryDays: z.number().int().min(0).nullable(),
+        seats: z.number().int().min(1),
+      }),
+    }),
+    sell: z.object({
+      ...productAccessBase,
+      /** Null while the account has no Sell access. Sell isn't built yet. */
+      limits: z.object({ listings: z.object({ limit: z.number().int().min(0).nullable() }) }).nullable(),
+    }),
+  }),
+});
+export type AccessResponse = z.infer<typeof accessResponseSchema>;
+export type ProductAccess = AccessResponse['products']['source'] | AccessResponse['products']['sell'];
+
 export const entitlementEvaluationSchema = z.object({
   /** Null = the user has not chosen a plan yet (they are on Free by default). */
   subscription: subscriptionSummarySchema.nullable(),

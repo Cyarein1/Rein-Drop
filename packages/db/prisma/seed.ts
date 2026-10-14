@@ -33,16 +33,23 @@ const PLAN_CATALOGUE: {
   isFree: boolean;
   sortOrder: number;
   limitsFinal: boolean;
+  /** Product family (decision 0018). */
+  family: 'SOURCE' | 'SELL' | 'COMPLETE';
+  /** False = configured but not offered and not grantable (Sell isn't built yet). */
+  isActive: boolean;
   entitlements: EntitlementSeed[];
 }[] = [
   {
     code: 'free',
+    family: 'SOURCE',
+    isActive: true,
     name: 'Free',
     isFree: true,
     sortOrder: 0,
     limitsFinal: false,
     entitlements: [
       { key: K.activeHuntsMax, limit: 1 }, // PLACEHOLDER
+      { key: K.savedHuntsMax, limit: 10 }, // PLACEHOLDER (drafts + live + paused)
       { key: `${K.marketplacePrefix}ebay`, limit: null },
       { key: `${K.marketplacePrefix}facebook`, limit: null },
       { key: K.hotHuntsEnabled, limit: 0 }, // future feature: off
@@ -54,12 +61,15 @@ const PLAN_CATALOGUE: {
   },
   {
     code: 'pro',
+    family: 'SOURCE',
+    isActive: true,
     name: 'Pro',
     isFree: false,
     sortOrder: 1,
     limitsFinal: false,
     entitlements: [
       { key: K.activeHuntsMax, limit: 10 }, // PLACEHOLDER
+      { key: K.savedHuntsMax, limit: 100 }, // PLACEHOLDER
       { key: `${K.marketplacePrefix}ebay`, limit: null },
       { key: `${K.marketplacePrefix}facebook`, limit: null },
       { key: K.hotHuntsEnabled, limit: 0 }, // future feature: off
@@ -71,12 +81,15 @@ const PLAN_CATALOGUE: {
   },
   {
     code: 'ultimate',
+    family: 'SOURCE',
+    isActive: true,
     name: 'Ultimate',
     isFree: false,
     sortOrder: 2,
     limitsFinal: false,
     entitlements: [
       { key: K.activeHuntsMax, limit: 25 }, // PLACEHOLDER
+      { key: K.savedHuntsMax, limit: null }, // PLACEHOLDER (unlimited)
       { key: `${K.marketplacePrefix}ebay`, limit: null },
       { key: `${K.marketplacePrefix}facebook`, limit: null },
       { key: K.hotHuntsEnabled, limit: 0 }, // future feature: off
@@ -84,6 +97,42 @@ const PLAN_CATALOGUE: {
       { key: K.monitoringPriority, limit: null, value: 'NORMAL' },
       { key: K.analyticsHistoryDays, limit: null }, // PLACEHOLDER (full history)
       { key: K.seatsMax, limit: 3 }, // PLACEHOLDER (teams are roadmap)
+    ],
+  },
+  // Sell and Complete (decision 0018): configured so the entitlement model is complete, but INACTIVE -
+  // not offered, not grantable, never exposed until the Sell workspace exists (backlog B-04).
+  {
+    code: 'sell',
+    name: 'Sell',
+    isFree: false,
+    sortOrder: 10,
+    limitsFinal: false,
+    family: 'SELL',
+    isActive: false,
+    entitlements: [
+      { key: K.sellListingsMax, limit: 100 }, // PLACEHOLDER
+      { key: K.seatsMax, limit: 1 },
+    ],
+  },
+  {
+    code: 'complete',
+    name: 'Complete',
+    isFree: false,
+    sortOrder: 20,
+    limitsFinal: false,
+    family: 'COMPLETE',
+    isActive: false,
+    entitlements: [
+      { key: K.activeHuntsMax, limit: 25 }, // PLACEHOLDER - Source part
+      { key: K.savedHuntsMax, limit: null },
+      { key: `${K.marketplacePrefix}ebay`, limit: null },
+      { key: `${K.marketplacePrefix}facebook`, limit: null },
+      { key: K.hotHuntsEnabled, limit: 0 },
+      { key: K.hotHuntsMax, limit: 0 },
+      { key: K.monitoringPriority, limit: null, value: 'NORMAL' },
+      { key: K.analyticsHistoryDays, limit: null },
+      { key: K.sellListingsMax, limit: null }, // PLACEHOLDER - Sell part
+      { key: K.seatsMax, limit: 3 },
     ],
   },
 ];
@@ -109,8 +158,8 @@ async function main() {
     for (const { entitlements, ...plan } of PLAN_CATALOGUE) {
       const row = await prisma.plan.upsert({
         where: { code: plan.code },
-        create: { ...plan, isActive: true },
-        update: { ...plan, isActive: true, isDevelopmentOnly: false },
+        create: plan,
+        update: { ...plan, isDevelopmentOnly: false },
       });
       // Make the plan's entitlements exactly match the catalogue (removed keys = not granted).
       await prisma.entitlement.deleteMany({

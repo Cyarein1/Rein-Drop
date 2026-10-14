@@ -4,6 +4,7 @@ import { describeEntitlements, planGateOptions, priceLabel } from './index.js';
 
 const ent = (overrides: Partial<PlanEntitlements> = {}): PlanEntitlements => ({
   activeHunts: { limit: 1 },
+  savedHunts: { limit: 10 },
   marketplaces: ['ebay', 'facebook'],
   hotHunts: { available: false, limit: 0 },
   monitoringPriority: 'NORMAL',
@@ -14,6 +15,7 @@ const ent = (overrides: Partial<PlanEntitlements> = {}): PlanEntitlements => ({
 const plan = (code: string, entitlements: PlanEntitlements, free = false): Plan => ({
   code,
   name: code,
+  family: 'SOURCE',
   pricing: free ? { status: 'free' } : { status: 'tbd' },
   limitsFinal: false,
   entitlements,

@@ -287,10 +287,11 @@ implementation slots into D.
 - [x] Central platform capability list + `GET /me/capabilities` + rollout flags (`FEATURE_FLAGS`) - step 78.
 
 **Phase D - product families and flags**
-- [ ] `Plan.family` (SOURCE / SELL / COMPLETE), additive migration, seed.
-- [ ] Family-scoped entitlement keys with backwards-compatible aliases.
+- [x] `Plan.family` (SOURCE / SELL / COMPLETE), additive migration, seed - step 79.
+- [x] Product-scoped access (Source / Sell resolved per family) + new keys `hunts.saved.max`, `sell.listings.max`; existing keys unchanged - step 79.
 - [x] Server-driven features endpoint (`GET /me/capabilities`, step 78). Unfinished features have no endpoints to refuse.
-- [ ] Clients hide flagged features (no Sell UI anywhere).
+- [x] Clients hide flagged features (no Sell UI anywhere) - step 78.
+- [x] Access states (trial, grace, past due, canceled, expired, suspended), `GET /me/access`, backend enforcement incl. `@RequiresProduct('sell')` - step 79.
 
 **Phase E - compliance and launch**
 - [ ] Store-review notes (Apple, Google, regional) - no exemption assumed.

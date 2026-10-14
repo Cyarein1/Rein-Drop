@@ -20,6 +20,8 @@ export function toEntitlements(rows: readonly EntitlementRow[]): PlanEntitlement
 
   return {
     activeHunts: { limit: active ? active.limit : 0 },
+    // No row = unlimited (fails open): plans seeded before this limit existed keep saving drafts.
+    savedHunts: { limit: get(K.savedHuntsMax)?.limit ?? null },
     marketplaces: rows
       .filter((r) => r.key.startsWith(K.marketplacePrefix))
       .map((r) => r.key.slice(K.marketplacePrefix.length))
@@ -39,6 +41,7 @@ export function toPlan(row: PlanRow, pricing: PlanPricing = { status: 'tbd' }): 
   return {
     code: row.code,
     name: row.name,
+    family: row.family,
     pricing: row.isFree ? { status: 'free' } : pricing,
     limitsFinal: row.limitsFinal,
     entitlements: toEntitlements(row.entitlements),

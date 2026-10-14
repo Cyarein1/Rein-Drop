@@ -158,6 +158,13 @@ enum JobStatus {
   DEAD
 }
 
+/// Rein Drop products a plan grants (decision 0018). COMPLETE = Source + Sell.
+enum ProductFamily {
+  SOURCE
+  SELL
+  COMPLETE
+}
+
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
@@ -214,6 +221,10 @@ model User {
   areaLng        Float?
   areaPostalCode String?
   areaUpdatedAt  DateTime? @db.Timestamptz(3)
+  /// Access suspended / revoked by Rein Drop (abuse, fraud, chargeback - decision 0018). While set, no
+  /// paid or free processing runs and protected operations are refused; data is kept (retention).
+  accessSuspendedAt     DateTime? @db.Timestamptz(3)
+  accessSuspendedReason String?
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
@@ -902,6 +913,8 @@ model Plan {
   sortOrder         Int      @default(0)
   /// False while entitlement limits are placeholders (awaiting cost calculations).
   limitsFinal       Boolean  @default(false)
+  /// Product family (decision 0018): SOURCE plans grant Source, SELL grant Sell, COMPLETE grant both.
+  family            ProductFamily @default(SOURCE)
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @db.Timestamptz(3)
 

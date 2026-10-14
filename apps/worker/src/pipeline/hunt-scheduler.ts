@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { sweepActiveHuntLimits } from '@rein-drop/access';
+import { sweepActiveHuntLimits, type AccessPolicy } from '@rein-drop/access';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
 import type { SourceHealthPort } from '../health/source-health.store.js';
 import type { Clock, JobQueue } from '../queue/job-queue.js';
@@ -22,6 +22,8 @@ export interface HuntSchedulerOptions {
    * billing webhook. Default 5 minutes; 0 = every tick.
    */
   accessSweepIntervalMs?: number;
+  /** Effective-access rules (grace days) - the same policy the API uses. */
+  accessPolicy?: AccessPolicy;
 }
 
 export interface ScheduleSummary {
@@ -58,7 +60,7 @@ export class HuntScheduler {
     // Access first: only Hunts the owner's plan covers right now are scheduled (paused ones aren't LIVE).
     let pausedForAccess = 0;
     if (now.getTime() - this.lastAccessSweep >= (this.options.accessSweepIntervalMs ?? 5 * 60_000)) {
-      const sweep = await sweepActiveHuntLimits(this.prisma, now, this.options.onlyUserIds);
+      const sweep = await sweepActiveHuntLimits(this.prisma, now, this.options.onlyUserIds, this.options.accessPolicy);
       this.lastAccessSweep = now.getTime();
       pausedForAccess = sweep.pausedHuntIds.length;
       if (pausedForAccess > 0) this.logger.log(`Access sweep paused ${pausedForAccess} Hunt(s) above their owner's current plan`);

@@ -38,6 +38,7 @@ describe('loadApiConfig', () => {
       facebookApify: null,
       productEvents: 'log',
       geo: { provider: 'mock', azure: null },
+      accessPolicy: { graceDays: 0 },
       featureFlags: [],
     });
   });
@@ -141,6 +142,7 @@ describe('loadApiConfig', () => {
       facebookApify: null,
       productEvents: 'log',
       geo: { provider: 'mock', azure: null },
+      accessPolicy: { graceDays: 0 },
       featureFlags: [],
     });
   });

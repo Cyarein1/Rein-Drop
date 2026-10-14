@@ -3,6 +3,7 @@ import { apiErrorBodySchema, evaluateActivation, type PlanEntitlements } from '.
 
 const FREE: PlanEntitlements = {
   activeHunts: { limit: 1 },
+  savedHunts: { limit: 10 },
   marketplaces: ['ebay'],
   hotHunts: { available: false, limit: 0 },
   monitoringPriority: 'NORMAL',

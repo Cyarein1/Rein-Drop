@@ -1,13 +1,55 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 78 - platform capabilities, mobile navigation)_
+_Last updated: 2026-10-14 (step 79 - subscriptions and entitlements)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
 
-### Step 78 - Web vs mobile boundaries (decision 0018): platform capabilities, mobile navigation (phase C)
+### Step 79 - Subscriptions and entitlements: Source / Sell / Complete, access states, enforcement (decision 0018, phase D)
+
+Rules, API contract and DB changes: [strategy/ACCESS_RULES.md](strategy/ACCESS_RULES.md).
+Reused the existing pieces: Plan / Entitlement / Subscription, `@rein-drop/access` (step 76),
+plans mapper, Hunt limits and the global-guard pattern.
+
+- **Product families:**
+  - **Migration** `20261014185724_product_families_access_suspension` (additive): `ProductFamily`
+    enum, `Plan.family` default SOURCE, `User.accessSuspendedAt` / `accessSuspendedReason` + CHECK.
+  - **Seed:** `hunts.saved.max` on Free / Pro / Ultimate (10 / 100 / unlimited, PLACEHOLDERS);
+    inactive Sell and Complete plans (Sell isn't built).
+- **Access resolver** (`packages/access`):
+  - pure `evaluateSubscription` (all states) and `resolveProductAccess` per product (newest
+    granting subscription wins; Source falls back to Free);
+  - grace via `BILLING_GRACE_DAYS` (API + worker, 0-30, default 0);
+  - a scheduled cancellation keeps access until the period end; no grace for the user's own
+    cancellation;
+  - suspension overrides everything.
+- **API:**
+  - `GET /me/access` (per-product state, plan, period / cancel / grace dates, limits with
+    usage) - no provider ids, prices or the suspension reason;
+  - `GET /me/entitlements` and activation now resolve through the same rules.
+- **Enforcement:**
+  - create / restore check the saved-Hunt limit (409 `LIMIT_REACHED`) under the per-user lock;
+  - create / edit / activate / resume / restore are refused while suspended (403
+    `ACCOUNT_SUSPENDED`); pause and archive always work;
+  - the worker sweep pauses everything for suspended accounts (`account_suspended`) and respects
+    grace;
+  - new global `ProductAccessGuard` + `@RequiresProduct('sell')` for future Sell routes (403
+    `PRODUCT_NOT_INCLUDED`);
+  - new error codes in contracts.
+- **Contracts:** `PRODUCT_FAMILIES`, `FAMILIES_GRANTING`, `ACCESS_STATES`,
+  `accessResponseSchema`, `Plan.family`, `PlanEntitlements.savedHunts`.
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 66/66 (access rules 15 + guard 3 new);
+- **fresh Postgres** (preview database, migrations + seed applied):
+  - API integration 15 files, 92/92 (new `access.int-spec` 15: every state, Source / Sell /
+    Complete, grace, saved limit, suspension, no secrets, same answer per account);
+  - worker integration 7 files, 55/55 (suspension and grace added).
+
+**Your dev database needs `db:deploy` + `db:seed`.**
+ - Web vs mobile boundaries (decision 0018): platform capabilities, mobile navigation (phase C)
 
 Matrix: [strategy/PLATFORM_FEATURE_MATRIX.md](strategy/PLATFORM_FEATURE_MATRIX.md). Tracker:
 [strategy/WEB_FIRST_COMPANION.md](strategy/WEB_FIRST_COMPANION.md).

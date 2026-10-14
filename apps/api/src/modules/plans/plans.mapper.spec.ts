@@ -19,6 +19,7 @@ describe('toEntitlements', () => {
       ]),
     ).toEqual({
       activeHunts: { limit: 1 },
+      savedHunts: { limit: null }, // no row = unlimited (fails open on purpose - see the mapper)
       marketplaces: ['ebay', 'facebook'],
       hotHunts: { available: false, limit: 0 },
       monitoringPriority: 'NORMAL',
@@ -39,9 +40,14 @@ describe('toEntitlements', () => {
     expect(e.analyticsHistoryDays).toBeNull();
   });
 
+  it('maps the saved-Hunt limit when present', () => {
+    expect(toEntitlements([row(K.savedHuntsMax, 10)]).savedHunts).toEqual({ limit: 10 });
+  });
+
   it('fails closed when rows are missing', () => {
     expect(toEntitlements([])).toEqual({
       activeHunts: { limit: 0 },
+      savedHunts: { limit: null },
       marketplaces: [],
       hotHunts: { available: false, limit: 0 },
       monitoringPriority: 'NORMAL',

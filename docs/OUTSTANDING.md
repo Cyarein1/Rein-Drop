@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 78 (platform capabilities, mobile navigation)._
+_Last updated: 2026-10-14, after step 79 (subscriptions and entitlements: products, access states, enforcement)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -99,7 +99,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Phase B done in step 77 (see Resolved) - check the new mobile Start watching screen, "Your access" card and Hunts-list message on a phone - step 77.
 - `EXPO_PUBLIC_ACCOUNT_SITE` (optional "You can manage your account at {site}" line): decide after the store review whether to turn it on - step 77.
 - Phone check of the step 78 navigation: four tabs, "+" Create in Hunts, bell inbox in Deals, Account tab vs signed-out /settings, notification tap -> deal, old links (/, /analytics, /create) redirecting - step 78.
-- Product families (Source / Sell / Complete) on plans and family-scoped entitlement keys - the rest of phase D - step 78.
+- **Apply step 79 to your development database:** `pnpm --filter @rein-drop/db db:deploy` then `pnpm --filter @rein-drop/db db:seed` (product families, suspension columns, saved-Hunt limits) - step 79.
+- **Billing grace policy (you):** `BILLING_GRACE_DAYS` is 0 (no grace) - decide whether failed renewals / lapsed periods get N days before paid monitoring stops (set the same value for API and worker) - step 79.
+- Suspension has no admin endpoint or UI - support sets `User.accessSuspendedAt` / `accessSuspendedReason` by SQL (ACCESS_RULES.md section 2); add staff tooling with the admin role (backlog B-34) - step 79.
+- Clients still use `GET /me/entitlements` (+ capabilities); move web / mobile to `GET /me/access` (per-product states, saved-Hunt usage) when Sell or the access UI needs it. During a grace period `/me/entitlements` shows the paid plan but a null subscription summary - step 79.
+- Checkout refuses a second paid plan of ANY family (`currentPaid`) - when Sell is sold, allow one paid subscription per product (Source + Sell) or Complete instead - step 79.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
 - Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
 - Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76.
@@ -378,6 +382,7 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
+| Product families (Source / Sell / Complete), access states (trial, grace, past due, canceled, expired, suspended), backend enforcement beyond live Hunts (saved Hunts, suspension, Sell guard), effective-access endpoint (audit G5, G8 partly, G9 partly) | Step 76 audit | Step 79 (ACCESS_RULES.md) |
 | Mobile navigation Home / Hunts / Create / Deals / Analytics with analytics dashboards; mobile Developer card and /dev reachable in release builds (audit G3, G4, G7); no feature-flag mechanism (G6) | Steps 76 audit | Step 78 (capability list + /me/capabilities + FEATURE_FLAGS, tabs Deals / Hunts / Inventory / Account, analytics + Home web-only, dev tools development-only) |
 | Mobile showed prices, a "Choose a plan" picker, "subscribe on the web", "upgrade" / "Choose a bigger plan" / "See plans" and a cancel-plan screen (decision 0018 phase B) | Step 76 audit | Step 77 (companion Start watching, "Your access" card, cancel-plan removed, companion wording, guard test) |
 | Worker monitored any LIVE Hunt regardless of the owner's access; a paid period ending without a webhook (or choosing Free) never paused Hunts above the new limit; Stripe `unpaid` kept access | Found in step 76 audit (decision 0018) | Step 76 (`@rein-drop/access`: scheduler access sweep, Free / dev plan follow-up, `UNPAID` status) |
