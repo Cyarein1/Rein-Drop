@@ -7,7 +7,28 @@ collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
 
-### Step 74 - Hunt location: "Your area", suggestions while typing, interactive map, distance checks
+### Step 75 - Fix: web dev page kept reloading ("Checking your session…")
+
+- **Symptom:** the owner's web dev server (:3000) reloaded the page about once a second, so the
+  session placeholder flashed.
+- **Measured** (headless browser on :3000, read-only): Turbopack sent a `restart` and `HMR hash
+  mismatch` on every connect, the page reloaded, reconnected, and got another restart. No file was
+  changing.
+- **Cause:** the long-running dev server's hot-reload state broke while its config changed under
+  it during step 74:
+  - `next.config.ts` was edited twice;
+  - an agent-run second `next dev` (via the step 74 `NEXT_DIST_DIR` helper) made Next rewrite the
+    shared `apps/web/tsconfig.json`, which was then reverted.
+- **Control:** a fresh dev server on the same code loaded `/home` once and stayed stable for
+  15 seconds. The app code is not at fault.
+- **Fix:**
+  - the `NEXT_DIST_DIR` helper is removed (`next.config.ts`, `.gitignore`);
+  - `tsconfig.json` is restored;
+  - the agent build folder is deleted;
+  - the owner restarts the dev server once (stop `pnpm dev`, then start it again).
+- **From now on:** agent browser checks use a production build (`next start`), never a second
+  `next dev` in this folder.
+ - Hunt location: "Your area", suggestions while typing, interactive map, distance checks
 
 Decision 0017. Built against mocks wherever an owner account is missing; each mock is labelled
 TODO(geo) and listed in OUTSTANDING.

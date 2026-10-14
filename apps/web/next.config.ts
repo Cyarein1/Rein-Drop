@@ -19,9 +19,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // NEXT_DIST_DIR lets a second dev server (e.g. an automated check on another port) run beside
-  // yours - Next 16 locks one `next dev` per build directory. Unset = the usual ".next".
-  distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
   // Self-contained server for the container image (Dockerfile target "web"); traced from the
   // monorepo root so workspace packages are included.
   output: "standalone",
