@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { enforceActiveHuntLimit } from '@rein-drop/access';
 import {
   createHuntRequestSchema,
   evaluateActivation,
@@ -235,25 +236,8 @@ export class HuntsService {
    * Returns the ids of the hunts it paused.
    */
   async enforcePlanLimit(userId: string): Promise<string[]> {
-    return this.prisma.$transaction(async (tx) => {
-      // Same lock as go-live, so an activation can't slip in between the count and the pause.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
-      const limit = (await this.plans.planForUser(userId, tx)).entitlements.activeHunts.limit;
-      if (limit === null) return [];
-      const live = await tx.hunt.findMany({
-        where: { userId, status: 'LIVE' },
-        orderBy: [{ activatedAt: 'asc' }, { createdAt: 'asc' }],
-        select: { id: true },
-      });
-      const over = live.slice(limit).map((h) => h.id);
-      if (over.length === 0) return [];
-      const now = new Date();
-      await tx.hunt.updateMany({ where: { id: { in: over }, status: 'LIVE' }, data: { status: 'PAUSED', pausedAt: now } });
-      await tx.huntEvent.createMany({
-        data: over.map((huntId) => ({ huntId, type: ACTION_EVENT.pause, fromStatus: 'LIVE' as const, toStatus: 'PAUSED' as const, actorUserId: null, changes: { reason: 'plan_limit' } })),
-      });
-      return over;
-    });
+    // Shared with the worker's scheduled access sweep (@rein-drop/access, decision 0018).
+    return enforceActiveHuntLimit(this.prisma, userId);
   }
 
   /** Preview: could this hunt go live now, and if not, why (same rules as activation). */

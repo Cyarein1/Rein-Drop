@@ -68,7 +68,7 @@ export const planSchema = z.object({
 export type Plan = z.infer<typeof planSchema>;
 export const planListSchema = z.object({ items: z.array(planSchema) });
 
-export const SUBSCRIPTION_STATUSES = ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'EXPIRED', 'INCOMPLETE', 'PAUSED'] as const;
+export const SUBSCRIPTION_STATUSES = ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'EXPIRED', 'INCOMPLETE', 'PAUSED', 'UNPAID'] as const;
 
 /**
  * The user's current subscription. `provider`: "stripe" (paid, web), "free" (Free chosen - no

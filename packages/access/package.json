@@ -1,0 +1,36 @@
+{
+  "name": "@rein-drop/access",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Server-side account access: which subscription statuses grant a plan, the user's current plan limits, and pausing Hunts above them (API + worker)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json",
+    "lint": "oxlint src",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rein-drop/contracts": "workspace:*",
+    "@rein-drop/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@rein-drop/config": "workspace:*",
+    "oxlint": "^1.87.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

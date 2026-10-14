@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { sweepActiveHuntLimits } from '@rein-drop/access';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
 import type { SourceHealthPort } from '../health/source-health.store.js';
 import type { Clock, JobQueue } from '../queue/job-queue.js';
@@ -15,6 +16,12 @@ export interface HuntSchedulerOptions {
   onlyUserIds?: string[];
   /** Source cool-downs (per-source backoff). Omit to schedule regardless of source health. */
   health?: Pick<SourceHealthPort, 'coolingDown'>;
+  /**
+   * How often to re-check every owner's access before scheduling (decision 0018): Hunts above the
+   * owner's current plan pause, so a lapsed paid period stops paid monitoring even without a
+   * billing webhook. Default 5 minutes; 0 = every tick.
+   */
+  accessSweepIntervalMs?: number;
 }
 
 export interface ScheduleSummary {
@@ -24,6 +31,8 @@ export interface ScheduleSummary {
   failed: number;
   /** Hunt-marketplaces whose next check moved to the end of their source's cool-down. */
   deferred: number;
+  /** Hunts paused by the access sweep this tick (owner's plan no longer covers them). */
+  pausedForAccess: number;
 }
 
 /**
@@ -35,6 +44,7 @@ export interface ScheduleSummary {
  */
 export class HuntScheduler {
   private readonly logger = new Logger(HuntScheduler.name);
+  private lastAccessSweep = Number.NEGATIVE_INFINITY;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -45,6 +55,14 @@ export class HuntScheduler {
 
   async scheduleDue(): Promise<ScheduleSummary> {
     const now = this.clock();
+    // Access first: only Hunts the owner's plan covers right now are scheduled (paused ones aren't LIVE).
+    let pausedForAccess = 0;
+    if (now.getTime() - this.lastAccessSweep >= (this.options.accessSweepIntervalMs ?? 5 * 60_000)) {
+      const sweep = await sweepActiveHuntLimits(this.prisma, now, this.options.onlyUserIds);
+      this.lastAccessSweep = now.getTime();
+      pausedForAccess = sweep.pausedHuntIds.length;
+      if (pausedForAccess > 0) this.logger.log(`Access sweep paused ${pausedForAccess} Hunt(s) above their owner's current plan`);
+    }
     const next = new Date(now.getTime() + this.options.pollIntervalMs);
     // Per-source backoff: hunts due on a marketplace that is cooling down wait for it (their next
     // check moves to the end of the cool-down) instead of queueing searches that would fail.
@@ -79,7 +97,7 @@ export class HuntScheduler {
       RETURNING hm."huntId", h."userId", m.key AS marketplace, h.query, h."locationText", h."radiusKm",
                 h.conditions, h."maxPriceMinor", h."priceCurrency"`;
 
-    const summary: ScheduleSummary = { claimed: targets.length, enqueued: 0, duplicates: 0, failed: 0, deferred };
+    const summary: ScheduleSummary = { claimed: targets.length, enqueued: 0, duplicates: 0, failed: 0, deferred, pausedForAccess };
     for (const plan of planSearchJobs(targets, now, this.options.pollIntervalMs)) {
       try {
         const result = await this.queue.enqueue({

@@ -5,6 +5,7 @@ import { CurrentUser } from '../../auth/decorators.js';
 import { AppException } from '../../common/errors/app.exception.js';
 import { createZodDto } from '../../common/validation/zod-validation.pipe.js';
 import { API_CONFIG, type ApiConfig } from '../../config/api-config.js';
+import { BillingService } from './billing.service.js';
 import { SubscriptionsService } from './subscriptions.service.js';
 
 class DevBillingConfirmDto extends createZodDto(devBillingConfirmRequestSchema) {}
@@ -18,6 +19,7 @@ class DevBillingConfirmDto extends createZodDto(devBillingConfirmRequestSchema) 
 export class DevBillingController {
   constructor(
     private readonly subscriptions: SubscriptionsService,
+    private readonly billing: BillingService,
     @Inject(API_CONFIG) private readonly config: ApiConfig,
   ) {}
 
@@ -27,6 +29,9 @@ export class DevBillingController {
     if (this.config.nodeEnv === 'production') {
       throw new AppException('NOT_FOUND', `Cannot POST /billing/dev/confirm`, HttpStatus.NOT_FOUND);
     }
-    return { subscription: await this.subscriptions.confirmDevelopmentPlan(user.userId, body.planCode) };
+    const subscription = await this.subscriptions.confirmDevelopmentPlan(user.userId, body.planCode);
+    // Same follow-up as a billing webhook: Hunts above the new plan's limit pause (decision 0018).
+    await this.billing.planChanged(user.userId);
+    return { subscription };
   }
 }

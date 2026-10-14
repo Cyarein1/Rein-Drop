@@ -7,6 +7,55 @@ collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
 
+### Step 76 - Web-first billing (decision 0018), phase A: the backend is the authority on access
+
+The owner adopted the "web-first billing & mobile companion" strategy. An audit against it found
+billing already web-only (Stripe), with one account and subscription shared by web and mobile, but
+these gaps:
+- the worker monitored any LIVE Hunt regardless of access;
+- a paid period that ended without a webhook never paused the extra Hunts (neither did choosing
+  Free);
+- Stripe `unpaid` kept access;
+- mobile shows prices, a plan picker and "subscribe on the web" copy (phase B).
+
+Owner decisions are recorded in [decision 0018](decisions/0018-web-first-billing-mobile-companion.md):
+- mobile tabs: Deals / Hunts / Inventory / Account;
+- neutral limit copy, with an optional "manage your account" line behind a flag pending store
+  review;
+- product families modelled now (Source only);
+- unpaid = no paid access.
+
+Phase A (this step):
+- **`@rein-drop/access`** (new, shared by API and worker) holds:
+  - which statuses grant a plan (ACTIVE / TRIALING / PAST_DUE);
+  - what "current" means (status + period not over + active plan);
+  - the user's live-Hunt limit;
+  - `enforceActiveHuntLimit` (pause the newest Hunts above it, history event `plan_limit`, never
+    delete, per-user lock);
+  - `sweepActiveHuntLimits`.
+
+  The API's subscription rules and `enforcePlanLimit` now delegate to it.
+- **Worker:** before planning searches, the scheduler sweeps every owner of LIVE Hunts (default
+  every 5 minutes) and pauses Hunts their current plan doesn't cover. Hunts without access are
+  never scheduled, and searches already queued skip them because they're no longer LIVE.
+- **Stripe `unpaid` -> new status `UNPAID`** (migration `20261014181012_subscription_status_unpaid`),
+  not entitled; paying again restores the plan.
+- **Choosing Free and the development plan** run the same plan-change follow-up as webhooks.
+
+Verified:
+- `pnpm turbo run build typecheck lint test`: 66/66 (new access unit tests).
+- **Fresh Postgres (preview database):**
+  - worker integration 7 files, 53/53, including the new `access.int-spec`:
+    - every subscription state (no subscription, active, cancel at period end, past due, unpaid,
+      period ran out without a webhook, cancelled, expired, paused);
+    - idempotent, nothing deleted;
+    - the scheduler queues only covered Hunts;
+  - API integration 13 files, 74/74, including unpaid -> Free -> paid again.
+- Existing pipeline tests now give their multi-Hunt test user a paid plan: on Free, the sweep
+  correctly pauses the extras.
+- **Your dev database needs this migration** (`pnpm --filter @rein-drop/db db:deploy`, then restart
+  the API).
+
 ### Step 75 - Fix: web dev page kept reloading ("Checking your session…")
 
 - **Symptom:** the owner's web dev server (:3000) reloaded the page about once a second, so the

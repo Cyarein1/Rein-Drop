@@ -154,6 +154,19 @@ describe('Web billing with Stripe (integration, real database)', () => {
     expect(e.subscription).toMatchObject({ cancelAtPeriodEnd: true });
   });
 
+  it('unpaid (Stripe gave up retrying) means no paid access; paying again restores it (decision 0018)', async () => {
+    stripe.subscriptions.get(subId)!.status = 'unpaid'; // the scheduled cancellation stays as it was
+    await deliver(subscriptionEvent('unpaid')).expect(200);
+    expect(await prisma.subscription.findUniqueOrThrow({ where: { providerSubscriptionId: subId } })).toMatchObject({ status: 'UNPAID' });
+    const lapsed = await entitlements();
+    expect(lapsed.plan.code).toBe('free');
+    expect(lapsed.subscription).toBeNull();
+
+    Object.assign(stripe.subscriptions.get(subId)!, { status: 'active', cancelAtPeriodEnd: true, canceledAt: NOW_S });
+    await deliver(subscriptionEvent('paid-again')).expect(200);
+    expect((await entitlements()).plan.code).toBe('ultimate');
+  });
+
   it('ignores events Rein Drop has no use for, and rejects unsigned / forged deliveries', async () => {
     expect((await deliver({ id: evt('invoice'), type: 'invoice.created', object: { object: 'invoice', id: 'in_1' } }).expect(200)).body.outcome).toBe('ignored');
     // A subscription of someone who isn't a Rein Drop customer (e.g. `stripe trigger` fixtures).

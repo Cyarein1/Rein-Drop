@@ -54,6 +54,11 @@ export class BillingService {
     this.planChangedListeners.push(listener);
   }
 
+  /** A plan change made without a webhook (Free chosen, development plan): run the same listeners. */
+  async planChanged(userId: string): Promise<void> {
+    for (const listener of this.planChangedListeners) await listener(userId);
+  }
+
   async info(userId: string): Promise<BillingInfo> {
     if (this.config.billing.provider !== 'stripe') return { mode: 'development', canManage: false };
     const customer = await this.prisma.billingCustomer.findUnique({ where: { provider_userId: { provider: STRIPE_PROVIDER, userId } } });

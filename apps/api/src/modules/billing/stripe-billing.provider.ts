@@ -11,8 +11,8 @@ const STATUS: Record<string, BillingStatus> = {
   trialing: 'TRIALING',
   active: 'ACTIVE',
   past_due: 'PAST_DUE',
-  // Retries exhausted, invoices left open: treat like past due (not paid), never as active.
-  unpaid: 'PAST_DUE',
+  // Retries exhausted, invoices left open: no paid access (decision 0018) - Hunts above Free pause.
+  unpaid: 'UNPAID',
   canceled: 'CANCELED',
   incomplete: 'INCOMPLETE',
   incomplete_expired: 'EXPIRED',

@@ -1,4 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { currentSubscriptionWhere, ENTITLED_STATUSES as SHARED_ENTITLED_STATUSES } from '@rein-drop/access';
 import type { SubscriptionSummary } from '@rein-drop/contracts';
 import type { Prisma, PrismaClient, SubscriptionStatus } from '@rein-drop/db';
 import type { ProductEvents } from '@rein-drop/telemetry';
@@ -16,17 +17,12 @@ export const FREE_PROVIDER = 'free';
 export const STRIPE_PROVIDER = 'stripe';
 
 /**
- * Statuses that grant the plan's entitlements. PAST_DUE keeps access while the provider retries
- * the renewal payment (decision 0014, D36); INCOMPLETE / PAUSED / CANCELED / EXPIRED don't.
+ * Which statuses grant access, and what "current" means, live in @rein-drop/access so the worker
+ * applies the same rules (decision 0018). PAST_DUE keeps access while the provider retries (D36);
+ * UNPAID / INCOMPLETE / PAUSED / CANCELED / EXPIRED don't.
  */
-export const ENTITLED_STATUSES: SubscriptionStatus[] = ['ACTIVE', 'TRIALING', 'PAST_DUE'];
-
-export const CURRENT_WHERE = (userId: string, now = new Date()): Prisma.SubscriptionWhereInput => ({
-  userId,
-  status: { in: ENTITLED_STATUSES },
-  OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: now } }],
-  plan: { isActive: true },
-});
+export const ENTITLED_STATUSES: SubscriptionStatus[] = SHARED_ENTITLED_STATUSES;
+export const CURRENT_WHERE = currentSubscriptionWhere;
 
 /**
  * Which plan a user is on - server-owned: only Rein Drop writes subscriptions (verified billing

@@ -7,7 +7,7 @@ import type { PlanPricing } from '@rein-drop/contracts';
  */
 
 /** Rein Drop SubscriptionStatus values a provider subscription maps to. */
-export type BillingStatus = 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED' | 'INCOMPLETE' | 'PAUSED';
+export type BillingStatus = 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED' | 'INCOMPLETE' | 'PAUSED' | 'UNPAID';
 
 export interface ProviderSubscription {
   id: string;

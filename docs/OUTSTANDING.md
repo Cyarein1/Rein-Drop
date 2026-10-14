@@ -1,6 +1,6 @@
 # Outstanding work - the running "still to do" trail
 
-_Last updated: 2026-10-14, after step 74 (Hunt location: area, suggestions, map, distance)._
+_Last updated: 2026-10-14, after step 76 (web-first billing phase A: server-side access)._
 
 Everything that has been left open since step 1, in one place. Updated at the end of every step,
 together with `docs/BUILD_STATUS.md`. Rules:
@@ -16,7 +16,7 @@ These block or shape work; the code uses placeholders until you decide.
 
 | # | Decision | Raised | Placeholder in use |
 |---|---|---|---|
-| D2 | Mobile store billing (App Store / Google Play) - web billing is Stripe (decision 0014) | Step 16 | Paid plans are bought on the web only; the app sells nothing |
+| D2 | Mobile store billing (App Store / Google Play) - **decided in decision 0018 (web-first billing, mobile companion; the app doesn't mention buying)**; what remains open is the store-compliance review before public release (phase E) | Step 16 | Web-only billing; mobile copy cleanup is phase B |
 | D3 | Plan prices and limits (Free / Pro / Ultimate) | Step 16 | Prices: Stripe prices mapped by STRIPE_PRICE_IDS ("Price TBD" until set); placeholder limits in the seed |
 | D4 | What non-resellers get after answering "no" | Step 12 | "Coming soon" screen |
 | D5 | Seller Snapshot question 4 wording / options per category (Blueprint section 22) | Step 8 | Blueprint wording |
@@ -93,6 +93,15 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
 ### Deals and alerts
 - Real push on a phone: EAS project id + development build (D23) - step 28.
+
+### Web-first billing & mobile companion (decision 0018)
+- **Apply the step 76 migration to your development database** (`pnpm --filter @rein-drop/db db:deploy`, restart the API) - adds the `UNPAID` subscription status - step 76.
+- Phase B - mobile billing-free: remove prices / plan picker ("Choose a plan"), "subscribe on the web", "upgrade", "Choose a bigger plan", "See plans", mobile cancel-plan copy; "Start watching" activates within current access; neutral limit / no-access messages; the optional "manage your account at {site}" line behind a flag, off until the store review - step 76.
+- Phase C - mobile tabs Deals (with Inbox) / Hunts (with Create) / Inventory / Account; Home dashboard and Analytics web-only - step 76.
+- Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
+- Phase E - app-store compliance review (Apple free companion / reader rules, Google Play payments policy, regional rules), push / deep-link re-check, launch checklist. Not an exemption claim - step 76.
+- Trials and a grace policy beyond Stripe's retries (no fields today); analytics-history and seat limits are not enforced on the backend; web pricing page (D3) - step 76.
+- The access sweep runs every 5 minutes per worker and checks every owner of LIVE Hunts one by one - fine at beta scale; batch it if owners reach the thousands - step 76.
 
 ### Plans and billing
 - Stripe set-up for real: products / prices, Customer Portal configuration, webhook endpoint + secret, tax settings; test-mode run with the Stripe CLI - step 42.
@@ -367,5 +376,6 @@ None - Build Prompts 01-44 are done. Next: the release checklist, then the backl
 | Missing mascot art for 9 tokens (working, waiting, afterHours, suggestion, cancellation, profit, success, exceptionalDeal, analysis) - neutral placeholders in the app | Step 36 (backlog B-25) | Step 72 (owner-supplied poses, mapped on web + mobile; placeholders gone) |
 | Sale Result profit mascot and exceptional-deal banner mascot rendered nothing | Steps 26 / 32 (backlog B-25) | Step 72 (approved profit / surprised poses) |
 | Landing thinking / searching / surprised / celebration poses missing | Step 51 | Step 72 (registered in `landingImages`; placement still open) |
+| Worker monitored any LIVE Hunt regardless of the owner's access; a paid period ending without a webhook (or choosing Free) never paused Hunts above the new limit; Stripe `unpaid` kept access | Found in step 76 audit (decision 0018) | Step 76 (`@rein-drop/access`: scheduler access sweep, Free / dev plan follow-up, `UNPAID` status) |
 | How mobile renders the interactive Hunt map (raised in step 73 as D41) | Step 73 | Step 73: owner chose native maps (`react-native-maps`) - decision 0017 |
 | Hunt location was free text only; distance never checked ("Distance not checked yet"); B-20. Also the step 73 plan items: "Your area" on the profile, GeocodingProvider + suggestions, interactive map (web + native mobile), distance checks with a place cache | Steps 13 / 21 / 73 | Step 74 (your area, suggestions, map, distance checks on mocks - live providers are the TODO(geo) items above) |

@@ -55,6 +55,9 @@ export class BillingController {
   @Post('free')
   @HttpCode(HttpStatus.OK)
   async free(@CurrentUser() user: Principal): Promise<{ subscription: SubscriptionSummary }> {
-    return { subscription: await this.subscriptions.chooseFree(user.userId) };
+    const subscription = await this.subscriptions.chooseFree(user.userId);
+    // Same follow-up as a billing webhook: Hunts above Free's live limit pause (decision 0018).
+    await this.billing.planChanged(user.userId);
+    return { subscription };
   }
 }

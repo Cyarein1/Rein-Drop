@@ -66,6 +66,9 @@ describe('deal analysis pipeline (integration, real database)', () => {
     prisma = createPrismaClient(DATABASE_URL);
     const subject = `int-test-${randomUUID().slice(0, 8)}`;
     userId = (await prisma.user.create({ data: { email: `${subject}@reindrop.test`, authProvider: 'dev', authSubject: subject } })).id;
+    // Several LIVE Hunts need a plan that covers them, or the access sweep pauses the extras (decision 0018).
+    const ultimate = await prisma.plan.findFirstOrThrow({ where: { code: 'ultimate' } });
+    await prisma.subscription.create({ data: { userId, planId: ultimate.id, status: 'ACTIVE', provider: 'dev-fake', providerSubscriptionId: `dev-fake:${userId}` } });
     const rows = await prisma.marketplace.findMany({ where: { key: { in: ['ebay', 'facebook'] } } });
     market = Object.fromEntries(rows.map((m) => [m.key, m.id])) as typeof market;
     const hunt = async (data: { maxPriceMinor: number | null; targetProfitMinor: number | null }) =>

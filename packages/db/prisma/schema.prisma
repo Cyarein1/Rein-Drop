@@ -169,6 +169,8 @@ enum SubscriptionStatus {
   INCOMPLETE
   /// Paused at the provider (not entitled).
   PAUSED
+  /// Payment retries exhausted, invoices left unpaid (not entitled - decision 0018).
+  UNPAID
 }
 
 /// Processing state of one billing-provider webhook event.

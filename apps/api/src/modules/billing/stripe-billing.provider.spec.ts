@@ -51,7 +51,7 @@ describe('StripeBillingProvider', () => {
       'TRIALING',
       'ACTIVE',
       'PAST_DUE',
-      'PAST_DUE',
+      'UNPAID',
       'CANCELED',
       'INCOMPLETE',
       'EXPIRED',
