@@ -11,7 +11,8 @@ import {
   saleFormDefaults,
   salePreview,
   SOLD_WHERE_OPTIONS,
-  type HuntFormContext,
+  type PlainContext,
+  withTranslator,
   type SaleForm,
   type SaleFormErrors,
 } from "@rein-drop/client-core";
@@ -25,7 +26,8 @@ import styles from "../../inventory.module.css";
  * realized result. Defaults come from what's known (today, the source marketplace); every value
  * is editable, and the price is never pre-filled from an estimate.
  */
-export function MarkSoldForm({ item, context, today }: { item: InventoryItem; context: HuntFormContext; today: string }) {
+export function MarkSoldForm({ item, context: plain, today }: { item: InventoryItem; context: PlainContext; today: string }) {
+  const context = withTranslator(plain);
   const router = useRouter();
   const now = new Date(today);
   const [defaults] = useState(() => saleFormDefaults(item, context, now));

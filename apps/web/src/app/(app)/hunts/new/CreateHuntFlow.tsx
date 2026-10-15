@@ -20,7 +20,8 @@ import {
   priceSliderPosition,
   priceSliderText,
   priceSliderValueText,
-  type HuntFormContext,
+  type PlainContext,
+  withTranslator,
   type HuntFormErrors,
   type HuntFormField,
   type HuntFormValues,
@@ -65,7 +66,7 @@ const TARGET_OPTIONS = [
 
 export interface CreateHuntFlowProps {
   initialValues: HuntFormValues;
-  context: HuntFormContext;
+  context: PlainContext;
   prefilled: PrefillNote[];
   queryPlaceholder: string;
   /** Edit an existing hunt instead of creating one: same form and review, saved with PATCH. */
@@ -81,7 +82,8 @@ export interface CreateHuntFlowProps {
  * started: "Start watching" arrives with plan selection. With , the same form edits a
  * hunt (same id, recorded in its history) and the review saves the changes.
  */
-export function CreateHuntFlow({ initialValues, context, prefilled, queryPlaceholder, editing, geo, area }: CreateHuntFlowProps) {
+export function CreateHuntFlow({ initialValues, context: plain, prefilled, queryPlaceholder, editing, geo, area }: CreateHuntFlowProps) {
+  const context = withTranslator(plain);
   const router = useRouter();
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<HuntFormErrors>({});

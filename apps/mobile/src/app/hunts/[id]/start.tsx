@@ -3,12 +3,12 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { ApiError, type ActivationBlockReason, type EntitlementEvaluation, type Hunt } from '@rein-drop/api-client';
 import { accountSiteLine, companionAccessSummary, companionActions, companionReasonText, huntReview } from '@rein-drop/client-core';
-import { fontSize, roles } from '@rein-drop/design-tokens';
+import { radius, space } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { getApiClient } from '@/config/api';
 import { useDisplayContext, useT } from '@/i18n/useT';
 import { PushCard } from '@/notifications/PushCard';
-import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { ActionBar, Badge, Button, colors, font, ListRow, ListSection, LoadingState, Screen, SystemBanner, type } from '@/ui';
 
 interface Loaded {
   hunt: Hunt;
@@ -115,65 +115,93 @@ function StartWatching({ hunt, entitlements, reasons: initialReasons }: Loaded) 
 
   if (live) {
     return (
-      <Screen>
+      <Screen
+        variant="grouped"
+        footer={
+          <ActionBar>
+            <Button size="large" onPress={() => router.dismissTo('/hunts')} fullWidth>
+              {t('hunts.goToHunts')}
+            </Button>
+          </ActionBar>
+        }
+      >
         <Stack.Screen options={{ title: t('hunts.liveTitle') }} />
-        <Card title={live.name} action={<Badge tone="action">{t('hunts.liveBadge')}</Badge>}>
+        <View style={styles.hero}>
+          <Badge tone="action">{t('hunts.liveBadge')}</Badge>
+          <Text accessibilityRole="header" style={[styles.title, font('bold')]}>
+            {live.name}
+          </Text>
           <Text style={[styles.body, font('regular')]}>{huntReview(live, context).sentence}</Text>
-        </Card>
-        <Card title={t('hunts.nextTitle')}>
-          <Text style={[styles.body, font('regular')]}>{t('hunts.nextBody')}</Text>
-        </Card>
+        </View>
+        <ListSection title={t('hunts.nextTitle')}>
+          <ListRow title={t('hunts.nextBody')} last />
+        </ListSection>
         {/* The moment push is worth asking for: a Hunt is now live (never on app launch). */}
         <PushCard variant="prompt" />
-        <Button onPress={() => router.dismissTo('/hunts')} fullWidth>
-          {t('hunts.goToHunts')}
-        </Button>
       </Screen>
     );
   }
 
   const actions = companionActions(reasons);
+  const blocked = reasons.length > 0;
   return (
-    <Screen>
+    <Screen
+      variant="grouped"
+      footer={
+        <ActionBar stacked>
+          {blocked ? (
+            <>
+              {actions.pauseAnother && (
+                <Button size="large" onPress={() => router.push('/hunts')} fullWidth>
+                  {t('hunts.manageLive')}
+                </Button>
+              )}
+              {actions.editHunt && (
+                <Button
+                  size="large"
+                  variant={actions.pauseAnother ? 'secondary' : 'primary'}
+                  onPress={() => router.push({ pathname: '/hunts/[id]/edit', params: { id: hunt.id } })}
+                  fullWidth
+                >
+                  {t('hunts.editThis')}
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button size="large" onPress={start} loading={busy} fullWidth>
+              {t('hunts.actionStart')}
+            </Button>
+          )}
+          <Button variant="text" onPress={() => router.dismissTo('/hunts')} disabled={busy}>
+            {t('hunts.keepDraft')}
+          </Button>
+        </ActionBar>
+      }
+    >
       <Stack.Screen options={{ title: t('hunts.actionStart') }} />
-      <Card>
+      <View style={styles.hero}>
+        <Text accessibilityRole="header" style={[styles.title, font('bold')]}>
+          {hunt.name}
+        </Text>
         <Text style={[styles.body, font('regular')]}>{huntReview(hunt, context).sentence}</Text>
-      </Card>
-      <Text style={[styles.muted, font('regular')]}>{companionAccessSummary(entitlements, t)}</Text>
-
-      {reasons.length > 0 ? (
-        <>
-          <SystemBanner
-            tone="info"
-            title={t('hunts.cantStartTitle')}
-            message={[...reasons.map((r) => companionReasonText(r, t)), ...(accountLine ? [accountLine] : [])].join('\n')}
-          />
-          {actions.pauseAnother && (
-            <Button onPress={() => router.push('/hunts')} fullWidth>
-              {t('hunts.manageLive')}
-            </Button>
-          )}
-          {actions.editHunt && (
-            <Button variant={actions.pauseAnother ? 'secondary' : 'primary'} onPress={() => router.push({ pathname: '/hunts/[id]/edit', params: { id: hunt.id } })} fullWidth>
-              {t('hunts.editThis')}
-            </Button>
-          )}
-        </>
-      ) : (
-        <Button onPress={start} loading={busy} fullWidth>
-          {t('hunts.actionStart')}
-        </Button>
+        <Text style={[styles.muted, font('regular')]}>{companionAccessSummary(entitlements, t)}</Text>
+      </View>
+      {blocked && (
+        <SystemBanner
+          tone="info"
+          title={t('hunts.cantStartTitle')}
+          message={[...reasons.map((r) => companionReasonText(r, t)), ...(accountLine ? [accountLine] : [])].join('\n')}
+        />
       )}
       {error && <SystemBanner tone="error" title={t('hunts.startFailed')} message={error} />}
-      <Button variant="text" onPress={() => router.dismissTo('/hunts')} disabled={busy}>
-        {t('hunts.keepDraft')}
-      </Button>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
-  body: { color: roles.text, fontSize: fontSize.md },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
+  center: { flex: 1, justifyContent: 'center', backgroundColor: colors.background },
+  hero: { gap: space[2], padding: 14, borderRadius: radius.md, backgroundColor: colors.background },
+  title: { color: colors.text, fontSize: type.title },
+  body: { color: colors.text, fontSize: type.body, lineHeight: 21 },
+  muted: { color: colors.textMuted, fontSize: type.subhead, lineHeight: 18 },
 });

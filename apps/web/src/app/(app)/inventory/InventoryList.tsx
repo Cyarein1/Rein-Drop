@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { InventoryItem, ListInventoryQueryInput, Page } from "@rein-drop/api-client";
-import { inventoryRowView, type HuntFormContext } from "@rein-drop/client-core";
+import { inventoryRowView, withTranslator, type PlainContext } from "@rein-drop/client-core";
 import { Button } from "@/components/ui";
 import { loadInventory } from "./actions";
 import { InventoryRow } from "./InventoryRow";
@@ -12,12 +12,13 @@ import styles from "./inventory.module.css";
 export function InventoryList({
   initial,
   query,
-  context,
+  context: plain,
 }: {
   initial: Page<InventoryItem>;
   query: ListInventoryQueryInput;
-  context: HuntFormContext;
+  context: PlainContext;
 }) {
+  const context = withTranslator(plain);
   const [items, setItems] = useState(initial.items);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [error, setError] = useState<string | null>(null);

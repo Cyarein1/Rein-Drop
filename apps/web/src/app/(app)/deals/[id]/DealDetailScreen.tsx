@@ -18,6 +18,8 @@ import {
   SEVERITY_TONE,
   STRENGTH_LABEL,
   type HuntFormContext,
+  type PlainContext,
+  withTranslator,
 } from "@rein-drop/client-core";
 import { mascotAssets } from "@/brand/assets";
 import { MarketplaceName } from "@/components/MarketplaceName";
@@ -31,7 +33,8 @@ type Form = "none" | "bought" | "ignore";
  * Deal Detail: why Rein Drop flagged it, the evidence it has (price, risk, the listing's own
  * words, the checks behind the score), View source, and the Save / Ignore / Bought decisions.
  */
-export function DealDetailScreen({ initial, context }: { initial: DealDetail; context: HuntFormContext }) {
+export function DealDetailScreen({ initial, context: plain }: { initial: DealDetail; context: PlainContext }) {
+  const context = withTranslator(plain);
   const [deal, setDeal] = useState(initial);
   const [form, setForm] = useState<Form>("none");
   const [error, setError] = useState<string | null>(null);

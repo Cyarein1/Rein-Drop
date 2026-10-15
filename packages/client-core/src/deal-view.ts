@@ -38,6 +38,8 @@ const EN = (): Translator => translator('en');
 
 /** Marketplace names are never translated. */
 export const MARKETPLACE_LABEL: Record<MarketplaceKey, string> = { ebay: 'eBay', facebook: 'Facebook Marketplace' };
+/** Short marketplace names for tight spaces (buttons, meta lines). Never translated. */
+export const MARKETPLACE_SHORT_LABEL: Record<MarketplaceKey, string> = { ebay: 'eBay', facebook: 'Facebook' };
 
 /** A label key + tone; `labelled(...)` renders it in the UI language. */
 type KeyedLabel = { key: MessageKey; tone: DealTone };
@@ -242,8 +244,16 @@ export interface DealCardView {
   /** Marketplace key (for its logo) and its display name. */
   marketplace: MarketplaceKey;
   source: string;
+  /** Short marketplace name ("Facebook") for buttons and compact rows. */
+  sourceShort: string;
   freshness: string;
+  /** Just the age ("12 min ago"), for compact rows; `freshness` says posted / found. */
+  age: string;
   justDropped: boolean;
+  /** The listing's first photo (thumbnail), or null. */
+  imageUrl: string | null;
+  /** The raw status, e.g. to show a badge only for decided deals. `status` is its label. */
+  statusKey: DealStatus;
   price: string;
   /** e.g. "+ R150 known costs" - null when none are known. */
   priceExtra: string | null;
@@ -276,8 +286,12 @@ export function dealCardView(deal: DealSummary, ctx: HuntFormContext): DealCardV
     huntName: deal.hunt.name,
     marketplace: deal.listing.marketplace,
     source: MARKETPLACE_LABEL[deal.listing.marketplace],
+    sourceShort: MARKETPLACE_SHORT_LABEL[deal.listing.marketplace],
     freshness: freshnessText(deal.freshness, t),
+    age: ageText(deal.freshness.ageMinutes, t),
     justDropped: deal.freshness.ageMinutes <= JUST_DROPPED_MINUTES && deal.source.available,
+    imageUrl: deal.listing.imageUrl,
+    statusKey: deal.status,
     price,
     priceExtra: deal.price.knownCosts ? t('deals.knownCostsExtra', { amount: fmt(deal.price.knownCosts) }) : null,
     upside,
@@ -399,6 +413,8 @@ export function reasonEffectLabel(effect: ReasonEffect, t: Translator = EN()): L
 
 export interface DealDetailView extends DealCardView {
   url: string;
+  /** Every listing photo, in order (falls back to the thumbnail when the source gave only one). */
+  imageUrls: string[];
   description: string | null;
   conditionText: string | null;
   locationText: string | null;
@@ -465,6 +481,7 @@ export function dealDetailView(deal: DealDetail, ctx: HuntFormContext): DealDeta
   return {
     ...card,
     url: deal.listing.url,
+    imageUrls: deal.listing.imageUrls.length > 0 ? deal.listing.imageUrls : deal.listing.imageUrl ? [deal.listing.imageUrl] : [],
     description: deal.listing.description,
     conditionText: deal.listing.conditionText,
     locationText: deal.listing.locationText,

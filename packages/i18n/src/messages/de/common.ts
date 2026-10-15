@@ -61,4 +61,5 @@ export default {
   datePlaceholder: 'JJJJ-MM-TT',
   bannerSpoken: '{tone, select, success {Erfolg} warning {Warnung} error {Fehler} other {Info}}: {title}',
   bannerSpokenMessage: '{tone, select, success {Erfolg} warning {Warnung} error {Fehler} other {Info}}: {title}. {message}',
+  close: 'Schließen',
 } satisfies Messages<typeof en>;

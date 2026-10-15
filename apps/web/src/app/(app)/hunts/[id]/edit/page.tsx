@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError } from "@rein-drop/api-client";
-import { editContext, huntFormContext, huntFormValues } from "@rein-drop/client-core";
+import { editContext, huntFormContext, huntFormValues, plainContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Page, SystemBanner } from "@/components/ui";
@@ -44,7 +44,7 @@ async function EditHuntLoader({ params }: { params: PageProps<"/hunts/[id]/edit"
   return (
     <CreateHuntFlow
       initialValues={huntFormValues(hunt, context)}
-      context={context}
+      context={plainContext(context)}
       prefilled={[]}
       queryPlaceholder=""
       editing={hunt}

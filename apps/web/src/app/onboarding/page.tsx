@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { huntFormContext, resumeStep, type SnapshotStep } from "@rein-drop/client-core";
+import { huntFormContext, plainContext, resumeStep, type SnapshotStep } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Wordmark } from "@/brand/Wordmark";
@@ -44,5 +44,5 @@ async function OnboardingLoader({ searchParams }: { searchParams: PageProps<"/on
 
   const editing = params.edit === "1";
   const startAt: SnapshotStep = editing ? (snapshot.isReseller ? "categories" : "gate") : resumeStep(snapshot);
-  return <SnapshotFlow initial={snapshot} startAt={startAt} context={huntFormContext(session.user.locale)} />;
+  return <SnapshotFlow initial={snapshot} startAt={startAt} context={plainContext(huntFormContext(session.user.locale))} />;
 }

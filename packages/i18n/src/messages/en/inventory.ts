@@ -112,6 +112,7 @@ export default {
   costRemove: 'Remove',
   costRemoveA11y: 'Remove cost {number}',
   costAdd: 'Add a cost',
+  costAddAnother: 'Add another cost',
 
   // Mobile: item detail
   itemTitle: 'Inventory item',

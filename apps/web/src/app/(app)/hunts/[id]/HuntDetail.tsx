@@ -17,7 +17,8 @@ import {
   monitoringLine,
   noDealsYetState,
   type HuntDetailAction,
-  type HuntFormContext,
+  type PlainContext,
+  withTranslator,
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Metric, ProductState, SystemBanner } from "@/components/ui";
 import { transitionHuntAction } from "./actions";
@@ -42,15 +43,16 @@ export function HuntDetail({
   hunt: loaded,
   activity,
   events,
-  context,
+  context: plain,
   saved,
 }: {
   hunt: Hunt;
   activity: HuntActivity;
   events: HuntEvent[];
-  context: HuntFormContext;
+  context: PlainContext;
   saved: boolean;
 }) {
+  const context = withTranslator(plain);
   const router = useRouter();
   const [confirming, setConfirming] = useState<Transition | null>(null);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(saved ? { tone: "success", text: "Changes saved." } : null);

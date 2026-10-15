@@ -12,7 +12,7 @@ import {
 import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { ageText, joinList, MARKETPLACE_LABEL, type DealTone, type Labelled } from './deal-view.js';
 import { buildCreateHuntRequest, huntReview, type HuntFormContext, type HuntFormErrors, type HuntFormValues } from './hunt-form.js';
-import { moneyToInput } from './money.js';
+import { formatMoney, moneyToInput } from './money.js';
 import { durationUntilText, retryText, sourceIssue, sourceIssueText, type HuntMonitoringHealth } from './source-view.js';
 
 /**
@@ -167,6 +167,23 @@ export function countsLine(activity: HuntActivity | null, t: Translator = EN()):
     c.bought > 0 ? t('hunts.countBought', { count: c.bought }) : null,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+/**
+ * One short line under a Hunt's name in the list: max price and where, e.g.
+ * "Up to R 4 500,00 · 40 km of Cape Town" ("Any price" when neither is set).
+ */
+export function huntRowSummary(hunt: Pick<Hunt, 'maxPrice' | 'location'>, ctx: HuntFormContext): string {
+  const { t } = ctx;
+  const parts = [
+    hunt.maxPrice ? t('hunts.rowMaxPrice', { price: formatMoney(hunt.maxPrice, ctx.localeTag) }) : t('hunts.rowAnyPrice'),
+    hunt.location
+      ? hunt.location.radiusKm
+        ? t('hunts.reviewLocationWithin', { radius: `${kmToUnit(hunt.location.radiusKm, ctx.distanceUnit)} ${ctx.distanceUnit}`, location: hunt.location.text })
+        : hunt.location.text
+      : null,
+  ];
+  return parts.filter(Boolean).join(' · ');
 }
 
 /** The criteria as the Create Hunt review shows them (same sentence + labelled lines). */

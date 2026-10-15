@@ -1,16 +1,18 @@
 import { Fragment, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { space } from '@rein-drop/design-tokens';
+import { Wordmark } from '@/brand/Wordmark';
 import { apiBaseUrl } from '@/config/api';
 import { useT } from '@/i18n/useT';
-import { Button, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { Button, colors, font, GUTTER, Icon, icons, type } from '@/ui';
 import { sessionMessage, useSessionState } from './SessionProvider';
 
 /**
  * Protects the app's tabs: children render only with an authenticated session.
- * Signed-out and error states always offer a next action (Sign in / Retry / Settings).
+ * Signed-out and error states always offer a next action (Sign in / Retry / Settings), in a calm
+ * centred layout: wordmark, one headline, one line of help, full-width pill buttons.
  * The companion signs in to an EXISTING Rein Drop account (decision 0018) - accounts are created
  * on the web; see docs/strategy/MOBILE_ACCOUNT_ACCESS.md for the store-review assumptions.
  */
@@ -24,70 +26,98 @@ export function SessionGate({ children }: { children: ReactNode }) {
   if (state.status === 'authenticated') return <Fragment key={state.session.user.userId}>{children}</Fragment>;
   if (state.status === 'loading') {
     return (
-      <View style={styles.center}>
-        <LoadingState label={t('auth.signingIn')} />
-      </View>
-    );
-  }
-
-  const actions = (
-    <View style={styles.actions}>
-      <Button onPress={refresh}>{t('common.tryAgain')}</Button>
-      <Button variant="secondary" onPress={() => router.push('/settings')}>
-        {t('auth.openSettings')}
-      </Button>
-    </View>
-  );
-
-  if (state.status === 'unauthenticated') {
-    return (
       <SafeAreaView style={styles.safeArea}>
-        <Screen>
-          {signIn ? (
-            <>
-              <SystemBanner
-                tone={state.sessionEnded ? 'warning' : 'info'}
-                title={t(state.sessionEnded ? 'auth.sessionEndedTitle' : 'auth.signInTitle')}
-                message={sessionMessage(state, t)}
-              />
-              <Text style={[styles.help, font('regular')]}>
-                {t('auth.signInHelp')}
-              </Text>
-              <View style={styles.actions}>
-                <Button onPress={() => void signIn()}>{t('auth.signIn')}</Button>
-              </View>
-            </>
-          ) : (
-            <SystemBanner tone="warning" title={t('auth.notSignedInTitle')} message={sessionMessage(state, t)} />
-          )}
-          {/* Developer-only note: English. */}
-          {__DEV__ && !signIn && (
-            <Text style={[styles.help, font('regular')]}>
-              Development sign-in is automatic. Make sure the API is running and the development user exists
-              (pnpm db:seed).
-            </Text>
-          )}
-          {!signIn && actions}
-        </Screen>
+        <View style={styles.loading} accessible accessibilityRole="progressbar" accessibilityLabel={t('auth.signingIn')} accessibilityState={{ busy: true }}>
+          <Wordmark height={30} />
+          <ActivityIndicator color={colors.text} />
+          <Text style={[styles.help, font('regular')]}>{t('auth.signingIn')}</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
+  const settings = (
+    <Button variant="text" onPress={() => router.push('/settings')}>
+      {t('auth.openSettings')}
+    </Button>
+  );
+
+  if (state.status === 'unauthenticated') {
+    const title = signIn ? t(state.sessionEnded ? 'auth.sessionEndedTitle' : 'auth.signInTitle') : t('auth.notSignedInTitle');
+    return (
+      <Shell
+        title={title}
+        message={sessionMessage(state, t)}
+        help={signIn ? t('auth.signInHelp') : undefined}
+        // Developer-only note: English.
+        devNote={__DEV__ && !signIn ? 'Development sign-in is automatic. Make sure the API is running and the development user exists (pnpm db:seed).' : undefined}
+      >
+        {signIn ? (
+          <Button size="large" onPress={() => void signIn()}>
+            {t('auth.signIn')}
+          </Button>
+        ) : (
+          <>
+            <Button size="large" onPress={refresh}>
+              {t('common.tryAgain')}
+            </Button>
+            {settings}
+          </>
+        )}
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell warning title={t('auth.cantReachTitle')} message={sessionMessage(state, t)} help={t('auth.cantReachHelp')} devNote={__DEV__ ? `API: ${apiBaseUrl.url ?? 'not configured'}` : undefined}>
+      <Button size="large" onPress={refresh}>
+        {t('common.tryAgain')}
+      </Button>
+      {settings}
+    </Shell>
+  );
+}
+
+function Shell({ title, message, help, devNote, warning, children }: { title: string; message?: string; help?: string; devNote?: string; warning?: boolean; children: ReactNode }) {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Screen>
-        <SystemBanner tone="error" title={t('auth.cantReachTitle')} message={sessionMessage(state, t)} />
-        <Text style={[styles.help, font('regular')]}>{t('auth.cantReachHelp')}</Text>
-        {__DEV__ && <Text style={[styles.help, font('regular')]}>API: {apiBaseUrl.url ?? 'not configured'}</Text>}
-        {actions}
-      </Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.top}>
+          <Wordmark height={30} />
+        </View>
+        <View style={styles.middle}>
+          {warning && (
+            <View style={styles.warning} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Icon name={icons.warning} color={colors.warningText} size={28} />
+            </View>
+          )}
+          <Text accessibilityRole="header" style={[styles.title, font('bold')]}>
+            {title}
+          </Text>
+          {message && (
+            <Text style={[styles.message, font('regular')]} accessibilityRole={warning ? 'alert' : undefined}>
+              {message}
+            </Text>
+          )}
+          {help && <Text style={[styles.help, font('regular')]}>{help}</Text>}
+          {devNote && <Text style={[styles.dev, font('regular')]}>{devNote}</Text>}
+        </View>
+        <View style={styles.actions}>{children}</View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: roles.background },
-  center: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  help: { color: roles.textMuted, fontSize: fontSize.sm },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[4] },
+  scroll: { flexGrow: 1, paddingHorizontal: GUTTER + space[2], paddingVertical: space[6], gap: space[6] },
+  top: { alignItems: 'center', paddingTop: space[4] },
+  middle: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: space[3] },
+  warning: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.grouped, alignItems: 'center', justifyContent: 'center' },
+  title: { color: colors.text, fontSize: type.question, lineHeight: 32, textAlign: 'center', letterSpacing: -0.3 },
+  message: { color: colors.text, fontSize: type.body, lineHeight: 21, textAlign: 'center' },
+  help: { color: colors.textMuted, fontSize: type.callout, lineHeight: 20, textAlign: 'center' },
+  dev: { color: colors.textMuted, fontSize: type.footnote, textAlign: 'center' },
+  actions: { gap: space[2] },
 });

@@ -19,6 +19,8 @@ import {
   snapshotDraft,
   snapshotSummary,
   type HuntFormContext,
+  type PlainContext,
+  withTranslator,
   type SnapshotDraft,
   type SnapshotQuestion,
   type SnapshotStep,
@@ -31,13 +33,14 @@ import styles from "./onboarding.module.css";
 interface SnapshotFlowProps {
   initial: SellerSnapshot;
   startAt: SnapshotStep;
-  context: HuntFormContext;
+  context: PlainContext;
 }
 
 const MASCOT_WIDTH = 140;
 
 /** One step at a time; each answer is saved before moving on (Blueprint section 4). */
-export function SnapshotFlow({ initial, startAt, context }: SnapshotFlowProps) {
+export function SnapshotFlow({ initial, startAt, context: plain }: SnapshotFlowProps) {
+  const context = withTranslator(plain);
   const [snapshot, setSnapshot] = useState(initial);
   const [step, setStep] = useState<SnapshotStep>(startAt);
   const [draft, setDraft] = useState<SnapshotDraft>(() => snapshotDraft(initial));

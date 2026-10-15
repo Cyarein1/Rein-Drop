@@ -1,28 +1,25 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
-import { fontSize, radius, roles, size, space, type ButtonVariant } from '@rein-drop/design-tokens';
+import { radius, roles, space, type ButtonVariant } from '@rein-drop/design-tokens';
 import { font } from './fonts';
+import { type } from './theme';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   children: ReactNode;
-  /** primary = Rein Orange (one per screen), secondary = outline, text, destructive. */
+  /** primary = Rein Orange (one per screen), secondary = navy outline, text = plain navy label, destructive. */
   variant?: ButtonVariant;
+  /** large = bottom action bars and sheets (52), medium = default (44), small = inline in rows / cards (34). */
+  size?: 'small' | 'medium' | 'large';
   /** Disables the button and shows a spinner. */
   loading?: boolean;
+  /** Stretches across its container (and shares a row with siblings). */
   fullWidth?: boolean;
   /** Optional mark before the label (e.g. a marketplace logo). Decorative - the label is announced. */
   icon?: ReactNode;
 }
 
-export function Button({
-  children,
-  variant = 'primary',
-  loading = false,
-  fullWidth = false,
-  icon,
-  disabled,
-  ...rest
-}: ButtonProps) {
+/** Pill-shaped buttons (native-app style, step 89 redesign). */
+export function Button({ children, variant = 'primary', size = 'medium', loading = false, fullWidth = false, icon, disabled, ...rest }: ButtonProps) {
   const isDisabled = !!disabled || loading;
   const v = variantStyles[variant];
   return (
@@ -30,39 +27,35 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        v.container,
-        fullWidth && styles.fullWidth,
-        pressed && !isDisabled && styles.pressed,
-        isDisabled && styles.disabled,
-      ]}
+      hitSlop={size === 'small' ? { top: 5, bottom: 5 } : undefined}
+      style={({ pressed }) => [styles.base, sizes[size], v.container, fullWidth && styles.fullWidth, pressed && !isDisabled && styles.pressed, isDisabled && styles.disabled]}
       {...rest}
     >
       <View style={styles.content}>
         {loading && <ActivityIndicator size="small" color={v.text.color as string} />}
         {!loading && icon}
-        <Text style={[styles.label, font('semibold'), v.text]}>{children}</Text>
+        <Text style={[size === 'small' ? styles.labelSmall : styles.label, font('semibold'), v.text]} numberOfLines={1}>
+          {children}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    minHeight: size.touchTarget,
-    paddingHorizontal: space[5],
-    borderRadius: radius.sm,
-    borderWidth: size.borderWidth,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullWidth: { alignSelf: 'stretch' },
+  base: { borderRadius: radius.full, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  fullWidth: { alignSelf: 'stretch', flexGrow: 1, flexBasis: 0 },
   content: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
-  label: { fontSize: fontSize.md },
-  pressed: { opacity: 0.85 },
-  disabled: { opacity: 0.55 },
+  label: { fontSize: type.body },
+  labelSmall: { fontSize: type.subhead },
+  pressed: { opacity: 0.8 },
+  disabled: { opacity: 0.5 },
+});
+
+const sizes = StyleSheet.create({
+  small: { minHeight: 34, paddingHorizontal: 14 },
+  medium: { minHeight: 44, paddingHorizontal: space[5] },
+  large: { minHeight: 52, paddingHorizontal: space[6] },
 });
 
 // Navy text on orange: white would be 2.84:1 (fails WCAG AA).
@@ -76,8 +69,8 @@ const variantStyles = {
     text: { color: roles.text },
   }),
   text: StyleSheet.create({
-    container: { backgroundColor: 'transparent', paddingHorizontal: space[3] },
-    text: { color: roles.text, textDecorationLine: 'underline' },
+    container: { backgroundColor: 'transparent', paddingHorizontal: space[2] },
+    text: { color: roles.text },
   }),
   destructive: StyleSheet.create({
     container: { backgroundColor: roles.destructiveSurface, borderColor: roles.destructive },

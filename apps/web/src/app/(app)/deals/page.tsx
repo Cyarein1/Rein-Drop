@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { DealStatusFilter, Hunt, MarketplaceKey } from "@rein-drop/api-client";
-import { DEAL_FILTERS, dealsWaitingState, huntFormContext } from "@rein-drop/client-core";
+import { DEAL_FILTERS, dealsWaitingState, huntFormContext, plainContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Page, ProductState, SystemBanner } from "@/components/ui";
@@ -114,7 +114,7 @@ async function DealsLoader({ searchParams }: { searchParams: PageProps<"/deals">
           key={filterHref(filters)}
           initial={page}
           query={{ ...filters, limit: PAGE_SIZE }}
-          context={huntFormContext(session.user.locale)}
+          context={plainContext(huntFormContext(session.user.locale))}
         />
       )}
     </>

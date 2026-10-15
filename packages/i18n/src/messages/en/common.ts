@@ -66,4 +66,6 @@ export default {
   // Spoken prefix of a status banner ("Warning: title. message")
   bannerSpoken: '{tone, select, success {Success} warning {Warning} error {Error} other {Info}}: {title}',
   bannerSpokenMessage: '{tone, select, success {Success} warning {Warning} error {Error} other {Info}}: {title}. {message}',
+  /** Closes a full-screen flow (onboarding top bar). */
+  close: 'Close',
 } as const;

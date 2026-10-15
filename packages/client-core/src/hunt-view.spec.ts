@@ -16,6 +16,7 @@ import {
   huntFilterEmptyTitle,
   huntFilters,
   huntFormValues,
+  huntRowSummary,
   huntStatusLabel,
   marketplaceRows,
   monitoringLine,
@@ -166,5 +167,19 @@ describe('edit', () => {
     expect(ctx.currency).toBe('ZAR');
     expect(huntFormValues(hunt, ctx).radius).toBe('25'); // 40 km ~ 25 mi
     expect(buildUpdateHuntRequest(hunt, { ...huntFormValues(hunt, ctx), maxPrice: 'lots' }, ctx)).toMatchObject({ ok: false, errors: { maxPrice: expect.any(String) } });
+  });
+});
+
+describe('huntRowSummary', () => {
+  it('max price and where, in the user unit and language', () => {
+    expect(huntRowSummary(hunt, ZA)).toMatch(/^Up to R.?4.?500,00 · 40 km of Cape Town$/);
+    expect(huntRowSummary(hunt, US)).toMatch(/· 25 mi of Cape Town$/);
+    const de = displayContext({ currency: 'EUR', distanceUnit: 'km', localeTag: 'de-DE' }, 'de');
+    expect(huntRowSummary({ maxPrice: { amountMinor: 25_000, currency: 'EUR' }, location: null }, de)).toMatch(/^Bis 250,00.€$/);
+  });
+
+  it('no limit and no radius', () => {
+    expect(huntRowSummary({ maxPrice: null, location: null }, ZA)).toBe('Any price');
+    expect(huntRowSummary({ maxPrice: null, location: { text: 'Sandton', radiusKm: null, point: null } }, ZA)).toBe('Any price · Sandton');
   });
 });

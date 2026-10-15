@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCreateHuntRequest, EMPTY_HUNT_FORM, huntFormContext } from './hunt-form.js';
-import { mapCaption, movePin, pickPlace, radiusKmForMap, regionForRadius, typeLocation, applyArea, zoomForRadiusKm } from './location-field.js';
+import { mapCaption, movePin, pickPlace, radiusKmForMap, radiusQuickPicks, regionForRadius, typeLocation, applyArea, zoomForRadiusKm } from './location-field.js';
 
 const SANDTON = { label: 'Sandton, Johannesburg, Gauteng', point: { lat: -26.108, lng: 28.057 } };
 const base = { ...EMPTY_HUNT_FORM, query: 'iPhone 13', marketplaces: ['facebook' as const] };
@@ -59,5 +59,17 @@ describe('location field', () => {
     expect(mapCaption('Berlin', null, '', 'km', de.t)).toMatch(/^Mittelpunkt: Berlin\. Füge einen Umkreis hinzu/);
     const result = buildCreateHuntRequest({ ...base, locationText: '', radius: '10' }, de);
     expect(result.ok === false && result.errors.locationText).toBe('Füge einen Ort für den Umkreis hinzu');
+  });
+});
+
+describe('radiusQuickPicks', () => {
+  it('whole numbers in the unit, valid for the request', () => {
+    for (const unit of ['km', 'mi'] as const) {
+      const c = huntFormContext({ countryCode: 'US', currency: 'USD', distanceUnit: unit, language: 'en', source: 'detected' });
+      for (const r of radiusQuickPicks(unit)) {
+        const result = buildCreateHuntRequest({ ...base, locationText: 'Austin', radius: String(r) }, c);
+        expect(result.ok).toBe(true);
+      }
+    }
   });
 });

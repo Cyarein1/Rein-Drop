@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { brand, fontSize, radius, roles, space, type MetricTone } from '@rein-drop/design-tokens';
+import { radius, roles, space, type MetricTone } from '@rein-drop/design-tokens';
 import { useT } from '@/i18n/useT';
 import { font } from './fonts';
+import { colors, type } from './theme';
 
 export interface MetricProps {
   label: string;
@@ -15,11 +16,11 @@ export interface MetricProps {
   caption?: string;
 }
 
-// KPI size (28px, 800 weight) so green/red text meet WCAG AA-large.
+// 20 pt is below WCAG "large text", so green / red use the darker AA text shades.
 const VALUE_COLOR: Record<MetricTone, string> = {
   neutral: roles.text,
-  profit: brand.green,
-  loss: brand.lossRed,
+  profit: colors.profitText,
+  loss: colors.lossText,
 };
 
 export function Metric({ label, value, tone = 'neutral', estimated, comparison, caption }: MetricProps) {
@@ -44,16 +45,16 @@ export function Metric({ label, value, tone = 'neutral', estimated, comparison, 
 const styles = StyleSheet.create({
   metric: { gap: space[1] },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
-  label: { color: roles.textMuted, fontSize: fontSize.sm },
+  label: { color: roles.textMuted, fontSize: type.footnote },
   estimated: {
     color: roles.textMuted,
-    fontSize: fontSize.xs,
-    paddingHorizontal: space[2],
+    fontSize: type.caption,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: roles.textMuted,
     borderRadius: radius.full,
   },
-  value: { fontSize: fontSize['2xl'], fontVariant: ['tabular-nums'] },
-  secondary: { color: roles.textMuted, fontSize: fontSize.sm },
+  value: { fontSize: type.title, fontVariant: ['tabular-nums'] },
+  secondary: { color: roles.textMuted, fontSize: type.footnote },
 });

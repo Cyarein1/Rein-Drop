@@ -52,4 +52,7 @@ export default {
   prefsSaved: 'Saved',
   prefsFailed: 'Not saved: {message}',
   alwaysOn: '{label} (always on)',
+
+  // Account screen sections (step 89 redesign)
+  settingsTitle: 'Settings',
 } as const;

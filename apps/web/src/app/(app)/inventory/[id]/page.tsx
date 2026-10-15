@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { huntFormContext } from "@rein-drop/client-core";
+import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Page } from "@/components/ui";
@@ -22,5 +22,5 @@ async function ItemLoader({ params }: { params: PageProps<"/inventory/[id]">["pa
   const { id } = await params;
   const session = await verifySession();
   const item = await loadInventoryItem(id);
-  return <InventoryDetail initial={item} context={huntFormContext(session.user.locale)} />;
+  return <InventoryDetail initial={item} context={plainContext(huntFormContext(session.user.locale))} />;
 }

@@ -1,18 +1,18 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { pushView, type PushState } from '@rein-drop/client-core';
-import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
 import { useT } from '@/i18n/useT';
-import { Button, Card, font, LoadingState, SystemBanner } from '@/ui';
+import { Button, Card, colors, font, ListRow, ListSection, LoadingState, SystemBanner, type } from '@/ui';
 import { disablePush, enablePush, permissionStatus, refreshPushRegistration } from './push';
 
 /**
  * This phone's push status with the one action that fits it.
  * - `variant="prompt"`: the ask after a Hunt goes live. Renders nothing once enabled or dismissed,
  *   and checks the current state WITHOUT prompting.
- * - `variant="settings"`: always shown (Settings > Notifications on this phone).
+ * - `variant="settings"`: always shown, as a grouped section (Account > Notifications).
  */
 export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
   const [state, setState] = useState<PushState>({ status: 'checking' });
@@ -36,7 +36,15 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
   );
 
   const view = pushView(state, t);
-  if (!view) return variant === 'settings' ? <LoadingState label={t('push.checking')} /> : null;
+  if (!view) {
+    return variant === 'settings' ? (
+      <ListSection title={t('account.pushTitle')}>
+        <View style={styles.inset}>
+          <LoadingState label={t('push.checking')} />
+        </View>
+      </ListSection>
+    ) : null;
+  }
   if (variant === 'prompt') {
     // Turned on from this prompt: confirm it. Already on, unavailable or "Not now": stay out of the way.
     if (state.status === 'enabled') return justEnabled ? <SystemBanner tone="success" title={view.title} message={view.body} /> : null;
@@ -51,44 +59,55 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
         const next = await enablePush(api);
         setJustEnabled(next.status === 'enabled');
         setState(next);
-      }
-      else if (view.action === 'disable' && state.status === 'enabled') setState(await disablePush(api, state.deviceId));
+      } else if (view.action === 'disable' && state.status === 'enabled') setState(await disablePush(api, state.deviceId));
       else if (view.action === 'open_settings') await Linking.openSettings();
     } finally {
       setBusy(false);
     }
   };
 
-  const body = (
-    <View style={styles.stack}>
-      <Text style={[styles.body, font('regular')]}>{view.body}</Text>
-      <View style={styles.actions}>
+  if (variant === 'settings') {
+    return (
+      <ListSection title={t('account.pushTitle')}>
+        <ListRow title={view.title} subtitle={view.body} last={!view.action} />
         {view.action && (
-          <Button variant={view.action === 'disable' ? 'secondary' : 'primary'} loading={busy} onPress={act}>
-            {view.actionLabel ?? ''}
-          </Button>
+          <ListRow
+            title={view.actionLabel ?? ''}
+            destructive={view.action === 'disable'}
+            onPress={busy ? undefined : () => void act()}
+            trailing={busy ? <ActivityIndicator color={colors.text} /> : undefined}
+            chevron={view.action === 'open_settings'}
+            last
+          />
         )}
-        {variant === 'prompt' && view.canDismiss && (
-          <Button variant="text" onPress={() => setDismissed(true)} disabled={busy}>
-            {t('push.notNow')}
-          </Button>
-        )}
+      </ListSection>
+    );
+  }
+
+  return (
+    <Card title={view.title}>
+      <View style={styles.stack}>
+        <Text style={[styles.body, font('regular')]}>{view.body}</Text>
+        <View style={styles.actions}>
+          {view.action && (
+            <Button size="small" variant={view.action === 'disable' ? 'secondary' : 'primary'} loading={busy} onPress={act}>
+              {view.actionLabel ?? ''}
+            </Button>
+          )}
+          {view.canDismiss && (
+            <Button size="small" variant="text" onPress={() => setDismissed(true)} disabled={busy}>
+              {t('push.notNow')}
+            </Button>
+          )}
+        </View>
       </View>
-    </View>
-  );
-  return variant === 'prompt' ? (
-    <Card title={view.title}>{body}</Card>
-  ) : (
-    <View style={styles.stack} accessibilityLabel={t('push.sectionLabel')}>
-      <Text style={[styles.heading, font('semibold')]}>{view.title}</Text>
-      {body}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   stack: { gap: space[2] },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  heading: { color: roles.text, fontSize: fontSize.md },
-  body: { color: roles.textMuted, fontSize: fontSize.sm },
+  body: { color: colors.textMuted, fontSize: type.callout, lineHeight: 20 },
+  inset: { padding: 14, backgroundColor: colors.background },
 });

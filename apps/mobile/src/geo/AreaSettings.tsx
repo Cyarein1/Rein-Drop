@@ -11,7 +11,7 @@ import { useLocationSupport } from './useLocationSupport';
 
 /**
  * "Your area" (decision 0017): a suburb, town or postal code - never a street address - offered as
- * one tap in Create Hunt. Web counterpart: settings/AreaSettings.
+ * one tap in Create Hunt. Shown on Account > Your area. Web counterpart: settings/AreaSettings.
  */
 export function AreaSettings() {
   const { geo, area: saved, setArea: setSaved } = useLocationSupport();
@@ -93,7 +93,7 @@ export function AreaSettings() {
       )}
       {message && <SystemBanner tone={message.tone} title={message.text} />}
       <View style={styles.actions}>
-        <Button onPress={save} loading={saving} disabled={!changed}>
+        <Button size="large" onPress={save} loading={saving} disabled={!changed}>
           {t('location.areaSave')}
         </Button>
         {saved && (
@@ -107,6 +107,7 @@ export function AreaSettings() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: space[3] },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[3] },
+  wrap: { gap: space[4] },
+  // Save across the width, Remove under it (Account > Your area).
+  actions: { gap: space[2] },
 });

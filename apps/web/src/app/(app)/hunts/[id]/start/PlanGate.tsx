@@ -8,7 +8,9 @@ import {
   planGateOptions,
   RESOLUTION_LABEL,
   type HuntFormContext,
+  type PlainContext,
   type PlanGateOption,
+  withTranslator,
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Page, SystemBanner } from "@/components/ui";
 import { openBillingPortal } from "../../../billing-actions";
@@ -20,7 +22,7 @@ export interface PlanGateProps {
   plans: Plan[];
   entitlements: EntitlementEvaluation;
   check: ActivationCheck;
-  context: HuntFormContext;
+  context: PlainContext;
   billing: BillingInfo;
   /** Back from Stripe Checkout (?checkout=success|cancelled). */
   checkout: "success" | "cancelled" | null;
@@ -38,7 +40,8 @@ type View =
  * come from the server. Free needs no card; paid plans go through Stripe Checkout, and the plan
  * changes only when Stripe confirms the payment (server-owned entitlements, decision 0014).
  */
-export function PlanGate({ hunt, plans, entitlements, check, context, billing, checkout }: PlanGateProps) {
+export function PlanGate({ hunt, plans, entitlements, check, context: plain, billing, checkout }: PlanGateProps) {
+  const context = withTranslator(plain);
   const hasPlan = entitlements.subscription !== null;
   const paidByStripe = entitlements.subscription?.provider === "stripe";
   const awaitingPayment = checkout === "success" && !paidByStripe;

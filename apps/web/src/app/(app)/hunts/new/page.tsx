@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { huntFormDefaults, queryPlaceholder } from "@rein-drop/client-core";
+import { huntFormDefaults, plainContext, queryPlaceholder } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { loadLocationSupport } from "@/geo/load";
@@ -27,7 +27,7 @@ async function CreateHuntLoader() {
   return (
     <CreateHuntFlow
       initialValues={values}
-      context={context}
+      context={plainContext(context)}
       prefilled={prefilled}
       queryPlaceholder={queryPlaceholder(snapshot)}
       geo={geo}

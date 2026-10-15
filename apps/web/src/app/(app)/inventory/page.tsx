@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { huntFormContext, INVENTORY_FILTERS, inventoryEmptyText, type InventoryFilter } from "@rein-drop/client-core";
+import { huntFormContext, plainContext, INVENTORY_FILTERS, inventoryEmptyText, type InventoryFilter } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Page, SystemBanner } from "@/components/ui";
@@ -83,7 +83,7 @@ async function InventoryLoader({ searchParams }: { searchParams: PageProps<"/inv
   return (
     <>
       {tabs}
-      <InventoryList key={filter} initial={page} query={{ status: filter, limit: PAGE_SIZE }} context={huntFormContext(session.user.locale)} />
+      <InventoryList key={filter} initial={page} query={{ status: filter, limit: PAGE_SIZE }} context={plainContext(huntFormContext(session.user.locale))} />
     </>
   );
 }

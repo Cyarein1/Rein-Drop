@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AccessibilityInfo, Image, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, type SellerSnapshot, type UpdateSellerSnapshotRequest } from '@rein-drop/api-client';
 import {
   SELLER_SNAPSHOT_QUESTION_COUNT,
@@ -22,18 +23,19 @@ import {
   type SnapshotQuestion,
   type SnapshotStep,
 } from '@rein-drop/client-core';
-import { colors, fontSize, radius, roles, space, wash } from '@rein-drop/design-tokens';
+import { space } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { mascotAssets } from '@/brand/assets';
 import { getApiClient } from '@/config/api';
-import { useDisplayContext } from '@/i18n/useT';
-import { Button, ChoiceGroup, font, LoadingState, Screen, SystemBanner, TextInput } from '@/ui';
+import { useDisplayContext, useT } from '@/i18n/useT';
+import { ActionBar, Button, ChoiceGroup, colors, font, GUTTER, Icon, IconButton, icons, LoadingState, Screen, SystemBanner, TextInput, type } from '@/ui';
 
 /**
- * Seller Snapshot onboarding (App Flow Blueprint section 4; Screenbook frames 03-08): the
- * "Are you a reseller?" gate, five questions one per screen, then the personalized summary.
- * Every answer is saved before moving on, so closing the app resumes where the user left off.
- * `?edit=1` (from Settings) re-opens the questions with the saved answers.
+ * Seller Snapshot onboarding (App Flow Blueprint section 4; Screenbook frames 03-08; mock-up
+ * CreateHunt): the "Are you a reseller?" gate, five questions one per screen - progress bar, big
+ * question, chips, a fixed Continue - then the personalized summary. Every answer is saved before
+ * moving on, so closing the app resumes where the user left off. `?edit=1` (from Account) re-opens
+ * the questions with the saved answers.
  */
 export default function OnboardingScreen() {
   return (
@@ -67,36 +69,82 @@ function OnboardingLoader() {
 
   if (state.status === 'loading') {
     return (
-      <View style={styles.center}>
-        <LoadingState label={t('onboarding.loadingAnswers')} />
-      </View>
+      <Frame>
+        <View style={styles.center}>
+          <LoadingState label={t('onboarding.loadingAnswers')} />
+        </View>
+      </Frame>
     );
   }
   if (state.status === 'error') {
     return (
-      <Screen>
-        <SystemBanner
-          tone="error"
-          title={t('onboarding.loadFailed')}
-          message={state.message}
-          action={
-            <Button
-              variant="secondary"
-              onPress={() => {
-                setState({ status: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('onboarding.tryAgain')}
-            </Button>
-          }
-        />
-      </Screen>
+      <Frame>
+        <Screen>
+          <SystemBanner
+            tone="error"
+            title={t('onboarding.loadFailed')}
+            message={state.message}
+            action={
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  setState({ status: 'loading' });
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                {t('onboarding.tryAgain')}
+              </Button>
+            }
+          />
+        </Screen>
+      </Frame>
     );
   }
   const { snapshot } = state;
   const startAt: SnapshotStep = edit === '1' ? (snapshot.isReseller ? 'categories' : 'gate') : resumeStep(snapshot);
   return <SnapshotFlow initial={snapshot} startAt={startAt} context={context} />;
+}
+
+/**
+ * The flow's own top bar (the modal's navigation header is hidden): Back on the left when there's
+ * a previous question, the title, Close on the right - then the progress bar on question screens.
+ */
+function Frame({ onBack, backDisabled, progress, children }: { onBack?: () => void; backDisabled?: boolean; progress?: number; children: ReactNode }) {
+  const router = useRouter();
+  const t = useT();
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  return (
+    <View style={styles.frame}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView edges={['top']} style={styles.bar}>
+        <View style={styles.barRow}>
+          <View style={styles.barSide}>{onBack && <IconButton icon={icons.back} label={t('onboarding.back')} onPress={onBack} disabled={backDisabled} />}</View>
+          <Text style={[styles.barTitle, font('semibold')]} numberOfLines={1} accessibilityRole="header">
+            {t('onboarding.setupTitle')}
+          </Text>
+          <View style={[styles.barSide, styles.barRight]}>
+            <Pressable accessibilityRole="button" onPress={close} hitSlop={8} style={({ pressed }) => [styles.close, pressed && styles.pressed]}>
+              <Text style={[styles.closeText, font('medium')]}>{t('common.close')}</Text>
+            </Pressable>
+          </View>
+        </View>
+        {progress !== undefined && (
+          <View
+            style={styles.segments}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={t('onboarding.progress')}
+            accessibilityValue={{ min: 0, max: SELLER_SNAPSHOT_QUESTION_COUNT, now: progress }}
+          >
+            {Array.from({ length: SELLER_SNAPSHOT_QUESTION_COUNT }, (_, i) => (
+              <View key={i} style={[styles.segment, i < progress && styles.segmentOn]} />
+            ))}
+          </View>
+        )}
+      </SafeAreaView>
+      {children}
+    </View>
+  );
 }
 
 function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; startAt: SnapshotStep; context: HuntFormContext }) {
@@ -141,92 +189,104 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
 
   if (step === 'gate') {
     return (
-      <Screen>
-        <Stack.Screen options={{ title: t('onboarding.setupTitle') }} />
-        <Mascot token="welcome" />
-        <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          {gateCopy.question}
-        </Text>
-        <Text style={[styles.lead, font('regular')]}>{t('onboarding.gateLead')}</Text>
-        <ChoiceGroup
-          hideLegend
-          legend={gateCopy.question}
-          options={[
-            { value: 'yes', label: gateCopy.options.yes },
-            { value: 'no', label: gateCopy.options.no },
-          ]}
-          value={gateChoice ?? ('' as 'yes')}
-          onChange={(v) => {
-            setGateChoice(v);
-            setError(null);
-          }}
-        />
-        {banner}
-        <Button
-          onPress={() =>
-            gateChoice &&
-            save({ isReseller: gateChoice === 'yes' }, (saved) => {
-              if (!saved.isReseller) return 'not_reseller';
-              const resume = resumeStep(saved);
-              return resume === 'gate' || resume === 'not_reseller' ? 'categories' : resume;
-            })
+      <Frame>
+        <Screen
+          footer={
+            <ActionBar stacked>
+              {banner}
+              <Button
+                size="large"
+                onPress={() =>
+                  gateChoice &&
+                  save({ isReseller: gateChoice === 'yes' }, (saved) => {
+                    if (!saved.isReseller) return 'not_reseller';
+                    const resume = resumeStep(saved);
+                    return resume === 'gate' || resume === 'not_reseller' ? 'categories' : resume;
+                  })
+                }
+                disabled={!gateChoice}
+                loading={saving}
+              >
+                {t('onboarding.continue')}
+              </Button>
+            </ActionBar>
           }
-          disabled={!gateChoice}
-          loading={saving}
-          fullWidth
         >
-          {t('onboarding.continue')}
-        </Button>
-      </Screen>
+          <Mascot token="welcome" />
+          <Question text={gateCopy.question} lead={t('onboarding.gateLead')} />
+          <ChoiceGroup
+            hideLegend
+            legend={gateCopy.question}
+            options={[
+              { value: 'yes', label: gateCopy.options.yes },
+              { value: 'no', label: gateCopy.options.no },
+            ]}
+            value={gateChoice ?? ('' as 'yes')}
+            onChange={(v) => {
+              setGateChoice(v);
+              setError(null);
+            }}
+          />
+        </Screen>
+      </Frame>
     );
   }
 
   if (step === 'not_reseller') {
     return (
-      <Screen>
-        <Stack.Screen options={{ title: t('onboarding.comingSoonTitle') }} />
-        <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          {gateCopy.comingSoon.title}
-        </Text>
-        <Text style={[styles.lead, font('regular')]}>{gateCopy.comingSoon.body}</Text>
-        <Button variant="secondary" onPress={() => go('gate')} fullWidth>
-          {t('onboarding.changeAnswer')}
-        </Button>
-        <Button variant="text" onPress={() => leave('/')}>
-          {t('onboarding.goHome')}
-        </Button>
-      </Screen>
+      <Frame onBack={() => go('gate')}>
+        <Screen
+          footer={
+            <ActionBar stacked>
+              <Button size="large" variant="secondary" onPress={() => go('gate')}>
+                {t('onboarding.changeAnswer')}
+              </Button>
+              <Button variant="text" onPress={() => leave('/')}>
+                {t('onboarding.goHome')}
+              </Button>
+            </ActionBar>
+          }
+        >
+          <Question text={gateCopy.comingSoon.title} lead={gateCopy.comingSoon.body} />
+        </Screen>
+      </Frame>
     );
   }
 
   if (step === 'summary') {
     const summary = snapshotSummary(snapshot, context);
     return (
-      <Screen>
-        <Stack.Screen options={{ title: t('onboarding.setUpDone') }} />
-        <Mascot token="confirmed" />
-        <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          {t('onboarding.setUpDone')}
-        </Text>
-        <Text style={[styles.body, font('regular')]}>{summary.sentence}</Text>
-        <View style={styles.priorities}>
-          <Text style={[styles.muted, font('semibold')]}>{t('onboarding.willPrioritize')}</Text>
-          {summary.priorities.map((p) => (
-            <Text key={p} style={[styles.body, font('regular')]}>
-              {t('onboarding.bullet', { text: p })}
-            </Text>
-          ))}
-        </View>
-        <Button onPress={() => leave('/hunts/new')} fullWidth>
-          {t('onboarding.createFirstHunt')}
-        </Button>
-        <Button variant="secondary" onPress={() => go('categories')} fullWidth>
-          {t('onboarding.editAnswers')}
-        </Button>
-        <Button variant="text" onPress={() => leave('/')}>
-          {t('onboarding.goHome')}
-        </Button>
-      </Screen>
+      <Frame>
+        <Screen
+          footer={
+            <ActionBar stacked>
+              <Button size="large" onPress={() => leave('/hunts/new')}>
+                {t('onboarding.createFirstHunt')}
+              </Button>
+              <View style={styles.row}>
+                <Button variant="secondary" fullWidth onPress={() => go('categories')}>
+                  {t('onboarding.editAnswers')}
+                </Button>
+                <Button variant="text" fullWidth onPress={() => leave('/')}>
+                  {t('onboarding.goHome')}
+                </Button>
+              </View>
+            </ActionBar>
+          }
+        >
+          <Mascot token="confirmed" />
+          <Question text={t('onboarding.setUpDone')} lead={summary.sentence} />
+          <View style={styles.priorities}>
+            <Text style={[styles.kicker, font('semibold')]}>{t('onboarding.willPrioritize')}</Text>
+            {summary.priorities.map((p, i) => (
+              <View key={p} style={[styles.priority, i < summary.priorities.length - 1 && styles.hairline]}>
+                <Icon name={icons.check} color={colors.profitText} size={16} />
+                <Text style={[styles.priorityText, font('regular')]}>{p}</Text>
+              </View>
+            ))}
+          </View>
+        </Screen>
+      </Frame>
     );
   }
 
@@ -242,29 +302,34 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
   };
 
   return (
-    <Screen>
-      <Stack.Screen options={{ title: t('onboarding.stepOf', { number, total: SELLER_SNAPSHOT_QUESTION_COUNT }) }} />
-      <View
-        style={styles.track}
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={t('onboarding.progress')}
-        accessibilityValue={{ min: 0, max: SELLER_SNAPSHOT_QUESTION_COUNT, now: number }}
+    <Frame onBack={() => go(previousStep(step))} backDisabled={saving} progress={number}>
+      <Screen
+        footer={
+          <ActionBar stacked>
+            {banner}
+            <Button size="large" onPress={submit} disabled={!hasAnswer(step, draft)} loading={saving}>
+              {isLast ? t('onboarding.seeSummary') : t('onboarding.continue')}
+            </Button>
+          </ActionBar>
+        }
       >
-        <View style={[styles.fill, { width: `${(number / SELLER_SNAPSHOT_QUESTION_COUNT) * 100}%` }]} />
-      </View>
-      <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-        {snapshotQuestionText(step, t)}
+        <Question kicker={t('onboarding.questionOf', { number, total: SELLER_SNAPSHOT_QUESTION_COUNT })} text={snapshotQuestionText(step, t)} />
+        <QuestionInput step={step} draft={draft} set={set} context={context} />
+      </Screen>
+    </Frame>
+  );
+}
+
+/** "QUESTION 2 OF 5", the question in large type, an optional lead line (mock-up CreateHunt). */
+function Question({ kicker, text, lead }: { kicker?: string; text: string; lead?: string }) {
+  return (
+    <View style={styles.question}>
+      {kicker && <Text style={[styles.kicker, font('semibold')]}>{kicker}</Text>}
+      <Text accessibilityRole="header" style={[styles.title, font('bold')]}>
+        {text}
       </Text>
-      <QuestionInput step={step} draft={draft} set={set} context={context} />
-      {banner}
-      <Button onPress={submit} disabled={!hasAnswer(step, draft)} loading={saving} fullWidth>
-        {isLast ? t('onboarding.seeSummary') : t('onboarding.next')}
-      </Button>
-      <Button variant="secondary" onPress={() => go(previousStep(step))} disabled={saving} fullWidth>
-        {t('onboarding.back')}
-      </Button>
-    </Screen>
+      {lead && <Text style={[styles.lead, font('regular')]}>{lead}</Text>}
+    </View>
   );
 }
 
@@ -351,13 +416,28 @@ function Mascot({ token }: { token: 'welcome' | 'confirmed' }) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
-  title: { color: roles.text, fontSize: fontSize['2xl'] },
-  lead: { color: roles.textMuted, fontSize: fontSize.md },
-  body: { color: roles.text, fontSize: fontSize.md },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
-  priorities: { gap: space[2] },
-  mascot: { width: 140, height: 140, alignSelf: 'center' },
-  track: { height: 6, borderRadius: radius.full, backgroundColor: wash.sky, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: radius.full, backgroundColor: colors.navy },
+  frame: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center' },
+  bar: { backgroundColor: colors.background, paddingBottom: space[2], gap: space[2] },
+  barRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: space[2] },
+  barSide: { width: 88, flexDirection: 'row', alignItems: 'center' },
+  barRight: { justifyContent: 'flex-end', paddingRight: GUTTER - space[2] },
+  barTitle: { flex: 1, textAlign: 'center', color: colors.text, fontSize: type.body },
+  close: { minHeight: 44, justifyContent: 'center' },
+  closeText: { color: colors.textMuted, fontSize: type.body },
+  pressed: { opacity: 0.6 },
+  segments: { flexDirection: 'row', gap: 4, paddingHorizontal: GUTTER },
+  segment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },
+  segmentOn: { backgroundColor: colors.action },
+  question: { gap: 6, paddingTop: space[3] },
+  // Uppercase is display-only: screen readers get the text as written.
+  kicker: { color: colors.textMuted, fontSize: type.subhead, letterSpacing: 0.3, textTransform: 'uppercase' },
+  title: { color: colors.text, fontSize: type.question, lineHeight: 32, letterSpacing: -0.3 },
+  lead: { color: colors.textMuted, fontSize: type.body, lineHeight: 21 },
+  priorities: { gap: 0 },
+  priority: { flexDirection: 'row', alignItems: 'flex-start', gap: space[3], paddingVertical: space[3] },
+  priorityText: { flex: 1, color: colors.text, fontSize: type.body, lineHeight: 21 },
+  hairline: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
+  row: { flexDirection: 'row', gap: space[2] },
+  mascot: { width: 112, height: 112, alignSelf: 'center' },
 });

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError } from "@rein-drop/api-client";
-import { huntFormContext } from "@rein-drop/client-core";
+import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Page } from "@/components/ui";
@@ -28,5 +28,5 @@ async function DealLoader({ params }: { params: PageProps<"/deals/[id]">["params
     if (err instanceof ApiError && (err.status === 404 || err.code === "VALIDATION_FAILED")) notFound();
     throw err;
   });
-  return <DealDetailScreen initial={deal} context={huntFormContext(session.user.locale)} />;
+  return <DealDetailScreen initial={deal} context={plainContext(huntFormContext(session.user.locale))} />;
 }

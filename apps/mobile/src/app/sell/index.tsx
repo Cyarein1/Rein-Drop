@@ -1,72 +1,103 @@
 import { useCallback } from 'react';
-import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import type { SellListing } from '@rein-drop/api-client';
 import { channelView, photoSrc, sellListingStatusLabel, sellPriceText } from '@rein-drop/client-core';
-import { fontSize, radius, roles, size, space } from '@rein-drop/design-tokens';
+import { space } from '@rein-drop/design-tokens';
+import { MarketplaceMark } from '@/brand/MarketplaceMark';
 import { LoadStatus } from '@/components/LoadStatus';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { useRefreshable } from '@/data/useRefreshable';
 import { useDisplayContext } from '@/i18n/useT';
-import { Badge, Button, Card, EmptyState, font, Screen } from '@/ui';
+import { Badge, Button, colors, EmptyState, font, GUTTER, SkeletonRows, Thumb, type } from '@/ui';
 
-/** Your listings (decision 0019): every item you've started listing, newest first. Opened from the Inventory tab. */
+/** Your listings (decision 0019): every item you've started listing, newest first, as photo rows. Opened from the Inventory header. */
 export default function SellListingsScreen() {
   const router = useRouter();
-  const { localeTag, t } = useDisplayContext();
+  const { t } = useDisplayContext();
   const fetch = useCallback(() => getApiClient().listSellListings(), []);
   const { state, refresh, retry } = useRefreshable(fetch, 'all');
   const listings = state.status === 'ready' ? state.data : null;
 
   return (
-    <Screen description={t('sell.listDescription')} onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
-      <LoadStatus state={state} what={t('sell.loadWhat')} onRetry={retry} />
-      {listings?.length === 0 && (
-        <Card>
-          <EmptyState
-            title={t('sell.emptyTitle')}
-            description={t('sell.emptyBody')}
-            action={<Button onPress={() => router.navigate('/inventory')}>{t('sell.goToInventory')}</Button>}
-          />
-        </Card>
-      )}
-      {listings?.map((l) => {
-        const status = sellListingStatusLabel(l.status, t);
-        const cover = l.photos[0];
-        const price = sellPriceText(l, localeTag);
-        const live = l.channels.map((c) => channelView(c, localeTag, t)).filter((c) => c.label !== t('sell.channelEnded'));
-        return (
-          <Pressable
-            key={l.id}
-            accessibilityRole="button"
-            accessibilityLabel={[l.title || t('sell.untitled'), status.label, price, ...live.map((c) => t('sell.channelLine', { name: c.name, label: c.label }))].filter(Boolean).join('. ')}
-            onPress={() => router.push({ pathname: '/sell/[id]', params: { id: l.id } })}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-          >
-            {cover ? <Image source={{ uri: photoSrc(cover.url, apiBaseUrl.url ?? '') }} style={styles.thumb} /> : <View style={styles.thumb} />}
-            <View style={styles.text}>
-              <Text style={[styles.title, font('semibold')]} numberOfLines={2}>
-                {l.title || t('sell.untitled')}
-              </Text>
-              <View style={styles.meta}>
-                <Badge tone={status.tone}>{status.label}</Badge>
-                {price && <Text style={[styles.muted, font('regular')]}>{price}</Text>}
-              </View>
-              {live.length > 0 && <Text style={[styles.muted, font('regular')]}>{live.map((c) => t('sell.channelLine', { name: c.name, label: c.label })).join(' · ')}</Text>}
-              {l.status === 'DRAFT' && l.missing.length > 0 && <Text style={[styles.muted, font('regular')]}>{t('sell.toDo', { count: l.missing.length })}</Text>}
+    <View style={styles.screen}>
+      <Stack.Screen options={{ title: t('nav.titleListings') }} />
+      {state.status === 'loading' ? (
+        <SkeletonRows thumb={72} />
+      ) : (
+        <FlatList
+          data={listings ?? []}
+          keyExtractor={(l) => l.id}
+          renderItem={({ item }) => <ListingRow listing={item} onPress={() => router.push({ pathname: '/sell/[id]', params: { id: item.id } })} />}
+          contentInsetAdjustmentBehavior="automatic"
+          refreshControl={<RefreshControl refreshing={state.status === 'ready' && state.refreshing} onRefresh={refresh} tintColor={colors.text} accessibilityLabel={t('common.pullToRefresh')} />}
+          ListHeaderComponent={
+            <View style={styles.status}>
+              <LoadStatus state={state} what={t('sell.loadWhat')} onRetry={retry} />
             </View>
-          </Pressable>
-        );
-      })}
-    </Screen>
+          }
+          ListEmptyComponent={
+            listings ? (
+              <EmptyState
+                title={t('sell.emptyTitle')}
+                description={t('sell.emptyBody')}
+                action={<Button onPress={() => router.navigate('/inventory')}>{t('sell.goToInventory')}</Button>}
+              />
+            ) : null
+          }
+        />
+      )}
+    </View>
+  );
+}
+
+function ListingRow({ listing: l, onPress }: { listing: SellListing; onPress: () => void }) {
+  const { localeTag, t } = useDisplayContext();
+  const status = sellListingStatusLabel(l.status, t);
+  const cover = l.photos[0];
+  const price = sellPriceText(l, localeTag);
+  const live = l.channels.map((c) => channelView(c, localeTag, t)).filter((c) => c.label !== t('sell.channelEnded'));
+  const title = l.title || t('sell.untitled');
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[title, status.label, price, ...live.map((c) => t('sell.channelLine', { name: c.name, label: c.label }))].filter(Boolean).join('. ')}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+    >
+      <Thumb uri={cover ? photoSrc(cover.url, apiBaseUrl.url ?? '') : null} size={72} />
+      <View style={styles.text}>
+        <Text style={[styles.title, font('medium')]} numberOfLines={2}>
+          {title}
+        </Text>
+        {price && <Text style={[styles.price, font('bold')]}>{price}</Text>}
+        <View style={styles.meta}>
+          <Badge tone={status.tone}>{status.label}</Badge>
+          {live.map((c) => (
+            <View key={c.marketplace} style={styles.channel}>
+              <MarketplaceMark marketplace={c.marketplace} size={14} />
+              <Text style={[styles.muted, font('regular')]} numberOfLines={1}>
+                {c.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+        {l.status === 'DRAFT' && l.missing.length > 0 && <Text style={[styles.todo, font('medium')]}>{t('sell.toDo', { count: l.missing.length })}</Text>}
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: space[3], padding: space[3], borderWidth: size.borderWidth, borderColor: roles.border, borderRadius: radius.md, backgroundColor: roles.surface },
-  pressed: { opacity: 0.85 },
-  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: roles.surfaceSecondary },
-  text: { flex: 1, gap: space[1] },
-  title: { color: roles.text, fontSize: fontSize.md },
+  screen: { flex: 1, backgroundColor: colors.background },
+  status: { paddingHorizontal: GUTTER },
+  row: { flexDirection: 'row', gap: space[3], paddingHorizontal: GUTTER, paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
+  pressed: { backgroundColor: colors.grouped },
+  text: { flex: 1, gap: 3, minWidth: 0 },
+  title: { color: colors.text, fontSize: type.body, lineHeight: 20 },
+  price: { color: colors.text, fontSize: type.price },
   meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
+  channel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  muted: { color: colors.textMuted, fontSize: type.footnote },
+  todo: { color: colors.warningText, fontSize: type.footnote },
 });

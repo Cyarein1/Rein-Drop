@@ -1,46 +1,76 @@
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { InventoryRowView } from '@rein-drop/client-core';
-import { brand, fontSize, radius, roles, size, space } from '@rein-drop/design-tokens';
-import { MarketplaceName } from '@/brand/MarketplaceMark';
+import { radius, space } from '@rein-drop/design-tokens';
+import { MarketplaceMark } from '@/brand/MarketplaceMark';
 import { useT } from '@/i18n/useT';
-import { Badge, Button, font } from '@/ui';
+import { Badge, Button, colors, font, GUTTER, Icon, Thumb, type } from '@/ui';
 
-const RESULT_COLOR = { profit: brand.green, loss: brand.lossRed, neutral: roles.text } as const;
+const RESULT_COLOR = { profit: colors.profitText, loss: colors.lossText, neutral: colors.text } as const;
+const TILE = 56;
 
-/** One inventory item: cost, holding time (or realized result) and the next step. */
-export function InventoryRow({ view }: { view: InventoryRowView }) {
+/**
+ * One inventory item as a dense list row (step 89, mock-up Main): photo (when there is one) or the
+ * marketplace it came from, title, status and holding time, cost; sold items show the realized
+ * result on the right. The row opens the item; the small button is its next step.
+ */
+export function InventoryRow({ view, photo }: { view: InventoryRowView; photo?: string | null }) {
   const router = useRouter();
   const t = useT();
   const open = () => router.push({ pathname: '/inventory/[id]', params: { id: view.id } });
   const act = () =>
     router.push({ pathname: view.action.kind === 'sell' ? '/inventory/[id]/sell' : '/inventory/[id]/result', params: { id: view.id } });
+  const actionA11y = t('inventory.labelValue', { label: view.action.label, value: view.title });
   return (
     <Pressable
       onPress={open}
       accessibilityRole="button"
-      accessibilityLabel={[view.title, view.status.label, view.cost, view.held, view.result ? t('inventory.labelValue', { label: view.result.label, value: view.result.value }) : null]
+      accessibilityLabel={[view.title, view.status.label, view.source, view.cost, view.held, view.result ? t('inventory.labelValue', { label: view.result.label, value: view.result.value }) : null, view.estimate]
         .filter(Boolean)
         .join('. ')}
       accessibilityHint={t('inventory.openHint')}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      accessibilityActions={[{ name: 'act', label: view.action.label }]}
+      onAccessibilityAction={(e) => e.nativeEvent.actionName === 'act' && act()}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <View style={styles.head}>
-        <Text style={[styles.title, font('semibold')]}>{view.title}</Text>
-        <Badge tone={view.status.tone}>{view.status.label}</Badge>
-      </View>
-      <View style={styles.meta}>
-        {view.marketplace && <MarketplaceName marketplace={view.marketplace} />}
-        <Text style={[styles.muted, styles.metaText, font('regular')]}>{`${view.marketplace ? '· ' : ''}${view.cost} · ${view.held}`}</Text>
-      </View>
-      {view.result && (
-        <Text style={[styles.body, font('regular')]}>
-          {view.result.label}: <Text style={[font('bold'), { color: RESULT_COLOR[view.result.tone] }]}>{view.result.value}</Text>
-        </Text>
+      {photo ? (
+        <Thumb uri={photo} size={TILE} />
+      ) : (
+        <View style={styles.tile} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {view.marketplace ? <MarketplaceMark marketplace={view.marketplace} size={26} /> : <Icon name={{ ios: 'shippingbox', android: 'inventory_2' }} color={colors.textMuted} size={22} />}
+        </View>
       )}
-      {view.estimate && <Text style={[styles.muted, font('regular')]}>{view.estimate}</Text>}
-      <View style={styles.action}>
-        <Button variant={view.action.kind === 'sell' ? 'primary' : 'secondary'} onPress={act} accessibilityLabel={t('inventory.labelValue', { label: view.action.label, value: view.title })}>
+      <View style={styles.main}>
+        <Text style={[styles.title, font('medium')]} numberOfLines={2}>
+          {view.title}
+        </Text>
+        <View style={styles.meta}>
+          <Badge tone={view.status.tone}>{view.status.label}</Badge>
+          <Text style={[styles.muted, font('regular')]} numberOfLines={1}>
+            {view.held}
+          </Text>
+        </View>
+        <Text style={[styles.muted, font('regular')]} numberOfLines={1}>
+          {view.cost}
+        </Text>
+        {view.estimate && (
+          <Text style={[styles.estimate, font('regular')]} numberOfLines={1}>
+            {view.estimate}
+          </Text>
+        )}
+      </View>
+      <View style={styles.side}>
+        {view.result && (
+          <View style={styles.result}>
+            <Text style={[styles.resultValue, font('bold'), { color: RESULT_COLOR[view.result.tone] }]} numberOfLines={1}>
+              {view.result.value}
+            </Text>
+            <Text style={[styles.resultLabel, font('regular')]} numberOfLines={2}>
+              {view.result.label}
+            </Text>
+          </View>
+        )}
+        <Button size="small" variant={view.action.kind === 'sell' ? 'secondary' : 'text'} onPress={act} accessibilityLabel={actionA11y}>
           {view.action.label}
         </Button>
       </View>
@@ -49,13 +79,24 @@ export function InventoryRow({ view }: { view: InventoryRowView }) {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: space[2], padding: space[4], borderWidth: size.borderWidth, borderColor: roles.border, borderRadius: radius.md, backgroundColor: roles.surface },
-  pressed: { opacity: 0.85 },
-  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space[3] },
-  title: { color: roles.text, fontSize: fontSize.lg, flexShrink: 1 },
-  body: { color: roles.text, fontSize: fontSize.md },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
-  meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[1] },
-  metaText: { flexShrink: 1 },
-  action: { alignSelf: 'flex-start' },
+  row: {
+    flexDirection: 'row',
+    gap: space[3],
+    paddingHorizontal: GUTTER,
+    paddingVertical: space[3],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
+    backgroundColor: colors.background,
+  },
+  pressed: { backgroundColor: colors.grouped },
+  tile: { width: TILE, height: TILE, borderRadius: radius.sm, backgroundColor: colors.grouped, alignItems: 'center', justifyContent: 'center' },
+  main: { flex: 1, gap: 3, minWidth: 0 },
+  title: { color: colors.text, fontSize: type.body, lineHeight: 20 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: space[2], flexWrap: 'wrap' },
+  muted: { color: colors.textMuted, fontSize: type.subhead, flexShrink: 1 },
+  estimate: { color: colors.textMuted, fontSize: type.footnote },
+  side: { alignItems: 'flex-end', justifyContent: 'space-between', gap: space[2], maxWidth: '38%' },
+  result: { alignItems: 'flex-end', gap: 1 },
+  resultValue: { fontSize: type.price },
+  resultLabel: { color: colors.textMuted, fontSize: type.caption, textAlign: 'right' },
 });

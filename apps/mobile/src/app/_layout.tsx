@@ -3,11 +3,12 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AccessProvider } from '@/access/AccessProvider';
 import { SessionProvider } from '@/auth/SessionProvider';
 import { CapabilitiesProvider } from '@/capabilities/CapabilitiesProvider';
 import { NotificationsBridge } from '@/notifications/NotificationsBridge';
-import { headerOptions } from '@/navigation/options';
+import { headerOptions, sheetOptions } from '@/navigation/options';
 import { useT } from '@/i18n/useT';
 import { interFonts, setInterLoaded } from '@/ui';
 
@@ -35,15 +36,18 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <SessionProvider>
-      <CapabilitiesProvider>
-      <AccessProvider>
-      <NotificationsBridge />
-      <RootStack />
-      <StatusBar style="dark" />
-      </AccessProvider>
-      </CapabilitiesProvider>
-    </SessionProvider>
+    // Swipeable rows need the gesture root at the top of the tree.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SessionProvider>
+        <CapabilitiesProvider>
+          <AccessProvider>
+            <NotificationsBridge />
+            <RootStack />
+            <StatusBar style="dark" />
+          </AccessProvider>
+        </CapabilitiesProvider>
+      </SessionProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -55,13 +59,17 @@ function RootStack() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: t('nav.titleAccount') }} />
       <Stack.Screen name="onboarding" options={{ title: t('nav.titleOnboarding'), presentation: 'modal' }} />
-      <Stack.Screen name="hunts/new" options={{ title: t('nav.createHunt'), presentation: 'modal' }} />
+      {/* Create / Edit Hunt: one question per screen with their own top bar (step 89). */}
+      <Stack.Screen name="hunts/new" options={{ title: t('nav.createHunt'), presentation: 'modal', headerShown: false }} />
       <Stack.Screen name="hunts/[id]/index" options={{ title: t('nav.titleHunt') }} />
-      <Stack.Screen name="hunts/[id]/edit" options={{ title: t('nav.titleEditHunt') }} />
+      <Stack.Screen name="hunts/[id]/edit" options={{ title: t('nav.titleEditHunt'), headerShown: false }} />
       <Stack.Screen name="hunts/[id]/start" options={{ title: t('nav.titleStartWatching'), presentation: 'modal' }} />
-      <Stack.Screen name="deals/[id]" options={{ title: t('nav.titleDeal') }} />
+      {/* Deal detail draws its own photo header with floating back / share / save buttons. */}
+      <Stack.Screen name="deals/[id]/index" options={{ title: t('nav.titleDeal'), headerShown: false }} />
+      <Stack.Screen name="deals/[id]/bought" options={sheetOptions([0.7, 0.95])} />
+      <Stack.Screen name="deals/[id]/dismiss" options={sheetOptions([0.6, 0.9])} />
       <Stack.Screen name="inventory/[id]/index" options={{ title: t('nav.titleInventoryItem') }} />
-      <Stack.Screen name="inventory/[id]/sell" options={{ title: t('nav.titleMarkSold') }} />
+      <Stack.Screen name="inventory/[id]/sell" options={sheetOptions([0.95])} />
       <Stack.Screen name="inventory/[id]/result" options={{ title: t('nav.titleSaleResult') }} />
       <Stack.Screen name="sell/index" options={{ title: t('nav.titleListings') }} />
       <Stack.Screen name="sell/[id]" options={{ title: t('nav.titleListForSale') }} />

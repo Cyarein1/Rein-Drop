@@ -11,7 +11,9 @@ import {
   needsLocation,
   parseExclusions,
   parseMoneyInput,
+  plainContext,
   queryPlaceholder,
+  withTranslator,
   type HuntFormValues,
 } from './index.js';
 
@@ -31,6 +33,18 @@ const snapshot = (overrides: Partial<SellerSnapshot> = {}): SellerSnapshot => ({
   completedAt: '2026-10-07T00:00:00.000Z',
   updatedAt: '2026-10-07T00:00:00.000Z',
   ...overrides,
+});
+
+describe('plainContext / withTranslator (server page -> client component)', () => {
+  it('drops the translator so the context survives serialisation, and the client gets it back', () => {
+    const plain = plainContext(huntFormContext({ ...US, language: 'de' }));
+    expect(Object.values(plain).some((v) => typeof v === 'function')).toBe(false);
+    expect(JSON.parse(JSON.stringify(plain))).toEqual(plain);
+    const ctx = withTranslator(plain);
+    expect(ctx.language).toBe('de');
+    expect(ctx.t.language).toBe('de');
+    expect(withTranslator(plain)).toBe(ctx);
+  });
 });
 
 describe('money input', () => {

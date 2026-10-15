@@ -103,3 +103,25 @@ export function priceSliderEnds(slider: PriceSlider, currency: string, localeTag
   }
   return { min, max: t('common.noLimit') };
 }
+
+/** Round amounts offered as one-tap chips next to the slider (USD-sized; shifted like the stops). */
+const QUICK_PICKS = [50, 100, 250, 500, 1000] as const;
+
+/**
+ * One-tap max prices for the Create Hunt step (mobile): `text` goes into the field, `label` is the
+ * chip ("$250"). Always stops of the slider, so the slider lands exactly on them.
+ */
+export function priceQuickPicks(slider: PriceSlider, currency: string, localeTag: string): { text: string; label: string }[] {
+  const scale = slider.stops[0]! / 5;
+  return QUICK_PICKS.map((v) => Math.round(v * scale))
+    .filter((v) => slider.stops.includes(v))
+    .map((v) => {
+      let label: string;
+      try {
+        label = new Intl.NumberFormat(localeTag, { style: 'currency', currency, maximumFractionDigits: 0 }).format(v);
+      } catch {
+        label = `${currency} ${v}`;
+      }
+      return { text: String(v), label };
+    });
+}

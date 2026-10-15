@@ -9,7 +9,8 @@ import {
   PURCHASE_COST_LABEL,
   purchaseFormDefaults,
   saleResultView,
-  type HuntFormContext,
+  type PlainContext,
+  withTranslator,
   type PurchaseForm,
   type PurchaseFormErrors,
 } from "@rein-drop/client-core";
@@ -21,7 +22,8 @@ import { CostRows } from "../CostRows";
 import styles from "../inventory.module.css";
 
 /** Inventory detail: the purchase (editable), holding state, what was expected, and the sale if any. */
-export function InventoryDetail({ initial, context }: { initial: InventoryItem; context: HuntFormContext }) {
+export function InventoryDetail({ initial, context: plain }: { initial: InventoryItem; context: PlainContext }) {
+  const context = withTranslator(plain);
   const [item, setItem] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);

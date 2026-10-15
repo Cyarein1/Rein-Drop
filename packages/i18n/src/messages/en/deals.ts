@@ -215,4 +215,30 @@ export default {
   ignoreLabel: "Why isn't it for you? (optional)",
   ignoreHint: 'e.g. too far, wrong model, price too high',
   ignoreSubmit: 'Ignore this deal',
+
+  // Feed (mobile, step 89 list-first redesign)
+  searchPlaceholder: 'Search your deals',
+  searchClear: 'Clear search',
+  searchNoMatch: 'No loaded deals match “{query}”.',
+  filtersA11y: 'Filter deals',
+  allHunts: 'All Hunts',
+  huntFilterA11y: 'Filter by Hunt',
+  huntPickerHint: 'Shows your Hunts to filter by',
+  swipeHint: 'Swipe right on a deal to save it, left for Not for me.',
+  upsideEst: 'est. upside',
+  freshBadge: 'New',
+
+  // Detail (mobile, step 89)
+  back: 'Back',
+  share: 'Share',
+  shareMessage: '{title}\n{url}',
+  photosA11y: 'Product photos, {index} of {count}',
+  noPhoto: 'No photo',
+  photoCounter: '{index} / {count}',
+  stripPrice: 'Price',
+  stripResale: 'Resale (est.)',
+  stripUpside: 'Upside (est.)',
+  detailsTitle: 'More about this deal',
+  iBoughtIt: 'I bought it',
+  listedAt: 'Listed at {price} · {source}',
 } as const;

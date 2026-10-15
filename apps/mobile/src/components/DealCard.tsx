@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { confidenceLabel, type DealCardView } from '@rein-drop/client-core';
-import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import type { DealCardView } from '@rein-drop/client-core';
+import { space, tones } from '@rein-drop/design-tokens';
 import { MarketplaceName } from '@/brand/MarketplaceMark';
 import { useT } from '@/i18n/useT';
-import { Badge, Button, font } from '@/ui';
+import { Badge, colors, font, GUTTER, Icon, IconButton, icons, SwipeRow, Thumb, type } from '@/ui';
 
 export interface DealCardProps {
   view: DealCardView;
@@ -11,127 +11,137 @@ export interface DealCardProps {
   /** Quick decisions from the feed; each is offered only when the deal allows it. */
   onSave?: () => void;
   onIgnore?: () => void;
+  /** Already saved: a filled bookmark instead of the Save button (the status is in the spoken summary). */
+  saved?: boolean;
   /** An action for this deal is in flight. */
   busy?: boolean;
 }
 
+/** Statuses worth a tag on the row; new / seen deals need none. */
+const DECIDED = new Set<DealCardView['statusKey']>(['saved', 'ignored', 'bought', 'unavailable']);
+
 /**
- * One deal in the feed: product, source, price, freshness, estimated upside, confidence and
- * status. Exceptional deals get the soft-yellow branded treatment. Quick actions sit below the
- * card's pressable area (never nested buttons), so each has its own accessible name.
+ * One deal in the feed as a dense list row (step 89, eBay-style): photo, two-line title, price,
+ * estimated upside (always marked "est."), then marketplace, age and strength. Exceptional and
+ * just-dropped deals get the soft-yellow row. Swipe right = Save, swipe left = Not for me; the
+ * same decisions are offered as accessibility actions on the row (never swipe-only), and Save
+ * also has its own small button. The row and the button are siblings (never nested buttons).
  */
-export function DealCard({ view, onPress, onSave, onIgnore, busy = false }: DealCardProps) {
+export function DealCard({ view, onPress, onSave, onIgnore, saved = false, busy = false }: DealCardProps) {
   const t = useT();
-  const quick = onSave || onIgnore;
-  // The column is headed "Confidence", so show the short level ("High"), not "High confidence".
-  const level = (['high', 'medium', 'low'] as const).find((c) => confidenceLabel(c, t) === view.confidence);
-  const confidence = level ? t(CONFIDENCE_SHORT[level]) : view.confidence;
+  const highlight = view.exceptional || view.justDropped;
+  const saveLabel = t('deals.saveA11y', { title: view.title });
+  const ignoreLabel = t('deals.notForMeA11y', { title: view.title });
+  const a11yActions = [
+    ...(onSave && !busy ? [{ name: 'save', label: saveLabel }] : []),
+    ...(onIgnore && !busy ? [{ name: 'ignore', label: ignoreLabel }] : []),
+  ];
+  const meta = [view.age, view.strength?.label].filter(Boolean).join(' · ');
+
   return (
-    <View style={[styles.wrap, view.exceptional && styles.exceptional]}>
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={view.accessibleSummary}
-      accessibilityHint={t('deals.openHint')}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    <SwipeRow
+      enabled={!busy}
+      left={onSave ? { label: t('deals.save'), icon: icons.save, color: tones.info.background, onAction: onSave } : undefined}
+      right={onIgnore ? { label: t('deals.notForMe'), icon: icons.dismiss, color: colors.grouped, onAction: onIgnore } : undefined}
     >
-      <View style={styles.badges}>
-        {view.strength && <Badge tone={view.strength.tone}>{view.strength.label}</Badge>}
-        {view.justDropped && <Badge tone="fresh">{t('deals.justDropped')}</Badge>}
-        <Badge tone={view.status.tone}>{view.status.label}</Badge>
-      </View>
-      <Text style={[styles.title, font('semibold')]}>{view.title}</Text>
-      <View style={styles.meta}>
-        <MarketplaceName marketplace={view.marketplace} />
-        <Text style={[styles.muted, styles.metaText, font('regular')]}>
-          · {view.freshness} · {view.huntName}
-        </Text>
-      </View>
-
-      <View style={styles.figures}>
-        <View style={styles.figure}>
-          <Text style={[styles.label, font('medium')]}>{t('deals.labelPrice')}</Text>
-          <Text style={[styles.value, font('bold')]}>{view.price}</Text>
-          {view.priceExtra && <Text style={[styles.small, font('regular')]}>{view.priceExtra}</Text>}
-        </View>
-        <View style={styles.figure}>
-          <View style={styles.labelRow}>
-            <Text style={[styles.label, font('medium')]}>{t('deals.labelUpside')}</Text>
-            {view.upside.estimated && <Text style={[styles.estimated, font('regular')]}>{t('common.estimated')}</Text>}
+      <View style={[styles.row, highlight && styles.highlight]}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={view.accessibleSummary}
+          accessibilityHint={t('deals.openHint')}
+          accessibilityActions={a11yActions}
+          onAccessibilityAction={(e) => {
+            if (e.nativeEvent.actionName === 'save') onSave?.();
+            if (e.nativeEvent.actionName === 'ignore') onIgnore?.();
+          }}
+          style={({ pressed }) => [styles.main, pressed && styles.pressed]}
+        >
+          <View>
+            <Thumb uri={view.imageUrl} size={92} />
+            {view.justDropped && (
+              <View style={styles.fresh}>
+                <Text style={[styles.freshText, font('bold')]}>{t('deals.freshBadge')}</Text>
+              </View>
+            )}
           </View>
-          <Text style={[view.upside.estimated ? styles.value : styles.muted, font(view.upside.estimated ? 'bold' : 'regular')]}>
-            {view.upside.value}
-          </Text>
-        </View>
-        <View style={styles.figure}>
-          <Text style={[styles.label, font('medium')]}>{t('deals.labelConfidence')}</Text>
-          <Text style={[confidence ? styles.body : styles.muted, font('regular')]}>
-            {confidence ?? t('deals.confidenceNotYet')}
-          </Text>
+          <View style={styles.text}>
+            <Text style={[styles.title, font('medium')]} numberOfLines={2}>
+              {view.title}
+            </Text>
+            <Text style={styles.priceLine} numberOfLines={1}>
+              <Text style={[styles.price, font('bold')]}>{view.price}</Text>
+              {view.priceExtra ? <Text style={[styles.extra, font('regular')]}>{`  ${view.priceExtra}`}</Text> : null}
+            </Text>
+            {view.upside.estimated ? (
+              <Text style={[styles.upside, font('semibold')]} numberOfLines={1}>
+                {view.upside.value} <Text style={[styles.muted, font('regular')]}>{t('deals.upsideEst')}</Text>
+              </Text>
+            ) : (
+              <Text style={[styles.muted, font('regular')]} numberOfLines={1}>
+                {view.upside.value}
+              </Text>
+            )}
+            <View style={styles.meta}>
+              <MarketplaceName marketplace={view.marketplace} size={13} showName={false} textStyle={styles.source} />
+              <Text style={[styles.metaText, font('regular')]} numberOfLines={1}>
+                {meta ? `· ${meta}` : ''}
+              </Text>
+            </View>
+            {(DECIDED.has(view.statusKey) || view.sourceNote) && (
+              <View style={styles.meta}>
+                {DECIDED.has(view.statusKey) && <Badge tone={view.status.tone}>{view.status.label}</Badge>}
+                {view.sourceNote && (
+                  <Text style={[styles.note, font('regular'), view.sourceNote.tone === 'loss' && styles.loss]} numberOfLines={1}>
+                    {view.sourceNote.text}
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        </Pressable>
+        <View style={styles.side}>
+          {onSave ? (
+            <IconButton icon={icons.save} label={saveLabel} onPress={onSave} disabled={busy} />
+          ) : saved ? (
+            <View style={styles.savedMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Icon name={icons.saved} size={20} />
+            </View>
+          ) : null}
         </View>
       </View>
-
-      {view.reason && <Text style={[styles.body, font('regular')]}>{view.reason}</Text>}
-      {view.analysisNote && <Text style={[styles.small, font('regular')]}>{view.analysisNote}</Text>}
-      {view.sourceNote && <Text style={[styles.sourceNote, font('regular')]}>{view.sourceNote.text}</Text>}
-    </Pressable>
-    {quick && (
-      <View style={styles.actions}>
-        {onSave && (
-          <Button variant="secondary" loading={busy} onPress={onSave} accessibilityLabel={t('deals.saveA11y', { title: view.title })}>
-            {t('deals.save')}
-          </Button>
-        )}
-        {onIgnore && (
-          <Button variant="text" disabled={busy} onPress={onIgnore} accessibilityLabel={t('deals.notForMeA11y', { title: view.title })}>
-            {t('deals.notForMe')}
-          </Button>
-        )}
-      </View>
-    )}
-    </View>
+    </SwipeRow>
   );
 }
 
-const CONFIDENCE_SHORT = {
-  high: 'deals.confidenceShortHigh',
-  medium: 'deals.confidenceShortMedium',
-  low: 'deals.confidenceShortLow',
-} as const;
-
 const styles = StyleSheet.create({
-  wrap: {
-    borderWidth: size.borderWidth,
-    borderColor: roles.border,
-    borderRadius: radius.md,
-    backgroundColor: roles.surface,
-    overflow: 'hidden',
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingLeft: GUTTER,
+    paddingRight: space[1],
+    backgroundColor: colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
-  card: { gap: space[2], padding: space[4] },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2], paddingHorizontal: space[4], paddingBottom: space[4] },
-  // The rare, stronger treatment: Drop Yellow accent, no artwork.
-  exceptional: { borderWidth: 2, borderColor: tones.fresh.accent, backgroundColor: tones.fresh.background },
-  pressed: { opacity: 0.85 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  title: { color: roles.text, fontSize: fontSize.lg },
-  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space[1] },
-  metaText: { flexShrink: 1 },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
-  small: { color: roles.textMuted, fontSize: fontSize.xs },
-  body: { color: roles.text, fontSize: fontSize.md },
-  figures: { flexDirection: 'row', gap: space[3] },
-  figure: { flex: 1, gap: 2 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: space[1], flexWrap: 'wrap' },
-  label: { color: roles.textMuted, fontSize: fontSize.xs, letterSpacing: 0.5 },
-  estimated: {
-    color: roles.textMuted,
-    fontSize: fontSize.xs,
-    paddingHorizontal: space[1],
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: roles.textMuted,
-    borderRadius: radius.full,
-  },
-  value: { color: roles.text, fontSize: fontSize.md, fontVariant: ['tabular-nums'] },
-  sourceNote: { color: roles.text, fontSize: fontSize.sm, paddingLeft: space[2], borderLeftWidth: 3, borderLeftColor: tones.loss.accent },
+  // Exceptional / just dropped: the soft Drop Yellow row (paired with the "New" tag or strength text).
+  highlight: { backgroundColor: tones.fresh.background },
+  main: { flex: 1, flexDirection: 'row', gap: space[3], paddingVertical: space[3] },
+  pressed: { opacity: 0.7 },
+  fresh: { position: 'absolute', left: 6, top: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: tones.fresh.accent },
+  freshText: { color: colors.text, fontSize: 10, textTransform: 'uppercase' },
+  text: { flex: 1, minWidth: 0, gap: 2 },
+  title: { color: colors.text, fontSize: type.body, lineHeight: 20 },
+  priceLine: { marginTop: 2 },
+  price: { color: colors.text, fontSize: type.price, fontVariant: ['tabular-nums'] },
+  extra: { color: colors.textMuted, fontSize: type.footnote },
+  upside: { color: colors.profitText, fontSize: type.subhead },
+  muted: { color: colors.textMuted, fontSize: type.subhead },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: space[1], marginTop: 2 },
+  source: { color: colors.text, fontSize: type.footnote },
+  metaText: { flexShrink: 1, color: colors.textMuted, fontSize: type.footnote },
+  note: { flexShrink: 1, color: colors.warningText, fontSize: type.footnote },
+  loss: { color: colors.lossText },
+  side: { width: 44, paddingTop: space[1], alignItems: 'center' },
+  savedMark: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

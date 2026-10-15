@@ -104,6 +104,7 @@ export default {
   costRemove: 'Entfernen',
   costRemoveA11y: 'Kosten {number} entfernen',
   costAdd: 'Kosten hinzufügen',
+  costAddAnother: 'Weitere Kosten hinzufügen',
 
   itemTitle: 'Bestandsartikel',
   loadingItem: 'Artikel wird geladen…',

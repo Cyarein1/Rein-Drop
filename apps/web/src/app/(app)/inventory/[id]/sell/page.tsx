@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { huntFormContext } from "@rein-drop/client-core";
+import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Page } from "@/components/ui";
@@ -35,5 +35,5 @@ async function SellLoader({ params }: { params: PageProps<"/inventory/[id]/sell"
       </Card>
     );
   }
-  return <MarkSoldForm item={item} context={huntFormContext(session.user.locale)} today={new Date().toISOString()} />;
+  return <MarkSoldForm item={item} context={plainContext(huntFormContext(session.user.locale))} today={new Date().toISOString()} />;
 }

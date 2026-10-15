@@ -2,19 +2,19 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import type { SourceHealth } from '@rein-drop/api-client';
 import { sourceBanner } from '@rein-drop/client-core';
+import { CompactNotice } from '@/access/AccessNotice';
 import { getApiClient } from '@/config/api';
 import { useT } from '@/i18n/useT';
-import { SystemBanner } from '@/ui';
 
 /**
- * Calm status when a marketplace source is degraded while others continue (Screenbook frame 31).
- * Renders nothing when every source is working. Never an error banner.
+ * Calm status when a marketplace source is degraded while others continue (Screenbook frame 31):
+ * a compact notice above the list. Renders nothing when every source is working. Never an error.
  */
 export function SourceBanner({ sources, now }: { sources: readonly SourceHealth[] | null; now: Date }) {
   const t = useT();
   const banner = sources ? sourceBanner(sources, now, t) : null;
   if (!banner) return null;
-  return <SystemBanner tone={banner.tone} title={banner.title} message={banner.message} />;
+  return <CompactNotice tone={banner.tone === 'warning' ? 'fresh' : 'info'} title={banner.title} message={banner.message} />;
 }
 
 /** Loads source health itself (refreshed on focus); a failed load just shows nothing. */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError } from "@rein-drop/api-client";
-import { huntFormContext } from "@rein-drop/client-core";
+import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Page } from "@/components/ui";
@@ -39,7 +39,7 @@ async function HuntLoader({
       hunt={hunt}
       activity={activity}
       events={events}
-      context={huntFormContext(session.user.locale)}
+      context={plainContext(huntFormContext(session.user.locale))}
       saved={query.saved === "1"}
     />
   );

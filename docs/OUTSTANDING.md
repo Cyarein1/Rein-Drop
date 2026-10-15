@@ -123,9 +123,23 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
   - deals: „Gerade reingekommen“ (Just dropped), „Wieder einblenden“ (Undo ignore), „defekt / für Ersatzteile“;
   - inventory and Sell: „Beim Kauf“, „Titelbild“ / „Als Titelbild“, „Vor dem Veröffentlichen noch zu erledigen: {count}“;
   - general: „Zur Startseite“ (mobile has no Home tab - the English "Go to Home" may need changing too), „Dein Konto braucht deine Aufmerksamkeit“, „Telefon“ vs „Handy“ - step 88.
-- **German, still to build:**
-  - **step 89:** the web app (server and client translator, a Language switch in Settings), then remove client-core's deprecated English constants;
-  - **step 90:** in the user's language: push / worker titles and bodies, API messages people see (go-live problems, alert reasons, risk notes, marketplace notes, AI-draft checks, errors, mapHuntErrors, cost labels). Also step 90: the German landing page (routing) and the German App Store / Play listing drafts - step 88.
+- **German, still to build** (renumbered after the step 89 redesign):
+  - **step 90:** the web app (server and client translator, a Language switch in Settings), then remove client-core's deprecated English constants;
+  - **step 91:** in the user's language: push / worker titles and bodies, API messages people see (go-live problems, alert reasons, risk notes, marketplace notes, AI-draft checks, errors, mapHuntErrors, cost labels). Also step 91: the German landing page (routing) and the German App Store / Play listing drafts - step 88.
+- **Phone check of the step 89 redesign (decision 0020)** on one iPhone and one Android phone (Expo Go is enough):
+  - **Header icons** keep clear of the screen edge on every tab, and chip rows drag sideways with no scrollbar.
+  - **Deal rows:** swipe right saves and swipe left is Not for me, with Undo. VoiceOver / TalkBack offer the same actions on the row.
+  - **Sheets:** the "I bought it", "Not for me" and Mark sold sheets open, resize and close; the screen behind refreshes.
+  - **Deal detail:** the photo pager and the fixed bottom bar sit above the home indicator.
+  - **Create / Edit Hunt:** steps, the progress bar and the top inset (the iOS modal skips the top inset, Android and Edit use it).
+  - **Feedback:** haptics, placeholder rows, and German text lengths (narrow price-strip columns wrap) - step 89.
+- Redesign follow-ups - step 89:
+  - **Missing data:** inventory rows have no product photo (the API has none - add a photo / cover URL to inventory items), and filter chips have no counts (the API gives none).
+  - **Deals feed limits:** search only covers deals already loaded, and paging uses "Show more" (Inventory already loads on scroll).
+  - **Not offered yet:** the "I bought it" sheet has no "Date bought" or "Add another cost", although the API accepts `purchasedAt` / `costs`. The old form didn't offer them either, so adding them is new behaviour.
+  - **Hunts list:** no swipe actions, because pause / resume need a confirmation.
+  - **Jest noise:** DealCard tests print gesture-handler warnings (no `GestureHandlerRootView` in tests); the tests pass.
+- German wording from the redesign for the native reviewer: „Erst mal überspringen“, „Was würdest du höchstens zahlen?“, „Hast du ein Gewinnziel?“ (the user's own goal - not an estimate), „Zurück zur Übersicht“, „Ich habe es gekauft“, „Angeboten für {price} · {source}“, „Wiederverkauf (geschätzt)“ / „Potenzial (geschätzt)“, the swipe hint, „Weitere Kosten hinzufügen“, „Einstellungen“, „Schließen“ - step 89.
 - Phone check: switch the phone to Deutsch (or Account > Language) on a development build and walk the tabs for truncated German labels (tab bar, buttons, card headers) - step 88.
 - **App-store release blockers RB1-RB9** ([release/APP_STORE_READINESS.md](release/APP_STORE_READINESS.md) section 6): account deletion (in-app + web), app privacy policy + in-app link, App Privacy / Data safety forms, a review account with paid access + seed data (no MFA), remove placeholder / non-working features from store builds (stale Account "Placeholder screen" banner, "Coming soon", simulated eBay publishing, Facebook offered without a production source), third-party AI disclosure for "Use AI", EAS / bundle id / APNs / FCM, legal sign-off on 3.1.3(f), Entra sign-up and social-login decisions - step 86.
 - Step 85 review left these open (details and recommended fixes: [testing/E2E_REVIEW_2026-10-15.md](testing/E2E_REVIEW_2026-10-15.md) section 7): U1 Sell open to all while `/me/access` says `sell: none` (gate `/sell/*` when Sell is priced); U3 rare duplicate push after a worker crash; U4 one alert per Hunt for the same listing; U6 pushes to a phone with an expired session for up to 90 days; plus the not-executed device / browser / real-provider checks (section 6) - step 85.

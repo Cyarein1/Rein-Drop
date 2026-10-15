@@ -90,6 +90,27 @@ export function displayContext(base: Pick<HuntFormContext, 'currency' | 'distanc
 }
 
 /**
+ * The context without its translator - what a Next.js server page passes to a client component
+ * (functions can't cross that boundary). `t?: never` makes passing a full context a type error.
+ */
+export type PlainContext = Omit<HuntFormContext, 't'> & { t?: never };
+
+export function plainContext({ currency, distanceUnit, localeTag, language }: HuntFormContext): PlainContext {
+  return { currency, distanceUnit, localeTag, language };
+}
+
+const withT = new WeakMap<PlainContext, HuntFormContext>();
+/** Client side: the plain context plus its translator (the same object for the same input, so it is safe in hook deps). */
+export function withTranslator(plain: PlainContext): HuntFormContext {
+  let ctx = withT.get(plain);
+  if (!ctx) {
+    ctx = { ...plain, t: translator(plain.language) };
+    withT.set(plain, ctx);
+  }
+  return ctx;
+}
+
+/**
  * Display context for a signed-in person: currency, distance unit, number formatting and UI
  * language from their locale. `fallbackLanguage` (e.g. the device / browser language) applies when
  * no locale is stored yet.

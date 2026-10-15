@@ -30,6 +30,11 @@ export function movePin(values: HuntFormValues, point: GeoPoint): HuntFormValues
   return { ...values, locationPoint: { lat: Math.round(point.lat * 1000) / 1000, lng: Math.round(point.lng * 1000) / 1000 } };
 }
 
+/** One-tap radius choices in the person's unit (mobile Create Hunt): all well inside the API maximum. */
+export function radiusQuickPicks(unit: DistanceUnit): number[] {
+  return unit === 'mi' ? [5, 15, 30, 60] : [10, 25, 50, 100];
+}
+
 /** The radius field as km for the map circle; null while empty or not a valid radius. */
 export function radiusKmForMap(radiusText: string, unit: DistanceUnit): number | null {
   const radius = Number(radiusText.trim());

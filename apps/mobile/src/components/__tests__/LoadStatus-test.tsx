@@ -5,9 +5,10 @@ import { LoadStatus } from '../LoadStatus';
 const LOADING: Refreshable<string[]> = { status: 'loading' };
 
 describe('LoadStatus (unreliable connections)', () => {
-  it('first load: a labelled loading state', () => {
+  it('first load: placeholder rows, named for screen readers with one whole sentence', () => {
     render(<LoadStatus state={LOADING} what="deals" onRetry={() => undefined} />);
-    expect(screen.getByText('Loading your deals…')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Loading your deals…')).toBeOnTheScreen();
+    expect(screen.getByRole('progressbar', { name: 'Loading your deals…' })).toBeOnTheScreen();
   });
 
   it('first load failed offline: the offline wording and Try again', () => {

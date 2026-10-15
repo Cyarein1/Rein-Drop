@@ -51,4 +51,6 @@ export default {
   prefsSaved: 'Gespeichert',
   prefsFailed: 'Nicht gespeichert: {message}',
   alwaysOn: '{label} (immer an)',
+
+  settingsTitle: 'Einstellungen',
 } satisfies Messages<typeof en>;

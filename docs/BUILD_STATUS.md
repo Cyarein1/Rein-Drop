@@ -1,11 +1,83 @@
 # Build Status
 
-_Last updated: 2026-10-15 (step 88 - German language: foundation, shared code, mobile app)_
+_Last updated: 2026-10-16 (step 89 - native, list-first mobile redesign)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 89 - Native, list-first mobile redesign (decision 0020)
+
+The owner said the app looked like "a web application shrunk into mobile". They approved a
+mock-up modelled on the eBay app, in Rein Drop's brand, and asked for it to be built fully. The
+mock-up is a canvas artifact: https://claude.ai/artifact/61mhd3B7fyFNcEaziUdDP8. The owner raised
+two more points:
+- The header icons sat almost on the screen edge.
+- Side-scrolling rows should drag with no scrollbar.
+
+What changed:
+- **Foundation** (`apps/mobile/src/ui`):
+  - `theme.ts`: phone type scale, colours and a 16 pt gutter. Green text uses #0E7A4D for AA.
+  - New components: `LargeTitleHeader`, `IconButton`, `Icon`/`icons`, `ChipBar` (drag-scroll,
+    no scrollbar), `Thumb` (expo-image), `ListRow`/`ListSection`/`RowIcon`, `ActionBar` (fixed
+    bottom bar), `SheetHeader`, `SkeletonRows`, `SwipeRow` and `haptic`.
+  - Restyled: Button (pill; small / medium / large), Badge, Card, Screen (plain / grouped / bare,
+    plus a footer), ChoiceGroup, TextInput, SystemBanner, EmptyState and Metric.
+- **Navigation:**
+  - Tab screens draw their own large-title header, and header buttons keep the gutter. This
+    fixes the icons that hugged the edge.
+  - Stack headers have no shadow, a 17 pt title and a minimal back button.
+  - New `sheetOptions()` for native form sheets: `deals/[id]/bought`, `deals/[id]/dismiss` and
+    `inventory/[id]/sell`.
+  - `deals/[id].tsx` moved to `deals/[id]/index.tsx`, and the gesture root was added.
+- **Deals:**
+  - Feed:
+    - Rows with the product photo, price, estimated upside and meta line.
+    - Swipe right to save and left for Not for me. Screen readers get the same actions on the
+      row; Undo appears in a snackbar.
+    - Filter chips with an "All Hunts" picker, search over the deals already loaded, an unread
+      dot on the bell, and placeholder rows while loading.
+  - Detail:
+    - Swipeable photos with a "1 / N" counter, plus floating back, share and save buttons.
+    - The price / resale / upside strip, the "why" checklist and collapsible details.
+    - A fixed bar with "View on …" and "I bought it".
+  - The bought and Not for me forms are now bottom sheets. The inbox is shown as rows.
+- **Hunts:**
+  - List rows with a price / area summary, marketplace logos and a "N new" count.
+  - Detail as grouped rows, with the main action in the fixed bar.
+  - **Create / Edit Hunt:**
+    - One question per screen in 5 steps plus a review.
+    - Progress bar, quick-pick price and radius chips, and a fixed Continue / Skip.
+    - Review rows open their own question.
+    - Edit opens on the review when the saved Hunt is valid.
+- **Inventory:**
+  - List rows show the marketplace logo, because the API has no item photo yet.
+  - Detail has a fixed bar with Mark sold and List for sale; Mark sold is a sheet.
+  - Cost types are drag-scroll chips, and the list loads more as you scroll.
+- **Sell:** listing rows with cover photos. The editor has a photo strip with no scrollbar and a
+  fixed Save / Publish bar.
+- **Account:** grouped rows for profile, Your access, Settings and Sign out. Notifications,
+  Language, Your area and Seller profile are sub-screens under `app/account/*`.
+- **Onboarding:** one question per screen.
+- **Sign-in screens:** centred, with the wordmark.
+- **client-core (additions only):**
+  - Deal view: `imageUrl`, `imageUrls`, `sourceShort`, `age` and `statusKey`.
+  - Helpers: `huntRowSummary`, `priceQuickPicks` and `radiusQuickPicks`.
+- **i18n:** all new text in English and German (draft).
+- **New dependencies** (`npx expo install`, all in Expo Go): react-native-gesture-handler 2.32.0,
+  react-native-reanimated 4.5.1, react-native-worklets 0.10.1, expo-haptics and expo-image. The
+  `expo-image` plugin was added to app.json, and jest mocks to jest.setup.js.
+
+Kept: behaviour, API calls, accessibility and the billing-free companion rules. The guard test
+passes.
+
+Checks run:
+- `pnpm turbo run build typecheck lint test`: 70 of 70 tasks passed, including the iOS and
+  Android export.
+- Results included client-core 218, web 204, mobile vitest 19 and mobile jest 41 of 41.
+- **Not run on a phone or simulator.** The look, swipe, sheets, haptics and German text lengths
+  still need a device check.
 
 ### Step 88 - German language (part 1 of 3): foundation, shared code, mobile app
 
@@ -50,6 +122,11 @@ What changed:
     AI-draft checks and error messages. Step 90 covers these.
   - The web app (step 89).
   - The landing page and store listing (step 90).
+
+- **Fix found during the owner's testing:** after the change, most web pages failed with "Functions cannot be passed directly to Client Components".
+  - **Cause:** server pages passed the context, which now holds the translator function, straight to client components, and functions can't cross that boundary.
+  - **Fix:** server pages now pass `plainContext(...)`, and client components rebuild the context with `withTranslator(plain)`.
+  - **Guard:** `PlainContext` has `t?: never`, so passing a full context to a client component no longer type-checks. A client-core test checks that the plain context is serialisable.
 
 Checks run: `pnpm turbo run build typecheck lint test` passed all 70 of 70 tasks. Results
 included i18n 8, client-core 211, web 204, mobile vitest 19 and mobile jest 40 of 40 (including

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { DealSummary, ListDealsQueryInput, Page } from "@rein-drop/api-client";
-import { dealCardView, type HuntFormContext } from "@rein-drop/client-core";
+import { dealCardView, withTranslator, type PlainContext } from "@rein-drop/client-core";
 import { Button } from "@/components/ui";
 import { loadDeals } from "./actions";
 import { DealCard } from "./DealCard";
@@ -12,12 +12,13 @@ import styles from "./deals.module.css";
 export function DealFeed({
   initial,
   query,
-  context,
+  context: plain,
 }: {
   initial: Page<DealSummary>;
   query: ListDealsQueryInput;
-  context: HuntFormContext;
+  context: PlainContext;
 }) {
+  const context = withTranslator(plain);
   const [items, setItems] = useState(initial.items);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [error, setError] = useState<string | null>(null);

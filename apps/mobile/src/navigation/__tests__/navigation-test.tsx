@@ -6,6 +6,8 @@ import TabsLayout from '../../app/(tabs)/_layout';
 import StartRedirect from '../../app/(tabs)/index';
 import CreateRedirect from '../../app/(tabs)/create';
 import NotFound from '../../app/+not-found';
+import { useCapabilities } from '@/capabilities/CapabilitiesProvider';
+import { InboxHeaderButton, ListingsHeaderButton } from '../options';
 
 /**
  * Companion navigation (decision 0018, PLATFORM_FEATURE_MATRIX.md): the REAL tabs layout and
@@ -31,18 +33,35 @@ const stub = (name: string) => {
   Screen.displayName = `${name}Stub`;
   return Screen;
 };
+const DealsStub = () => (
+  <>
+    <Text>Deals screen</Text>
+    <InboxHeaderButton unread={2} />
+  </>
+);
+// The Inventory header offers your listings only with the Sell workspace (as app/(tabs)/inventory.tsx does).
+const InventoryStub = () => {
+  const caps = useCapabilities();
+  return (
+    <>
+      <Text>Inventory screen</Text>
+      {caps['sell.workspace'].available && <ListingsHeaderButton />}
+    </>
+  );
+};
 const routes = () => ({
   _layout: () => <Stack screenOptions={{ headerShown: false }} />,
   '(tabs)/_layout': TabsLayout,
   '(tabs)/index': StartRedirect,
   '(tabs)/create': CreateRedirect,
-  '(tabs)/deals': stub('Deals'),
+  // Tab screens draw their own header (LargeTitleHeader): the Deals stub carries its inbox button.
+  '(tabs)/deals': DealsStub,
   '(tabs)/hunts': stub('Hunts'),
-  '(tabs)/inventory': stub('Inventory'),
+  '(tabs)/inventory': InventoryStub,
   '(tabs)/account': stub('Account'),
   '+not-found': NotFound,
   'hunts/new': stub('Create Hunt'),
-  'deals/[id]': stub('Deal detail'),
+  'deals/[id]/index': stub('Deal detail'),
   alerts: stub('Inbox'),
   'sell/index': stub('Your listings'),
 });

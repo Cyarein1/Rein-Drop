@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { huntFormDefaults, queryPlaceholder } from '@rein-drop/client-core';
-import { roles } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { useSession } from '@/auth/SessionProvider';
 import { deviceLanguageTag, useT } from '@/i18n/useT';
 import { HuntFormFlow, type HuntFormFlowProps } from '@/components/HuntFormFlow';
 import { getApiClient } from '@/config/api';
-import { LoadingState } from '@/ui';
+import { colors, LoadingState } from '@/ui';
 
 type Prepared = HuntFormFlowProps;
 
 /**
  * Create Hunt -> Review -> Save as draft (App Flow Blueprint section 5), presented as a
- * native modal from the central Create tab. Monitoring is not started here.
+ * native modal from the central Create tab, one question per screen (HuntFormFlow draws its own
+ * top bar). Monitoring is not started here.
  */
 export default function CreateHuntScreen() {
   return (
@@ -56,5 +56,5 @@ function CreateHuntLoader() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', backgroundColor: roles.background },
+  center: { flex: 1, justifyContent: 'center', backgroundColor: colors.background },
 });

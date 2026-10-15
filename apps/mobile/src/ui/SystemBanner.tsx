@@ -1,8 +1,9 @@
 import { useEffect, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
-import { bannerToneColors, fontSize, radius, space, tones, type BannerTone } from '@rein-drop/design-tokens';
+import { bannerToneColors, radius, space, tones, type BannerTone } from '@rein-drop/design-tokens';
 import { useT } from '@/i18n/useT';
 import { font } from './fonts';
+import { type } from './theme';
 
 export interface SystemBannerProps {
   /** e.g. source degraded -> warning, payment issue -> error, plan limit -> info. */
@@ -37,14 +38,14 @@ export function SystemBanner({ tone = 'info', title, message, action }: SystemBa
 
 const styles = StyleSheet.create({
   banner: {
-    gap: space[1],
+    gap: 2,
     paddingVertical: space[3],
-    paddingHorizontal: space[4],
-    borderLeftWidth: 4,
-    borderRadius: radius.sm,
+    paddingHorizontal: 14,
+    borderLeftWidth: 3,
+    borderRadius: radius.md,
     alignSelf: 'stretch',
   },
-  title: { fontSize: fontSize.md },
-  message: { fontSize: fontSize.sm },
+  title: { fontSize: type.callout },
+  message: { fontSize: type.subhead, lineHeight: 18 },
   action: { marginTop: space[2], alignItems: 'flex-start' },
 });

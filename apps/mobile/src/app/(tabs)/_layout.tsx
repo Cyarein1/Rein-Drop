@@ -1,14 +1,13 @@
-import type { ReactNode } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { MOBILE_TABS } from '@rein-drop/api-client';
 import type { MessageKey } from '@rein-drop/i18n';
-import { fontSize, radius, roles, size } from '@rein-drop/design-tokens';
+import { radius, roles, size } from '@rein-drop/design-tokens';
 import { useCanUseHunts } from '@/access/AccessNotice';
 import { SessionGate } from '@/auth/SessionGate';
 import { useCapabilities } from '@/capabilities/CapabilitiesProvider';
 import { useT } from '@/i18n/useT';
-import { headerOptions, InboxHeaderButton, ListingsHeaderButton, NavIcon } from '@/navigation/options';
+import { NavIcon } from '@/navigation/options';
 import { useOnboardingPrompt } from '@/onboarding/useOnboardingPrompt';
 import { font } from '@/ui';
 
@@ -41,12 +40,6 @@ const TAB_TITLE: Record<Exclude<TabName, 'create'>, MessageKey> = {
   inventory: 'nav.tabInventory',
   account: 'nav.tabAccount',
 };
-const HEADER_RIGHT: Partial<Record<TabName, () => ReactNode>> = {
-  deals: () => <InboxHeaderButton />,
-  // Your listings (Sell, decision 0019) - only when the Sell workspace is available.
-  inventory: () => <SellHeaderButton />,
-};
-
 function AppTabs() {
   const caps = useCapabilities();
   const canUseHunts = useCanUseHunts();
@@ -56,11 +49,12 @@ function AppTabs() {
     <Tabs
       initialRouteName="deals"
       screenOptions={{
-        ...headerOptions(),
+        // Tab screens draw their own LargeTitleHeader (title + header buttons inside the gutter).
+        headerShown: false,
         tabBarActiveTintColor: roles.text,
         tabBarInactiveTintColor: roles.textMuted,
-        tabBarStyle: { backgroundColor: roles.background, borderTopColor: roles.border },
-        tabBarLabelStyle: { ...font('semibold'), fontSize: fontSize.xs },
+        tabBarStyle: { backgroundColor: roles.background, borderTopColor: roles.border, borderTopWidth: StyleSheet.hairlineWidth },
+        tabBarLabelStyle: { ...font('medium'), fontSize: 11 },
       }}
     >
       {MOBILE_TABS.map((tab) =>
@@ -82,7 +76,6 @@ function AppTabs() {
               title: t(TAB_TITLE[tab.name]),
               // A tab whose feature isn't available isn't shown (and can't be navigated to from the bar).
               href: caps[tab.feature].available ? undefined : null,
-              headerRight: HEADER_RIGHT[tab.name],
               tabBarIcon: ({ color }) => <NavIcon name={ICONS[tab.name]} color={color} />,
             }}
           />
@@ -92,10 +85,6 @@ function AppTabs() {
       <Tabs.Screen name="index" options={{ href: null }} />
     </Tabs>
   );
-}
-
-function SellHeaderButton() {
-  return useCapabilities()['sell.workspace'].available ? <ListingsHeaderButton /> : null;
 }
 
 /** The central "+": opens the Create Hunt modal over the current tab (Mobile UI Screenbook). */
@@ -128,6 +117,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  createLabel: { color: roles.text, fontSize: fontSize.xs, marginTop: 2 },
+  createLabel: { color: roles.text, fontSize: 11, marginTop: 2 },
   pressed: { opacity: 0.8 },
 });

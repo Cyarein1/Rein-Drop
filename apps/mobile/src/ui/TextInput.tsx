@@ -7,9 +7,10 @@ import {
   View,
   type TextInputProps as RNTextInputProps,
 } from 'react-native';
-import { fontSize, radius, roles, size, space, type TextInputKind } from '@rein-drop/design-tokens';
+import { radius, roles, size, space, type TextInputKind } from '@rein-drop/design-tokens';
 import { useT } from '@/i18n/useT';
 import { font } from './fonts';
+import { type } from './theme';
 
 export interface TextInputProps extends Omit<RNTextInputProps, 'style' | 'secureTextEntry'> {
   label: string;
@@ -85,33 +86,33 @@ export function TextInput({ label, kind = 'text', hint, error, currency, ...rest
 }
 
 const styles = StyleSheet.create({
-  field: { gap: space[1], alignSelf: 'stretch' },
-  label: { color: roles.text, fontSize: fontSize.sm },
-  hint: { color: roles.textMuted, fontSize: fontSize.sm },
+  field: { gap: 6, alignSelf: 'stretch' },
+  label: { color: roles.text, fontSize: type.subhead },
+  hint: { color: roles.textMuted, fontSize: type.subhead },
   control: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: size.touchTarget,
+    minHeight: 48,
     borderWidth: size.borderWidth,
     borderColor: roles.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     backgroundColor: roles.surface,
   },
   focused: { borderColor: roles.text, borderWidth: size.focusRingWidth },
   invalid: { borderColor: roles.destructive },
   input: {
     flex: 1,
-    minHeight: size.touchTarget,
-    paddingHorizontal: space[3],
+    minHeight: 48,
+    paddingHorizontal: 14,
     color: roles.text,
-    fontSize: fontSize.md,
+    fontSize: type.headline,
   },
-  adornment: { paddingLeft: space[3], color: roles.textMuted, fontSize: fontSize.md },
-  toggle: { minHeight: size.touchTarget, paddingHorizontal: space[3], justifyContent: 'center' },
-  toggleText: { color: roles.text, fontSize: fontSize.sm },
+  adornment: { paddingLeft: 14, color: roles.textMuted, fontSize: type.headline },
+  toggle: { minHeight: 48, paddingHorizontal: space[3], justifyContent: 'center' },
+  toggleText: { color: roles.text, fontSize: type.subhead },
   error: {
     color: roles.text,
-    fontSize: fontSize.sm,
+    fontSize: type.subhead,
     paddingLeft: space[2],
     borderLeftWidth: 3,
     borderLeftColor: roles.destructive,

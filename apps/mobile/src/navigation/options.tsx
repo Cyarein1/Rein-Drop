@@ -1,16 +1,38 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, type ColorValue } from 'react-native';
-import { fontSize, roles, size } from '@rein-drop/design-tokens';
+import type { ColorValue } from 'react-native';
+import { roles } from '@rein-drop/design-tokens';
 import { useT } from '@/i18n/useT';
-import { font } from '@/ui';
+import { font, IconButton, icons } from '@/ui';
 
-/** Native header styling from the design tokens (navy on white). */
+/**
+ * Native stack header (detail screens): white, no divider shadow, 17 pt semibold title, a plain
+ * back chevron. Tab screens hide the navigator header and draw `LargeTitleHeader` themselves.
+ */
 export function headerOptions() {
   return {
     headerStyle: { backgroundColor: roles.background },
     headerTintColor: roles.text,
-    headerTitleStyle: { ...font('bold'), fontSize: fontSize.lg, color: roles.text },
+    headerTitleStyle: { ...font('semibold'), fontSize: 17, color: roles.text },
+    headerShadowVisible: false,
+    headerBackButtonDisplayMode: 'minimal',
+    contentStyle: { backgroundColor: roles.background },
+  } as const;
+}
+
+/**
+ * A native bottom sheet route (Stack `presentation: 'formSheet'`): grabber, rounded top, dimmed
+ * background. Sheets show no navigation header - render `SheetHeader` inside. `detents` are
+ * fractions of the screen height (Android: at most 3).
+ */
+export function sheetOptions(detents: number[] = [0.6, 0.95]) {
+  return {
+    presentation: 'formSheet',
+    sheetAllowedDetents: detents,
+    sheetInitialDetentIndex: 0,
+    sheetGrabberVisible: true,
+    sheetCornerRadius: 20,
+    headerShown: false,
     contentStyle: { backgroundColor: roles.background },
   } as const;
 }
@@ -22,41 +44,16 @@ export function NavIcon({ name, color, size: iconSize = 24 }: { name: SymbolName
   return <SymbolView name={name} tintColor={color} size={iconSize} />;
 }
 
-/** Inventory tab header: your listings (Sell, decision 0019). */
+/** Inventory header: your listings (Sell, decision 0019). */
 export function ListingsHeaderButton() {
   const t = useT();
-  return (
-    <Link href="/sell" asChild>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('nav.titleListings')} hitSlop={8} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
-        <NavIcon name={{ ios: 'storefront', android: 'storefront' }} color={roles.text} />
-      </Pressable>
-    </Link>
-  );
+  const router = useRouter();
+  return <IconButton icon={icons.storefront} label={t('nav.titleListings')} onPress={() => router.push('/sell')} />;
 }
 
-/** Header button to the in-app inbox (alerts). */
-export function InboxHeaderButton() {
+/** Deals header: the in-app inbox (alerts). `unread` shows a dot. */
+export function InboxHeaderButton({ unread }: { unread?: number }) {
   const t = useT();
-  return (
-    <Link href="/alerts" asChild>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('nav.titleInbox')}
-        hitSlop={8}
-        style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-      >
-        <NavIcon name={{ ios: 'bell', android: 'notifications' }} color={roles.text} />
-      </Pressable>
-    </Link>
-  );
+  const router = useRouter();
+  return <IconButton icon={icons.bell} label={t('nav.titleInbox')} badge={unread} onPress={() => router.push('/alerts')} />;
 }
-
-const styles = StyleSheet.create({
-  headerButton: {
-    width: size.touchTarget,
-    height: size.touchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: { opacity: 0.6 },
-});

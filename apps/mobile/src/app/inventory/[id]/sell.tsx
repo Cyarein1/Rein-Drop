@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState, type ReactNode } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { ApiError, type InventoryItem } from '@rein-drop/api-client';
 import {
   buildSaleRequest,
   dayShortcuts,
+  inventoryRowView,
   saleCostLabels,
   saleFormDefaults,
   salePreview,
@@ -13,21 +14,25 @@ import {
   type SaleForm,
   type SaleFormErrors,
 } from '@rein-drop/client-core';
-import { fontSize, radius, roles, space, tones } from '@rein-drop/design-tokens';
+import { radius, space } from '@rein-drop/design-tokens';
+import { MarketplaceMark } from '@/brand/MarketplaceMark';
 import { CostRows } from '@/components/CostRows';
+import { FactRow, FieldGroup, InlineField } from '@/components/FormRows';
 import { getApiClient } from '@/config/api';
 import { useDisplayContext } from '@/i18n/useT';
-import { Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
+import { ActionBar, Button, ChipBar, ChipButton, colors, EmptyState, font, haptic, Icon, LoadingState, Metric, Screen, SheetHeader, SystemBanner, type } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; item: InventoryItem };
 
 const messageOf = (err: unknown) => (err instanceof ApiError ? (err.details?.[0]?.message ?? err.message) : err instanceof Error ? err.message : String(err));
 
 /**
- * Mark sold (screen 22): sale price, fees and costs, sale date, with a live preview of the
- * realized result. Defaults come from what's known; the price is never pre-filled from an estimate.
+ * Mark sold (screen 22) - a form sheet (mock-up BoughtSheet): sale price, date, where, fees and
+ * costs, with a live preview of the realized result. Defaults come from what's known; the price is
+ * never pre-filled from an estimate. Saving opens the sale result.
  */
 export default function MarkSoldScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const context = useDisplayContext();
   const { t } = context;
@@ -48,22 +53,20 @@ export default function MarkSoldScreen() {
   useFocusEffect(fetchItem);
 
   const ready = load.status === 'ready' ? load.item : null;
+  const title = ready?.sale ? t('inventory.correctSale') : t('inventory.actionMarkSold');
+  const header = <SheetHeader title={title} onCancel={() => router.back()} />;
+  if (ready && (ready.holding || ready.sale)) return <SellForm item={ready} context={context} header={header} />;
   return (
     <Screen>
-      <Stack.Screen options={{ title: ready?.sale ? t('inventory.correctSale') : t('inventory.actionMarkSold') }} />
+      {header}
       {load.status === 'loading' && <LoadingState label={t('inventory.loadingItem')} />}
       {load.status === 'error' && <SystemBanner tone="error" title={t('inventory.loadItemFailed')} message={load.message} />}
-      {ready && !ready.holding && !ready.sale && (
-        <Card>
-          <EmptyState title={t('inventory.cantSellTitle')} description={t('inventory.cantSellBody')} />
-        </Card>
-      )}
-      {ready && (ready.holding || ready.sale) && <SellForm item={ready} context={context} />}
+      {ready && <EmptyState title={t('inventory.cantSellTitle')} description={t('inventory.cantSellBody')} />}
     </Screen>
   );
 }
 
-function SellForm({ item, context }: { item: InventoryItem; context: HuntFormContext }) {
+function SellForm({ item, context, header }: { item: InventoryItem; context: HuntFormContext; header: ReactNode }) {
   const router = useRouter();
   const { t } = context;
   const [defaults] = useState(() => saleFormDefaults(item, context, new Date()));
@@ -73,6 +76,7 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
   const [pending, setPending] = useState(false);
   const set = (patch: Partial<SaleForm>) => setForm((f) => ({ ...f, ...patch }));
   const preview = salePreview(form, item, context);
+  const row = inventoryRowView(item, context);
 
   const submit = async () => {
     const built = buildSaleRequest(form, item, new Date(), t);
@@ -86,6 +90,7 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
     setPending(true);
     try {
       await getApiClient().recordSale(item.id, built.request);
+      haptic.success();
       router.replace({ pathname: '/inventory/[id]/result', params: { id: item.id } });
     } catch (err) {
       setError(messageOf(err));
@@ -95,26 +100,56 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
   };
 
   return (
-    <>
-      <Text style={[styles.muted, font('regular')]}>{item.title}</Text>
-      <TextInput
-        label={t('inventory.formSoldFor')}
-        kind="money"
-        currency={form.currency}
-        value={form.price}
-        onChangeText={(price) => set({ price })}
-        hint={defaults.estimateHint ?? t('inventory.formSoldForHint')}
-        error={errors.price}
-      />
-      <TextInput label={t('inventory.formSoldOn')} kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} />
-      <View style={styles.row}>
-        {dayShortcuts(new Date(), t).map((s) => (
-          <Button key={s.value} variant="text" onPress={() => set({ day: s.value })} accessibilityState={{ selected: form.day === s.value }}>
-            {s.label}
+    <Screen
+      footer={
+        <ActionBar stacked>
+          {error && <SystemBanner tone="error" title={t('inventory.saveSaleFailed')} message={error} />}
+          <Button size="large" loading={pending} onPress={submit}>
+            {defaults.correcting ? t('inventory.saveSale') : t('inventory.actionMarkSold')}
           </Button>
-        ))}
+        </ActionBar>
+      }
+    >
+      {header}
+      <View style={styles.item} accessible accessibilityLabel={`${item.title}. ${row.cost}`}>
+        <View style={styles.tile}>
+          {row.marketplace ? <MarketplaceMark marketplace={row.marketplace} size={22} /> : <Icon name={{ ios: 'shippingbox', android: 'inventory_2' }} color={colors.textMuted} size={20} />}
+        </View>
+        <View style={styles.itemText}>
+          <Text style={[styles.itemTitle, font('medium')]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={[styles.muted, font('regular')]} numberOfLines={1}>
+            {row.cost}
+          </Text>
+        </View>
       </View>
-      <ChoiceGroup legend={t('inventory.formWhere')} options={soldWhereOptions(t)} value={form.where} onChange={(where) => set({ where })} />
+
+      <View style={styles.block}>
+        <FieldGroup>
+          <InlineField
+            label={t('inventory.formSoldFor')}
+            kind="money"
+            currency={form.currency}
+            value={form.price}
+            onChangeText={(price) => set({ price })}
+            hint={defaults.estimateHint ?? t('inventory.formSoldForHint')}
+            error={errors.price}
+          />
+          <InlineField label={t('inventory.formSoldOn')} kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} last />
+        </FieldGroup>
+        <View style={styles.inline}>
+          {dayShortcuts(new Date(), t).map((s) => (
+            <ChipButton key={s.value} label={s.label} role="radio" selected={form.day === s.value} onPress={() => set({ day: s.value })} />
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.block}>
+        <Text style={[styles.label, font('semibold')]}>{t('inventory.formWhere')}</Text>
+        <ChipBar label={t('inventory.formWhere')} chips={soldWhereOptions(t)} value={form.where} onChange={(where) => set({ where })} />
+      </View>
+
       <CostRows
         legend={t('inventory.saleCosts')}
         hint={t('inventory.saleCostsHint')}
@@ -131,26 +166,26 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
         ) : (
           <Text style={[styles.muted, font('regular')]}>{preview.note}</Text>
         )}
-        {preview.lines.map(([label, value]) => (
-          <View key={label} style={styles.line}>
-            <Text style={[styles.body, font('regular')]}>{label}</Text>
-            <Text style={[styles.body, font('semibold')]}>{value}</Text>
+        {preview.lines.length > 0 && (
+          <View>
+            {preview.lines.map(([label, value], i) => (
+              <FactRow key={label} label={label} value={value} last={i === preview.lines.length - 1} />
+            ))}
           </View>
-        ))}
+        )}
       </View>
-
-      {error && <SystemBanner tone="error" title={t('inventory.saveSaleFailed')} message={error} />}
-      <Button loading={pending} onPress={submit} fullWidth>
-        {defaults.correcting ? t('inventory.saveSale') : t('inventory.actionMarkSold')}
-      </Button>
-    </>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { color: roles.text, fontSize: fontSize.md, flexShrink: 1 },
-  muted: { color: roles.textMuted, fontSize: fontSize.sm },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  line: { flexDirection: 'row', justifyContent: 'space-between', gap: space[3] },
-  preview: { gap: space[2], padding: space[4], borderRadius: radius.md, backgroundColor: tones.info.background },
+  item: { flexDirection: 'row', alignItems: 'center', gap: space[3], padding: 10, borderRadius: radius.md, backgroundColor: colors.grouped },
+  tile: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  itemText: { flex: 1, gap: 2, minWidth: 0 },
+  itemTitle: { color: colors.text, fontSize: type.callout },
+  muted: { color: colors.textMuted, fontSize: type.footnote },
+  label: { color: colors.text, fontSize: type.subhead },
+  block: { gap: space[2] },
+  inline: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+  preview: { gap: space[2], padding: 14, borderRadius: radius.md, backgroundColor: colors.grouped },
 });

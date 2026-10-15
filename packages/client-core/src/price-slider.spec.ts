@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translator } from '@rein-drop/i18n';
 import { parseMoneyInput } from './money.js';
-import { priceSlider, priceSliderEnds, priceSliderPosition, priceSliderText, priceSliderValueText } from './price-slider.js';
+import { priceQuickPicks, priceSlider, priceSliderEnds, priceSliderPosition, priceSliderText, priceSliderValueText } from './price-slider.js';
 
 describe('priceSlider stops', () => {
   it('USD: round prices from 5 to 10,000, strictly ascending, finer at the low end', () => {
@@ -100,5 +100,22 @@ describe('announced value and end labels', () => {
   it('end labels: first stop without decimals, then "No limit"', () => {
     expect(priceSliderEnds(priceSlider('USD'), 'USD', 'en-US')).toEqual({ min: '$5', max: 'No limit' });
     expect(priceSliderEnds(zar, 'ZAR', 'en-ZA').min).toMatch(/^R\s?50$/);
+  });
+});
+
+describe('priceQuickPicks', () => {
+  it('round amounts that are slider stops, shifted by the currency size', () => {
+    const usd = priceSlider('USD');
+    expect(priceQuickPicks(usd, 'USD', 'en-US')).toEqual([
+      { text: '50', label: '$50' },
+      { text: '100', label: '$100' },
+      { text: '250', label: '$250' },
+      { text: '500', label: '$500' },
+      { text: '1000', label: '$1,000' },
+    ]);
+    const zar = priceSlider('ZAR');
+    const picks = priceQuickPicks(zar, 'ZAR', 'en-ZA');
+    expect(picks.map((p) => p.text)).toEqual(['500', '1000', '2500', '5000', '10000']);
+    for (const p of picks) expect(priceSliderPosition(zar, p.text, 'ZAR')).toBe(zar.stops.indexOf(Number(p.text)));
   });
 });

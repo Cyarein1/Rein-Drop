@@ -121,6 +121,22 @@ describe('deal card', () => {
     expect(dealCardView({ ...deal, price: { asking: null, knownCosts: null, knownTotal: null } }, ZA).price).toBe('No price shown');
   });
 
+  it('compact-row fields: thumbnail, short source name, bare age and the raw status', () => {
+    const card = dealCardView({ ...deal, listing: { ...deal.listing, imageUrl: 'https://img.example/1.jpg' } }, ZA);
+    expect(card).toMatchObject({ imageUrl: 'https://img.example/1.jpg', sourceShort: 'eBay', age: '25 min ago', statusKey: 'new' });
+    expect(dealCardView(deal, ZA).imageUrl).toBeNull();
+    const fb = dealCardView({ ...deal, listing: { ...deal.listing, marketplace: 'facebook' } }, ZA);
+    expect([fb.source, fb.sourceShort]).toEqual(['Facebook Marketplace', 'Facebook']);
+    expect(dealCardView(deal, displayContext({ currency: 'EUR', distanceUnit: 'km', localeTag: 'de-DE' }, 'de')).age).toBe('vor 25 Min.');
+  });
+
+  it('detail photos: every listing image, else the thumbnail, else none', () => {
+    const urls = ['https://img.example/1.jpg', 'https://img.example/2.jpg'];
+    expect(dealDetailView({ ...deal, listing: { ...deal.listing, imageUrl: urls[0]!, imageUrls: urls } }, ZA).imageUrls).toEqual(urls);
+    expect(dealDetailView({ ...deal, listing: { ...deal.listing, imageUrl: urls[0]!, imageUrls: [] } }, ZA).imageUrls).toEqual([urls[0]]);
+    expect(dealDetailView(deal, ZA).imageUrls).toEqual([]);
+  });
+
   it('ages read naturally', () => {
     expect([0, 5, 59, 60, 47 * 60, 49 * 60].map((m) => ageText(m))).toEqual(['just now', '5 min ago', '59 min ago', '1 h ago', '47 h ago', '2 days ago']);
   });

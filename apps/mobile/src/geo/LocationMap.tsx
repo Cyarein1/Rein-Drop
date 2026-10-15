@@ -3,9 +3,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Circle, Marker, type LatLng } from 'react-native-maps';
 import type { GeoPoint } from '@rein-drop/api-client';
 import { regionForRadius } from '@rein-drop/client-core';
-import { brand, fontSize, radius, roles, space } from '@rein-drop/design-tokens';
+import { brand, radius, space } from '@rein-drop/design-tokens';
 import { useT } from '@/i18n/useT';
-import { font } from '@/ui';
+import { colors, font, type } from '@/ui';
 
 export interface LocationMapProps {
   point: GeoPoint;
@@ -61,6 +61,6 @@ export function LocationMap({ point, radiusKm, onMovePin, caption }: LocationMap
 const styles = StyleSheet.create({
   wrap: { gap: space[2], alignSelf: 'stretch' },
   // Fixed height: the form doesn't jump when the map appears.
-  map: { height: 240, borderRadius: radius.md, overflow: 'hidden' },
-  caption: { color: roles.textMuted, fontSize: fontSize.sm },
+  map: { height: 200, borderRadius: radius.md, overflow: 'hidden' },
+  caption: { color: colors.textMuted, fontSize: type.footnote, lineHeight: 16 },
 });

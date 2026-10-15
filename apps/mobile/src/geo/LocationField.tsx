@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError, GEO_QUERY_MIN_LENGTH, type GeoPlace, type UserArea } from '@rein-drop/api-client';
 import { SUGGEST_DEBOUNCE_MS } from '@rein-drop/client-core';
-import { fontSize, radius, roles, size, space, wash } from '@rein-drop/design-tokens';
+import { radius, space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
 import { useT } from '@/i18n/useT';
-import { Button, font, TextInput } from '@/ui';
+import { Button, colors, font, Icon, icons, TextInput, type } from '@/ui';
 
 export interface LocationFieldProps {
   label: string;
@@ -88,7 +88,10 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
               onPress={() => pick(place)}
               style={({ pressed }) => [styles.option, i > 0 && styles.divider, pressed && styles.pressed]}
             >
-              <Text style={[styles.optionText, font('regular')]}>{place.label}</Text>
+              <Icon name={icons.location} color={colors.textMuted} size={16} />
+              <Text style={[styles.optionText, font('regular')]} numberOfLines={2}>
+                {place.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -96,7 +99,7 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
       {notice && <Text style={[styles.notice, font('regular')]}>{notice}</Text>}
       {area && onUseArea && area.label !== value && (
         <View style={styles.start}>
-          <Button variant="secondary" onPress={() => onUseArea(area)}>
+          <Button size="small" variant="secondary" icon={<Icon name={icons.location} size={14} />} onPress={() => onUseArea(area)}>
             {t('location.useMyArea', { place: area.label })}
           </Button>
         </View>
@@ -107,11 +110,11 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
 
 const styles = StyleSheet.create({
   wrap: { gap: space[2], alignSelf: 'stretch' },
-  list: { borderWidth: size.borderWidth, borderColor: roles.border, borderRadius: radius.sm, backgroundColor: roles.surface, overflow: 'hidden' },
-  option: { minHeight: size.touchTarget, justifyContent: 'center', paddingHorizontal: space[3] },
-  divider: { borderTopWidth: size.borderWidth, borderTopColor: roles.border },
-  pressed: { backgroundColor: wash.sky },
-  optionText: { color: roles.text, fontSize: fontSize.md },
-  notice: { color: roles.textMuted, fontSize: fontSize.sm },
+  list: { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.background, overflow: 'hidden' },
+  option: { flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 44, paddingHorizontal: space[3], paddingVertical: space[2] },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+  pressed: { backgroundColor: colors.grouped },
+  optionText: { flex: 1, color: colors.text, fontSize: type.body },
+  notice: { color: colors.textMuted, fontSize: type.subhead },
   start: { alignSelf: 'flex-start' },
 });

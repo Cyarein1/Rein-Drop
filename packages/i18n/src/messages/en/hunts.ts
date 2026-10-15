@@ -200,4 +200,34 @@ export default {
   startNote: 'Saves your Hunt, then starts watching within your current access.',
   saveDraft: 'Save as draft',
   details: 'Details',
+  // Mobile (step 89): Hunts list rows
+  rowMaxPrice: 'Up to {price}',
+  rowAnyPrice: 'Any price',
+  rowNew: '{count} new',
+  listFilterLabel: 'Filter Hunts',
+
+  // Mobile (step 89): Hunt detail
+  manageTitle: 'Manage',
+
+  // Mobile (step 89): Create / edit, one question per screen
+  newHuntTitle: 'New Hunt',
+  close: 'Close',
+  stepProgress: 'Step {step} of {total}',
+  stepAnnounce: 'Step {step} of {total}: {question}',
+  continue: 'Continue',
+  skip: 'Skip for now',
+  backToReview: 'Back to review',
+  stepPriceTitle: "What's the most you'd pay?",
+  stepPriceHelp: 'Rein Drop only looks for “{query}” at or under this price.',
+  stepPriceHelpPlain: 'Rein Drop only looks for deals at or under this price.',
+  priceChipsLabel: 'Quick amounts',
+  stepWhereHelp: 'Pick one or more marketplaces.',
+  radiusChipsLabel: 'Quick radius',
+  radiusChip: '{radius} {unit}',
+  stepConditionTitle: 'What condition?',
+  stepConditionHelp: 'Pick what works for you, and words that rule a listing out.',
+  stepTargetTitle: 'Do you have a profit goal?',
+  stepTargetHelp: 'Optional. Rein Drop favours deals that reach it.',
+  reviewHelp: 'Tap a line to change it.',
+  reviewRowHint: 'Opens this question',
 } as const;

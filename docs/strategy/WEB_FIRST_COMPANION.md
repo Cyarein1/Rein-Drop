@@ -51,6 +51,7 @@ as the code.
 
 | Date | Decision | Where |
 |---|---|---|
+| 2026-10-16 | Mobile redesign: native, list-first, eBay-style patterns in Rein Drop's brand, the same on iOS and Android; header icons keep the gutter; chip rows drag-scroll with no scrollbar | Decision 0020 (step 89) |
 | 2026-10-15 | German for Germany: apps, push and landing page. Claude drafts, a native speaker reviews; language follows the device / browser, with a switch in Account / Settings | Step 88 ([i18n/README.md](../i18n/README.md)) |
 | 2026-10-15 | Target countries US, UK, Canada, Australia, Germany; marketplace logos in the apps | Step 87 |
 | 2026-10-15 | Mobile tab bar keeps the central "+" Create (owner; reverses the step 78 Hunts-header placement) | Step 83 |
@@ -98,6 +99,7 @@ as the code.
 
 | Step | Date | Change |
 |---|---|---|
+| 89 | 2026-10-16 | **Native mobile redesign (decision 0020):** the owner approved an eBay-style mock-up in Rein Drop's brand. The whole companion is rebuilt: photo rows, swipe actions, drag-scroll chips with no scrollbar, large-title headers with icons kept off the edge, fixed bottom action bars, native sheets, one question per screen for Create Hunt and onboarding, and grouped Account rows. Behaviour and billing-free rules are unchanged. Web German moves to step 90; push, landing page and store German to step 91. |
 | 88 | 2026-10-15 | **German (part 1 of 3):** new `@rein-drop/i18n` package (English source, German drafts pending native review). Shared code and the whole mobile companion are translated; Account has a Language switch (device language by default). The mobile guard now also scans the English and German catalogs for purchase / upgrade wording. Web: step 89. Push, API, landing page and store listing: step 90. |
 | 87 | 2026-10-15 | Marketplace logos (eBay wordmark, Facebook icon) in both apps; target countries US / UK / Canada / Australia / Germany recorded. |
 | 86 | 2026-10-15 | **Phase E - store-compliance review:** [APP_STORE_READINESS.md](../release/APP_STORE_READINESS.md) - checklists from primary Apple / Google policy text, 3.1.3(f) analysis, blockers RB1-RB9, draft review notes, submission sequence. Nothing submitted. |
