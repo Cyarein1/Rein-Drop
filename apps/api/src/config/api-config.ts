@@ -24,6 +24,7 @@ import {
   type NodeEnv,
 } from '@rein-drop/env';
 import type { AccessPolicy } from '@rein-drop/access';
+import { AI_PROVIDER_IDS, foundryEnvShape, resolveFoundryConfig, type AIProviderId, type FoundryConfig } from '@rein-drop/ai-core';
 import { geoEnvShape, resolveGeoConfig, type GeoConfig } from '@rein-drop/geo';
 import { productEventsEnvShape, resolveProductEventProviderId, type ProductEventProviderId } from '@rein-drop/telemetry';
 
@@ -73,7 +74,26 @@ const apiEnvSchema = z.object({
     .transform((s) => s.split(',').map((f) => f.trim()).filter(Boolean))
     .pipe(z.array(z.enum(FEATURE_FLAGS, { error: `must be a comma-separated list of: ${FEATURE_FLAGS.join(', ')}` })))
     .optional(),
+  // Sell AI drafts (decision 0019): mock (development default) | foundry. Unset in production = AI drafts unavailable.
+  AI_PROVIDER: z.enum(AI_PROVIDER_IDS, { error: `must be one of: ${AI_PROVIDER_IDS.join(', ')}` }).optional(),
+  ...foundryEnvShape,
+  /** Listing photos (decision 0019): local disk (development) | azure (TODO(media), not built) | none (uploads off). */
+  MEDIA_STORAGE: z.enum(['local', 'azure', 'none'], { error: 'must be one of: local, azure, none' }).optional(),
+  /** Folder for MEDIA_STORAGE=local (default .data/media under the API's working directory). */
+  MEDIA_DIR: z.string().trim().min(1).optional(),
+  /** HMAC secret for short-lived photo links. Secret: never logged. Required when photos are stored. */
+  MEDIA_SIGNING_SECRET: z.string().min(32, 'must be at least 32 characters').optional(),
 });
+
+/** Development-only default so photo links work locally without setup (refused in production). */
+const DEV_MEDIA_SIGNING_SECRET = 'development-only-media-signing-secret-not-for-production';
+
+export interface MediaConfig {
+  readonly storage: 'local' | 'none';
+  readonly dir: string;
+  /** Holds a secret - never log it. */
+  readonly signingSecret: string;
+}
 
 /** Validated, typed API configuration. Inject with `@Inject(API_CONFIG)`. */
 export interface ApiConfig {
@@ -104,6 +124,10 @@ export interface ApiConfig {
   readonly accessPolicy: AccessPolicy;
   /** Rollout flags that are on (platform capabilities, decision 0018). */
   readonly featureFlags: readonly FeatureFlag[];
+  /** AI for Sell drafts, or null when not configured (production without AI_PROVIDER). Holds the Foundry key. */
+  readonly ai: { readonly provider: AIProviderId; readonly foundry: FoundryConfig | null } | null;
+  /** Listing photo storage (decision 0019). */
+  readonly media: MediaConfig;
 }
 
 export const API_CONFIG = Symbol('API_CONFIG');
@@ -120,7 +144,15 @@ export function loadApiConfig(
   const facebook = resolveFacebookSource(parsed, parsed.NODE_ENV);
   const billing = resolveBillingConfig(parsed, parsed.NODE_ENV);
   const geo = resolveGeoConfig(parsed, parsed.NODE_ENV);
-  const problems: string[] = [...ebay.problems, ...facebook.problems, ...billing.problems, ...geo.problems];
+  const prod = parsed.NODE_ENV === 'production';
+  const aiProvider: AIProviderId | null = parsed.AI_PROVIDER ?? (prod ? null : 'mock');
+  const foundry = aiProvider ? resolveFoundryConfig(aiProvider, parsed) : { foundry: null, problems: [] };
+  const mediaStorage = parsed.MEDIA_STORAGE ?? (prod ? 'none' : 'local');
+  const problems: string[] = [...ebay.problems, ...facebook.problems, ...billing.problems, ...geo.problems, ...foundry.problems];
+  if (prod && parsed.AI_PROVIDER === 'mock') problems.push('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
+  if (mediaStorage === 'azure') problems.push('MEDIA_STORAGE: azure is not built yet (TODO(media)) - use none in production for now');
+  if (prod && mediaStorage === 'local') problems.push('MEDIA_STORAGE: local is development-only (container disks are not durable)');
+  if (prod && mediaStorage !== 'none' && !parsed.MEDIA_SIGNING_SECRET) problems.push('MEDIA_SIGNING_SECRET: required when photos are stored in production');
   const authProvider: AuthProviderId = parsed.AUTH_PROVIDER ?? (parsed.NODE_ENV === 'production' ? 'entra' : 'dev');
   let entra: EntraApiConfig | null = null;
   if (authProvider === 'entra') {
@@ -169,5 +201,11 @@ export function loadApiConfig(
     geo: Object.freeze({ provider: geo.geo.provider, azure: geo.geo.azure ? Object.freeze(geo.geo.azure) : null }),
     accessPolicy: Object.freeze({ graceDays: parsed.BILLING_GRACE_DAYS }),
     featureFlags: Object.freeze([...new Set(parsed.FEATURE_FLAGS ?? [])]),
+    ai: aiProvider ? Object.freeze({ provider: aiProvider, foundry: foundry.foundry ? Object.freeze(foundry.foundry) : null }) : null,
+    media: Object.freeze({
+      storage: mediaStorage === 'local' ? 'local' : 'none',
+      dir: parsed.MEDIA_DIR ?? '.data/media',
+      signingSecret: parsed.MEDIA_SIGNING_SECRET ?? DEV_MEDIA_SIGNING_SECRET,
+    }),
   });
 }

@@ -134,6 +134,23 @@ import {
   joinWaitlistResponseSchema,
   type JoinWaitlistRequestInput,
   type JoinWaitlistResponse,
+  sellMarketplacesResponseSchema,
+  sellListingSchema,
+  sellListingListSchema,
+  sellDraftSuggestionSchema,
+  updateSellListingRequestSchema,
+  sellDraftRequestSchema,
+  addSourcePhotoRequestSchema,
+  reorderPhotosRequestSchema,
+  publishSellListingRequestSchema,
+  confirmSellChannelRequestSchema,
+  type SellMarketplacesResponse,
+  type SellListing,
+  type SellListingStatus,
+  type SellDraftSuggestion,
+  type SellDraftRequest,
+  type UpdateSellListingRequest,
+  type MarketplaceKey,
 } from '@rein-drop/contracts';
 import { z } from 'zod';
 import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from './http.js';
@@ -148,6 +165,12 @@ export {
   billingReturnPathSchema,
   ENTRA_DEFAULT_SCOPE_NAME,
   entraApiScope,
+  LISTING_CONDITIONS,
+  SELL_DESCRIPTION_MAX,
+  SELL_PHOTO_BYTES_MAX,
+  SELL_PHOTO_TYPES,
+  SELL_PHOTOS_MAX,
+  SELL_TITLE_MAX,
   entraDiscoveryUrl,
   capabilitiesFor,
   capability,
@@ -292,6 +315,27 @@ export interface ApiClient {
   /** Undo the sale: the item is held again. */
   undoSale(id: string): Promise<InventoryItem>;
 
+  /** Sell (decision 0019): marketplaces you can list on, and whether uploads / AI drafts are available. */
+  getSellMarketplaces(): Promise<SellMarketplacesResponse>;
+  listSellListings(status?: SellListingStatus): Promise<SellListing[]>;
+  /** "List" on an inventory item: its sell listing, created on first use. */
+  startSellListing(inventoryItemId: string): Promise<SellListing>;
+  getSellListing(id: string): Promise<SellListing>;
+  updateSellListing(id: string, input: UpdateSellListingRequest): Promise<SellListing>;
+  /** AI suggestion from the item's facts - not saved; apply it to the form, then save. */
+  draftSellListing(id: string, input?: SellDraftRequest): Promise<SellDraftSuggestion>;
+  /**
+   * Upload one photo (multipart field "photo"). ile: a Blob / File on the web, or
+   * { uri, name, type } on React Native.
+   */
+  uploadSellPhoto(id: string, file: Blob | { uri: string; name: string; type: string }, fileName?: string): Promise<SellListing>;
+  addSourcePhoto(id: string, url: string): Promise<SellListing>;
+  /** Every photo id in the new order; the first is the cover. */
+  reorderSellPhotos(id: string, photoIds: string[]): Promise<SellListing>;
+  removeSellPhoto(id: string, photoId: string): Promise<SellListing>;
+  publishSellListing(id: string, marketplaces: MarketplaceKey[]): Promise<SellListing>;
+  confirmSellChannel(id: string, marketplace: MarketplaceKey, url?: string): Promise<SellListing>;
+  endSellChannel(id: string, marketplace: MarketplaceKey): Promise<SellListing>;
   /** Period analytics (default: last 30 days). Realized results only; estimates are labelled. */
   getAnalyticsOverview(query?: AnalyticsQueryInput): Promise<AnalyticsOverview>;
   getHuntAnalytics(query?: AnalyticsQueryInput): Promise<HuntAnalytics>;
@@ -540,6 +584,31 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
     undoSale: (id) => send(http, { method: 'DELETE', path: `/inventory/${pathId(id)}/sale`, response: inventoryItemSchema }),
 
+    getSellMarketplaces: () => send(http, { method: 'GET', path: '/sell/marketplaces', response: sellMarketplacesResponseSchema }),
+    listSellListings: async (status) => (await send(http, { method: 'GET', path: '/sell/listings', query: { status }, response: sellListingListSchema })).items,
+    startSellListing: (inventoryItemId) => send(http, { method: 'POST', path: '/sell/listings', body: { inventoryItemId }, response: sellListingSchema }),
+    getSellListing: (id) => send(http, { method: 'GET', path: `/sell/listings/${pathId(id)}`, response: sellListingSchema }),
+    updateSellListing: async (id, input) =>
+      send(http, { method: 'PATCH', path: `/sell/listings/${pathId(id)}`, body: validateInput(updateSellListingRequestSchema, input, 'body'), response: sellListingSchema }),
+    draftSellListing: async (id, input = {}) =>
+      send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/draft`, body: validateInput(sellDraftRequestSchema, input, 'body'), response: sellDraftSuggestionSchema, timeoutMs: 60_000 }),
+    uploadSellPhoto: (id, file, fileName = 'photo.jpg') => {
+      const form = new FormData();
+      // React Native's FormData takes { uri, name, type }; the web's takes a Blob and a file name.
+      if (typeof Blob !== 'undefined' && file instanceof Blob) form.append('photo', file, fileName);
+      else form.append('photo', file as unknown as Blob);
+      return send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/photos`, formData: form, response: sellListingSchema, timeoutMs: 60_000 });
+    },
+    addSourcePhoto: async (id, url) =>
+      send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/photos/source`, body: validateInput(addSourcePhotoRequestSchema, { url }, 'body'), response: sellListingSchema }),
+    reorderSellPhotos: async (id, photoIds) =>
+      send(http, { method: 'PUT', path: `/sell/listings/${pathId(id)}/photos/order`, body: validateInput(reorderPhotosRequestSchema, { photoIds }, 'body'), response: sellListingSchema }),
+    removeSellPhoto: (id, photoId) => send(http, { method: 'DELETE', path: `/sell/listings/${pathId(id)}/photos/${pathId(photoId)}`, response: sellListingSchema }),
+    publishSellListing: async (id, marketplaces) =>
+      send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/publish`, body: validateInput(publishSellListingRequestSchema, { marketplaces }, 'body'), response: sellListingSchema }),
+    confirmSellChannel: async (id, marketplace, url) =>
+      send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/channels/${marketplace}/confirm`, body: validateInput(confirmSellChannelRequestSchema, url ? { url } : {}, 'body'), response: sellListingSchema }),
+    endSellChannel: (id, marketplace) => send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/channels/${marketplace}/end`, body: {}, response: sellListingSchema }),
     getAnalyticsOverview: async (query = {}) => analytics(http, 'overview', query, analyticsOverviewSchema),
     getHuntAnalytics: async (query = {}) => analytics(http, 'hunts', query, huntAnalyticsSchema),
     getProductAnalytics: async (query = {}) => analytics(http, 'products', query, productAnalyticsSchema),

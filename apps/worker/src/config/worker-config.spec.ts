@@ -128,7 +128,7 @@ describe('loadWorkerConfig', () => {
       foundry: {
         endpoint: 'https://rein.openai.azure.com',
         auth: { kind: 'api-key', key: 'k3y-secret' },
-        deployments: { extractProduct: 'gpt-4o-mini-prod', assessConditionRisk: 'gpt-4o-mini-prod', explainDeal: 'gpt-4o-prod' },
+        deployments: { extractProduct: 'gpt-4o-mini-prod', assessConditionRisk: 'gpt-4o-mini-prod', explainDeal: 'gpt-4o-prod', draftListing: 'gpt-4o-mini-prod' },
         timeoutMs: undefined,
         maxRetries: 0,
         maxOutputTokens: undefined,

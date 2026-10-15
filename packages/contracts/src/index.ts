@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared API contracts: zod schemas + inferred TypeScript types describing the
  * wire format between apps/api and its clients (web, mobile). This is the only
  * place request/response DTOs are defined - apps import them, never redeclare.
@@ -25,6 +25,7 @@ export * from './listings.js';
 export * from './deals.js';
 export * from './notifications.js';
 export * from './outcomes.js';
+export * from './sell.js';
 export * from './analytics.js';
 export * from './marketplace-health.js';
 export * from './diagnostics.js';

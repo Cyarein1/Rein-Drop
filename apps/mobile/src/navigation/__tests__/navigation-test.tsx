@@ -44,6 +44,7 @@ const routes = () => ({
   'hunts/new': stub('Create Hunt'),
   'deals/[id]': stub('Deal detail'),
   alerts: stub('Inbox'),
+  'sell/index': stub('Your listings'),
 });
 
 beforeEach(() => {
@@ -51,11 +52,11 @@ beforeEach(() => {
 });
 
 describe('companion navigation', () => {
-  it('opens on Deals; the tab bar is Deals, Hunts, Inventory, Account in that order', () => {
+  it('opens on Deals; the tab bar is Deals, Hunts, central Create, Inventory, Account in that order', () => {
     const router = renderRouter(routes(), { initialUrl: '/' });
     expect(router.getPathname()).toBe('/deals');
     expect(screen.getByText('Deals screen')).toBeOnTheScreen();
-    const labels = ['Deals', 'Hunts', 'Inventory', 'Account'];
+    const labels = ['Deals', 'Hunts', 'Create Hunt', 'Inventory', 'Account'];
     const tabs = screen.getAllByRole('button').filter((b) => labels.some((l) => (b.props.accessibilityLabel ?? '').startsWith(l)));
     expect(tabs.map((t) => labels.find((l) => (t.props.accessibilityLabel as string).startsWith(l)))).toEqual(labels);
   });
@@ -75,9 +76,9 @@ describe('companion navigation', () => {
     expect(router.getPathname()).toBe('/alerts');
   });
 
-  it('header shortcut: Create Hunt from Hunts', () => {
-    const router = renderRouter(routes(), { initialUrl: '/hunts' });
-    fireEvent.press(screen.getByLabelText('Create Hunt'));
+  it.each(['/deals', '/hunts', '/inventory', '/account'])('the central + opens Create Hunt from %s', (url) => {
+    const router = renderRouter(routes(), { initialUrl: url });
+    fireEvent.press(screen.getByRole('button', { name: 'Create Hunt' }));
     expect(router.getPathname()).toBe('/hunts/new');
   });
 
@@ -95,6 +96,18 @@ describe('companion navigation', () => {
     const router = renderRouter(routes(), { initialUrl: '/deals/0199-deal' });
     expect(router.getPathname()).toBe('/deals/0199-deal');
     expect(screen.getByText('Deal detail screen')).toBeOnTheScreen();
+  });
+
+  it('Sell (decision 0019): the Inventory header opens your listings; hidden when Sell is not available', () => {
+    const router = renderRouter(routes(), { initialUrl: '/inventory' });
+    fireEvent.press(screen.getByLabelText('Your listings'));
+    expect(router.getPathname()).toBe('/sell');
+  });
+
+  it('no listings shortcut without the Sell workspace', () => {
+    mockUnavailable = ['sell.workspace'];
+    renderRouter(routes(), { initialUrl: '/inventory' });
+    expect(screen.queryByLabelText('Your listings')).toBeNull();
   });
 
   it('a tab whose feature is not available is not shown (e.g. no Inventory)', () => {

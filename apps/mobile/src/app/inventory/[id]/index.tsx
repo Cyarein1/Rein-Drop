@@ -105,6 +105,19 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
     }
   };
   const go = (pathname: '/inventory/[id]/sell' | '/inventory/[id]/result') => router.push({ pathname, params: { id: item.id } });
+  const [listing, setListingBusy] = useState(false);
+  const openListing = async () => {
+    setListingBusy(true);
+    setError(null);
+    try {
+      const sell = await api.startSellListing(item.id);
+      router.push({ pathname: '/sell/[id]', params: { id: sell.id } });
+    } catch (err) {
+      setError(messageOf(err));
+    } finally {
+      setListingBusy(false);
+    }
+  };
 
   return (
     <>
@@ -120,10 +133,20 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
       </Text>
 
       <View style={styles.actions}>
-        {view.holding && <Button onPress={() => go('/inventory/[id]/sell')}>Mark sold</Button>}
+        {view.holding && (
+          // Opens this item's listing (created on first use): write it or Use AI, add photos, cross-list.
+          <Button loading={listing} onPress={() => void openListing()}>
+            {item.status === 'LISTED' ? 'Manage listing' : 'List for sale'}
+          </Button>
+        )}
+        {view.holding && (
+          <Button variant="secondary" onPress={() => go('/inventory/[id]/sell')}>
+            Mark sold
+          </Button>
+        )}
         {view.holding && item.status === 'IN_STOCK' && (
-          <Button variant="secondary" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'LISTED' }), 'Marked as listed for sale.')}>
-            I&apos;ve listed it
+          <Button variant="text" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'LISTED' }), 'Marked as listed for sale.')}>
+            I listed it elsewhere
           </Button>
         )}
         {view.holding && item.status === 'LISTED' && (

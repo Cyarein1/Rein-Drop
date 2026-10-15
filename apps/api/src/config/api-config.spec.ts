@@ -40,6 +40,8 @@ describe('loadApiConfig', () => {
       geo: { provider: 'mock', azure: null },
       accessPolicy: { graceDays: 0 },
       featureFlags: [],
+      ai: { provider: 'mock', foundry: null },
+      media: { storage: 'local', dir: '.data/media', signingSecret: expect.any(String) },
     });
   });
 
@@ -144,7 +146,20 @@ describe('loadApiConfig', () => {
       geo: { provider: 'mock', azure: null },
       accessPolicy: { graceDays: 0 },
       featureFlags: [],
+      ai: { provider: 'mock', foundry: null },
+      media: { storage: 'local', dir: '.data/media', signingSecret: expect.any(String) },
     });
+  });
+
+  it('Sell AI drafts and listing photos (decision 0019): development defaults; production refuses mocks and local disk', () => {
+    const prod = { ...ENTRA, NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', ...EBAY };
+    expect(loadApiConfig(prod)).toMatchObject({ ai: null, media: { storage: 'none' } });
+    expect(problemsFor({ ...prod, AI_PROVIDER: 'mock' })).toContain('AI_PROVIDER: mock is development-only, not allowed when NODE_ENV=production');
+    expect(problemsFor({ ...prod, MEDIA_STORAGE: 'local' })).toEqual(
+      expect.arrayContaining(['MEDIA_STORAGE: local is development-only (container disks are not durable)', 'MEDIA_SIGNING_SECRET: required when photos are stored in production']),
+    );
+    expect(problemsFor({ MEDIA_STORAGE: 'azure' })).toContain('MEDIA_STORAGE: azure is not built yet (TODO(media)) - use none in production for now');
+    expect(problemsFor({ AI_PROVIDER: 'foundry' }).join(' ')).toMatch(/FOUNDRY_ENDPOINT: required/);
   });
 
   it('selects development marketplace scenarios', () => {

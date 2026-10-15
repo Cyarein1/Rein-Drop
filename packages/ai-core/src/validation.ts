@@ -1,22 +1,25 @@
 import type { z } from 'zod';
 import { tokenize } from '@rein-drop/matching';
-import { isGrounded } from './facts.js';
+import { isGrounded, isGroundedInText, listingDraftText, privateFactLeaks, unsupportedClaims } from './facts.js';
 import {
   AIProviderError,
   type AIProvider,
   type AIResult,
   type ConditionRiskInput,
   type DealExplanationInput,
+  type ListingDraftFacts,
   type ProductExtractionInput,
 } from './provider.js';
 import {
   aiResultMetaSchema,
   conditionRiskSchema,
   dealExplanationSchema,
+  listingDraftSchema,
   productExtractionSchema,
   type ConditionRiskAssessment,
   type DealExplanation,
   type Evidence,
+  type ListingDraftSuggestion,
   type ProductExtraction,
 } from './schemas.js';
 
@@ -33,6 +36,7 @@ export function withValidation(provider: AIProvider): AIProvider {
     assessConditionRisk: (input) =>
       run(provider.id, 'assessConditionRisk', () => provider.assessConditionRisk(input), (o) => checkConditionRisk(input, o)),
     explainDeal: (input) => run(provider.id, 'explainDeal', () => provider.explainDeal(input), (o) => checkDealExplanation(input, o)),
+    draftListing: (facts) => run(provider.id, 'draftListing', () => provider.draftListing(facts), (o) => checkListingDraft(facts, o)),
   };
 }
 
@@ -128,5 +132,31 @@ export function checkDealExplanation(input: DealExplanationInput, value: unknown
   verify('positives');
   verify('concerns');
   ungrounded('explainDeal', problems);
+  return output;
+}
+
+/**
+ * A listing draft may only say what the facts support: item specifics come from the item's own
+ * text, a price only from the resale estimate (within its range, same currency), no guarantees,
+ * no "brand new" unless it is new, no unmentioned warranty - and never the purchase price or where
+ * it was bought (private to the seller).
+ */
+export function checkListingDraft(facts: ListingDraftFacts, value: unknown): ListingDraftSuggestion {
+  const output = parse(listingDraftSchema, value, 'draftListing');
+  const problems: string[] = [];
+  const text = listingDraftText(facts);
+  output.itemSpecifics.forEach((s, i) => {
+    if (!isGroundedInText(text, s.value)) problems.push(`itemSpecifics.${i} (${s.name}): "${s.value}" is not in the item's text`);
+  });
+  const price = output.suggestedPrice?.amount;
+  const estimate = facts.resaleEstimate;
+  if (price && !estimate) problems.push('suggestedPrice: there is no resale estimate to base a price on');
+  if (price && estimate) {
+    if (price.currency !== estimate.typical.currency) problems.push(`suggestedPrice: currency ${price.currency} is not the estimate's ${estimate.typical.currency}`);
+    else if (price.amountMinor < estimate.low.amountMinor || price.amountMinor > estimate.high.amountMinor) problems.push('suggestedPrice: outside the resale estimate range');
+  }
+  const written = `${output.title}\n${output.description}`;
+  problems.push(...privateFactLeaks(facts, written), ...unsupportedClaims(facts, output.condition, written));
+  ungrounded('draftListing', problems);
   return output;
 }

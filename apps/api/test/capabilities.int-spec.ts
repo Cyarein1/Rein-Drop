@@ -40,7 +40,7 @@ describe('Platform capabilities (integration, real database)', () => {
     await prisma.$disconnect();
   });
 
-  it('web is complete; mobile is the companion (no analytics, dashboard or billing); unbuilt Sell is nowhere', async () => {
+  it('web is complete; mobile is the companion (no analytics, dashboard or billing); Sell is open on both during beta', async () => {
     const app = await boot();
     const web = (await caps(app, 'web').expect(200)).body;
     const mobile = (await caps(app, 'mobile').expect(200)).body;
@@ -48,19 +48,21 @@ describe('Platform capabilities (integration, real database)', () => {
     for (const f of ['analytics', 'home.dashboard', 'billing.checkout', 'billing.manage', 'deals', 'inventory']) expect(web.features[f]).toEqual({ available: true, reason: null });
     for (const f of ['analytics', 'home.dashboard', 'billing.checkout', 'billing.manage']) expect(mobile.features[f]).toEqual({ available: false, reason: 'not_on_platform' });
     for (const f of ['deals', 'hunts.manage', 'hunts.create', 'inventory', 'account.access', 'push']) expect(mobile.features[f].available).toBe(true);
-    expect(web.features['sell.workspace']).toEqual({ available: false, reason: 'not_built' });
-    expect(mobile.features['sell.workspace']).toEqual({ available: false, reason: 'not_built' });
+    // Decision 0019: listing, AI drafts, photos and cross-listing for every account (no plan gate yet).
+    expect(web.features['sell.workspace']).toEqual({ available: true, reason: null });
+    expect(mobile.features['sell.workspace']).toEqual({ available: true, reason: null });
+    expect(mobile.features['inventory.photos']).toEqual({ available: true, reason: null });
     // Not a production environment here, so developer tools show (production: development_only).
     expect(mobile.features['dev.tools'].available).toBe(true);
   });
 
   it('a rollout flag turns a flagged feature on - still subject to the plan', async () => {
-    const app = await boot({ FEATURE_FLAGS: 'hunts.hot,sell.workspace' });
+    const app = await boot({ FEATURE_FLAGS: 'hunts.hot,inventory.bulk' });
     const web = (await caps(app, 'web').expect(200)).body;
     // Free has no Hot Hunts: flag on, entitlement missing.
     expect(web.features['hunts.hot']).toEqual({ available: false, reason: 'not_entitled' });
     // Unbuilt features stay off whatever the flags say.
-    expect(web.features['sell.workspace']).toEqual({ available: false, reason: 'not_built' });
+    expect(web.features['inventory.bulk']).toEqual({ available: false, reason: 'not_built' });
   });
 
   it('validates the platform and requires sign-in', async () => {

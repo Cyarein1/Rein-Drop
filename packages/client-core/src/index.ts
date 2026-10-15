@@ -17,6 +17,7 @@ export * from './push-view.js';
 export * from './hunt-view.js';
 export * from './home-view.js';
 export * from './inventory-view.js';
+export * from './sell-view.js';
 export * from './analytics-view.js';
 export * from './source-view.js';
 export * from './product-states.js';

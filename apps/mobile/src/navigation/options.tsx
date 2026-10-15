@@ -2,7 +2,6 @@ import { Link } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, type ColorValue } from 'react-native';
 import { fontSize, roles, size } from '@rein-drop/design-tokens';
-import { useCanUseHunts } from '@/access/AccessNotice';
 import { font } from '@/ui';
 
 /** Native header styling from the design tokens (navy on white). */
@@ -22,6 +21,17 @@ export function NavIcon({ name, color, size: iconSize = 24 }: { name: SymbolName
   return <SymbolView name={name} tintColor={color} size={iconSize} />;
 }
 
+/** Inventory tab header: your listings (Sell, decision 0019). */
+export function ListingsHeaderButton() {
+  return (
+    <Link href="/sell" asChild>
+      <Pressable accessibilityRole="button" accessibilityLabel="Your listings" hitSlop={8} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
+        <NavIcon name={{ ios: 'storefront', android: 'storefront' }} color={roles.text} />
+      </Pressable>
+    </Link>
+  );
+}
+
 /** Header button to the in-app inbox (alerts). */
 export function InboxHeaderButton() {
   return (
@@ -38,23 +48,6 @@ export function InboxHeaderButton() {
   );
 }
 
-/** Hunts tab header: Create Hunt (decision 0018 - Create lives in Hunts; opens the modal). */
-export function CreateHuntHeaderButton() {
-  // Hidden while the account is suspended (the API refuses new Hunts then).
-  if (!useCanUseHunts()) return null;
-  return (
-    <Link href="/hunts/new" asChild>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Create Hunt"
-        hitSlop={8}
-        style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-      >
-        <NavIcon name={{ ios: 'plus', android: 'add' }} color={roles.text} />
-      </Pressable>
-    </Link>
-  );
-}
 const styles = StyleSheet.create({
   headerButton: {
     width: size.touchTarget,

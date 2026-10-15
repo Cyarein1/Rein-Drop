@@ -3,7 +3,7 @@ import { analyzeCandidate, type CandidateAnalysisInput } from '../analysis.js';
 import { createAIProvider } from '../factory.js';
 import { MockAIProvider } from '../mock/mock-ai-provider.js';
 import { AIProviderError, type DealExplanationInput, type EvidenceAvailability, type ListingFacts } from '../provider.js';
-import { conditionRiskSchema, dealExplanationSchema, productExtractionSchema } from '../schemas.js';
+import { conditionRiskSchema, dealExplanationSchema, listingDraftSchema, productExtractionSchema } from '../schemas.js';
 import { chatCompletionsUrl, FoundryAIProvider, foundryWorstCaseMs, type FoundryConfig, type FoundryFetch, type FoundryHttpResponse } from './foundry-ai-provider.js';
 import { resolveFoundryConfig } from './foundry-config.js';
 import { FOUNDRY_PROMPT_VERSIONS } from './prompts.js';
@@ -36,7 +36,7 @@ const candidate: CandidateAnalysisInput = {
 const CONFIG: FoundryConfig = {
   endpoint: 'https://rein-test.openai.azure.com/',
   auth: { kind: 'api-key', key: KEY },
-  deployments: { extractProduct: 'extract-mini', assessConditionRisk: 'risk-mini', explainDeal: 'explain-4o' },
+  deployments: { extractProduct: 'extract-mini', assessConditionRisk: 'risk-mini', explainDeal: 'explain-4o', draftListing: 'draft-mini' },
   maxRetries: 2,
 };
 
@@ -104,6 +104,7 @@ describe('strict JSON schemas for Azure structured outputs', () => {
     ['product extraction', productExtractionSchema],
     ['condition risk', conditionRiskSchema],
     ['deal explanation', dealExplanationSchema],
+    ['listing draft', listingDraftSchema],
   ])('%s: objects closed, every field required, only supported keywords, nesting <= 5, <= 100 properties', (_, zod) => {
     const schema = toStrictJsonSchema(zod);
     let properties = 0;
@@ -174,7 +175,7 @@ describe('FoundryAIProvider - results, usage and validation', () => {
       provider: 'foundry',
       model: 'extract-mini,risk-mini,explain-4o',
       modelVersion: 'gpt-4.1-mini-2025-04-14',
-      promptVersion: Object.values(FOUNDRY_PROMPT_VERSIONS).join(','),
+      promptVersion: [FOUNDRY_PROMPT_VERSIONS.extractProduct, FOUNDRY_PROMPT_VERSIONS.assessConditionRisk, FOUNDRY_PROMPT_VERSIONS.explainDeal].join(','),
     });
     // 1000 in * 0.4 + 200 out * 1.6 per million = 0.00072 USD per task.
     expect(record.providerMetadata.tasks.extractProduct).toEqual({
@@ -307,7 +308,7 @@ describe('resolveFoundryConfig', () => {
       foundry: {
         endpoint: base.FOUNDRY_ENDPOINT,
         auth: { kind: 'api-key', key: KEY },
-        deployments: { extractProduct: 'gpt-4o-mini-prod', assessConditionRisk: 'gpt-4o-mini-prod', explainDeal: 'gpt-4o-prod' },
+        deployments: { extractProduct: 'gpt-4o-mini-prod', assessConditionRisk: 'gpt-4o-mini-prod', explainDeal: 'gpt-4o-prod', draftListing: 'gpt-4o-mini-prod' },
         timeoutMs: 20_000,
         maxRetries: undefined,
         maxOutputTokens: undefined,
@@ -332,6 +333,7 @@ describe('resolveFoundryConfig', () => {
         FOUNDRY_DEPLOYMENT_PRODUCT_EXTRACTION: 'a',
         FOUNDRY_DEPLOYMENT_CONDITION_RISK: 'b',
         FOUNDRY_DEPLOYMENT_DEAL_EXPLANATION: 'c',
+        FOUNDRY_DEPLOYMENT_LISTING_DRAFT: 'd',
       }).problems,
     ).toEqual([]);
   });

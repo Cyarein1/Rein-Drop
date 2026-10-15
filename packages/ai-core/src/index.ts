@@ -18,14 +18,19 @@ export {
   type EvidenceAvailability,
   type HuntContext,
   type HuntTarget,
+  type ListingDraftFacts,
   type ListingFacts,
   type MatchCheckFact,
   type Money,
   type ProductExtractionInput,
+  type ResaleEstimate,
 } from './provider.js';
 export {
   AI_SCHEMA_VERSION,
   FACT_FIELDS,
+  LISTING_CONDITIONS,
+  LISTING_DESCRIPTION_MAX,
+  LISTING_TITLE_MAX,
   PRODUCT_ATTRIBUTES,
   PRODUCT_CATEGORIES,
   QUESTION_TOPICS,
@@ -35,17 +40,20 @@ export {
   conditionRiskSchema,
   dealExplanationSchema,
   evidenceSchema,
+  listingDraftSchema,
   productExtractionSchema,
   type AIResultMeta,
   type ConditionRiskAssessment,
   type DealExplanation,
   type Evidence,
   type ExplanationPoint,
+  type ListingCondition,
+  type ListingDraftSuggestion,
   type ProductExtraction,
   type RiskCode,
 } from './schemas.js';
-export { factValue, isGrounded } from './facts.js';
-export { checkConditionRisk, checkDealExplanation, checkProductExtraction, withValidation } from './validation.js';
+export { factValue, isGrounded, isGroundedInText, listingDraftText } from './facts.js';
+export { checkConditionRisk, checkDealExplanation, checkListingDraft, checkProductExtraction, withValidation } from './validation.js';
 export { MOCK_MODEL, MockAIProvider } from './mock/mock-ai-provider.js';
 export {
   analysisInputKey,

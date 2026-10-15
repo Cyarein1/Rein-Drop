@@ -50,6 +50,8 @@ export default function RootLayout() {
         <Stack.Screen name="inventory/[id]/index" options={{ title: 'Inventory item' }} />
         <Stack.Screen name="inventory/[id]/sell" options={{ title: 'Mark sold' }} />
         <Stack.Screen name="inventory/[id]/result" options={{ title: 'Sale result' }} />
+        <Stack.Screen name="sell/index" options={{ title: 'Your listings' }} />
+        <Stack.Screen name="sell/[id]" options={{ title: 'List for sale' }} />
         <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
         <Stack.Screen name="dev" options={{ title: 'Developer' }} />
       </Stack>

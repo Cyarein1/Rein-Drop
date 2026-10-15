@@ -9,6 +9,7 @@ import { MatchingModule } from './matching/matching.module.js';
 import { DealIntelligenceModule } from './deal-intelligence/deal-intelligence.module.js';
 import { DealsModule } from './deals/deals.module.js';
 import { OutcomesModule } from './outcomes/outcomes.module.js';
+import { SellModule } from './sell/sell.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { PlansModule } from './plans/plans.module.js';
 import { BillingModule } from './billing/billing.module.js';
@@ -37,6 +38,8 @@ export const DOMAIN_MODULES = [
   DealIntelligenceModule,
   DealsModule,
   OutcomesModule,
+  // Sell workspace (decision 0019): listings, AI drafts, photos, cross-listing.
+  SellModule,
   AnalyticsModule,
   PlansModule,
   BillingModule,

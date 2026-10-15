@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
-import { BOTTOM_ITEMS, isActive, NAV, SIDEBAR_ITEMS, type NavItem } from "./nav";
+import { BOTTOM_ITEMS, isActive, NAV, SIDEBAR_ITEMS, TOP_BAR_ITEMS, type NavItem } from "./nav";
 import styles from "./AppShell.module.css";
 
 /**
@@ -89,19 +89,20 @@ function BottomNavView({ pathname }: PathProps) {
   );
 }
 
-/** Mobile top bar: Settings is not in the bottom bar, so it lives here. */
+/** Mobile top bar: destinations not in the bottom bar (Sell, Settings) live here. */
 function TopBarSettingsLinkView({ pathname }: PathProps) {
-  const current = active(pathname, NAV.settings);
-  const Icon = NAV.settings.icon;
   return (
-    <Link
-      href={NAV.settings.href}
-      className={styles.iconButton}
-      aria-current={current ? "page" : undefined}
-      aria-label={NAV.settings.label}
-    >
-      <Icon aria-hidden="true" size={22} strokeWidth={current ? 2.5 : 2} />
-    </Link>
+    <>
+      {TOP_BAR_ITEMS.map((item) => {
+        const current = active(pathname, item);
+        const Icon = item.icon;
+        return (
+          <Link key={item.href} href={item.href} className={styles.iconButton} aria-current={current ? "page" : undefined} aria-label={item.label}>
+            <Icon aria-hidden="true" size={22} strokeWidth={current ? 2.5 : 2} />
+          </Link>
+        );
+      })}
+    </>
   );
 }
 

@@ -2,6 +2,7 @@ import type {
   AIResultMeta,
   ConditionRiskAssessment,
   DealExplanation,
+  ListingDraftSuggestion,
   ProductExtraction,
 } from './schemas.js';
 
@@ -83,6 +84,37 @@ export interface DealExplanationInput {
   evidence: EvidenceAvailability;
 }
 
+/** Resale estimate from comparable sales, frozen on the inventory item when it was bought. */
+export interface ResaleEstimate {
+  low: Money;
+  typical: Money;
+  high: Money;
+  sampleSize: number;
+}
+
+/**
+ * Everything known about an item a reseller bought and now wants to list. The purchase price and
+ * the source marketplace are private to the seller: they are passed so the validator can make sure
+ * they never leak into the listing, never so they can be shown to buyers.
+ */
+export interface ListingDraftFacts {
+  /** The inventory item's title (user-editable). */
+  itemTitle: string;
+  /** Title of the listing it was bought from. */
+  sourceTitle: string | null;
+  sourceDescription: string | null;
+  sourceConditionText: string | null;
+  sourceMarketplace: 'ebay' | 'facebook' | null;
+  purchasePrice: Money;
+  /** Resale ESTIMATE frozen when the item was bought (comparable sales) - the only allowed basis for a price. */
+  resaleEstimate: ResaleEstimate | null;
+  /** Free text the seller typed (e.g. "battery 89%, small scratch on back"). */
+  sellerNotes: string | null;
+  photoCount: number;
+  /** BCP-47, e.g. "en-ZA" - wording/spelling only. */
+  localeTag: string;
+}
+
 export interface AIResult<T> {
   output: T;
   meta: AIResultMeta;
@@ -98,6 +130,8 @@ export interface AIProvider {
   extractProduct(input: ProductExtractionInput): Promise<AIResult<ProductExtraction>>;
   assessConditionRisk(input: ConditionRiskInput): Promise<AIResult<ConditionRiskAssessment>>;
   explainDeal(input: DealExplanationInput): Promise<AIResult<DealExplanation>>;
+  /** Drafts a marketplace listing for an item the reseller owns (a suggestion the seller edits). */
+  draftListing(facts: ListingDraftFacts): Promise<AIResult<ListingDraftSuggestion>>;
 }
 
 export const AI_ERROR_CODES = [

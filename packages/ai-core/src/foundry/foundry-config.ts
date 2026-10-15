@@ -16,6 +16,7 @@ export const foundryEnvShape = {
   FOUNDRY_DEPLOYMENT_PRODUCT_EXTRACTION: z.string().trim().min(1).optional(),
   FOUNDRY_DEPLOYMENT_CONDITION_RISK: z.string().trim().min(1).optional(),
   FOUNDRY_DEPLOYMENT_DEAL_EXPLANATION: z.string().trim().min(1).optional(),
+  FOUNDRY_DEPLOYMENT_LISTING_DRAFT: z.string().trim().min(1).optional(),
   FOUNDRY_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).optional(),
   FOUNDRY_MAX_RETRIES: z.coerce.number().int().min(0).max(5).optional(),
   FOUNDRY_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(256).max(16_000).optional(),
@@ -35,6 +36,7 @@ export function resolveFoundryConfig(provider: AIProviderId, env: FoundryEnv): {
     extractProduct: env.FOUNDRY_DEPLOYMENT_PRODUCT_EXTRACTION ?? env.FOUNDRY_DEPLOYMENT,
     assessConditionRisk: env.FOUNDRY_DEPLOYMENT_CONDITION_RISK ?? env.FOUNDRY_DEPLOYMENT,
     explainDeal: env.FOUNDRY_DEPLOYMENT_DEAL_EXPLANATION ?? env.FOUNDRY_DEPLOYMENT,
+    draftListing: env.FOUNDRY_DEPLOYMENT_LISTING_DRAFT ?? env.FOUNDRY_DEPLOYMENT,
   };
   if (Object.values(deployments).some((d) => !d)) {
     problems.push('FOUNDRY_DEPLOYMENT: required when AI_PROVIDER=foundry (or set every FOUNDRY_DEPLOYMENT_<TASK>)');

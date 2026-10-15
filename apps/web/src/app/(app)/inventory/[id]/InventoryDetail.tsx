@@ -15,6 +15,7 @@ import {
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Metric, SystemBanner, TextInput } from "@/components/ui";
 import { savePurchase, setHoldingStatus, undoSale, type InventoryActionResult } from "../actions";
+import { startListing } from "../../sell/actions";
 import { CostRows } from "../CostRows";
 import styles from "../inventory.module.css";
 
@@ -26,7 +27,15 @@ export function InventoryDetail({ initial, context }: { initial: InventoryItem; 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [listing, startListingTransition] = useTransition();
   const view = inventoryDetailView(item, context);
+  const startList = () =>
+    startListingTransition(async () => {
+      setError(null);
+      // Redirects to the listing editor on success.
+      const r = await startListing(item.id);
+      if (!r.ok) setError(r.message);
+    });
   const result = saleResultView(item, context);
 
   const run = (action: () => Promise<InventoryActionResult>, done: string) =>
@@ -59,10 +68,20 @@ export function InventoryDetail({ initial, context }: { initial: InventoryItem; 
       </p>
 
       <div className={styles.actions}>
-        {view.holding && <ButtonLink href={`/inventory/${item.id}/sell`}>Mark sold</ButtonLink>}
+        {view.holding && (
+          // Opens this item's listing (created on first use) - write it yourself or with AI, then cross-list.
+          <Button loading={listing} onClick={() => startList()}>
+            {item.status === "LISTED" ? "Manage listing" : "List for sale"}
+          </Button>
+        )}
+        {view.holding && (
+          <ButtonLink href={`/inventory/${item.id}/sell`} variant="secondary">
+            Mark sold
+          </ButtonLink>
+        )}
         {view.holding && item.status === "IN_STOCK" && (
-          <Button variant="secondary" loading={pending} onClick={() => run(() => setHoldingStatus(item.id, "LISTED"), "Marked as listed for sale.")}>
-            I&apos;ve listed it
+          <Button variant="text" loading={pending} onClick={() => run(() => setHoldingStatus(item.id, "LISTED"), "Marked as listed for sale.")}>
+            I listed it elsewhere
           </Button>
         )}
         {view.holding && item.status === "LISTED" && (

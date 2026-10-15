@@ -21,7 +21,7 @@ first that fails is the `reason` returned):
 5. **Entitled by the user's plan**, if it needs an entitlement (`not_entitled`).
 
 **Flags:** `FEATURE_FLAGS` in the API environment, comma-separated, all off by default. Unknown
-names are refused at startup. Known flags: `sell.workspace`, `inventory.photos`, `inventory.bulk`,
+names are refused at startup. Known flags: `sell.workspace` and `inventory.photos` (no longer needed - live since step 83, kept so existing settings stay valid), `inventory.bulk`,
 `hunts.hot`.
 
 **Clients:**
@@ -59,19 +59,20 @@ contains no billing calls (guard test).
 | Analytics and reporting (`analytics`) | ✅ | ⚪ | Overview, Hunt funnel, products, missed potential |
 | Subscription checkout and plan choice (`billing.checkout`) | ✅ | ⚪ | Web-only billing |
 | Billing management, plan changes, cancellation (`billing.manage`) | ✅ | ⚪ | Stripe portal |
+| Sell: list bought items, AI drafts, cross-listing (`sell.workspace`) | ✅ | ✅ | Decision 0019 (step 83): open to every account during beta. eBay publishing simulated (TODO(sell)); Facebook assisted |
+| Listing photos: camera / library / upload + the source listing's photos (`inventory.photos`) | ✅ | ✅ | Decision 0019. Local disk in development; production uploads off until Azure Blob (TODO(media)) |
 | Bulk inventory management (`inventory.bulk`) | ⛔ | ⚪ | Flag `inventory.bulk`; not built |
-| Rein Drop Sell: listings, cross-listing (`sell.workspace`) | ⛔ | ⛔ | Flag `sell.workspace`; not built (backlog B-04) |
-| Capture product photos (`inventory.photos`) | ⚪ | ⛔ | Flag `inventory.photos`; comes with Sell |
 | Hot Hunts (`hunts.hot`) | 🚩 | 🚩 | Flag `hunts.hot` **and** a plan with Hot Hunts (none today - backlog B-02) |
 | Developer tools (`dev.tools`) | dev only | dev only | Never in production / release builds |
 
-## Mobile navigation (step 78)
+## Mobile navigation (step 78; central "+" restored in step 83)
 
 | Tab | Feature | Contents |
 |---|---|---|
 | **Deals** | `deals` | Feed, filters, deal detail; bell -> alerts inbox |
-| **Hunts** | `hunts.manage` | List, detail, start / pause; "+" -> Create Hunt |
-| **Inventory** | `inventory` | Holding / listed / sold items, mark sold, sale result |
+| **Hunts** | `hunts.manage` | List, detail, start / pause |
+| **+ Create** (centre, not a destination) | `hunts.create` | Opens Create Hunt over the current tab; hidden while suspended |
+| **Inventory** | `inventory` | Holding / listed / sold items, **List for sale** (Sell), mark sold, sale result; header -> Your listings |
 | **Account** | `account.access` | Your access, notifications on this phone, notification preferences, your area, Seller Snapshot, sign-out (developer card in development builds only) |
 
 Tab order and availability come from `MOBILE_TABS` + capabilities; a tab whose feature isn't
@@ -91,7 +92,7 @@ available isn't shown.
 |---|---|
 | **Deals** | Feed cards: price, known costs, source, freshness, strength, confidence, upside labelled **Estimated**. **Save** and **Not for me** right on the card (with Undo); filters To review / Saved / Bought / Ignored / Unavailable. Deal detail: **Price and estimates** (asking price, known costs, estimated resale value with range and number of similar sales, potential upside with range and excluded costs, and "Estimates, not guaranteed profit…"), risk and condition, seller questions, **View on {marketplace} ↗**, Save / Ignore / Bought |
 | **Hunts** | List with status and monitoring; Start watching for drafts; detail with pause / resume / archive; Create / Edit (hidden while suspended) |
-| **Inventory** | Holding / listed / sold, holding time, Mark sold, sale result (realized - these are actuals, not estimates). Photos and listing workflows: only with the Sell workspace (`inventory.photos` / `sell.workspace`, not built - not shown) |
+| **Inventory** | Holding / listed / sold, holding time, Mark sold, sale result (realized - these are actuals, not estimates). **List for sale** (Sell, step 83): AI draft, camera / library / original photos, cross-listing |
 | **Account** | Email, your access (read-only), notifications on this phone, notification preferences, your area, Seller Snapshot, sign-out |
 
 **Unreliable connections:**

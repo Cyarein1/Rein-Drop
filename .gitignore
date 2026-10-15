@@ -45,3 +45,6 @@ Thumbs.db
 # Azure beta parameters (environment-specific; template: infra/beta.example.bicepparam)
 infra/*.bicepparam
 !infra/*.example.bicepparam
+
+# Local listing photos (MEDIA_STORAGE=local, decision 0019)
+.data/

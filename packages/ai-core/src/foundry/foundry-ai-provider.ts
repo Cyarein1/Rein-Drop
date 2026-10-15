@@ -5,16 +5,19 @@ import {
   type AIResult,
   type ConditionRiskInput,
   type DealExplanationInput,
+  type ListingDraftFacts,
   type ProductExtractionInput,
 } from '../provider.js';
 import {
   AI_SCHEMA_VERSION,
   conditionRiskSchema,
   dealExplanationSchema,
+  listingDraftSchema,
   productExtractionSchema,
   type AIResultMeta,
   type ConditionRiskAssessment,
   type DealExplanation,
+  type ListingDraftSuggestion,
   type ProductExtraction,
 } from '../schemas.js';
 import { FOUNDRY_PROMPT_VERSIONS, systemPrompt, userPayload, type FoundryTask } from './prompts.js';
@@ -121,6 +124,7 @@ const SCHEMAS = {
   extractProduct: { name: 'product_extraction', zod: productExtractionSchema },
   assessConditionRisk: { name: 'condition_risk', zod: conditionRiskSchema },
   explainDeal: { name: 'deal_explanation', zod: dealExplanationSchema },
+  draftListing: { name: 'listing_draft', zod: listingDraftSchema },
 } as const;
 
 /** `https://x.openai.azure.com`, `.../`, `.../openai/v1` all become the chat completions URL. */
@@ -164,6 +168,7 @@ export class FoundryAIProvider implements AIProvider {
       extractProduct: toStrictJsonSchema(SCHEMAS.extractProduct.zod),
       assessConditionRisk: toStrictJsonSchema(SCHEMAS.assessConditionRisk.zod),
       explainDeal: toStrictJsonSchema(SCHEMAS.explainDeal.zod),
+      draftListing: toStrictJsonSchema(SCHEMAS.draftListing.zod),
     };
   }
 
@@ -177,6 +182,10 @@ export class FoundryAIProvider implements AIProvider {
 
   explainDeal(input: DealExplanationInput): Promise<AIResult<DealExplanation>> {
     return this.run('explainDeal', userPayload('explainDeal', input)) as Promise<AIResult<DealExplanation>>;
+  }
+
+  draftListing(facts: ListingDraftFacts): Promise<AIResult<ListingDraftSuggestion>> {
+    return this.run('draftListing', userPayload('draftListing', facts)) as Promise<AIResult<ListingDraftSuggestion>>;
   }
 
   /** The exact request body for a task (exported for tests and the live check). */

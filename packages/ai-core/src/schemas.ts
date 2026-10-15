@@ -122,6 +122,46 @@ export const dealExplanationSchema = z
 export type DealExplanation = z.infer<typeof dealExplanationSchema>;
 
 // ---------------------------------------------------------------------------
+// Task 4: listing draft (selling an item the reseller bought)
+// ---------------------------------------------------------------------------
+
+export const LISTING_CONDITIONS = ['new', 'like_new', 'good', 'fair', 'for_parts'] as const;
+export type ListingCondition = (typeof LISTING_CONDITIONS)[number];
+
+/** eBay's title limit; other marketplaces allow at least this much. */
+export const LISTING_TITLE_MAX = 80;
+export const LISTING_DESCRIPTION_MAX = 4000;
+
+const EMOJI = /\p{Extended_Pictographic}/u;
+/** Shouting: 8+ letters and none of them lower case. */
+const isAllCaps = (text: string) => {
+  const letters = text.replace(/[^\p{L}]/gu, '');
+  return letters.length >= 8 && letters === letters.toUpperCase() && letters !== letters.toLowerCase();
+};
+
+export const listingDraftSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(LISTING_TITLE_MAX)
+      .refine((t) => !EMOJI.test(t), 'no emojis in the title')
+      .refine((t) => !isAllCaps(t), 'no ALL CAPS title'),
+    /** Plain text with line breaks. */
+    description: z.string().trim().min(1).max(LISTING_DESCRIPTION_MAX),
+    condition: z.enum(LISTING_CONDITIONS),
+    /** Every value must be grounded in the facts text (see checkListingDraft). */
+    itemSpecifics: z.array(z.object({ name: z.string().trim().min(1).max(40), value: z.string().trim().min(1).max(100) })).max(12),
+    /** Only the resale estimate can justify a price; null when there is none. */
+    suggestedPrice: z.object({ amount: money, basis: z.literal('resale_estimate') }).nullable(),
+    /** Short reminders for the seller before publishing. */
+    checks: z.array(shortText).max(6),
+  })
+  .strict();
+export type ListingDraftSuggestion = z.infer<typeof listingDraftSchema>;
+
+// ---------------------------------------------------------------------------
 // Metadata returned with every task result
 // ---------------------------------------------------------------------------
 

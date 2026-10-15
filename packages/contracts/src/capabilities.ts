@@ -69,8 +69,8 @@ export const FEATURES = {
   'billing.manage': { label: 'Billing management, plan changes, cancellation', platforms: WEB, status: 'live', note: 'Stripe portal, web only.' },
   'inventory.bulk': { label: 'Bulk inventory management', platforms: WEB, status: 'unbuilt', flag: 'inventory.bulk', note: 'Not built - hidden.' },
   // ---- Not built / rollout-dependent ----
-  'sell.workspace': { label: 'Rein Drop Sell: listings, cross-listing', platforms: BOTH, status: 'unbuilt', flag: 'sell.workspace', note: 'Not built - never exposed (backlog B-04).' },
-  'inventory.photos': { label: 'Capture product photos', platforms: MOBILE, status: 'unbuilt', flag: 'inventory.photos', note: 'Comes with Sell.' },
+  'sell.workspace': { label: 'Sell: list bought items, AI drafts, cross-listing', platforms: BOTH, status: 'live', note: 'Decision 0019: open to every account during beta (no plan gate yet). eBay publishing is a mock (TODO(sell)); Facebook is assisted.' },
+  'inventory.photos': { label: 'Listing photos (camera / library / upload, plus the source listing photos)', platforms: BOTH, status: 'live', note: 'Decision 0019: with Sell. Stored on local disk in development; Azure Blob is TODO(media).' },
   'hunts.hot': { label: 'Hot Hunts (priority monitoring)', platforms: BOTH, status: 'flagged', flag: 'hunts.hot', entitled: (e) => e.hotHunts.available, note: 'Needs the flag AND a plan that includes it (backlog B-02).' },
   // ---- Internal ----
   'dev.tools': { label: 'Developer tools (API status, UI gallery)', platforms: BOTH, status: 'live', developmentOnly: true, note: 'Never in production / release builds.' },
@@ -110,13 +110,18 @@ export function capabilitiesFor(ctx: CapabilityContext): Record<FeatureKey, Capa
   return Object.fromEntries(FEATURE_KEYS.map((key) => [key, capability(key, ctx)])) as Record<FeatureKey, Capability>;
 }
 
-/** Mobile companion navigation (owner decision, decision 0018), in order; a tab shows when its feature is available. */
+/**
+ * Mobile companion navigation (owner decisions, decision 0018), in order; a tab shows when its
+ * feature is available. ction = not a destination: the central "+" opens Create Hunt on top of
+ * the current tab (restored by the owner in step 83).
+ */
 export const MOBILE_TABS = [
-  { name: 'deals', title: 'Deals', feature: 'deals' },
-  { name: 'hunts', title: 'Hunts', feature: 'hunts.manage' },
-  { name: 'inventory', title: 'Inventory', feature: 'inventory' },
-  { name: 'account', title: 'Account', feature: 'account.access' },
-] as const satisfies readonly { name: string; title: string; feature: FeatureKey }[];
+  { name: 'deals', title: 'Deals', feature: 'deals', action: false },
+  { name: 'hunts', title: 'Hunts', feature: 'hunts.manage', action: false },
+  { name: 'create', title: 'Create', feature: 'hunts.create', action: true },
+  { name: 'inventory', title: 'Inventory', feature: 'inventory', action: false },
+  { name: 'account', title: 'Account', feature: 'account.access', action: false },
+] as const satisfies readonly { name: string; title: string; feature: FeatureKey; action: boolean }[];
 
 export function mobileTabs(caps: Record<FeatureKey, Capability>): (typeof MOBILE_TABS)[number][] {
   return MOBILE_TABS.filter((tab) => caps[tab.feature].available);

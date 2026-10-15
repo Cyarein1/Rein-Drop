@@ -68,10 +68,11 @@ describe('mobile companion never sells (decision 0018)', () => {
     expect(sources.filter(({ text }) => /react-native-webview|<WebView\b/.test(text)).map((s) => s.file)).toEqual([]);
     // The system browser is only for signing in (Entra), never for a web page of Rein Drop's.
     expect(sources.filter(({ file, text }) => /expo-web-browser/.test(text) && !/^auth[\\/]/.test(file)).map((s) => s.file)).toEqual([]);
-    // Outbound links open marketplace listings only - no Rein Drop site, account or payment URL.
+    // Outbound links open marketplace pages only - a listing to buy, the seller's own listing, or a marketplace's
+    // own 'create listing' page (Sell, decision 0019) - never a Rein Drop site, account or payment URL.
     const opens = sources.flatMap(({ file, text }) => [...text.matchAll(/openURL\(([^)]*)\)/g)].map((m) => `${file}: ${m[1]}`));
     expect(opens.length).toBeGreaterThan(0); // the scan sees the listing links, so it isn't vacuous
-    expect(opens.filter((o) => !/: view\.(url|sourceUrl!?)$/.test(o))).toEqual([]);
+    expect(opens.filter((o) => !/: (view\.(url|sourceUrl!?)|c\.url!?|c\.assist!?\.openUrl)$/.test(o))).toEqual([]);
     expect(sources.filter(({ text }) => /openURL\([^)]*(ACCOUNT_SITE|accountSiteLine)|https?:\/\/[^'"\s]*reindrop/i.test(text)).map((s) => s.file)).toEqual([]);
   });
 

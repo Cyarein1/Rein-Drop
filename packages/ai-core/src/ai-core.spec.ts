@@ -209,6 +209,7 @@ describe('withValidation (grounding)', () => {
     const inner = new MockAIProvider();
     return withValidation({
       id: 'mock',
+      draftListing: (f) => inner.draftListing(f),
       extractProduct: async (i) => {
         const r = await inner.extractProduct(i);
         change.product?.(r.output);
@@ -276,6 +277,7 @@ describe('withValidation (grounding)', () => {
       withValidation({
         ...new MockAIProvider(),
         id: 'mock',
+        draftListing: (f) => new MockAIProvider().draftListing(f),
         extractProduct: () => Promise.reject(new Error('socket hang up')),
         assessConditionRisk: (i) => new MockAIProvider().assessConditionRisk(i),
         explainDeal: (i) => new MockAIProvider().explainDeal(i),

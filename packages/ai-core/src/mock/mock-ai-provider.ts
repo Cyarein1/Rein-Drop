@@ -1,10 +1,11 @@
 import { classifyCondition, significantTokens, tokenize } from '@rein-drop/matching';
-import { factValue } from '../facts.js';
+import { factValue, isGroundedInText, listingDraftText } from '../facts.js';
 import type {
   AIProvider,
   AIResult,
   ConditionRiskInput,
   DealExplanationInput,
+  ListingDraftFacts,
   ListingFacts,
   Money,
   ProductExtractionInput,
@@ -14,8 +15,11 @@ import {
   type AIResultMeta,
   type ConditionRiskAssessment,
   type DealExplanation,
+  LISTING_TITLE_MAX,
   type Evidence,
   type ExplanationPoint,
+  type ListingCondition,
+  type ListingDraftSuggestion,
   type ProductExtraction,
 } from '../schemas.js';
 
@@ -31,6 +35,7 @@ const TASK_VERSIONS = {
   extractProduct: 'product-extraction@1',
   assessConditionRisk: 'condition-risk@1',
   explainDeal: 'deal-explanation@1',
+  draftListing: 'listing-draft@1',
 } as const;
 
 type TextField = 'title' | 'description' | 'conditionText';
@@ -307,6 +312,68 @@ function explain(input: DealExplanationInput): DealExplanation {
   };
 }
 
+/** Cuts at a word boundary so the title never ends mid-word. */
+function fitTitle(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= LISTING_TITLE_MAX) return clean;
+  const cut = clean.slice(0, LISTING_TITLE_MAX + 1);
+  return cut.slice(0, cut.lastIndexOf(' ') > 20 ? cut.lastIndexOf(' ') : LISTING_TITLE_MAX).trim();
+}
+
+const CONDITION_FROM_SOURCE: Record<string, ListingCondition> = { new: 'new', refurbished: 'like_new', used: 'good', for_parts: 'for_parts' };
+const CONDITION_WORDS: Record<ListingCondition, string> = {
+  new: 'New',
+  like_new: 'Like new',
+  good: 'Good, used',
+  fair: 'Fair, visible wear',
+  for_parts: 'For parts or not working',
+};
+const COLOURS = /\b(black|white|silver|gold|blue|red|green|grey|gray|pink|purple|midnight|starlight|graphite)\b/i;
+
+/** Honest, plain listing from the item's own facts. Never the purchase price or where it was bought. */
+function draft(facts: ListingDraftFacts): ListingDraftSuggestion {
+  const text = listingDraftText(facts);
+  const title = fitTitle(facts.itemTitle || facts.sourceTitle || 'Item for sale');
+  const sourceCondition = classifyCondition(facts.sourceConditionText);
+  const faulty = /\b(not working|for parts|faulty|broken)\b/i.test(text);
+  const condition: ListingCondition = faulty ? 'for_parts' : (sourceCondition && CONDITION_FROM_SOURCE[sourceCondition]) || 'good';
+
+  const specifics: ListingDraftSuggestion['itemSpecifics'] = [];
+  const brand = BRANDS.find(([, pattern]) => pattern.test(text));
+  if (brand && isGroundedInText(text, brand[0])) specifics.push({ name: 'Brand', value: brand[0] });
+  const model = MODELS.map(([, pattern]) => pattern.exec(text)?.[0]).find(Boolean);
+  if (model) specifics.push({ name: 'Model', value: model.replace(/\s+/g, ' ').trim() });
+  const storage = text.match(/\b\d+\s?(?:GB|TB)\b/i)?.[0];
+  if (storage) specifics.push({ name: 'Storage', value: storage });
+  const colour = COLOURS.exec(text)?.[0];
+  if (colour) specifics.push({ name: 'Colour', value: colour.charAt(0).toUpperCase() + colour.slice(1).toLowerCase() });
+
+  const details = [facts.sellerNotes, facts.sourceConditionText && `Condition as described: ${facts.sourceConditionText}.`].filter((t): t is string => Boolean(t));
+  const description = [
+    `${title}.`,
+    `Condition: ${CONDITION_WORDS[condition]}.`,
+    ...(details.length > 0 ? ['', ...details] : []),
+    ...(specifics.length > 0 ? ['', ...specifics.map((s) => `${s.name}: ${s.value}`)] : []),
+    '',
+    'Please look at the photos and ask if you have any questions.',
+  ].join('\n');
+
+  const checks: string[] = [];
+  if (facts.photoCount < 3) checks.push('Add at least 3 clear photos (front, back and any marks).');
+  if (!facts.sellerNotes) checks.push('Mention anything a buyer should know: wear, faults, what is included.');
+  if (brand && ['Apple', 'Samsung', 'Google'].includes(brand[0])) checks.push('Confirm it is unlocked and signed out of all accounts.');
+  if (!facts.resaleEstimate) checks.push('Set your price - there is no resale estimate for this item.');
+
+  return {
+    title,
+    description,
+    condition,
+    itemSpecifics: specifics.slice(0, 12),
+    suggestedPrice: facts.resaleEstimate ? { amount: facts.resaleEstimate.typical, basis: 'resale_estimate' } : null,
+    checks: checks.slice(0, 6),
+  };
+}
+
 const meta = (task: keyof typeof TASK_VERSIONS): AIResultMeta => ({
   provider: 'mock',
   ...MOCK_MODEL,
@@ -331,5 +398,9 @@ export class MockAIProvider implements AIProvider {
 
   async explainDeal(input: DealExplanationInput): Promise<AIResult<DealExplanation>> {
     return { output: explain(input), meta: meta('explainDeal') };
+  }
+
+  async draftListing(facts: ListingDraftFacts): Promise<AIResult<ListingDraftSuggestion>> {
+    return { output: draft(facts), meta: meta('draftListing') };
   }
 }

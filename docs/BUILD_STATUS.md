@@ -1,11 +1,82 @@
 # Build Status
 
-_Last updated: 2026-10-14 (step 82 - streamlined mobile companion)_
+_Last updated: 2026-10-15 (step 83 - Sell workspace: listings, AI drafts, cross-listing; central "+" restored)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 83 - Sell workspace: list bought items with AI help and cross-list them (decision 0019); mobile central "+" restored
+
+Owner decisions: full flow with mock publishing; open to every account and marketplace during
+beta; web and mobile; photos from anywhere, with any as the cover. Details are in
+[decisions/0019](decisions/0019-sell-workspace-listings-cross-listing.md).
+
+- **Mobile navigation:** the central orange **"+" Create** is back in the tab bar (Deals · Hunts ·
+  + · Inventory · Account), driven by `MOBILE_TABS` (`action: true`) and hidden while suspended.
+  The Hunts-header "+" was removed (owner reversed the step 78 placement).
+- **Data:** migration `20261014225309_sell_workspace` (additive) adds `SellListing` (one per
+  inventory item), `SellPhoto` (own / source, ordered, position 0 = cover) and `SellChannel` (one
+  per marketplace).
+- **AI** (`@rein-drop/ai-core`):
+  - new task `draftListing` (mock rules plus a Foundry prompt `foundry-listing-draft@1` and
+    `FOUNDRY_DEPLOYMENT_LISTING_DRAFT`);
+  - validator `checkListingDraft`: details grounded in the item's text; a price only from the
+    resale estimate; no purchase price or source marketplace; no guarantee, "brand new" or
+    unmentioned warranty;
+  - text only (vision is TODO).
+- **API** (`modules/sell`):
+  - `GET /sell/marketplaces`;
+  - `GET|POST /sell/listings` (POST = "List" on an item, idempotent), `GET|PATCH
+    /sell/listings/:id`;
+  - `POST /sell/listings/:id/draft` (suggestion, not saved; strict throttle);
+  - photos: multipart upload, add source photo (only the item's own source photos), reorder
+    (cover), delete;
+  - publish, channel confirm (assisted) and end;
+  - public signed-link `GET /media/:key`.
+  - **Rules:** a live channel marks the item Listed; ending everything returns it to In stock;
+    sold items can't be listed.
+- **Publishers:** eBay mock (`TODO(sell)`); Facebook assisted (ready-to-paste text, then open
+  Facebook's create page, then "I've posted it").
+- **Storage:** `MEDIA_STORAGE=local` (dev, `.data/` ignored by git) / `none` (production default);
+  Azure Blob is TODO(media). HMAC links last 1 hour (`MEDIA_SIGNING_SECRET`).
+- **Config:** the API gained `AI_PROVIDER` / `FOUNDRY_*` / `MEDIA_*` (documented in
+  `apps/api/.env.example`). Production refuses the mock AI and local disk.
+- **Contracts and client:** contracts `sell.ts`; capabilities `sell.workspace` and
+  `inventory.photos` are live on both platforms. The api-client gained Sell methods and multipart
+  upload support.
+- **Shared view** (`client-core/sell-view.ts`): the form, `applyDraft` (keeps the seller's text unless
+  they choose Replace; never overwrites their price), `buildSellUpdate`, `photoSrc` and
+  `channelView` ("Listed (simulated)", "Waiting for you"…).
+- **Web:**
+  - "List for sale" (primary) / "Manage listing" on inventory items, done as a server action so link
+    prefetch can't create anything;
+  - `/sell` (your listings) and `/sell/[id]` editor: Use AI with notes, a replace-or-fill prompt,
+    title counter, condition, price, description, item details; photos (upload several, add from
+    the original listing, make cover, remove); marketplaces and Publish; per-channel status with
+    copy text, open Facebook, "I've posted it", take down;
+  - Sell in the sidebar and in the narrow-screen top bar;
+  - a `/media/[key]` pass-through route; `/sell` is gated by the proxy.
+- **Mobile:**
+  - "List for sale" on inventory items, `/sell/[id]` editor (Take photos via the camera, Choose
+    from library with multiple selection, original-listing photos, make cover; copy text with
+    `expo-clipboard`), `/sell` list via the Inventory header;
+  - `expo-image-picker` (permission texts; no microphone) and `expo-clipboard` added through
+    `npx expo install`;
+  - the guard allows opening the seller's own marketplace pages only.
+- **Tests:**
+  - ai-core: listing-draft spec (11) plus the existing specs updated;
+  - client-core: `sell-view.spec` (7); contracts capability specs;
+  - API: config (Sell AI / media rules) and `sell.int-spec` (6: marketplaces, List is idempotent,
+    the AI draft isn't saved or leaked, mixed photos + cover + signed links + refusals,
+    cross-listing + status sync, ownership 404 / sold 409); `capabilities.int-spec` updated;
+  - mobile navigation: central + from every tab, listings shortcut shown / hidden;
+  - web nav spec.
+- **Checks:**
+  - `pnpm turbo run build typecheck lint test` 66/66;
+  - API integration 106/106 and worker integration 55/55 on the preview database (5433);
+  - not checked in a browser or on a phone yet (your dev database needs the migration first).
 
 ### Step 82 - Streamlined mobile companion (decision 0018)
 

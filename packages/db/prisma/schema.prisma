@@ -195,38 +195,38 @@ enum BillingEventStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String   @id @default(uuid(7)) @db.Uuid
-  email        String   @unique
-  displayName  String?
+  id                    String    @id @default(uuid(7)) @db.Uuid
+  email                 String    @unique
+  displayName           String?
   /// Which AuthProvider identifies this user ("dev" locally; the managed provider is TBD).
-  authProvider String?
+  authProvider          String?
   /// The provider's stable id for the user (e.g. an OIDC `sub`). Unique per provider.
-  authSubject  String?
+  authSubject           String?
   /// Region drives display defaults (currency, distance unit). Detected from the device /
   /// browser locale at first sign-in, overridable by the user. Storage stays canonical.
-  countryCode  String?  @db.Char(2)
-  currency     String?  @db.Char(3)
+  countryCode           String?   @db.Char(2)
+  currency              String?   @db.Char(3)
   /// "km" | "mi" (contract values).
-  distanceUnit String?
+  distanceUnit          String?
   /// Preferred language (BCP 47 primary subtag, e.g. "en", "af", "zu"). The UI falls back to
   /// a supported language when this one is not translated yet.
-  language     String?
+  language              String?
   /// "detected" | "user" - a detected region never overwrites the user's own choice.
-  regionSource String?
+  regionSource          String?
   /// "Your area" (decision 0017): a place label (suburb / city / postal code), never a street
   /// address. Offered as the default location in Create Hunt.
-  areaLabel      String?
+  areaLabel             String?
   /// Approximate coordinates of the area (rounded to ~110 m); null when it couldn't be placed.
-  areaLat        Float?
-  areaLng        Float?
-  areaPostalCode String?
-  areaUpdatedAt  DateTime? @db.Timestamptz(3)
+  areaLat               Float?
+  areaLng               Float?
+  areaPostalCode        String?
+  areaUpdatedAt         DateTime? @db.Timestamptz(3)
   /// Access suspended / revoked by Rein Drop (abuse, fraud, chargeback - decision 0018). While set, no
   /// paid or free processing runs and protected operations are refused; data is kept (retention).
   accessSuspendedAt     DateTime? @db.Timestamptz(3)
   accessSuspendedReason String?
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
 
   sellerProfile           SellerProfile?
   hunts                   Hunt[]
@@ -235,6 +235,7 @@ model User {
   pushDevices             PushDevice[]
   savedDeals              SavedDeal[]
   inventoryItems          InventoryItem[]
+  sellListings            SellListing[]
   sales                   Sale[]
   costs                   Cost[]
   subscriptions           Subscription[]
@@ -836,17 +837,118 @@ model InventoryItem {
   createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing   Listing?   @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  huntMatch HuntMatch? @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
-  sale      Sale?
-  costs     Cost[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  huntMatch   HuntMatch?   @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  sale        Sale?
+  costs       Cost[]
+  sellListing SellListing?
 
   @@index([userId, status])
   /// Analytics: purchases in a period.
   @@index([userId, purchasedAt])
   /// Foreign key (SetNull when a listing is removed) - hardening 2026-10.
   @@index([listingId])
+}
+
+// ---------------------------------------------------------------------------
+// Sell workspace (decision 0019): list bought items, AI drafts, cross-listing
+// ---------------------------------------------------------------------------
+
+enum SellListingStatus {
+  DRAFT
+  /// On at least one marketplace.
+  PUBLISHED
+  /// Taken down everywhere (or the item sold).
+  ENDED
+}
+
+/// Mirrors LISTING_CONDITIONS in @rein-drop/contracts (sell.ts), upper-cased.
+enum ListingCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  FOR_PARTS
+}
+
+/// One sell listing per inventory item: written by hand or from an AI draft, always editable,
+/// then published to one or more marketplaces (SellChannel). Price is the seller's asking price.
+model SellListing {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  userId          String            @db.Uuid
+  inventoryItemId String            @unique @db.Uuid
+  status          SellListingStatus @default(DRAFT)
+  title           String            @default("")
+  description     String            @default("")
+  priceMinor      Int?
+  currency        String?           @db.Char(3)
+  condition       ListingCondition?
+  /// [{ name, value }] - ItemSpecific[] in @rein-drop/contracts (sell.ts).
+  itemSpecifics   Json              @default("[]")
+  /// The seller applied an AI draft (the UI reminds them to check it).
+  aiAssisted      Boolean           @default(false)
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  photos        SellPhoto[]
+  channels      SellChannel[]
+
+  @@index([userId, status])
+}
+
+enum SellPhotoSource {
+  /// Taken / uploaded by the seller - stored in media storage.
+  OWN
+  /// From the listing the item was bought from (its image URL).
+  SOURCE
+}
+
+/// A listing photo, in order: position 0 is the cover.
+model SellPhoto {
+  id            String          @id @default(uuid(7)) @db.Uuid
+  sellListingId String          @db.Uuid
+  source        SellPhotoSource
+  /// OWN: media storage key; SOURCE: the source listing's image URL.
+  ref           String
+  contentType   String?
+  position      Int
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+
+  sellListing SellListing @relation(fields: [sellListingId], references: [id], onDelete: Cascade)
+
+  @@index([sellListingId, position])
+}
+
+enum SellChannelStatus {
+  PUBLISHED
+  /// Assisted marketplace: text prepared, waiting for the seller to say it's posted.
+  AWAITING_CONFIRMATION
+  FAILED
+  ENDED
+}
+
+/// The listing on one marketplace (cross-listing).
+model SellChannel {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  sellListingId String            @db.Uuid
+  /// MarketplaceKey ("ebay" | "facebook").
+  marketplace   String
+  status        SellChannelStatus
+  /// Publisher used: "mock" (no real listing - TODO(sell)), "assisted", or a real API later.
+  provider      String
+  externalId    String?
+  url           String?
+  error         String?
+  publishedAt   DateTime?         @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+
+  sellListing SellListing @relation(fields: [sellListingId], references: [id], onDelete: Cascade)
+
+  @@unique([sellListingId, marketplace])
 }
 
 model Sale {
@@ -901,22 +1003,22 @@ model Cost {
 /// Prices live with the billing provider (Stripe, decision 0014; STRIPE_PRICE_IDS maps plan codes to
 /// prices), so there are no price columns here.
 model Plan {
-  id                String   @id @default(uuid(7)) @db.Uuid
-  code              String   @unique
+  id                String        @id @default(uuid(7)) @db.Uuid
+  code              String        @unique
   name              String
-  isActive          Boolean  @default(true)
+  isActive          Boolean       @default(true)
   /// Seeded for local development only; must never be offered to real users.
-  isDevelopmentOnly Boolean  @default(false)
+  isDevelopmentOnly Boolean       @default(false)
   /// The free plan users get without a subscription.
-  isFree            Boolean  @default(false)
+  isFree            Boolean       @default(false)
   /// Display order on the plan gate.
-  sortOrder         Int      @default(0)
+  sortOrder         Int           @default(0)
   /// False while entitlement limits are placeholders (awaiting cost calculations).
-  limitsFinal       Boolean  @default(false)
+  limitsFinal       Boolean       @default(false)
   /// Product family (decision 0018): SOURCE plans grant Source, SELL grant Sell, COMPLETE grant both.
   family            ProductFamily @default(SOURCE)
-  createdAt         DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
 
   entitlements  Entitlement[]
   subscriptions Subscription[]

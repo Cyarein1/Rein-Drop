@@ -37,6 +37,7 @@ export const config = {
     "/alerts/:path*",
     "/analytics/:path*",
     "/inventory/:path*",
+    "/sell/:path*",
     "/settings/:path*",
   ],
 };

@@ -1,4 +1,4 @@
-import { ChartColumn, House, Plus, Radar, Settings, Tag, type LucideIcon } from "lucide-react";
+import { ChartColumn, House, Plus, Radar, Settings, Store, Tag, type LucideIcon } from "lucide-react";
 import type { FeatureKey } from "@rein-drop/api-client";
 
 export interface NavItem {
@@ -21,19 +21,24 @@ export const NAV = {
   hunts: { href: "/hunts", label: "Hunts", icon: Radar, excludes: ["/hunts/new"], feature: "hunts.manage" },
   createHunt: { href: "/hunts/new", label: "Create Hunt", shortLabel: "Create", icon: Plus, feature: "hunts.create" },
   deals: { href: "/deals", label: "Deals", icon: Tag, feature: "deals" },
+  // Listing bought items and cross-listing (decision 0019).
+  sell: { href: "/sell", label: "Sell", icon: Store, feature: "sell.workspace" },
   // Inventory, Mark sold and Sale result sit with the outcome screens (screen map 21-24).
   analytics: { href: "/analytics", label: "Analytics", icon: ChartColumn, includes: ["/inventory"], feature: "analytics" },
   settings: { href: "/settings", label: "Settings", icon: Settings, feature: "account.access" },
 } satisfies Record<string, NavItem>;
 
 /** Desktop sidebar (Create Hunt is a separate, persistent primary action). */
-export const SIDEBAR_ITEMS: NavItem[] = [NAV.home, NAV.hunts, NAV.deals, NAV.analytics, NAV.settings];
+export const SIDEBAR_ITEMS: NavItem[] = [NAV.home, NAV.hunts, NAV.deals, NAV.sell, NAV.analytics, NAV.settings];
 
 /**
  * Mobile bottom bar: Home - Hunts - central Create - Deals - Analytics
  * (Mobile UI Screenbook, section 1). Settings lives in the mobile top bar.
  */
 export const BOTTOM_ITEMS: NavItem[] = [NAV.home, NAV.hunts, NAV.createHunt, NAV.deals, NAV.analytics];
+
+/** Mobile top bar icons: the destinations that don't fit the bottom bar. */
+export const TOP_BAR_ITEMS: NavItem[] = [NAV.sell, NAV.settings];
 
 /** True when `pathname` is the item's page or one of its sub-pages (minus excluded paths). */
 export function isActive(pathname: string, item: NavItem): boolean {

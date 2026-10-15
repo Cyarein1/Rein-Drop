@@ -41,7 +41,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rein Drop uses your photos when you add them to a listing for something you're selling.",
+          "cameraPermission": "Rein Drop uses the camera when you take photos for a listing.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

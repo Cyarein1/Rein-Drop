@@ -17,6 +17,10 @@ export interface RequestSpec<T> {
   response: z.ZodType<T>;
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
+  /** Multipart upload instead of a JSON body (fetch sets the boundary). */
+  formData?: FormData;
+  /** Per-request timeout (uploads take longer). */
+  timeoutMs?: number;
   /** Non-2xx statuses whose body is still a valid response (e.g. 503 from /ready). */
   acceptStatuses?: readonly number[];
 }
@@ -25,23 +29,24 @@ export async function send<T>(http: HttpOptions, spec: RequestSpec<T>): Promise<
   const url = `${http.baseUrl}${spec.path}${toQueryString(spec.query)}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...(spec.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(spec.body !== undefined && !spec.formData ? { 'Content-Type': 'application/json' } : {}),
     ...(http.getHeaders ? await http.getHeaders() : {}),
   };
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), http.timeoutMs);
+  const timeoutMs = spec.timeoutMs ?? http.timeoutMs;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
     response = await http.fetch(url, {
       method: spec.method,
       headers,
-      body: spec.body !== undefined ? JSON.stringify(spec.body) : undefined,
+      body: spec.formData ?? (spec.body !== undefined ? JSON.stringify(spec.body) : undefined),
       signal: controller.signal,
     });
   } catch (err) {
     const reason = controller.signal.aborted
-      ? `timed out after ${http.timeoutMs}ms`
+      ? `timed out after ${timeoutMs}ms`
       : err instanceof Error
         ? err.message
         : String(err);
