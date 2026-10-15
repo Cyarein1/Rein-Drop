@@ -12,8 +12,9 @@ class DevBillingConfirmDto extends createZodDto(devBillingConfirmRequestSchema) 
 
 /**
  * DEVELOPMENT-ONLY fake billing. Lets the plan gate be exercised end to end without a
- * billing provider. Responds 404 in production as if the route did not exist.
- * TODO(billing): replace with the real checkout (Stripe / app stores) - not integrated.
+ * billing provider. Responds 404 - as if the route did not exist - in production AND whenever
+ * real billing (Stripe) is configured: otherwise any account in a non-production environment
+ * wired to Stripe (test / staging) could grant itself a paid plan for free (step 85 review).
  */
 @Controller('billing/dev')
 export class DevBillingController {
@@ -26,7 +27,7 @@ export class DevBillingController {
   @Post('confirm')
   @HttpCode(HttpStatus.OK)
   async confirm(@CurrentUser() user: Principal, @Body() body: DevBillingConfirmDto): Promise<DevBillingConfirmResponse> {
-    if (this.config.nodeEnv === 'production') {
+    if (this.config.nodeEnv === 'production' || this.config.billing.provider === 'stripe') {
       throw new AppException('NOT_FOUND', `Cannot POST /billing/dev/confirm`, HttpStatus.NOT_FOUND);
     }
     const subscription = await this.subscriptions.confirmDevelopmentPlan(user.userId, body.planCode);

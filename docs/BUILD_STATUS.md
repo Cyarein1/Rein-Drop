@@ -1,11 +1,39 @@
 # Build Status
 
-_Last updated: 2026-10-15 (step 84 - push notifications and authenticated deep links)_
+_Last updated: 2026-10-15 (step 85 - end-to-end review and testing pass)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 85 - End-to-end review: web-first subscription + mobile companion
+
+Report: [testing/E2E_REVIEW_2026-10-15.md](testing/E2E_REVIEW_2026-10-15.md).
+
+- **Journey test** `apps/api/test/journey.int-spec.ts` (23 checks):
+  - **Set-up:** the real API with Entra-signed test tokens (first sign-in creates the account), the
+    Stripe SDK against the fake Stripe, the worker's real pipeline classes, the real outbox +
+    access gate + push simulator, and the real database. "Web" and "mobile" are two clients of the
+    same account.
+  - **Journey:** account, onboarding, subscribe (browser success grants nothing), entitlements,
+    Hunts, mobile sign-in, monitoring with the app closed, push to two phones, tap opens the deal,
+    save / dismiss consistent on both clients, cancel at period end, grace rule, expiry (limit
+    enforced at send time, data kept), reactivation without duplicates.
+  - **Other scenarios:** unauthorized access, tier-limit bypass incl. concurrent activations,
+    expired token, webhook replay, duplicate purchase, Stripe outage, multiple devices, account
+    switching, no push permission, Source-only vs Complete.
+- **Defects fixed:**
+  - **D1:** `POST /billing/dev/confirm` let any account self-grant a paid plan wherever real Stripe
+    billing ran outside `NODE_ENV=production`; it now answers 404 whenever `BILLING_PROVIDER=stripe`.
+  - **D2:** a flaky "tampered link" assertion in `sell.int-spec` (about 1 in 64) is now
+    deterministic.
+- **Supporting change:** `apps/api/tsconfig.json` `rootDir: ../..` (type-check only) so the journey
+  can run the worker's own classes; the build output is unchanged.
+- **Checks (executed):**
+  - `pnpm turbo run build typecheck lint test --force` 66/66;
+  - API integration 131/131 and worker integration 61/61 on the preview database (5433);
+  - not executed: real phones, browsers or providers (report section 6).
 
 ### Step 84 - Push notifications and authenticated deep linking (mobile companion)
 

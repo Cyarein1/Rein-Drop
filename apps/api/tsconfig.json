@@ -13,6 +13,9 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
+    // Type-check only (the build uses tsconfig.build.json with rootDir ./src). The end-to-end journey
+    // test (test/journey.int-spec.ts) also runs the worker's own pipeline classes from apps/worker.
+    "rootDir": "../..",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,

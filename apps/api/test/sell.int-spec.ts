@@ -147,7 +147,8 @@ describe('Sell workspace (integration, real database)', () => {
     // The signed link works without credentials; a tampered one doesn't.
     const img = await request(app.getHttpServer()).get(own.url).expect(200);
     expect(img.headers['content-type']).toBe('image/jpeg');
-    await request(app.getHttpServer()).get(own.url.replace(/sig=./, 'sig=x')).expect(404);
+    // Tampered: a different signature (the old replace of the first character was a no-op ~1 in 64 runs).
+    await request(app.getHttpServer()).get(own.url.replace(/sig=[^&]+/, 'sig=tampered')).expect(404);
     // Own photo becomes the cover.
     const reordered = (await s.put(`/sell/listings/${id}/photos/order`, { photoIds: [own.id, withOwn.photos[0]!.id] }).expect(200)).body as SellListing;
     expect(reordered.photos[0]!.id).toBe(own.id);
