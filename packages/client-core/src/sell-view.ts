@@ -1,4 +1,5 @@
 import type { ItemSpecific, ListingCondition, MarketplaceKey, SellChannel, SellDraftSuggestion, SellListing, SellListingStatus, UpdateSellListingRequest } from '@rein-drop/contracts';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { formatMoney, moneyToInput, parseMoneyInput } from './money.js';
 
 /**
@@ -16,11 +17,32 @@ export const LISTING_CONDITION_LABEL: Record<ListingCondition, string> = {
 };
 export const LISTING_CONDITION_OPTIONS = (Object.keys(LISTING_CONDITION_LABEL) as ListingCondition[]).map((value) => ({ value, label: LISTING_CONDITION_LABEL[value] }));
 
+const CONDITION_KEY: Record<ListingCondition, MessageKey> = {
+  new: 'sell.conditionNew',
+  like_new: 'sell.conditionLikeNew',
+  good: 'sell.conditionGood',
+  fair: 'sell.conditionFair',
+  for_parts: 'sell.conditionForParts',
+};
+/** Condition label in the UI language. Use this; the English LISTING_CONDITION_LABEL will be removed in step 89. */
+export function listingConditionLabel(condition: ListingCondition, t: Translator): string {
+  return t(CONDITION_KEY[condition]);
+}
+/** Condition options in the UI language (same order). Use this; LISTING_CONDITION_OPTIONS will be removed in step 89. */
+export function listingConditionOptions(t: Translator): { value: ListingCondition; label: string }[] {
+  return (Object.keys(CONDITION_KEY) as ListingCondition[]).map((value) => ({ value, label: t(CONDITION_KEY[value]) }));
+}
+
 export const SELL_LISTING_STATUS_LABEL: Record<SellListingStatus, { label: string; tone: 'neutral' | 'profit' | 'info' }> = {
   DRAFT: { label: 'Draft', tone: 'neutral' },
   PUBLISHED: { label: 'Listed', tone: 'profit' },
   ENDED: { label: 'Ended', tone: 'neutral' },
 };
+const LISTING_STATUS_KEY: Record<SellListingStatus, MessageKey> = { DRAFT: 'sell.statusDraft', PUBLISHED: 'sell.statusListed', ENDED: 'sell.statusEnded' };
+/** Listing status badge in the UI language (same tones). Use this; SELL_LISTING_STATUS_LABEL will be removed in step 89. */
+export function sellListingStatusLabel(status: SellListingStatus, t: Translator): { label: string; tone: 'neutral' | 'profit' | 'info' } {
+  return { label: t(LISTING_STATUS_KEY[status]), tone: SELL_LISTING_STATUS_LABEL[status].tone };
+}
 
 /** Own photos come as API-relative signed paths ("/media/..."); source photos are absolute URLs. */
 export function photoSrc(url: string, apiBaseUrl: string): string {
@@ -72,10 +94,10 @@ export function draftWouldReplace(form: SellForm): boolean {
 
 export type SellFormResult = { ok: true; request: UpdateSellListingRequest } | { ok: false; field: 'price'; message: string };
 
-export function buildSellUpdate(form: SellForm, currency: string): SellFormResult {
+export function buildSellUpdate(form: SellForm, currency: string, t: Translator = translator('en')): SellFormResult {
   const price = parseMoneyInput(form.price, currency);
   if (!price.ok) return { ok: false, field: 'price', message: price.message };
-  if (price.money && price.money.amountMinor <= 0) return { ok: false, field: 'price', message: 'Must be more than zero' };
+  if (price.money && price.money.amountMinor <= 0) return { ok: false, field: 'price', message: t('sell.errorMoreThanZero') };
   return {
     ok: true,
     request: {
@@ -102,7 +124,7 @@ export interface ChannelView {
   canEnd: boolean;
 }
 
-export function channelView(channel: SellChannel, localeTag: string): ChannelView {
+export function channelView(channel: SellChannel, localeTag: string, t: Translator = translator('en')): ChannelView {
   const name = MARKETPLACE_NAME[channel.marketplace];
   const since = channel.publishedAt ? new Intl.DateTimeFormat(localeTag, { dateStyle: 'medium' }).format(new Date(channel.publishedAt)) : null;
   const base = { marketplace: channel.marketplace, name, awaiting: false, canEnd: channel.status === 'PUBLISHED' || channel.status === 'AWAITING_CONFIRMATION' };
@@ -110,16 +132,17 @@ export function channelView(channel: SellChannel, localeTag: string): ChannelVie
     case 'PUBLISHED':
       return {
         ...base,
-        label: channel.simulated ? 'Listed (simulated)' : 'Listed',
+        label: t(channel.simulated ? 'sell.channelListedSimulated' : 'sell.channelListed'),
         tone: 'profit',
-        detail: channel.simulated ? `Simulated for now - nothing was posted to ${name} yet.` : since ? `Since ${since}.` : null,
+        detail: channel.simulated ? t('sell.channelSimulatedDetail', { marketplace: name }) : since ? t('sell.channelSince', { date: since }) : null,
       };
     case 'AWAITING_CONFIRMATION':
-      return { ...base, label: 'Waiting for you', tone: 'fresh', detail: `Copy the text, post it on ${name}, then tell Rein Drop it's posted.`, awaiting: true };
+      return { ...base, label: t('sell.channelAwaiting'), tone: 'fresh', detail: t('sell.channelAwaitingDetail', { marketplace: name }), awaiting: true };
     case 'FAILED':
-      return { ...base, label: "Didn't go through", tone: 'loss', detail: channel.error ?? 'Try again.' };
+      // The marketplace's own error message is shown as it came.
+      return { ...base, label: t('sell.channelFailed'), tone: 'loss', detail: channel.error ?? t('sell.channelTryAgain') };
     case 'ENDED':
-      return { ...base, label: 'Ended', tone: 'neutral', detail: null };
+      return { ...base, label: t('sell.channelEnded'), tone: 'neutral', detail: null };
   }
 }
 

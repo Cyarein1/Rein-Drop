@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { DealCardView } from "@rein-drop/client-core";
 import { Badge } from "@/components/ui";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import styles from "./deals.module.css";
 
 /**
@@ -24,7 +25,7 @@ export function DealCard({ view, headingLevel = 2 }: { view: DealCardView; /** 3
         </Link>
       </Heading>
       <p className={styles.meta}>
-        {view.source} · {view.freshness} · {view.huntName}
+        <MarketplaceName marketplace={view.marketplace} /> · {view.freshness} · {view.huntName}
       </p>
 
       <dl className={styles.figures}>

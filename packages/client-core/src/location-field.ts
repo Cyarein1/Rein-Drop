@@ -1,4 +1,5 @@
 import { HUNT_RADIUS_KM_MAX, unitToKm, type DistanceUnit, type GeoPlace, type GeoPoint, type UserArea } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 import type { HuntFormValues } from './hunt-form.js';
 
 /**
@@ -54,8 +55,8 @@ export function regionForRadius(point: GeoPoint, radiusKm: number | null): { lat
 }
 
 /** One line under the map: what it shows, and that the radius is checked. */
-export function mapCaption(label: string, radiusKm: number | null, radiusText: string, unit: DistanceUnit): string {
+export function mapCaption(label: string, radiusKm: number | null, radiusText: string, unit: DistanceUnit, t: Translator = translator('en')): string {
   return radiusKm
-    ? `Deals within ${radiusText.trim()} ${unit} of ${label}. Drag the pin to adjust the centre.`
-    : `Centre: ${label}. Add a radius to only see deals nearby. Drag the pin to adjust.`;
+    ? t('location.mapCaptionRadius', { radius: radiusText.trim(), unit, place: label })
+    : t('location.mapCaptionCentre', { place: label });
 }

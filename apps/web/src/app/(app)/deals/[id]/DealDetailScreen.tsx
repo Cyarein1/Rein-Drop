@@ -20,6 +20,7 @@ import {
   type HuntFormContext,
 } from "@rein-drop/client-core";
 import { mascotAssets } from "@/brand/assets";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import { Badge, Button, ButtonLink, Card, Disclosure, Metric, SystemBanner, TextInput } from "@/components/ui";
 import { dealAction, ignoreDeal, markDealBought, type DealActionResult } from "../actions";
 import styles from "../deals.module.css";
@@ -89,7 +90,7 @@ export function DealDetailScreen({ initial, context }: { initial: DealDetail; co
       </div>
       <h1 className={styles.heroTitle}>{view.title}</h1>
       <p className={styles.meta}>
-        {view.source} · {view.freshness} · Hunt: {view.huntName}
+        <MarketplaceName marketplace={view.marketplace} size={18} /> · {view.freshness} · Hunt: {view.huntName}
       </p>
 
       {view.sourceNote && (
@@ -113,7 +114,7 @@ export function DealDetailScreen({ initial, context }: { initial: DealDetail; co
       {/* ---------- Actions ---------- */}
       <div className={styles.actions}>
         <ButtonLink href={view.url} target="_blank" rel="noopener noreferrer" variant="secondary">
-          View on {view.source}
+          <span aria-hidden><MarketplaceName marketplace={view.marketplace} showName={false} /></span> View on {view.source}
           <span className="visually-hidden"> (opens in a new tab)</span> ↗
         </ButtonLink>
         {can.canBuy && form !== "bought" && (

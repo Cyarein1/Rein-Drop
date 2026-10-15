@@ -10,6 +10,8 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
   /** Disables the button and shows a spinner. */
   loading?: boolean;
   fullWidth?: boolean;
+  /** Optional mark before the label (e.g. a marketplace logo). Decorative - the label is announced. */
+  icon?: ReactNode;
 }
 
 export function Button({
@@ -17,6 +19,7 @@ export function Button({
   variant = 'primary',
   loading = false,
   fullWidth = false,
+  icon,
   disabled,
   ...rest
 }: ButtonProps) {
@@ -38,6 +41,7 @@ export function Button({
     >
       <View style={styles.content}>
         {loading && <ActivityIndicator size="small" color={v.text.color as string} />}
+        {!loading && icon}
         <Text style={[styles.label, font('semibold'), v.text]}>{children}</Text>
       </View>
     </Pressable>

@@ -1,13 +1,15 @@
-import { companionAccessView, huntFormContext, type CompanionAccessKind } from '@rein-drop/client-core';
+import { companionAccessView, type CompanionAccessKind } from '@rein-drop/client-core';
+import type { MessageKey } from '@rein-drop/i18n';
 import { useSessionState } from '@/auth/SessionProvider';
+import { useDisplayContext } from '@/i18n/useT';
 import { SystemBanner } from '@/ui';
 import { useAccess } from './AccessProvider';
 
-const TITLE: Partial<Record<CompanionAccessKind, string>> = {
-  suspended: 'Access suspended',
-  needs_attention: 'Your account needs attention',
-  grace: 'Your account needs attention',
-  ended: 'No access to paid features',
+const TITLE: Partial<Record<CompanionAccessKind, MessageKey>> = {
+  suspended: 'access.titleSuspended',
+  needs_attention: 'access.titleNeedsAttention',
+  grace: 'access.titleNeedsAttention',
+  ended: 'access.titleNoPaidAccess',
 };
 
 /**
@@ -18,12 +20,13 @@ const TITLE: Partial<Record<CompanionAccessKind, string>> = {
 export function AccessNotice({ only }: { only?: CompanionAccessKind[] }) {
   const { load } = useAccess();
   const { state } = useSessionState();
+  const ctx = useDisplayContext();
   const access = load.status === 'ready' ? load.access : load.status === 'error' ? load.stale : null;
   if (!access || state.status !== 'authenticated') return null;
-  const view = companionAccessView(access, huntFormContext(state.session.user.locale).localeTag);
+  const view = companionAccessView(access, ctx.localeTag, ctx.t);
   const title = TITLE[view.kind];
   if (!title || (only && !only.includes(view.kind))) return null;
-  return <SystemBanner tone={view.tone === 'loss' ? 'error' : view.tone === 'fresh' ? 'warning' : 'info'} title={title} message={view.lines.join(' ')} />;
+  return <SystemBanner tone={view.tone === 'loss' ? 'error' : view.tone === 'fresh' ? 'warning' : 'info'} title={ctx.t(title)} message={view.lines.join(' ')} />;
 }
 
 /** False only while the account is suspended (Hunts can't be created or started). */

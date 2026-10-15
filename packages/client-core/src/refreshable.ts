@@ -1,3 +1,5 @@
+import { translator, type Translator } from '@rein-drop/i18n';
+
 /**
  * Loading a screen's data on an unreliable connection (mobile companion, decision 0018):
  * - the first load shows a loading state, and a failure shows an error with Try again;
@@ -9,7 +11,13 @@ export type Refreshable<T> =
   | { status: 'error'; message: string; offline: boolean }
   | { status: 'ready'; data: T; refreshing: boolean; refreshError: string | null };
 
+/** English only - use `offlineMessage(t)`; this constant will be removed in step 89. */
 export const OFFLINE_MESSAGE = "You're offline or Rein Drop can't be reached right now.";
+
+/** "You're offline or Rein Drop can't be reached right now." in the UI language. */
+export function offlineMessage(t: Translator = translator('en')): string {
+  return t('common.offline');
+}
 
 export function refreshStarted<T>(state: Refreshable<T>, visible: boolean): Refreshable<T> {
   return state.status === 'ready' ? { ...state, refreshing: visible } : { status: 'loading' };
@@ -19,8 +27,8 @@ export function refreshSucceeded<T>(data: T): Refreshable<T> {
   return { status: 'ready', data, refreshing: false, refreshError: null };
 }
 
-export function refreshFailed<T>(state: Refreshable<T>, message: string, offline: boolean): Refreshable<T> {
-  const text = offline ? OFFLINE_MESSAGE : message;
+export function refreshFailed<T>(state: Refreshable<T>, message: string, offline: boolean, t: Translator = translator('en')): Refreshable<T> {
+  const text = offline ? offlineMessage(t) : message;
   return state.status === 'ready' ? { ...state, refreshing: false, refreshError: text } : { status: 'error', message: text, offline };
 }
 

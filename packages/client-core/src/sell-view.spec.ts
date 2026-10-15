@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { SellChannel, SellDraftSuggestion, SellListing } from '@rein-drop/contracts';
-import { applyDraft, buildSellUpdate, channelView, draftWouldReplace, photoSrc, sellFormFrom, type SellForm } from './sell-view.js';
+import { translator } from '@rein-drop/i18n';
+import {
+  applyDraft,
+  buildSellUpdate,
+  channelView,
+  draftWouldReplace,
+  LISTING_CONDITION_OPTIONS,
+  listingConditionOptions,
+  photoSrc,
+  sellFormFrom,
+  sellListingStatusLabel,
+  type SellForm,
+} from './sell-view.js';
 
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 const EMPTY: SellForm = { title: '', description: '', price: '', condition: null, itemSpecifics: [], aiAssisted: false };
@@ -60,5 +72,16 @@ describe('photos and marketplaces', () => {
     expect(channelView(channel({ marketplace: 'facebook', mode: 'assisted', status: 'AWAITING_CONFIRMATION' }), 'en-US')).toMatchObject({ label: 'Waiting for you', awaiting: true, canEnd: true });
     expect(channelView(channel({ status: 'FAILED', error: 'eBay said no' }), 'en-US')).toMatchObject({ tone: 'loss', detail: 'eBay said no', canEnd: false });
     expect(channelView(channel({ status: 'ENDED' }), 'en-US')).toMatchObject({ label: 'Ended', canEnd: false });
+  });
+
+  it('German (draft): marketplace states, conditions and statuses; marketplace names untranslated', () => {
+    const de = translator('de');
+    expect(channelView(channel({ simulated: true }), 'de-DE', de)).toMatchObject({ label: 'Eingestellt (simuliert)', detail: 'Vorerst simuliert – bei eBay wurde noch nichts veröffentlicht.' });
+    expect(channelView(channel({}), 'de-DE', de).detail).toBe('Seit 15.10.2026.');
+    expect(channelView(channel({ marketplace: 'facebook', mode: 'assisted', status: 'AWAITING_CONFIRMATION' }), 'de-DE', de).detail).toContain('bei Facebook Marketplace');
+    expect(listingConditionOptions(de).map((o) => o.label)).toEqual(['Neu', 'Wie neu', 'Gut', 'Akzeptabel', 'Defekt / für Ersatzteile']);
+    expect(listingConditionOptions(translator('en'))).toEqual(LISTING_CONDITION_OPTIONS);
+    expect(sellListingStatusLabel('PUBLISHED', de)).toEqual({ label: 'Eingestellt', tone: 'profit' });
+    expect(buildSellUpdate({ ...EMPTY, price: '0' }, 'EUR', de)).toMatchObject({ ok: false, message: 'Muss größer als null sein' });
   });
 });

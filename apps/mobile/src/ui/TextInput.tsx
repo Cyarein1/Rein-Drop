@@ -8,6 +8,7 @@ import {
   type TextInputProps as RNTextInputProps,
 } from 'react-native';
 import { fontSize, radius, roles, size, space, type TextInputKind } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from './fonts';
 
 export interface TextInputProps extends Omit<RNTextInputProps, 'style' | 'secureTextEntry'> {
@@ -27,12 +28,13 @@ const KIND_PROPS: Record<TextInputKind, Partial<RNTextInputProps>> = {
   money: { keyboardType: 'decimal-pad' },
   search: { returnKeyType: 'search', autoCorrect: false },
   // A calendar day typed as YYYY-MM-DD (screens offer Today / Yesterday shortcuts). TODO(ui): native date picker.
-  date: { keyboardType: 'numbers-and-punctuation', placeholder: 'YYYY-MM-DD', autoCorrect: false, autoCapitalize: 'none', maxLength: 10 },
+  date: { keyboardType: 'numbers-and-punctuation', autoCorrect: false, autoCapitalize: 'none', maxLength: 10 },
 };
 
 export function TextInput({ label, kind = 'text', hint, error, currency, ...rest }: TextInputProps) {
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const t = useT();
 
   return (
     <View style={styles.field}>
@@ -45,7 +47,7 @@ export function TextInput({ label, kind = 'text', hint, error, currency, ...rest
         <RNTextInput
           accessibilityLabel={label}
           // The error first, then the hint - never one hiding the other (aria-invalid is ignored by React Native).
-          accessibilityHint={[error && `Error: ${error}`, hint].filter(Boolean).join('. ') || undefined}
+          accessibilityHint={[error && t('common.inputError', { error }), hint].filter(Boolean).join('. ') || undefined}
           aria-invalid={!!error}
           placeholderTextColor={roles.textDisabled}
           secureTextEntry={kind === 'password' && !showPassword}
@@ -58,17 +60,18 @@ export function TextInput({ label, kind = 'text', hint, error, currency, ...rest
             setFocused(false);
             rest.onBlur?.(e);
           }}
+          placeholder={kind === 'date' ? t('common.datePlaceholder') : undefined}
           {...KIND_PROPS[kind]}
           {...rest}
         />
         {kind === 'password' && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            accessibilityLabel={t(showPassword ? 'common.hidePassword' : 'common.showPassword')}
             onPress={() => setShowPassword((v) => !v)}
             style={styles.toggle}
           >
-            <Text style={[styles.toggleText, font('semibold')]}>{showPassword ? 'Hide' : 'Show'}</Text>
+            <Text style={[styles.toggleText, font('semibold')]}>{t(showPassword ? 'common.hide' : 'common.show')}</Text>
           </Pressable>
         )}
       </View>

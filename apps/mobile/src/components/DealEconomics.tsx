@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { ESTIMATE_NOTE, type DealDetailView } from '@rein-drop/client-core';
+import { estimateNote, type DealDetailView } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { Card, font, Metric } from '@/ui';
 
 /**
@@ -10,8 +11,9 @@ import { Card, font, Metric } from '@/ui';
  * view model - nothing is calculated here.
  */
 export function DealEconomics({ view }: { view: Pick<DealDetailView, 'priceLines' | 'maxPriceNote' | 'resale' | 'upside' | 'targetNote' | 'notIncluded'> }) {
+  const t = useT();
   return (
-    <Card title="Price and estimates">
+    <Card title={t('deals.priceAndEstimates')}>
       {view.priceLines.map(([label, value]) => (
         <View key={label} style={styles.row}>
           <Text style={[styles.body, font('regular')]}>{label}</Text>
@@ -20,12 +22,12 @@ export function DealEconomics({ view }: { view: Pick<DealDetailView, 'priceLines
       ))}
       {view.maxPriceNote && <Text style={[styles.body, font('regular')]}>{view.maxPriceNote}</Text>}
       <View style={styles.metrics}>
-        <Metric label="Resale value" value={view.resale.value} estimated={view.resale.estimated} caption={view.resale.caption} />
-        <Metric label="Potential upside" value={view.upside.value} estimated={view.upside.estimated} caption={view.upside.caption} />
+        <Metric label={t('deals.resaleValue')} value={view.resale.value} estimated={view.resale.estimated} caption={view.resale.caption} />
+        <Metric label={t('deals.potentialUpside')} value={view.upside.value} estimated={view.upside.estimated} caption={view.upside.caption} />
       </View>
       {view.targetNote && <Text style={[styles.muted, font('regular')]}>{view.targetNote}</Text>}
       {view.notIncluded && <Text style={[styles.muted, font('regular')]}>{view.notIncluded}</Text>}
-      <Text style={[styles.muted, font('regular')]}>{ESTIMATE_NOTE}</Text>
+      <Text style={[styles.muted, font('regular')]}>{estimateNote(t)}</Text>
     </Card>
   );
 }

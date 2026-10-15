@@ -1,4 +1,5 @@
 import type { SourceHealth, SourceStatus } from '@rein-drop/contracts';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { MARKETPLACE_LABEL, type DealTone } from './deal-view.js';
 
 /**
@@ -8,40 +9,68 @@ import { MARKETPLACE_LABEL, type DealTone } from './deal-view.js';
  * isn't responding is a "warning", nothing is "error".
  */
 
-/** Short phrase for a source's own state, or null when it's working normally / unknown. */
-export function sourceIssue(source: SourceStatus): { label: string; phrase: string; tone: DealTone } | null {
+type IssueKind = 'down' | 'notConfigured' | 'slow' | 'partial' | 'rateLimited' | 'trouble';
+
+const ISSUE: Record<IssueKind, { label: MessageKey; sentence: MessageKey; tone: DealTone }> = {
+  down: { label: 'common.sourceDownLabel', sentence: 'common.sourceDown', tone: 'fresh' },
+  notConfigured: { label: 'common.sourceNotConfiguredLabel', sentence: 'common.sourceNotConfigured', tone: 'neutral' },
+  slow: { label: 'common.sourceSlowLabel', sentence: 'common.sourceSlow', tone: 'fresh' },
+  partial: { label: 'common.sourcePartialLabel', sentence: 'common.sourcePartial', tone: 'fresh' },
+  rateLimited: { label: 'common.sourceRateLimitedLabel', sentence: 'common.sourceRateLimited', tone: 'fresh' },
+  trouble: { label: 'common.sourceTroubleLabel', sentence: 'common.sourceTrouble', tone: 'fresh' },
+};
+
+function issueKind(source: SourceStatus): IssueKind | null {
   switch (source.status) {
     case 'down':
-      return { label: 'Not responding', phrase: "isn't responding right now", tone: 'fresh' };
+      return 'down';
     case 'not_configured':
-      return { label: 'Not set up', phrase: "isn't set up", tone: 'neutral' };
+      return 'notConfigured';
     case 'degraded':
       switch (source.reason) {
         case 'slow':
         case 'timeout':
-          return { label: 'Slow right now', phrase: 'is slow right now', tone: 'fresh' };
+          return 'slow';
         case 'partial':
-          return { label: 'Fewer results', phrase: 'is returning fewer results right now', tone: 'fresh' };
+          return 'partial';
         case 'rate_limited':
-          return { label: 'Limiting checks', phrase: 'is limiting how often Rein Drop can check', tone: 'fresh' };
+          return 'rateLimited';
         default:
-          return { label: 'Having trouble', phrase: 'is having trouble right now', tone: 'fresh' };
+          return 'trouble';
       }
     default:
       return null;
   }
 }
 
-const minutesUntil = (iso: string, now: Date) => Math.max(1, Math.ceil((Date.parse(iso) - now.getTime()) / 60_000));
-/** "in 4 min" / "in 2 h" / "in 3 days" (shared by every "next check" / "tries again" text). */
-export function durationUntilText(minutes: number): string {
-  if (minutes < 60) return `in ${minutes} min`;
-  if (minutes < 48 * 60) return `in ${Math.round(minutes / 60)} h`;
-  return `in ${Math.round(minutes / (24 * 60))} days`;
+/**
+ * Short label for a source's own state, or null when it's working normally / unknown.
+ * `phrase` is the sentence without the marketplace name (kept for older callers; prefer
+ * `sourceIssueText`, which keeps the name inside one translated sentence).
+ */
+export function sourceIssue(source: SourceStatus, t: Translator = translator('en')): { label: string; phrase: string; tone: DealTone } | null {
+  const kind = issueKind(source);
+  if (!kind) return null;
+  const issue = ISSUE[kind];
+  return { label: t(issue.label), phrase: t(issue.sentence, { name: '' }).trim(), tone: issue.tone };
 }
 
-export function retryText(iso: string, now: Date): string {
-  return durationUntilText(minutesUntil(iso, now));
+/** "eBay isn't responding right now" - the source's state as one sentence, or null when fine. */
+export function sourceIssueText(source: SourceStatus, name: string, t: Translator = translator('en')): string | null {
+  const kind = issueKind(source);
+  return kind ? t(ISSUE[kind].sentence, { name }) : null;
+}
+
+const minutesUntil = (iso: string, now: Date) => Math.max(1, Math.ceil((Date.parse(iso) - now.getTime()) / 60_000));
+/** "in 4 min" / "in 2 h" / "in 3 days" (shared by every "next check" / "tries again" text). */
+export function durationUntilText(minutes: number, t: Translator = translator('en')): string {
+  if (minutes < 60) return t('common.inMinutes', { count: minutes });
+  if (minutes < 48 * 60) return t('common.inHours', { count: Math.round(minutes / 60) });
+  return t('common.inDays', { count: Math.round(minutes / (24 * 60)) });
+}
+
+export function retryText(iso: string, now: Date, t: Translator = translator('en')): string {
+  return durationUntilText(minutesUntil(iso, now), t);
 }
 
 export interface SourceBanner {
@@ -55,39 +84,50 @@ export interface SourceBanner {
  * One calm line for Home / Hunts / Deals when a source is impaired, saying the others continue.
  * Null when every source is working (or simply hasn't reported yet).
  */
-export function sourceBanner(sources: readonly SourceHealth[], now: Date): SourceBanner | null {
-  const impaired = sources.filter((s) => sourceIssue(s) !== null);
+export function sourceBanner(sources: readonly SourceHealth[], now: Date, t: Translator = translator('en')): SourceBanner | null {
+  const impaired = sources.filter((s) => issueKind(s) !== null);
   if (impaired.length === 0) return null;
   const working = sources.filter((s) => s.status === 'healthy').map((s) => MARKETPLACE_LABEL[s.marketplace]);
   const anyDown = impaired.some((s) => s.status === 'down');
-  const retry = impaired.map((s) => s.nextAttemptAt).filter((t): t is string => t !== null).sort()[0];
-  const retrying = retry ? `Rein Drop tries again ${retryText(retry, now)}` : 'Rein Drop retries automatically';
+  const retry = impaired.map((s) => s.nextAttemptAt).filter((at): at is string => at !== null).sort()[0];
+  const sentences = (...parts: (string | null)[]) => parts.filter((p): p is string => !!p).join(' ');
 
   if (impaired.length === 1) {
     const s = impaired[0]!;
-    const name = MARKETPLACE_LABEL[s.marketplace];
-    const issue = sourceIssue(s)!;
+    const title = sourceIssueText(s, MARKETPLACE_LABEL[s.marketplace], t)!;
+    const names = joinNames(working, t);
     if (s.status === 'not_configured') {
-      return { tone: 'warning', title: `${name} ${issue.phrase}`, message: `Hunts can't search it until it is.${working.length > 0 ? ` ${joinNames(working)} ${working.length === 1 ? 'continues' : 'continue'} as normal.` : ''}` };
+      return {
+        tone: 'warning',
+        title,
+        message: sentences(t('common.sourceNotConfiguredBody'), working.length > 0 ? t('common.sourceNotConfiguredOthers', { names, count: working.length }) : null),
+      };
     }
-    const others = working.length > 0 ? `${joinNames(working)} ${working.length === 1 ? 'checks continue' : 'checks continue'} as normal. ` : '';
     return {
       tone: anyDown ? 'warning' : 'info',
-      title: `${name} ${issue.phrase}`,
-      message: `${others}${retrying}; nothing you need to do.${s.status === 'down' ? ' New deals from it may arrive late.' : ''}`,
+      title,
+      message: sentences(
+        working.length > 0 ? t('common.sourceOthersContinue', { names }) : null,
+        retry ? t('common.sourceRetryAt', { when: retryText(retry, now, t) }) : t('common.sourceRetryAuto'),
+        s.status === 'down' ? t('common.sourceMayArriveLate') : null,
+      ),
     };
   }
   return {
     tone: anyDown ? 'warning' : 'info',
-    title: 'Marketplaces are having trouble right now',
-    message: `${joinNames(impaired.map((s) => MARKETPLACE_LABEL[s.marketplace]))} aren't fully working. ${retrying}; your Hunts are safe and nothing you need to do.`,
+    title: t('common.sourceManyTitle'),
+    message: sentences(
+      t('common.sourceManyIntro', { names: joinNames(impaired.map((s) => MARKETPLACE_LABEL[s.marketplace]), t) }),
+      retry ? t('common.sourceManyRetryAt', { when: retryText(retry, now, t) }) : t('common.sourceManyRetryAuto'),
+    ),
   };
 }
 
 /** Whether a Hunt's monitoring is fully working: never "all good" while a source isn't. */
 export type HuntMonitoringHealth = 'ok' | 'partial' | 'impaired' | 'unknown';
 
-export function joinNames(names: string[]): string {
+/** "eBay and Facebook Marketplace" ("a, b and c") in the UI language. */
+export function joinNames(names: string[], t: Translator = translator('en')): string {
   if (names.length <= 1) return names.join('');
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+  return t('common.listAnd', { items: names.slice(0, -1).join(', '), last: names.at(-1) });
 }

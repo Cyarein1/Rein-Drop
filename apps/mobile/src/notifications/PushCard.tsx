@@ -4,6 +4,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { pushView, type PushState } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { Button, Card, font, LoadingState, SystemBanner } from '@/ui';
 import { disablePush, enablePush, permissionStatus, refreshPushRegistration } from './push';
 
@@ -18,6 +19,7 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
   const [busy, setBusy] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [justEnabled, setJustEnabled] = useState(false);
+  const t = useT();
 
   useFocusEffect(
     useCallback(() => {
@@ -33,8 +35,8 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
     }, []),
   );
 
-  const view = pushView(state);
-  if (!view) return variant === 'settings' ? <LoadingState label="Checking notifications on this phone…" /> : null;
+  const view = pushView(state, t);
+  if (!view) return variant === 'settings' ? <LoadingState label={t('push.checking')} /> : null;
   if (variant === 'prompt') {
     // Turned on from this prompt: confirm it. Already on, unavailable or "Not now": stay out of the way.
     if (state.status === 'enabled') return justEnabled ? <SystemBanner tone="success" title={view.title} message={view.body} /> : null;
@@ -68,7 +70,7 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
         )}
         {variant === 'prompt' && view.canDismiss && (
           <Button variant="text" onPress={() => setDismissed(true)} disabled={busy}>
-            Not now
+            {t('push.notNow')}
           </Button>
         )}
       </View>
@@ -77,7 +79,7 @@ export function PushCard({ variant }: { variant: 'prompt' | 'settings' }) {
   return variant === 'prompt' ? (
     <Card title={view.title}>{body}</Card>
   ) : (
-    <View style={styles.stack} accessibilityLabel="Notifications on this phone">
+    <View style={styles.stack} accessibilityLabel={t('push.sectionLabel')}>
       <Text style={[styles.heading, font('semibold')]}>{view.title}</Text>
       {body}
     </View>

@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { Hunt } from '@rein-drop/api-client';
-import { editContext, huntFormContext, huntFormValues } from '@rein-drop/client-core';
+import { editContext, huntFormValues } from '@rein-drop/client-core';
 import { roles } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { useSession } from '@/auth/SessionProvider';
 import { HuntFormFlow } from '@/components/HuntFormFlow';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, LoadingState, Screen, SystemBanner } from '@/ui';
 
 /** Edit Hunt: the Create Hunt form, filled from the saved hunt. Archived hunts are read-only. */
@@ -22,7 +22,8 @@ export default function EditHuntScreen() {
 function EditHuntLoader() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const session = useSession();
+  const display = useDisplayContext();
+  const { t } = display;
   const [state, setState] = useState<{ status: 'loading' } | { status: 'ready'; hunt: Hunt } | { status: 'error'; message: string }>({ status: 'loading' });
 
   useEffect(() => {
@@ -41,7 +42,7 @@ function EditHuntLoader() {
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
-        <LoadingState label="Loading the Hunt…" />
+        <LoadingState label={t('hunts.loadingOne')} />
       </View>
     );
   }
@@ -50,18 +51,18 @@ function EditHuntLoader() {
       <Screen>
         <SystemBanner
           tone={state.status === 'error' ? 'error' : 'info'}
-          title={state.status === 'error' ? "Couldn't load this Hunt" : "Archived Hunts can't be edited"}
-          message={state.status === 'error' ? state.message : 'Restore it first - it comes back paused, ready to edit.'}
+          title={state.status === 'error' ? t('hunts.loadOneFailed') : t('hunts.archivedNoEditTitle')}
+          message={state.status === 'error' ? state.message : t('hunts.archivedNoEditBody')}
           action={
             <Button variant="secondary" onPress={() => router.back()}>
-              Back
+              {t('hunts.back')}
             </Button>
           }
         />
       </Screen>
     );
   }
-  const context = editContext(state.hunt, huntFormContext(session.user.locale));
+  const context = editContext(state.hunt, display);
   return <HuntFormFlow values={huntFormValues(state.hunt, context)} context={context} prefilled={[]} placeholder="" editing={state.hunt} />;
 }
 

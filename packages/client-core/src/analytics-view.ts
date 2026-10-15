@@ -10,6 +10,7 @@ import type {
   ProductPerformance,
   RealizedByCurrency,
 } from '@rein-drop/contracts';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { MARKETPLACE_LABEL } from './deal-view.js';
 import type { HuntFormContext } from './hunt-form.js';
 import { formatMoney } from './money.js';
@@ -27,12 +28,35 @@ export const ANALYTICS_PERIOD_OPTIONS: { value: AnalyticsPeriod; label: string }
   { value: '365d', label: '12 months' },
   { value: 'all', label: 'All time' },
 ];
-export const periodLabel = (p: AnalyticsPeriod) => (p === 'all' ? 'All time' : `Last ${ANALYTICS_PERIOD_OPTIONS.find((o) => o.value === p)!.label}`);
+const PERIOD_KEY: Record<AnalyticsPeriod, [option: MessageKey, last: MessageKey]> = {
+  '7d': ['analytics.period7d', 'analytics.periodLast7d'],
+  '30d': ['analytics.period30d', 'analytics.periodLast30d'],
+  '90d': ['analytics.period90d', 'analytics.periodLast90d'],
+  '365d': ['analytics.period365d', 'analytics.periodLast365d'],
+  all: ['analytics.periodAll', 'analytics.periodAll'],
+};
+/** Period options in the UI language. Use this; the English ANALYTICS_PERIOD_OPTIONS will be removed in step 89. */
+export function analyticsPeriodOptions(t: Translator): { value: AnalyticsPeriod; label: string }[] {
+  return ANALYTICS_PERIOD_OPTIONS.map((o) => ({ value: o.value, label: t(PERIOD_KEY[o.value][0]) }));
+}
+/** "Last 30 days" / "All time". */
+export const periodLabel = (p: AnalyticsPeriod, t: Translator = translator('en')) => t(PERIOD_KEY[p][1]);
 export const isAnalyticsPeriod = (v: unknown): v is AnalyticsPeriod => ANALYTICS_PERIOD_OPTIONS.some((o) => o.value === v);
 
 type Tone = 'profit' | 'loss' | 'neutral';
 const toneOf = (n: number): Tone => (n > 0 ? 'profit' : n < 0 ? 'loss' : 'neutral');
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+type Basis = MetricCard['basis'];
+const BASIS_KEY: Record<Basis, MessageKey> = {
+  Realized: 'analytics.basisRealized',
+  Estimated: 'analytics.basisEstimated',
+  Now: 'analytics.basisNow',
+  Activity: 'analytics.basisActivity',
+};
+/** The basis badge in the UI language ("Realized" / "Estimated" / ...). Cards also carry it as `basisLabel`. */
+export function basisLabel(basis: Basis, t: Translator): string {
+  return t(BASIS_KEY[basis]);
+}
 
 /** The currency to headline: the user's own if present, else the one with the most activity. */
 function mainOf<T extends { currency: string }>(rows: readonly T[], ctx: HuntFormContext, weight: (r: T) => number = () => 0): T | null {
@@ -49,8 +73,10 @@ export interface MetricCard {
   label: string;
   value: string;
   tone: Tone;
-  /** Realized / Estimated / Now - always shown, so no number is ambiguous. */
+  /** Realized / Estimated / Now - always shown, so no number is ambiguous. A stable value: display `basisLabel`. */
   basis: 'Realized' | 'Estimated' | 'Now' | 'Activity';
+  /** `basis` in the UI language. */
+  basisLabel: string;
   caption: string | null;
 }
 
@@ -85,6 +111,7 @@ export function toBars(items: { label: string; amount: number; value: string; to
 }
 
 export function overviewView(o: AnalyticsOverview, ctx: HuntFormContext): OverviewView {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const main = mainOf(o.realized, ctx, (r) => r.comparableSales + r.excludedSales);
   const currency = main?.currency ?? mainOf(o.spent, ctx, (m) => m.amountMinor)?.currency ?? mainOf(o.holding.costBasis, ctx)?.currency ?? ctx.currency;
@@ -93,50 +120,55 @@ export function overviewView(o: AnalyticsOverview, ctx: HuntFormContext): Overvi
   const tiedUp = { amountMinor: sumIn(o.holding.costBasis, currency), currency };
   const profit = main?.realizedProfit ?? zero;
 
+  const card = (c: Omit<MetricCard, 'basisLabel'>): MetricCard => ({ ...c, basisLabel: basisLabel(c.basis, t) });
   const cards: MetricCard[] = [
-    {
-      label: 'Realized profit',
+    card({
+      label: t('analytics.cardRealizedProfit'),
       value: main ? fmt(profit) : '-',
       tone: main ? toneOf(profit.amountMinor) : 'neutral',
       basis: 'Realized',
       caption: main
-        ? `From ${plural(main.comparableSales, 'sale')} after recorded costs${main.excludedSales > 0 ? ` (${plural(main.excludedSales, 'sale')} in another currency not counted)` : ''}`
-        : 'Appears once you log a sale',
-    },
-    { label: 'Sold revenue', value: main ? fmt(main.revenue) : '-', tone: 'neutral', basis: 'Realized', caption: plural(o.sells, 'item') + ' sold' },
-    {
-      label: 'Margin',
-      value: main?.marginPercent !== null && main?.marginPercent !== undefined ? `${main.marginPercent}%` : '-',
+        ? main.excludedSales > 0
+          ? t('analytics.captionFromSalesExcluded', { count: main.comparableSales, excluded: main.excludedSales })
+          : t('analytics.captionFromSales', { count: main.comparableSales })
+        : t('analytics.captionAfterFirstSale'),
+    }),
+    card({ label: t('analytics.cardSoldRevenue'), value: main ? fmt(main.revenue) : '-', tone: 'neutral', basis: 'Realized', caption: t('analytics.captionItemsSold', { count: o.sells }) }),
+    card({
+      label: t('analytics.cardMargin'),
+      value: main?.marginPercent !== null && main?.marginPercent !== undefined ? t('analytics.percent', { value: main.marginPercent }) : '-',
       tone: main?.marginPercent ? toneOf(main.marginPercent) : 'neutral',
       basis: 'Realized',
-      caption: 'Realized profit ÷ sale price',
-    },
-    { label: 'Capital deployed', value: fmt(spent), tone: 'neutral', basis: 'Activity', caption: `${plural(o.buys, 'item')} bought, incl. purchase costs` },
-    {
-      label: 'Held now',
-      value: plural(o.holding.count, 'item'),
+      caption: t('analytics.captionMargin'),
+    }),
+    card({ label: t('analytics.cardCapital'), value: fmt(spent), tone: 'neutral', basis: 'Activity', caption: t('analytics.captionCapital', { count: o.buys }) }),
+    card({
+      label: t('analytics.cardHeldNow'),
+      value: t('analytics.items', { count: o.holding.count }),
       tone: 'neutral',
       basis: 'Now',
-      caption: o.holding.count > 0 ? `${fmt(tiedUp)} tied up · oldest ${plural(o.holding.oldestDays ?? 0, 'day')}. Not a loss.` : 'Nothing waiting to sell',
-    },
-    {
-      label: 'Time to sell',
-      value: o.avgDaysToSell === null ? '-' : `${o.avgDaysToSell} days`,
+      caption: o.holding.count > 0 ? t('analytics.captionHeld', { amount: fmt(tiedUp), days: o.holding.oldestDays ?? 0 }) : t('analytics.captionNothingHeld'),
+    }),
+    card({
+      label: t('analytics.cardTimeToSell'),
+      value: o.avgDaysToSell === null ? '-' : t('analytics.days', { days: o.avgDaysToSell }),
       tone: 'neutral',
       basis: 'Realized',
-      caption: o.avgDaysToSell === null ? 'Appears once you log a sale' : 'Average, purchase to sale',
-    },
+      caption: o.avgDaysToSell === null ? t('analytics.captionAfterFirstSale') : t('analytics.captionAverageTime'),
+    }),
   ];
 
-  const otherCurrencies = o.realized.filter((r) => r !== main && r.comparableSales > 0).map((r) => `Also ${fmt(r.realizedProfit)} realized in ${r.currency}`);
+  const otherCurrencies = o.realized
+    .filter((r) => r !== main && r.comparableSales > 0)
+    .map((r) => t('analytics.otherCurrency', { amount: fmt(r.realizedProfit), currency: r.currency }));
   return {
     hasActivity: o.buys + o.sells + o.holding.count > 0,
     currency,
     cards,
     otherCurrencies,
     moneyBars: toBars([
-      { label: 'Capital deployed', amount: spent.amountMinor, value: fmt(spent) },
-      { label: 'Realized profit', amount: profit.amountMinor, value: fmt(profit), tone: toneOf(profit.amountMinor) },
+      { label: t('analytics.cardCapital'), amount: spent.amountMinor, value: fmt(spent) },
+      { label: t('analytics.cardRealizedProfit'), amount: profit.amountMinor, value: fmt(profit), tone: toneOf(profit.amountMinor) },
     ]),
   };
 }
@@ -158,27 +190,28 @@ export interface FunnelView {
 }
 
 export function funnelView(h: HuntFunnel, ctx: HuntFormContext): FunnelView {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
-  const stages: [string, number][] = [
-    ['Found', h.found],
-    ['Alerted', h.alerted],
-    ['Viewed', h.viewed],
-    ['Saved', h.saved],
-    ['Bought', h.bought],
-    ['Sold', h.sold],
+  const stages: [MessageKey, number][] = [
+    ['analytics.stageFound', h.found],
+    ['analytics.stageAlerted', h.alerted],
+    ['analytics.stageViewed', h.viewed],
+    ['analytics.stageSaved', h.saved],
+    ['analytics.stageBought', h.bought],
+    ['analytics.stageSold', h.sold],
   ];
   const main = mainOf(h.realized, ctx, (r) => r.comparableSales);
   const rates = [
-    h.ignoreRatePercent !== null ? `${h.ignoreRatePercent}% of viewed deals ignored` : null,
+    h.ignoreRatePercent !== null ? t('analytics.rateIgnored', { percent: h.ignoreRatePercent }) : null,
     // Counts are activity in the period, so buys without an alert (or alerted earlier) can exceed
     // the alerts; a rate over 100% would mislead, so it's only shown when it means something (D29).
-    h.alertToBuyPercent !== null && h.alertToBuyPercent <= 100 ? `${h.alertToBuyPercent}% of alerts bought` : null,
+    h.alertToBuyPercent !== null && h.alertToBuyPercent <= 100 ? t('analytics.rateBought', { percent: h.alertToBuyPercent }) : null,
   ].filter(Boolean);
   return {
     huntId: h.huntId,
     name: h.name,
     status: h.status,
-    stages: toBars(stages.map(([label, n]) => ({ label, amount: n, value: String(n), tone: label === 'Sold' ? 'profit' : 'info' }))),
+    stages: toBars(stages.map(([key, n]) => ({ label: t(key), amount: n, value: String(n), tone: key === 'analytics.stageSold' ? 'profit' : 'info' }))),
     rates: rates.length > 0 ? rates.join(' · ') : null,
     realized: main && main.comparableSales > 0 ? { value: fmt(main.realizedProfit), tone: toneOf(main.realizedProfit.amountMinor) } : null,
     quiet: h.found + h.alerted + h.viewed + h.saved + h.ignored + h.bought + h.sold === 0,
@@ -206,6 +239,7 @@ const productMain = (p: ProductPerformance, ctx: HuntFormContext): RealizedByCur
 };
 
 export function productRowsView(products: ProductAnalytics['items'], ctx: HuntFormContext): ProductRowView[] {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const mains = products.map((p) => productMain(p, ctx));
   const bars = toBars(products.map((p, i) => ({ label: p.name, amount: mains[i]?.realizedProfit.amountMinor ?? 0, value: mains[i] ? fmt(mains[i].realizedProfit) : '-', tone: toneOf(mains[i]?.realizedProfit.amountMinor ?? 0) })));
@@ -214,9 +248,11 @@ export function productRowsView(products: ProductAnalytics['items'], ctx: HuntFo
     return {
       key: p.key,
       name: p.name,
-      counts: [`${p.bought} bought`, `${p.sold} sold`, p.holding > 0 ? `${p.holding} held` : null].filter(Boolean).join(' · '),
-      realized: m ? { value: fmt(m.realizedProfit), tone: toneOf(m.realizedProfit.amountMinor), margin: m.marginPercent !== null ? `${m.marginPercent}% margin` : null } : null,
-      avgDays: p.avgDaysToSell === null ? null : `${p.avgDaysToSell} days to sell`,
+      counts: p.holding > 0 ? t('analytics.productCountsHeld', { bought: p.bought, sold: p.sold, held: p.holding }) : t('analytics.productCounts', { bought: p.bought, sold: p.sold }),
+      realized: m
+        ? { value: fmt(m.realizedProfit), tone: toneOf(m.realizedProfit.amountMinor), margin: m.marginPercent !== null ? t('analytics.marginValue', { percent: m.marginPercent }) : null }
+        : null,
+      avgDays: p.avgDaysToSell === null ? null : t('analytics.daysToSell', { days: p.avgDaysToSell }),
       bar: m ? bars[i]! : null,
     };
   });
@@ -241,15 +277,23 @@ export interface MarketplaceRowView {
 }
 
 export function marketplaceRowsView(m: MarketplaceAnalytics, ctx: HuntFormContext): MarketplaceRowView[] {
+  const { t } = ctx;
   const fmt = (x: Money) => formatMoney(x, ctx.localeTag);
   return m.items.map((i) => {
     const main = mainOf(i.sourced.realized, ctx, (r) => r.comparableSales);
     const revenue = mainOf(i.soldHere.revenue, ctx, (r) => r.amountMinor);
+    const { found, alerted, bought, sold } = i.sourced;
+    const sales = i.soldHere.sales;
     return {
-      name: i.marketplace === 'other' ? 'Bought elsewhere' : MARKETPLACE_LABEL[i.marketplace],
-      sourced: `${i.sourced.found} found · ${plural(i.sourced.alerted, 'alert')} · ${i.sourced.bought} bought · ${i.sourced.sold} sold`,
+      name: i.marketplace === 'other' ? t('analytics.boughtElsewhere') : MARKETPLACE_LABEL[i.marketplace],
+      sourced: t('analytics.sourcedLine', { found, alerted, bought, sold }),
       realized: main && main.comparableSales > 0 ? { value: fmt(main.realizedProfit), tone: toneOf(main.realizedProfit.amountMinor) } : null,
-      soldHere: i.soldHere.sales > 0 ? `${plural(i.soldHere.sales, 'sale')} here${revenue ? ` · ${fmt(revenue)}` : ''}` : 'No sales here',
+      soldHere:
+        sales > 0
+          ? revenue
+            ? t('analytics.soldHereRevenue', { count: sales, revenue: fmt(revenue) })
+            : t('analytics.soldHere', { count: sales })
+          : t('analytics.noSalesHere'),
     };
   });
 }
@@ -258,10 +302,16 @@ export function marketplaceRowsView(m: MarketplaceAnalytics, ctx: HuntFormContex
 // Missed potential
 // ---------------------------------------------------------------------------
 
-export const MISSED_REASON_LABEL: Record<MissedPotential['items'][number]['reason'], string> = {
+type MissedReason = MissedPotential['items'][number]['reason'];
+export const MISSED_REASON_LABEL: Record<MissedReason, string> = {
   gone: 'Gone before you bought',
   ignored: 'You passed',
 };
+const MISSED_REASON_KEY: Record<MissedReason, MessageKey> = { gone: 'analytics.reasonGone', ignored: 'analytics.reasonIgnored' };
+/** Missed-deal reason in the UI language. Use this; the English MISSED_REASON_LABEL will be removed in step 89. */
+export function missedReasonLabel(reason: MissedReason, t: Translator): string {
+  return t(MISSED_REASON_KEY[reason]);
+}
 
 export interface MissedView {
   headline: string;
@@ -273,23 +323,23 @@ export interface MissedView {
 }
 
 export function missedView(m: MissedPotential, ctx: HuntFormContext): MissedView {
+  const { t } = ctx;
   const fmt = (x: Money) => formatMoney(x, ctx.localeTag);
   const main = mainOf(m.estimatedPotential, ctx, (x) => x.amountMinor);
   return {
-    headline: m.count === 0 ? 'No strong deals got away' : `${plural(m.count, 'strong deal')} you didn't buy`,
-    potential: main
-      ? {
-          value: fmt(main),
-          caption: `Estimated upside of the ${plural(m.withEstimate, 'deal')} that had an estimate. Potential, not a loss - it is never part of your profit.`,
-        }
-      : null,
-    breakdown: `${m.gone} gone before you bought · ${m.ignored} you passed on${m.count > m.withEstimate ? ` · ${m.count - m.withEstimate} without an estimate` : ''}`,
+    headline: m.count === 0 ? t('analytics.missedNone') : t('analytics.missedHeadline', { count: m.count }),
+    potential: main ? { value: fmt(main), caption: t('analytics.missedCaption', { count: m.withEstimate }) } : null,
+    breakdown:
+      m.count > m.withEstimate
+        ? t('analytics.missedBreakdownNoEstimate', { gone: m.gone, ignored: m.ignored, without: m.count - m.withEstimate })
+        : t('analytics.missedBreakdown', { gone: m.gone, ignored: m.ignored }),
     items: m.items.map((i) => ({
       dealId: i.dealId,
       title: i.title,
+      // Hunt name is user content; strength is the API value (shown as before).
       meta: `${i.hunt.name} · ${MARKETPLACE_LABEL[i.marketplace]} · ${i.strength}`,
-      reason: MISSED_REASON_LABEL[i.reason],
-      estimate: i.estimatedUpside ? `${fmt(i.estimatedUpside)} estimated upside` : null,
+      reason: missedReasonLabel(i.reason, t),
+      estimate: i.estimatedUpside ? t('analytics.missedEstimate', { amount: fmt(i.estimatedUpside) }) : null,
     })),
     empty: m.count === 0,
   };
@@ -326,6 +376,7 @@ export function analyticsRecommendation(
   data: { overview: AnalyticsOverview; hunts: HuntAnalytics; products: ProductAnalytics; missed: MissedPotential },
   ctx: HuntFormContext,
 ): AnalyticsRecommendation | null {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const R = ANALYTICS_RECOMMENDATION_RULES;
   const { overview, hunts, products, missed } = data;
@@ -334,9 +385,9 @@ export function analyticsRecommendation(
   if (oldest !== null && oldest >= R.staleHoldingDays) {
     return {
       code: 'stale_holding',
-      title: 'Something has been waiting to sell',
-      body: `You're holding ${plural(overview.holding.count, 'item')}; the oldest for ${oldest} days. Reprice or relist it to free up the money.`,
-      actionLabel: 'Open Inventory',
+      title: t('analytics.recStaleTitle'),
+      body: t('analytics.recStaleBody', { count: overview.holding.count, days: oldest }),
+      actionLabel: t('analytics.actionOpenInventory'),
       target: { kind: 'inventory' },
     };
   }
@@ -346,9 +397,9 @@ export function analyticsRecommendation(
   if (worst) {
     return {
       code: 'loss_product',
-      title: `${worst.p.name} lost money`,
-      body: `${plural(worst.p.sold, 'sale')} realized ${fmt(worst.m!.realizedProfit)} after costs. Check the buy price and fees before buying it again.`,
-      actionLabel: 'See products',
+      title: t('analytics.recLossTitle', { name: worst.p.name }),
+      body: t('analytics.recLossBody', { count: worst.p.sold, amount: fmt(worst.m!.realizedProfit) }),
+      actionLabel: t('analytics.actionSeeProducts'),
       target: { kind: 'products' },
     };
   }
@@ -359,9 +410,9 @@ export function analyticsRecommendation(
   if (noisy) {
     return {
       code: 'noisy_hunt',
-      title: `Tighten "${noisy.name}"`,
-      body: `You ignored ${noisy.ignored} of the ${noisy.viewed} deals you opened (${noisy.ignoreRatePercent}%). Narrower criteria mean fewer, better deals.`,
-      actionLabel: 'Edit Hunt',
+      title: t('analytics.recNoisyTitle', { name: noisy.name }),
+      body: t('analytics.recNoisyBody', { ignored: noisy.ignored, viewed: noisy.viewed, percent: noisy.ignoreRatePercent }),
+      actionLabel: t('analytics.actionEditHunt'),
       target: { kind: 'edit_hunt', huntId: noisy.huntId },
     };
   }
@@ -369,9 +420,9 @@ export function analyticsRecommendation(
   if (missed.count >= R.missedDeals) {
     return {
       code: 'missed_deals',
-      title: 'Strong deals are getting away',
-      body: `${plural(missed.count, 'strong deal')} ended without a purchase (${missed.gone} gone, ${missed.ignored} passed on). Turn on alerts to act sooner.`,
-      actionLabel: 'Alert settings',
+      title: t('analytics.recMissedTitle'),
+      body: t('analytics.recMissedBody', { count: missed.count, gone: missed.gone, ignored: missed.ignored }),
+      actionLabel: t('analytics.actionAlertSettings'),
       target: { kind: 'notifications' },
     };
   }
@@ -380,9 +431,12 @@ export function analyticsRecommendation(
   if (best) {
     return {
       code: 'best_product',
-      title: `${best.p.name} is working`,
-      body: `${plural(best.p.sold, 'sale')} realized ${fmt(best.m!.realizedProfit)}${best.m!.marginPercent !== null ? ` at a ${best.m!.marginPercent}% margin` : ''}. A Hunt focused on it could find more.`,
-      actionLabel: 'Create a Hunt',
+      title: t('analytics.recBestTitle', { name: best.p.name }),
+      body:
+        best.m!.marginPercent !== null
+          ? t('analytics.recBestBodyMargin', { count: best.p.sold, amount: fmt(best.m!.realizedProfit), margin: best.m!.marginPercent })
+          : t('analytics.recBestBody', { count: best.p.sold, amount: fmt(best.m!.realizedProfit) }),
+      actionLabel: t('analytics.actionCreateHunt'),
       target: { kind: 'create_hunt' },
     };
   }
@@ -391,9 +445,9 @@ export function analyticsRecommendation(
   if (overview.buys === 0 && found > 0) {
     return {
       code: 'review_deals',
-      title: 'Deals are waiting',
-      body: `Your Hunts found ${plural(found, 'deal')} in this period and nothing was bought yet. Review the strongest ones.`,
-      actionLabel: 'Go to deals',
+      title: t('analytics.recReviewTitle'),
+      body: t('analytics.recReviewBody', { count: found }),
+      actionLabel: t('analytics.actionGoToDeals'),
       target: { kind: 'deals' },
     };
   }
@@ -401,9 +455,9 @@ export function analyticsRecommendation(
   if (overview.holding.count > 0 && overview.sells === 0) {
     return {
       code: 'first_sale',
-      title: 'Log your sales',
-      body: `You're holding ${plural(overview.holding.count, 'item')}. Mark them sold when they go, so profit is calculated from what really happened.`,
-      actionLabel: 'Open Inventory',
+      title: t('analytics.recFirstSaleTitle'),
+      body: t('analytics.recFirstSaleBody', { count: overview.holding.count }),
+      actionLabel: t('analytics.actionOpenInventory'),
       target: { kind: 'inventory' },
     };
   }

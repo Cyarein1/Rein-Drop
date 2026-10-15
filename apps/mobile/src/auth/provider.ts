@@ -1,5 +1,6 @@
 import { DEFAULT_SESSION_MAX_AGE_HOURS } from '@rein-drop/client-core';
 import { DEV_AUTH_HEADER, DEV_AUTH_SUBJECT } from '@rein-drop/api-client';
+import type { MessageKey } from '@rein-drop/i18n';
 import { createEntraMobileAuthProvider } from './entra-provider';
 import type { MobileAuthProvider } from './types';
 
@@ -15,7 +16,8 @@ const createDevMobileAuthProvider: (() => MobileAuthProvider) | undefined = __DE
     }
   : undefined;
 
-export type AuthSetup = { ok: true; provider: MobileAuthProvider } | { ok: false; reason: string };
+/** Not usable: `reason` in English (logs), `reasonKey` / `reasonValues` for the UI language. */
+export type AuthSetup = { ok: true; provider: MobileAuthProvider } | { ok: false; reason: string; reasonKey: MessageKey; reasonValues?: Record<string, string> };
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,10 +28,10 @@ const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function resolve(): AuthSetup {
   const chosen = process.env.EXPO_PUBLIC_AUTH_PROVIDER?.trim() || (__DEV__ ? 'dev' : 'entra');
   if (chosen === 'dev') {
-    if (!createDevMobileAuthProvider) return { ok: false, reason: 'Development sign-in is not available in this build.' };
+    if (!createDevMobileAuthProvider) return { ok: false, reason: 'Development sign-in is not available in this build.', reasonKey: 'auth.devSignInUnavailable' };
     return { ok: true, provider: createDevMobileAuthProvider() };
   }
-  if (chosen !== 'entra') return { ok: false, reason: `Unknown auth provider "${chosen}".` };
+  if (chosen !== 'entra') return { ok: false, reason: `Unknown auth provider "${chosen}".`, reasonKey: 'auth.unknownProvider', reasonValues: { name: chosen } };
 
   const authority = process.env.EXPO_PUBLIC_ENTRA_AUTHORITY?.trim();
   const tenantId = process.env.EXPO_PUBLIC_ENTRA_TENANT_ID?.trim();
@@ -42,7 +44,10 @@ function resolve(): AuthSetup {
     !(clientId && GUID.test(clientId)) && 'EXPO_PUBLIC_ENTRA_MOBILE_CLIENT_ID',
     !(apiClientId && GUID.test(apiClientId)) && 'EXPO_PUBLIC_ENTRA_API_CLIENT_ID',
   ].filter(Boolean);
-  if (missing.length > 0) return { ok: false, reason: `Sign-in is not configured in this build (${missing.join(', ')}).` };
+  if (missing.length > 0) {
+    const list = missing.join(', ');
+    return { ok: false, reason: `Sign-in is not configured in this build (${list}).`, reasonKey: 'auth.notConfigured', reasonValues: { missing: list } };
+  }
   return {
     ok: true,
     provider: createEntraMobileAuthProvider({

@@ -9,26 +9,43 @@ import {
   type HuntStatus,
   type UpdateHuntRequest,
 } from '@rein-drop/contracts';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { ageText, joinList, MARKETPLACE_LABEL, type DealTone, type Labelled } from './deal-view.js';
 import { buildCreateHuntRequest, huntReview, type HuntFormContext, type HuntFormErrors, type HuntFormValues } from './hunt-form.js';
 import { moneyToInput } from './money.js';
-import { durationUntilText, retryText, sourceIssue, type HuntMonitoringHealth } from './source-view.js';
+import { durationUntilText, retryText, sourceIssue, sourceIssueText, type HuntMonitoringHealth } from './source-view.js';
 
 /**
  * Hunts list / detail / edit view model, shared by web and mobile. "Active" is the user-facing
  * name of LIVE. No Hot Hunt purchase: priority is always shown as Normal.
+ *
+ * Text goes through the translator (a trailing `t` parameter, English by default). The exported
+ * label constants are English-only and will be removed in step 89 - use the translated accessors
+ * (`huntStatusLabel(status, t)`, `huntFilters(t)`, ...).
  */
 
+const EN = (): Translator => translator('en');
+
+const HUNT_STATUS_KEY: Record<HuntStatus, MessageKey> = {
+  LIVE: 'hunts.statusLive',
+  PAUSED: 'hunts.statusPaused',
+  DRAFT: 'hunts.statusDraft',
+  ARCHIVED: 'hunts.statusArchived',
+};
+/** English only - use `huntStatusLabel(status, t)`; will be removed in step 89. */
 export const HUNT_STATUS_LABEL: Record<HuntStatus, Labelled> = {
   LIVE: { label: 'Active', tone: 'action' },
   PAUSED: { label: 'Paused', tone: 'info' },
   DRAFT: { label: 'Draft', tone: 'neutral' },
   ARCHIVED: { label: 'Archived', tone: 'neutral' },
 };
+export function huntStatusLabel(status: HuntStatus, t: Translator = EN()): Labelled {
+  return { label: t(HUNT_STATUS_KEY[status]), tone: HUNT_STATUS_LABEL[status].tone };
+}
 
 export type HuntListFilter = 'all' | HuntStatus;
 
-/** List tabs. "All" = everything except archived (archived hunts are history). */
+/** List tabs. "All" = everything except archived (archived hunts are history). English only - use `huntFilters(t)`; will be removed in step 89. */
 export const HUNT_FILTERS: readonly { value: HuntListFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'LIVE', label: 'Active' },
@@ -36,7 +53,33 @@ export const HUNT_FILTERS: readonly { value: HuntListFilter; label: string }[] =
   { value: 'DRAFT', label: 'Draft' },
   { value: 'ARCHIVED', label: 'Archived' },
 ];
+/** List tabs in the UI language (same order and values as HUNT_FILTERS). */
+export function huntFilters(t: Translator = EN()): { value: HuntListFilter; label: string }[] {
+  return HUNT_FILTERS.map(({ value }) => ({ value, label: value === 'all' ? t('hunts.filterAll') : t(HUNT_STATUS_KEY[value]) }));
+}
 
+const EMPTY_FILTER_KEY: Record<HuntListFilter, MessageKey> = {
+  all: 'hunts.emptyAll',
+  LIVE: 'hunts.emptyLive',
+  PAUSED: 'hunts.emptyPaused',
+  DRAFT: 'hunts.emptyDraft',
+  ARCHIVED: 'hunts.emptyArchived',
+};
+/** Empty-list title for a tab, e.g. "No paused Hunts". */
+export function huntFilterEmptyTitle(filter: HuntListFilter, t: Translator = EN()): string {
+  return t(EMPTY_FILTER_KEY[filter]);
+}
+
+const HUNT_EVENT_KEY: Record<HuntEventType, MessageKey> = {
+  CREATED: 'hunts.eventCreated',
+  EDITED: 'hunts.eventEdited',
+  ACTIVATED: 'hunts.eventActivated',
+  PAUSED: 'hunts.eventPaused',
+  RESUMED: 'hunts.eventResumed',
+  ARCHIVED: 'hunts.eventArchived',
+  RESTORED: 'hunts.eventRestored',
+};
+/** English only - use `huntEventLabel(type, t)`; will be removed in step 89. */
 export const HUNT_EVENT_LABEL: Record<HuntEventType, string> = {
   CREATED: 'Created',
   EDITED: 'Edited',
@@ -46,14 +89,17 @@ export const HUNT_EVENT_LABEL: Record<HuntEventType, string> = {
   ARCHIVED: 'Archived',
   RESTORED: 'Restored',
 };
+export function huntEventLabel(type: HuntEventType, t: Translator = EN()): string {
+  return t(HUNT_EVENT_KEY[type]);
+}
 
 const minutesSince = (iso: string, now: Date) => Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 60_000));
 
 /** "in 10 min" / "now" for an upcoming check. */
-function untilText(iso: string, now: Date): string {
+function untilText(iso: string, now: Date, t: Translator): string {
   const minutes = Math.ceil((Date.parse(iso) - now.getTime()) / 60_000);
-  if (minutes <= 0) return 'now';
-  return durationUntilText(minutes);
+  if (minutes <= 0) return t('common.now');
+  return durationUntilText(minutes, t);
 }
 
 export interface MonitoringLine {
@@ -69,51 +115,56 @@ type MarketplaceActivity = HuntActivity['marketplaces'][number];
  * What's wrong with one marketplace for this Hunt, if anything: the source's own state first
  * (it affects everyone), then this Hunt's last check.
  */
-function marketplaceProblem(m: MarketplaceActivity): string | null {
+function marketplaceProblem(m: MarketplaceActivity, t: Translator): string | null {
   const name = MARKETPLACE_LABEL[m.marketplace];
-  const issue = sourceIssue(m.source);
-  if (issue) return `${name} ${issue.phrase}`;
-  if (m.lastCheck === 'failed') return `couldn't check ${name} last time`;
-  if (m.lastCheck === 'degraded') return `${name} was slow or incomplete last time`;
+  const issue = sourceIssueText(m.source, name, t);
+  if (issue) return issue;
+  if (m.lastCheck === 'failed') return t('hunts.problemCheckFailed', { name });
+  if (m.lastCheck === 'degraded') return t('hunts.problemDegraded', { name });
   return null;
 }
 
 /** ok = every marketplace working; partial = some aren't (others continue); impaired = none are. */
 export function huntMonitoringHealth(activity: HuntActivity | null): HuntMonitoringHealth {
   if (!activity || activity.marketplaces.length === 0) return 'unknown';
-  const problems = activity.marketplaces.filter((m) => marketplaceProblem(m) !== null).length;
+  const problems = activity.marketplaces.filter((m) => marketplaceProblem(m, EN()) !== null).length;
   if (problems === 0) return activity.marketplaces.every((m) => m.lastCheck === null && m.source.status === 'unknown') ? 'unknown' : 'ok';
   return problems === activity.marketplaces.length ? 'impaired' : 'partial';
 }
 
 /** One line on what monitoring is doing right now. Never "all good" while a source isn't. */
-export function monitoringLine(hunt: Pick<Hunt, 'status' | 'marketplaces' | 'archivedAt'>, activity: HuntActivity | null, now: Date = new Date()): MonitoringLine {
-  const names = joinList(hunt.marketplaces.map((m) => MARKETPLACE_LABEL[m]));
-  const problems = (activity?.marketplaces ?? []).map(marketplaceProblem).filter((p): p is string => p !== null);
-  const last = activity?.lastCheckedAt ? `last checked ${ageText(minutesSince(activity.lastCheckedAt, now))}` : null;
+export function monitoringLine(
+  hunt: Pick<Hunt, 'status' | 'marketplaces' | 'archivedAt'>,
+  activity: HuntActivity | null,
+  now: Date = new Date(),
+  t: Translator = EN(),
+): MonitoringLine {
+  const names = joinList(hunt.marketplaces.map((m) => MARKETPLACE_LABEL[m]), t);
+  const problems = (activity?.marketplaces ?? []).map((m) => marketplaceProblem(m, t)).filter((p): p is string => p !== null);
+  const age = activity?.lastCheckedAt ? ageText(minutesSince(activity.lastCheckedAt, now), t) : null;
   switch (hunt.status) {
     case 'DRAFT':
-      return { text: 'Not watching yet', tone: 'neutral', scanning: false };
+      return { text: t('hunts.notWatchingYet'), tone: 'neutral', scanning: false };
     case 'ARCHIVED':
-      return { text: hunt.archivedAt ? `Archived ${ageText(minutesSince(hunt.archivedAt, now))}` : 'Archived', tone: 'neutral', scanning: false };
+      return { text: hunt.archivedAt ? t('hunts.archivedAgo', { age: ageText(minutesSince(hunt.archivedAt, now), t) }) : t('hunts.statusArchived'), tone: 'neutral', scanning: false };
     case 'PAUSED':
-      return { text: last ? `Paused · ${last}` : 'Paused', tone: 'info', scanning: false };
+      return { text: age ? t('hunts.pausedLastChecked', { age }) : t('hunts.statusPaused'), tone: 'info', scanning: false };
     case 'LIVE':
-      if (activity?.scanning) return { text: `Checking ${names} for the first time…`, tone: 'info', scanning: true };
-      if (problems.length > 0) return { text: `${last ? capitalize(last) : 'Watching'} · ${problems.join(' · ')}`, tone: 'fresh', scanning: false };
-      return { text: last ? `Watching · ${last}` : `Watching ${names}`, tone: 'action', scanning: false };
+      if (activity?.scanning) return { text: t('hunts.checkingFirstTime', { names }), tone: 'info', scanning: true };
+      if (problems.length > 0) return { text: [age ? t('hunts.lastChecked', { age }) : t('hunts.watching'), ...problems].join(' · '), tone: 'fresh', scanning: false };
+      return { text: age ? t('hunts.watchingLastChecked', { age }) : t('hunts.watchingNames', { names }), tone: 'action', scanning: false };
   }
 }
 
 /** "6 deals · 3 to review · 1 alert", or null when there's nothing yet. */
-export function countsLine(activity: HuntActivity | null): string | null {
+export function countsLine(activity: HuntActivity | null, t: Translator = EN()): string | null {
   if (!activity) return null;
   const c = activity.counts;
   const parts = [
-    c.deals > 0 ? `${c.deals} ${c.deals === 1 ? 'deal' : 'deals'}` : null,
-    c.toReview > 0 ? `${c.toReview} to review` : null,
-    c.alerts > 0 ? `${c.alerts} ${c.alerts === 1 ? 'alert' : 'alerts'}` : null,
-    c.bought > 0 ? `${c.bought} bought` : null,
+    c.deals > 0 ? t('hunts.countDeals', { count: c.deals }) : null,
+    c.toReview > 0 ? t('hunts.countToReview', { count: c.toReview }) : null,
+    c.alerts > 0 ? t('hunts.countAlerts', { count: c.alerts }) : null,
+    c.bought > 0 ? t('hunts.countBought', { count: c.bought }) : null,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -144,23 +195,29 @@ export interface MarketplaceRow {
 }
 
 /** Per-marketplace monitoring rows for the detail screen. */
-export function marketplaceRows(hunt: Pick<Hunt, 'status'>, activity: HuntActivity | null, now: Date = new Date()): MarketplaceRow[] {
+export function marketplaceRows(hunt: Pick<Hunt, 'status'>, activity: HuntActivity | null, now: Date = new Date(), t: Translator = EN()): MarketplaceRow[] {
   return (activity?.marketplaces ?? []).map((m) => {
-    const checked = m.lastCheckedAt ? `Checked ${ageText(minutesSince(m.lastCheckedAt, now))}` : 'Not checked yet';
+    const checked = m.lastCheckedAt ? t('hunts.rowChecked', { age: ageText(minutesSince(m.lastCheckedAt, now), t) }) : t('hunts.rowNotCheckedYet');
     const live = hunt.status === 'LIVE';
     // While the source cools down, the next check is its retry time.
-    const next = !live ? '' : m.source.nextAttemptAt ? ` · tries again ${retryText(m.source.nextAttemptAt, now)}` : m.nextCheckAt ? ` · next ${untilText(m.nextCheckAt, now)}` : ' · next check soon';
-    const issue = sourceIssue(m.source);
+    const next = !live
+      ? null
+      : m.source.nextAttemptAt
+        ? t('hunts.rowTriesAgain', { when: retryText(m.source.nextAttemptAt, now, t) })
+        : m.nextCheckAt
+          ? t('hunts.rowNext', { when: untilText(m.nextCheckAt, now, t) })
+          : t('hunts.rowNextSoon');
+    const issue = sourceIssue(m.source, t);
     const status: Labelled = issue
       ? { label: issue.label, tone: issue.tone }
       : m.lastCheck === 'failed'
-        ? { label: m.failingChecks > 1 ? `${m.failingChecks} failed checks` : 'Last check failed', tone: 'fresh' }
+        ? { label: m.failingChecks > 1 ? t('hunts.rowFailedChecks', { count: m.failingChecks }) : t('hunts.rowLastCheckFailed'), tone: 'fresh' }
         : m.lastCheck === 'degraded'
-          ? { label: 'Incomplete last time', tone: 'fresh' }
+          ? { label: t('hunts.rowIncomplete'), tone: 'fresh' }
           : m.lastCheck === 'ok'
-            ? { label: 'OK', tone: 'profit' }
-            : { label: live ? 'Starting' : 'Not checked', tone: 'neutral' };
-    return { name: MARKETPLACE_LABEL[m.marketplace], status, detail: `${checked}${next}` };
+            ? { label: t('hunts.rowOk'), tone: 'profit' }
+            : { label: live ? t('hunts.rowStarting') : t('hunts.rowNotChecked'), tone: 'neutral' };
+    return { name: MARKETPLACE_LABEL[m.marketplace], status, detail: next ? `${checked} · ${next}` : checked };
   });
 }
 
@@ -183,6 +240,16 @@ export function huntActions(status: HuntStatus): HuntDetailAction[] {
   }
 }
 
+const HUNT_ACTION_KEY: Record<HuntDetailAction, MessageKey> = {
+  start: 'hunts.actionStart',
+  edit: 'hunts.actionEdit',
+  pause: 'hunts.actionPause',
+  resume: 'hunts.actionResume',
+  archive: 'hunts.actionArchive',
+  restore: 'hunts.actionRestore',
+  activate: 'hunts.actionStart',
+};
+/** English only - use `huntActionLabel(action, t)`; will be removed in step 89. */
 export const HUNT_ACTION_LABEL: Record<HuntDetailAction, string> = {
   start: 'Start watching',
   edit: 'Edit',
@@ -192,12 +259,27 @@ export const HUNT_ACTION_LABEL: Record<HuntDetailAction, string> = {
   restore: 'Restore',
   activate: 'Start watching',
 };
+export function huntActionLabel(action: HuntDetailAction, t: Translator = EN()): string {
+  return t(HUNT_ACTION_KEY[action]);
+}
 
-/** Confirmation copy for actions that change what Rein Drop does. */
+const HUNT_ACTION_CONFIRM_KEY: Partial<Record<HuntAction, { title: MessageKey; body: MessageKey }>> = {
+  pause: { title: 'hunts.confirmPauseTitle', body: 'hunts.confirmPause' },
+  archive: { title: 'hunts.confirmArchiveTitle', body: 'hunts.confirmArchive' },
+};
+/**
+ * Confirmation copy for actions that change what Rein Drop does.
+ * English only - use `huntActionConfirm(action, t)`; will be removed in step 89.
+ */
 export const HUNT_ACTION_CONFIRM: Partial<Record<HuntAction, string>> = {
   pause: 'Rein Drop stops checking marketplaces for this Hunt until you resume it. Deals found so far stay.',
   archive: 'Archived Hunts stop watching and move to Archived. You can restore one later; it comes back paused.',
 };
+/** Confirmation for actions that change what Rein Drop does ("Pause this Hunt?" + body), or null when none is needed. */
+export function huntActionConfirm(action: HuntAction, t: Translator = EN()): { title: string; body: string } | null {
+  const keys = HUNT_ACTION_CONFIRM_KEY[action];
+  return keys ? { title: t(keys.title), body: t(keys.body) } : null;
+}
 
 // ---------------------------------------------------------------------------
 // Edit
@@ -240,8 +322,4 @@ export function buildUpdateHuntRequest(
   const name = hunt.name === defaultHuntName(hunt.query) ? defaultHuntName(built.request.query) : hunt.name;
   const { priority: _priority, ...criteria } = built.request;
   return { ok: true, request: { ...criteria, name }, review: { ...built.request, name } };
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

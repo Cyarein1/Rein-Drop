@@ -52,7 +52,7 @@ describe('money input', () => {
 describe('huntFormDefaults (Seller Snapshot -> sensible, visible defaults)', () => {
   it('preselects marketplaces and the deal target, with notes', () => {
     const { values, context, prefilled } = huntFormDefaults(snapshot(), ZA);
-    expect(context).toEqual({ currency: 'ZAR', distanceUnit: 'km', localeTag: 'en-ZA' });
+    expect(context).toMatchObject({ currency: 'ZAR', distanceUnit: 'km', localeTag: 'en-ZA', language: 'en' });
     expect(values.marketplaces).toEqual(['facebook']);
     expect(values).toMatchObject({ targetKind: 'profit', targetProfit: '500.00' });
     expect(prefilled.map((p) => p.field)).toEqual(['marketplaces', 'targetProfit']);
@@ -87,6 +87,16 @@ describe('huntFormDefaults (Seller Snapshot -> sensible, visible defaults)', () 
   it('suggests a placeholder from the categories', () => {
     expect(queryPlaceholder(snapshot())).toBe('e.g. Nintendo Switch OLED');
     expect(queryPlaceholder(null)).toMatch(/^e\.g\./);
+  });
+
+  it('German: notes, placeholder and form errors follow the language (stored, else the device fallback)', () => {
+    const { context, prefilled } = huntFormDefaults(snapshot({ dealRule: { criterion: 'min_margin', targetPercent: 35 } }), { ...ZA, language: 'de' });
+    expect(context.language).toBe('de');
+    expect(prefilled.map((p) => p.note)).toEqual(['Aus deinem Verkäuferprofil (wo du einkaufst)', 'Aus deinem Verkäuferprofil (Mindestmarge)']);
+    expect(huntFormDefaults(null, null, 'de-AT').context.language).toBe('de');
+    expect(queryPlaceholder(null, context.t)).toBe('z. B. Nintendo Switch OLED, mit OVP');
+    const result = buildCreateHuntRequest({ ...EMPTY_HUNT_FORM, query: 'ps5', marketplaces: ['ebay'], targetKind: 'profit', targetProfit: '' }, context);
+    expect(result.ok === false && result.errors.targetProfit).toBe('Gib deinen gewünschten Gewinn ein oder wähle „Kein Ziel“');
   });
 });
 

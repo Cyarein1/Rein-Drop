@@ -105,6 +105,28 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - Clients still use `GET /me/entitlements` (+ capabilities); move web / mobile to `GET /me/access` (per-product states, saved-Hunt usage) when Sell or the access UI needs it. During a grace period `/me/entitlements` shows the paid plan but a null subscription summary - step 79.
 - Checkout refuses a second paid plan of ANY family (`currentPaid`) - when Sell is sold, allow one paid subscription per product (Source + Sell) or Complete instead - step 79.
 - Phase D - product families on plans (Source active; Sell / Complete inactive), family-scoped entitlement keys, a small server-driven feature-flag mechanism - step 76.
+- **Target countries US / UK / Canada / Australia / Germany (owner, 2026-10-15)** - [APP_STORE_READINESS.md](release/APP_STORE_READINESS.md) section 6a. To build or decide:
+  - **eBay site per Hunt owner's country** (EBAY_US / GB / CA / AU / DE); today one site per deployment;
+  - ~~German UI / store listing: launch in English or translate~~ - decided: translate (step 88; see the German items below);
+  - **Quebec French-language rules** (legal review);
+  - **Impressum** for Germany;
+  - **EU DSA trader status** in App Store Connect / Play Console;
+  - **sales tax / VAT / GST** on web subscriptions (Stripe Tax);
+  - **privacy laws per country** in the privacy policy (CCPA / CPRA, UK GDPR, PIPEDA / Law 25, Privacy Act 1988, GDPR);
+  - **a Facebook Marketplace production source** (none in any country).
+
+  Step 87.
+- In-app marketplace logos (eBay wordmark, Facebook icon): check brand / trademark terms for commercial in-app use - step 87.
+- **German native-speaker review (you / a reviewer):** every `packages/i18n/src/messages/de/*` file is a Claude draft (`TRANSLATION_STATUS.de = 'draft'`). Legal texts are not translated. Wording to decide ([i18n/GLOSSARY_DE.md](i18n/GLOSSARY_DE.md)):
+  - targets and scores: „Gewinnziel“ / „Mindestgewinn“ (the user's own targets), „Sicherheit“ (confidence), „Deal-Einschätzung“, the card headers „POTENZIAL“ / „SICHERHEIT“, raw strength values in the missed-deal line;
+  - plans and billing: „wechsle auf einen größeren Plan“, „Kulanzzeit“, „Tarif“;
+  - deals: „Gerade reingekommen“ (Just dropped), „Wieder einblenden“ (Undo ignore), „defekt / für Ersatzteile“;
+  - inventory and Sell: „Beim Kauf“, „Titelbild“ / „Als Titelbild“, „Vor dem Veröffentlichen noch zu erledigen: {count}“;
+  - general: „Zur Startseite“ (mobile has no Home tab - the English "Go to Home" may need changing too), „Dein Konto braucht deine Aufmerksamkeit“, „Telefon“ vs „Handy“ - step 88.
+- **German, still to build:**
+  - **step 89:** the web app (server and client translator, a Language switch in Settings), then remove client-core's deprecated English constants;
+  - **step 90:** in the user's language: push / worker titles and bodies, API messages people see (go-live problems, alert reasons, risk notes, marketplace notes, AI-draft checks, errors, mapHuntErrors, cost labels). Also step 90: the German landing page (routing) and the German App Store / Play listing drafts - step 88.
+- Phone check: switch the phone to Deutsch (or Account > Language) on a development build and walk the tabs for truncated German labels (tab bar, buttons, card headers) - step 88.
 - **App-store release blockers RB1-RB9** ([release/APP_STORE_READINESS.md](release/APP_STORE_READINESS.md) section 6): account deletion (in-app + web), app privacy policy + in-app link, App Privacy / Data safety forms, a review account with paid access + seed data (no MFA), remove placeholder / non-working features from store builds (stale Account "Placeholder screen" banner, "Coming soon", simulated eBay publishing, Facebook offered without a production source), third-party AI disclosure for "Use AI", EAS / bundle id / APNs / FCM, legal sign-off on 3.1.3(f), Entra sign-up and social-login decisions - step 86.
 - Step 85 review left these open (details and recommended fixes: [testing/E2E_REVIEW_2026-10-15.md](testing/E2E_REVIEW_2026-10-15.md) section 7): U1 Sell open to all while `/me/access` says `sell: none` (gate `/sell/*` when Sell is priced); U3 rare duplicate push after a worker crash; U4 one alert per Hunt for the same listing; U6 pushes to a phone with an expired session for up to 90 days; plus the not-executed device / browser / real-provider checks (section 6) - step 85.
 - **Apply step 84 to your development database** (`pnpm db:deploy`, restart the API and worker) - adds the push receipts table - step 84.

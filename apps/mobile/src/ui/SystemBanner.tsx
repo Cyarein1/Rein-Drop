@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { bannerToneColors, fontSize, radius, space, tones, type BannerTone } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from './fonts';
 
 export interface SystemBannerProps {
@@ -12,16 +13,10 @@ export interface SystemBannerProps {
   action?: ReactNode;
 }
 
-const TONE_LABEL: Record<BannerTone, string> = {
-  info: 'Info',
-  success: 'Success',
-  warning: 'Warning',
-  error: 'Error',
-};
-
 export function SystemBanner({ tone = 'info', title, message, action }: SystemBannerProps) {
+  const tr = useT();
   const t = tones[bannerToneColors[tone]];
-  const spoken = `${TONE_LABEL[tone]}: ${title}${message ? `. ${message}` : ''}`;
+  const spoken = message ? tr('common.bannerSpokenMessage', { tone, title, message }) : tr('common.bannerSpoken', { tone, title });
   // Live regions are Android-only: announce errors and successes explicitly (iOS too).
   useEffect(() => {
     if (tone === 'error' || tone === 'success') AccessibilityInfo.announceForAccessibility(spoken);

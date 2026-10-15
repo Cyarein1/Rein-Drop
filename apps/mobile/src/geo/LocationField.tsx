@@ -4,6 +4,7 @@ import { ApiError, GEO_QUERY_MIN_LENGTH, type GeoPlace, type UserArea } from '@r
 import { SUGGEST_DEBOUNCE_MS } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, wash } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { Button, font, TextInput } from '@/ui';
 
 export interface LocationFieldProps {
@@ -30,6 +31,7 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
   const [query, setQuery] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const requestRef = useRef(0);
+  const t = useT();
 
   useEffect(() => {
     if (!suggestions || query === null) return;
@@ -45,21 +47,21 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
         if (ticket !== requestRef.current) return;
         setPlaces(found);
         setNotice(null);
-        if (found.length > 0) AccessibilityInfo.announceForAccessibility(`${found.length} suggestion${found.length === 1 ? '' : 's'} below`);
+        if (found.length > 0) AccessibilityInfo.announceForAccessibility(t('location.suggestionsBelow', { count: found.length }));
       } catch (err) {
         if (ticket !== requestRef.current) return;
         setPlaces([]);
-        setNotice(err instanceof ApiError ? err.message : "Suggestions aren't available right now - you can still type the place.");
+        setNotice(err instanceof ApiError ? err.message : t('location.suggestionsUnavailable'));
       }
     }, SUGGEST_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [query, suggestions]);
+  }, [query, suggestions, t]);
 
   const pick = (place: GeoPlace) => {
     requestRef.current += 1;
     setPlaces([]);
     onPick(place);
-    AccessibilityInfo.announceForAccessibility(`${place.label} selected`);
+    AccessibilityInfo.announceForAccessibility(t('location.selected', { place: place.label }));
   };
 
   return (
@@ -70,19 +72,19 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
         placeholder={placeholder}
         value={value}
         autoCorrect={false}
-        onChangeText={(t) => {
-          onType(t);
-          setQuery(t);
+        onChangeText={(text) => {
+          onType(text);
+          setQuery(text);
         }}
         error={error}
       />
       {places.length > 0 && (
-        <View style={styles.list} accessibilityLabel={`${label} suggestions`}>
+        <View style={styles.list} accessibilityLabel={t('location.suggestionsFor', { label })}>
           {places.map((place, i) => (
             <Pressable
               key={`${place.label}-${i}`}
               accessibilityRole="button"
-              accessibilityLabel={`Use ${place.label}`}
+              accessibilityLabel={t('location.use', { place: place.label })}
               onPress={() => pick(place)}
               style={({ pressed }) => [styles.option, i > 0 && styles.divider, pressed && styles.pressed]}
             >
@@ -95,7 +97,7 @@ export function LocationField({ label, hint, placeholder, value, onType, onPick,
       {area && onUseArea && area.label !== value && (
         <View style={styles.start}>
           <Button variant="secondary" onPress={() => onUseArea(area)}>
-            {`Use my area: ${area.label}`}
+            {t('location.useMyArea', { place: area.label })}
           </Button>
         </View>
       )}

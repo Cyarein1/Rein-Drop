@@ -14,6 +14,7 @@ import {
   type SellerSnapshot,
   type UserLocale,
 } from '@rein-drop/contracts';
+import { resolveLanguage, translator, type Language, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { formatMoney, moneyToInput, parseMoneyInput } from './money.js';
 
 /**
@@ -55,6 +56,9 @@ export interface HuntFormContext {
   distanceUnit: DistanceUnit;
   /** BCP 47 tag for number/currency formatting, e.g. "en-ZA". */
   localeTag: string;
+  /** UI language and its translator (@rein-drop/i18n) - every user-facing string goes through `t`. */
+  language: Language;
+  t: Translator;
 }
 
 /** A value pre-filled from the Seller Snapshot - always shown to the user, never locked. */
@@ -80,11 +84,24 @@ export const EMPTY_HUNT_FORM: HuntFormValues = {
 /** Currency when the user's locale is not known yet (fallback, not a product decision). */
 export const FALLBACK_CURRENCY = 'USD';
 
-export function huntFormContext(locale: UserLocale | null): HuntFormContext {
+/** A display context from explicit values (tests, previews); English unless a language is given. */
+export function displayContext(base: Pick<HuntFormContext, 'currency' | 'distanceUnit' | 'localeTag'>, language: Language = 'en'): HuntFormContext {
+  return { ...base, language, t: translator(language) };
+}
+
+/**
+ * Display context for a signed-in person: currency, distance unit, number formatting and UI
+ * language from their locale. `fallbackLanguage` (e.g. the device / browser language) applies when
+ * no locale is stored yet.
+ */
+export function huntFormContext(locale: UserLocale | null, fallbackLanguage?: string | null): HuntFormContext {
+  const language = resolveLanguage(locale?.language ?? fallbackLanguage);
   return {
     currency: locale?.currency ?? FALLBACK_CURRENCY,
     distanceUnit: locale?.distanceUnit ?? 'km',
-    localeTag: locale ? `${locale.language}-${locale.countryCode}` : 'en',
+    localeTag: locale ? `${locale.language}-${locale.countryCode}` : language,
+    language,
+    t: translator(language),
   };
 }
 
@@ -105,20 +122,23 @@ const QUERY_EXAMPLES: Record<string, string> = {
 };
 
 /** Example search terms for the query placeholder, based on what the seller hunts for. */
-export function queryPlaceholder(snapshot: SellerSnapshot | null): string {
+export function queryPlaceholder(snapshot: SellerSnapshot | null, t: Translator = translator('en')): string {
   const category = snapshot?.categories.find((c) => c in QUERY_EXAMPLES);
-  return `e.g. ${category ? QUERY_EXAMPLES[category] : 'Nintendo Switch OLED, boxed'}`;
+  return t('hunts.queryPlaceholder', { example: category ? QUERY_EXAMPLES[category] : t('hunts.queryExampleDefault') });
 }
 
 /**
  * Sensible starting values from the Seller Snapshot (Blueprint section 5: "Preselect based on
- * Seller Snapshot; user can change"). Every pre-filled field gets a visible note.
+ * Seller Snapshot; user can change"). Every pre-filled field gets a visible note, in the context's
+ * language (`fallbackLanguage` as in `huntFormContext`).
  */
 export function huntFormDefaults(
   snapshot: SellerSnapshot | null,
   locale: UserLocale | null,
+  fallbackLanguage?: string | null,
 ): { values: HuntFormValues; context: HuntFormContext; prefilled: PrefillNote[] } {
-  const context = huntFormContext(locale);
+  const context = huntFormContext(locale, fallbackLanguage);
+  const { t } = context;
   const values: HuntFormValues = { ...EMPTY_HUNT_FORM };
   const prefilled: PrefillNote[] = [];
   const usable = snapshot && snapshot.isReseller !== false;
@@ -128,7 +148,7 @@ export function huntFormDefaults(
     : [];
   if (fromSources.length > 0) {
     values.marketplaces = fromSources.sort();
-    prefilled.push({ field: 'marketplaces', note: 'From your Seller Snapshot (where you source)' });
+    prefilled.push({ field: 'marketplaces', note: t('hunts.prefillSources') });
   } else {
     values.marketplaces = ['ebay', 'facebook'];
   }
@@ -137,14 +157,14 @@ export function huntFormDefaults(
   if (rule?.criterion === 'min_profit' && rule.target?.currency === context.currency) {
     values.targetKind = 'profit';
     values.targetProfit = moneyToInput(rule.target);
-    prefilled.push({ field: 'targetProfit', note: 'From your Seller Snapshot (minimum profit)' });
+    prefilled.push({ field: 'targetProfit', note: t('hunts.prefillMinProfit') });
   } else if (rule?.criterion === 'min_margin' && rule.targetPercent !== null) {
     values.targetKind = 'margin';
     values.targetMargin = String(rule.targetPercent);
-    prefilled.push({ field: 'targetMargin', note: 'From your Seller Snapshot (minimum margin)' });
+    prefilled.push({ field: 'targetMargin', note: t('hunts.prefillMinMargin') });
   } else if (rule?.criterion === 'max_buy_price' && rule.target?.currency === context.currency) {
     values.maxPrice = moneyToInput(rule.target);
-    prefilled.push({ field: 'maxPrice', note: 'From your Seller Snapshot (max buy price)' });
+    prefilled.push({ field: 'maxPrice', note: t('hunts.prefillMaxBuyPrice') });
   }
 
   return { values, context, prefilled };
@@ -176,21 +196,22 @@ export function buildCreateHuntRequest(
   values: HuntFormValues,
   ctx: HuntFormContext,
 ): { ok: true; request: CreateHuntRequest } | { ok: false; errors: HuntFormErrors } {
+  const { t } = ctx;
   const errors: HuntFormErrors = {};
 
-  const maxPrice = parseMoneyInput(values.maxPrice, ctx.currency);
+  const maxPrice = parseMoneyInput(values.maxPrice, ctx.currency, t);
   if (!maxPrice.ok) errors.maxPrice = maxPrice.message;
 
   let target: CreateHuntRequest['target'] = null;
   if (values.targetKind === 'profit') {
-    const profit = parseMoneyInput(values.targetProfit, ctx.currency);
+    const profit = parseMoneyInput(values.targetProfit, ctx.currency, t);
     if (!profit.ok) errors.targetProfit = profit.message;
-    else if (!profit.money) errors.targetProfit = 'Enter the profit you want, or choose "No target"';
+    else if (!profit.money) errors.targetProfit = t('hunts.errorTargetProfit');
     else target = { kind: 'profit', amount: profit.money };
   } else if (values.targetKind === 'margin') {
     const percent = Number(values.targetMargin.replace('%', '').trim());
     if (!values.targetMargin.trim() || !Number.isInteger(percent)) {
-      errors.targetMargin = 'Enter a whole percentage, e.g. 30';
+      errors.targetMargin = t('hunts.errorTargetMargin');
     } else {
       target = { kind: 'margin', percent };
     }
@@ -205,13 +226,13 @@ export function buildCreateHuntRequest(
       const radius = Number(radiusText);
       const maxInUnit = kmToUnit(HUNT_RADIUS_KM_MAX, ctx.distanceUnit);
       if (!Number.isInteger(radius) || radius < 1 || radius > maxInUnit) {
-        errors.radius = `Enter a whole number between 1 and ${maxInUnit} ${ctx.distanceUnit}`;
+        errors.radius = t('hunts.errorRadius', { max: maxInUnit, unit: ctx.distanceUnit });
       } else {
         radiusKm = unitToKm(radius, ctx.distanceUnit);
       }
     }
     if (text) location = { text, radiusKm, point: values.locationPoint };
-    else if (radiusText) errors.locationText = 'Add a location for the radius';
+    else if (radiusText) errors.locationText = t('location.errorRadiusNeedsLocation');
   }
 
   const parsed = createHuntRequestSchema.safeParse({
@@ -232,7 +253,7 @@ export function buildCreateHuntRequest(
         );
     // Client-side parsing messages are more specific than schema messages for the same field.
     const merged: HuntFormErrors = { ...schemaErrors, ...errors };
-    return { ok: false, errors: Object.keys(merged).length > 0 ? merged : { form: 'Please check the form' } };
+    return { ok: false, errors: Object.keys(merged).length > 0 ? merged : { form: t('hunts.errorCheckForm') } };
   }
   return { ok: true, request: parsed.data };
 }
@@ -264,64 +285,73 @@ export function mapHuntErrors(details: readonly ApiErrorDetail[]): HuntFormError
 // Review
 // ---------------------------------------------------------------------------
 
+/** Marketplace names are never translated. */
 const MARKETPLACE_LABEL: Record<MarketplaceKey, string> = { ebay: 'eBay', facebook: 'Facebook Marketplace' };
-const CONDITION_LABEL: Record<HuntCondition, string> = { new: 'new', used: 'used', refurbished: 'refurbished' };
+const CONDITION_KEY: Record<HuntCondition, MessageKey> = { new: 'hunts.conditionNew', used: 'hunts.conditionUsed', refurbished: 'hunts.conditionRefurbished' };
 
 export interface HuntReview {
-  /** One plain-English paragraph. */
+  /** One plain-language paragraph in the UI language. */
   sentence: string;
   /** Labelled facts for a checklist-style review. */
   items: { label: string; value: string }[];
-  /** Things that will stop the hunt going live later (not blocking for a draft). */
+  /** Things that will stop the hunt going live later (not blocking for a draft). From the API contracts (English). */
   warnings: string[];
 }
 
-function joinWords(words: string[], last = 'and'): string {
+/** "a, b and c" / "a, b or c" in the UI language. */
+function joinWords(words: string[], t: Translator, last: 'and' | 'or' = 'and'): string {
   if (words.length <= 1) return words[0] ?? '';
-  return `${words.slice(0, -1).join(', ')} ${last} ${words.at(-1)}`;
+  return t(last === 'and' ? 'common.listAnd' : 'common.listOr', { items: words.slice(0, -1).join(', '), last: words.at(-1) });
 }
 
-/** Plain-English review of what Rein Drop will watch (Blueprint section 5: "Review"). */
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Plain-language review of what Rein Drop will watch (Blueprint section 5: "Review"). */
 export function huntReview(request: CreateHuntRequest, ctx: HuntFormContext): HuntReview {
-  const where = joinWords(request.marketplaces.map((m) => MARKETPLACE_LABEL[m]));
-  const location = request.location
-    ? request.location.radiusKm
-      ? `within ${kmToUnit(request.location.radiusKm, ctx.distanceUnit)} ${ctx.distanceUnit} of ${request.location.text}`
-      : `around ${request.location.text}`
-    : null;
-  const conditionList = request.conditions.length
-    ? joinWords(request.conditions.map((c) => CONDITION_LABEL[c]), 'or')
-    : null;
-  const condition = conditionList ? `${conditionList} condition` : 'any condition';
+  const { t } = ctx;
+  const where = joinWords(request.marketplaces.map((m) => MARKETPLACE_LABEL[m]), t);
+  const radius = request.location?.radiusKm ? `${kmToUnit(request.location.radiusKm, ctx.distanceUnit)} ${ctx.distanceUnit}` : null;
+  const conditionList = request.conditions.length ? joinWords(request.conditions.map((c) => t(CONDITION_KEY[c])), t, 'or') : null;
   const maxPrice = request.maxPrice ? formatMoney(request.maxPrice, ctx.localeTag) : null;
+  const targetAmount = request.target?.kind === 'profit' ? formatMoney(request.target.amount, ctx.localeTag) : null;
+  const targetPercent = request.target?.kind === 'margin' ? request.target.percent : null;
+
+  const sentences = [
+    t('hunts.reviewSentence', {
+      query: request.query,
+      where,
+      place: request.location ? (radius ? 'within' : 'around') : 'none',
+      radius,
+      location: request.location?.text,
+      hasConditions: conditionList ? 'yes' : 'no',
+      conditions: conditionList,
+      hasMax: maxPrice ? 'yes' : 'no',
+      maxPrice,
+    }),
+  ];
+  if (targetAmount) sentences.push(t('hunts.reviewTargetProfit', { amount: targetAmount }));
+  if (targetPercent !== null) sentences.push(t('hunts.reviewTargetMargin', { percent: targetPercent }));
+  if (request.exclusions.length) {
+    sentences.push(t('hunts.reviewExclusions', { words: joinWords(request.exclusions.map((text) => t('common.quoted', { text })), t, 'or') }));
+  }
+
   const target =
-    request.target?.kind === 'profit'
-      ? `at least ${formatMoney(request.target.amount, ctx.localeTag)} profit`
-      : request.target?.kind === 'margin'
-        ? `at least ${request.target.percent}% margin`
-        : null;
-
-  const parts = [`Rein Drop will look for “${request.query}” on ${where}`];
-  if (location) parts.push(location);
-  parts.push(`in ${condition}`);
-  let sentence = parts.join(' ');
-  if (maxPrice) sentence += `, priced at ${maxPrice} or less`;
-  sentence += '.';
-  if (target) sentence += ` It will favour deals with ${target}.`;
-  if (request.exclusions.length) sentence += ` Listings mentioning ${joinWords(request.exclusions.map((e) => `“${e}”`), 'or')} are ignored.`;
-
+    targetAmount !== null
+      ? t('hunts.reviewTargetProfitValue', { amount: targetAmount })
+      : targetPercent !== null
+        ? t('hunts.reviewTargetMarginValue', { percent: targetPercent })
+        : t('hunts.reviewNone');
   const items = [
-    { label: 'Hunting for', value: request.query },
-    { label: 'Marketplaces', value: where },
-    ...(location ? [{ label: 'Location', value: location.replace(/^within |^around /, '') }] : []),
-    {
-      label: 'Condition',
-      value: conditionList ? conditionList.charAt(0).toUpperCase() + conditionList.slice(1) : 'Any condition',
-    },
-    { label: 'Max price', value: maxPrice ?? 'No limit' },
-    { label: 'Target', value: target ? target.charAt(0).toUpperCase() + target.slice(1) : 'None' },
-    { label: 'Ignoring', value: request.exclusions.length ? request.exclusions.join(', ') : 'Nothing' },
+    { label: t('hunts.reviewHuntingFor'), value: request.query },
+    { label: t('hunts.reviewMarketplaces'), value: where },
+    ...(request.location
+      ? [{ label: t('hunts.reviewLocation'), value: radius ? t('hunts.reviewLocationWithin', { radius, location: request.location.text }) : request.location.text }]
+      : []),
+    { label: t('hunts.reviewCondition'), value: conditionList ? capitalize(conditionList) : t('hunts.reviewAnyCondition') },
+    { label: t('hunts.reviewMaxPrice'), value: maxPrice ?? t('common.noLimit') },
+    { label: t('hunts.reviewTarget'), value: target },
+    { label: t('hunts.reviewIgnoring'), value: request.exclusions.length ? request.exclusions.join(', ') : t('hunts.reviewNothing') },
   ];
 
-  return { sentence, items, warnings: huntLiveReadinessProblems(request) };
+  return { sentence: sentences.join(' '), items, warnings: huntLiveReadinessProblems(request) };
 }

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { ApiError, type ActivationBlockReason, type EntitlementEvaluation, type Hunt } from '@rein-drop/api-client';
-import { accountSiteLine, companionAccessSummary, companionActions, companionReasonText, huntFormContext, huntReview } from '@rein-drop/client-core';
+import { accountSiteLine, companionAccessSummary, companionActions, companionReasonText, huntReview } from '@rein-drop/client-core';
 import { fontSize, roles } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { useSession } from '@/auth/SessionProvider';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext, useT } from '@/i18n/useT';
 import { PushCard } from '@/notifications/PushCard';
 import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
@@ -34,6 +34,7 @@ function StartWatchingLoader() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [state, setState] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Loaded }>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const t = useT();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +55,7 @@ function StartWatchingLoader() {
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
-        <LoadingState label="Checking your access…" />
+        <LoadingState label={t('hunts.checkingAccess')} />
       </View>
     );
   }
@@ -63,7 +64,7 @@ function StartWatchingLoader() {
       <Screen>
         <SystemBanner
           tone="error"
-          title="Couldn't check this Hunt"
+          title={t('hunts.checkFailed')}
           message={state.message}
           action={
             <Button
@@ -73,7 +74,7 @@ function StartWatchingLoader() {
                 setAttempt((n) => n + 1);
               }}
             >
-              Try again
+              {t('hunts.tryAgain')}
             </Button>
           }
         />
@@ -85,18 +86,18 @@ function StartWatchingLoader() {
 
 function StartWatching({ hunt, entitlements, reasons: initialReasons }: Loaded) {
   const router = useRouter();
-  const session = useSession();
-  const context = huntFormContext(session.user.locale);
+  const context = useDisplayContext();
+  const { t } = context;
   const [live, setLive] = useState<Hunt | null>(hunt.status === 'LIVE' ? hunt : null);
   const [reasons, setReasons] = useState(initialReasons);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE);
+  const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE, t);
 
   // The success state only changes the header: say it out loud.
   useEffect(() => {
-    if (live) AccessibilityInfo.announceForAccessibility(`Your Hunt ${live.name} is live`);
-  }, [live]);
+    if (live) AccessibilityInfo.announceForAccessibility(t('hunts.liveAnnounce', { name: live.name }));
+  }, [live, t]);
 
   const start = async () => {
     setBusy(true);
@@ -115,17 +116,17 @@ function StartWatching({ hunt, entitlements, reasons: initialReasons }: Loaded) 
   if (live) {
     return (
       <Screen>
-        <Stack.Screen options={{ title: 'Hunt is live' }} />
-        <Card title={live.name} action={<Badge tone="action">Live</Badge>}>
+        <Stack.Screen options={{ title: t('hunts.liveTitle') }} />
+        <Card title={live.name} action={<Badge tone="action">{t('hunts.liveBadge')}</Badge>}>
           <Text style={[styles.body, font('regular')]}>{huntReview(live, context).sentence}</Text>
         </Card>
-        <Card title="What happens next">
-          <Text style={[styles.body, font('regular')]}>You can leave Rein Drop. We&apos;ll alert you when something worth reviewing appears.</Text>
+        <Card title={t('hunts.nextTitle')}>
+          <Text style={[styles.body, font('regular')]}>{t('hunts.nextBody')}</Text>
         </Card>
         {/* The moment push is worth asking for: a Hunt is now live (never on app launch). */}
         <PushCard variant="prompt" />
         <Button onPress={() => router.dismissTo('/hunts')} fullWidth>
-          Go to Hunts
+          {t('hunts.goToHunts')}
         </Button>
       </Screen>
     );
@@ -134,38 +135,38 @@ function StartWatching({ hunt, entitlements, reasons: initialReasons }: Loaded) 
   const actions = companionActions(reasons);
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Start watching' }} />
+      <Stack.Screen options={{ title: t('hunts.actionStart') }} />
       <Card>
         <Text style={[styles.body, font('regular')]}>{huntReview(hunt, context).sentence}</Text>
       </Card>
-      <Text style={[styles.muted, font('regular')]}>{companionAccessSummary(entitlements)}</Text>
+      <Text style={[styles.muted, font('regular')]}>{companionAccessSummary(entitlements, t)}</Text>
 
       {reasons.length > 0 ? (
         <>
           <SystemBanner
             tone="info"
-            title="This Hunt can't start yet - it's saved as a draft"
-            message={[...reasons.map(companionReasonText), ...(accountLine ? [accountLine] : [])].join('\n')}
+            title={t('hunts.cantStartTitle')}
+            message={[...reasons.map((r) => companionReasonText(r, t)), ...(accountLine ? [accountLine] : [])].join('\n')}
           />
           {actions.pauseAnother && (
             <Button onPress={() => router.push('/hunts')} fullWidth>
-              Manage live Hunts
+              {t('hunts.manageLive')}
             </Button>
           )}
           {actions.editHunt && (
             <Button variant={actions.pauseAnother ? 'secondary' : 'primary'} onPress={() => router.push({ pathname: '/hunts/[id]/edit', params: { id: hunt.id } })} fullWidth>
-              Edit this Hunt
+              {t('hunts.editThis')}
             </Button>
           )}
         </>
       ) : (
         <Button onPress={start} loading={busy} fullWidth>
-          Start watching
+          {t('hunts.actionStart')}
         </Button>
       )}
-      {error && <SystemBanner tone="error" title="Couldn't start" message={error} />}
+      {error && <SystemBanner tone="error" title={t('hunts.startFailed')} message={error} />}
       <Button variant="text" onPress={() => router.dismissTo('/hunts')} disabled={busy}>
-        Not now - keep it as a draft
+        {t('hunts.keepDraft')}
       </Button>
     </Screen>
   );

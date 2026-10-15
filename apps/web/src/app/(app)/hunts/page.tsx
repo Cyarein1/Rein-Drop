@@ -5,13 +5,12 @@ import {
   countsLine,
   HUNT_FILTERS,
   HUNT_STATUS_LABEL,
-  joinList,
-  MARKETPLACE_LABEL,
   monitoringLine,
   planLimitState,
   type HuntListFilter,
 } from "@rein-drop/client-core";
 import { getServerApiClient } from "@/auth";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import { Protected } from "@/auth/Protected";
 import { Badge, ButtonLink, Card, EmptyState, Page, ProductState, Spinner, SystemBanner } from "@/components/ui";
 import { SourceBanner } from "@/components/SourceBanner";
@@ -143,7 +142,7 @@ function HuntCard({ hunt, activity }: { hunt: Hunt; activity: HuntActivity | nul
         <Badge tone={status.tone}>{status.label}</Badge>
       </div>
       <p className={styles.meta}>
-        {joinList(hunt.marketplaces.map((m) => MARKETPLACE_LABEL[m]))}
+        {hunt.marketplaces.map((m, i) => (<span key={m}>{i > 0 && " " }<MarketplaceName marketplace={m} /></span>))}
         {hunt.location ? ` · ${hunt.location.text}` : ""}
       </p>
       <p className={styles.monitoring} data-tone={monitoring.tone}>

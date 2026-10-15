@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AccessResponse } from '@rein-drop/contracts';
-import { accessLoadFor, accessLoadReducer, companionAccessView, companionUsageLines, NO_PAID_ACCESS_LINE, type AccessLoad } from './companion-account.js';
-import { SELLING_WORDS } from './companion-access.js';
+import { translator } from '@rein-drop/i18n';
+import { accessLoadFor, accessLoadReducer, companionAccessView, companionUsageLines, NO_PAID_ACCESS_LINE, noPaidAccessLine, type AccessLoad } from './companion-account.js';
+import { SELLING_WORDS, SELLING_WORDS_DE } from './companion-access.js';
 
 type Source = AccessResponse['products']['source'];
 const LIMITS: Source['limits'] = {
@@ -73,6 +74,24 @@ describe('companion account access (decision 0018)', () => {
 
   it('usage lines', () => {
     expect(companionUsageLines(access({}))).toEqual(['Live Hunts: 1 of 1', 'Saved Hunts: 3 (no limit)']);
+  });
+
+  it('German (draft): same states, neutral wording, no German selling words', () => {
+    const de = translator('de');
+    const viewDe = (a: AccessResponse) => companionAccessView(a, 'de-DE', de);
+    for (const [name, a, kind, paid] of STATES) {
+      const v = viewDe(a);
+      expect([v.kind, v.paidFeatures], name).toEqual([kind, paid]);
+    }
+    expect(viewDe(STATES[0]![1]).lines[0]).toBe(noPaidAccessLine(de));
+    expect(noPaidAccessLine(de)).toBe('Dieses Konto hat derzeit keinen Zugang zu kostenpflichtigen Funktionen.');
+    expect(viewDe(STATES[3]![1]).lines[0]).toBe('Dein Testzugang läuft bis 14.11.2026.');
+    expect(viewDe(STATES[6]![1]).lines.join(' ')).toMatch(/bleiben erhalten.*pausiert, nicht gelöscht/);
+    expect(companionUsageLines(access({}), de)).toEqual(['Aktive Hunts: 1 von 1', 'Gespeicherte Hunts: 3 (unbegrenzt)']);
+    const text = STATES.flatMap(([, a]) => [viewDe(a).label, ...viewDe(a).lines, ...companionUsageLines(a, de)]);
+    expect(text.filter((t) => SELLING_WORDS_DE.test(t) || SELLING_WORDS.test(t) || /website|webseite|\.com/i.test(t))).toEqual([]);
+    // English constants unchanged until the apps switch (step 89).
+    expect(noPaidAccessLine(translator('en'))).toBe(NO_PAID_ACCESS_LINE);
   });
 });
 

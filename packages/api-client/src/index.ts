@@ -176,6 +176,7 @@ export {
   entraDiscoveryUrl,
   capabilitiesFor,
   capability,
+  countryFromLocaleTag,
   detectedLocaleRequest,
   FEATURES,
   GEO_QUERY_MIN_LENGTH,

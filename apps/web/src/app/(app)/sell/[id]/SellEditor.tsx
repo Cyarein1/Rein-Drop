@@ -15,6 +15,7 @@ import {
   type SellForm,
 } from "@rein-drop/client-core";
 import { Badge, Button, Card, ChoiceGroup, SystemBanner, TextInput } from "@/components/ui";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import {
   addSourcePhoto,
   confirmPosted,
@@ -287,7 +288,7 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
         <ChoiceGroup
           multiple
           legend="Marketplaces"
-          options={marketplaces.items.map((m) => ({ value: m.marketplace, label: m.label }))}
+          options={marketplaces.items.map((m) => ({ value: m.marketplace, label: m.label, icon: <MarketplaceName marketplace={m.marketplace} size={18} showName={false} /> }))}
           value={chosen}
           onChange={setChosen}
         />
@@ -316,7 +317,7 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
               return (
                 <li key={c.marketplace} className={styles.channel}>
                   <div className={styles.badges}>
-                    <strong>{v.name}</strong>
+                    <strong><MarketplaceName marketplace={c.marketplace} size={18} /></strong>
                     <Badge tone={v.tone}>{v.label}</Badge>
                     {c.url && (
                       <a href={c.url} target="_blank" rel="noreferrer">
@@ -333,7 +334,7 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
                           Copy text
                         </Button>
                         <a className={styles.linkButton} href={c.assist.openUrl} target="_blank" rel="noreferrer">
-                          Open {v.name} ↗
+                          <span aria-hidden><MarketplaceName marketplace={c.marketplace} showName={false} /></span> Open {v.name} ↗
                         </a>
                       </div>
                       <TextInput label="Link to your listing (optional)" value={postedUrl} placeholder="https://www.facebook.com/marketplace/item/..." onChange={(e) => setPostedUrl(e.target.value)} />

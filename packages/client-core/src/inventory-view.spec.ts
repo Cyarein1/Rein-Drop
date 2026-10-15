@@ -1,10 +1,14 @@
+import { displayContext } from './hunt-form.js';
 import { describe, expect, it } from 'vitest';
 import { compareAmounts, realizedResult, type InventoryItem, type Money } from '@rein-drop/contracts';
 import {
   buildPurchaseUpdate,
   buildSaleRequest,
   dayShortcuts,
+  INVENTORY_FILTERS,
   inventoryDetailView,
+  inventoryEmptyText,
+  inventoryFilters,
   inventoryRowView,
   isValidDay,
   localDay,
@@ -14,10 +18,11 @@ import {
   saleFormDefaults,
   salePreview,
   saleResultView,
+  soldWhereOptions,
   type SaleForm,
 } from './inventory-view.js';
 
-const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
+const ZA = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' });
 const ZAR = (amountMinor: number): Money => ({ amountMinor, currency: 'ZAR' });
 const nbsp = (s: string | null | undefined) => s?.replace(/[  ]/g, ' ');
 // Local-time instants so the tests pass in any time zone.
@@ -237,6 +242,35 @@ describe('Sale Result', () => {
     const item = sold(650_000, []);
     const usdSale = { ...item, sale: { ...item.sale!, price: { amountMinor: 35_000, currency: 'USD' } }, result: { status: 'unavailable' as const, reason: 'currency_mismatch' as const } };
     expect(saleResultView(usdSale, ZA)).toMatchObject({ headline: 'Sold', celebrate: false, tone: 'neutral' });
+  });
+});
+
+describe('German (draft)', () => {
+  const DE = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'de-DE' }, 'de');
+
+  it('list row, plurals and labels', () => {
+    const row = inventoryRowView(held(), DE);
+    expect(row).toMatchObject({ status: { label: 'Im Bestand', tone: 'neutral' }, source: 'eBay', held: 'Seit 10 Tagen im Bestand', action: { label: 'Als verkauft markieren' } });
+    expect(nbsp(row.cost)).toMatch(/^Kosten 4\.750,00 ZAR$/);
+    expect(inventoryRowView(held({ daysHeld: 1 }), DE).held).toBe('Seit 1 Tag im Bestand');
+    expect(inventoryRowView(held({ daysHeld: 1 }), ZA).held).toBe('Held 1 day');
+    expect(inventoryRowView(sold(650_000, [95_000]), DE)).toMatchObject({ held: 'Nach 8 Tagen verkauft', result: { label: 'Realisierter Gewinn' } });
+    expect(dayShortcuts(NOW, DE.t).map((s) => s.label)).toEqual(['Heute', 'Gestern']);
+    expect(inventoryFilters(DE.t).map((f) => f.label)).toEqual(['Im Bestand', 'Verkauft', 'Alle']);
+    expect(soldWhereOptions(DE.t).map((o) => o.label)).toEqual(['eBay', 'Facebook Marketplace', 'Woanders']);
+    expect(inventoryEmptyText('sold', DE.t).title).toBe('Noch nichts verkauft');
+    // The English constants stay as they were until the apps switch (step 89).
+    expect(INVENTORY_FILTERS.map((f) => f.label)).toEqual(['Holding', 'Sold', 'All']);
+  });
+
+  it('validation and Sale Result; an estimate is never called profit', () => {
+    const f = purchaseFormDefaults(held());
+    expect(buildPurchaseUpdate({ ...f, title: ' ' }, held(), NOW, DE.t)).toMatchObject({ ok: false, errors: { title: 'Gib ihm einen Namen' } });
+    const view = saleResultView(sold(650_000, [65_000, 10_000, 20_000]), DE)!;
+    expect(view.headline).toBe('Realisierter Gewinn');
+    expect(view.summary).toBe('12 % Marge · 16 % Rendite auf die Kosten · nach 8 Tagen verkauft');
+    expect(view.comparisons.map((c) => c.expectedLabel)).toEqual(['Angebot', 'Geschätzt', 'Geschätztes Potenzial']);
+    expect(inventoryDetailView(held(), DE).expectedLines.map(([k]) => k).filter((k) => /Geschätzt/.test(k)).every((k) => !/Gewinn/.test(k))).toBe(true);
   });
 });
 

@@ -51,6 +51,8 @@ as the code.
 
 | Date | Decision | Where |
 |---|---|---|
+| 2026-10-15 | German for Germany: apps, push and landing page. Claude drafts, a native speaker reviews; language follows the device / browser, with a switch in Account / Settings | Step 88 ([i18n/README.md](../i18n/README.md)) |
+| 2026-10-15 | Target countries US, UK, Canada, Australia, Germany; marketplace logos in the apps | Step 87 |
 | 2026-10-15 | Mobile tab bar keeps the central "+" Create (owner; reverses the step 78 Hunts-header placement) | Step 83 |
 | 2026-10-15 | Sell workspace open to every account and marketplace during beta; eBay mock publishing, Facebook assisted; photos from anywhere, any as cover | Decision 0019 |
 | 2026-10-14 | Mobile signs in to an **existing** account only: the "Create an account" button was removed (in-app account creation would bring Apple's in-app account-deletion requirement; accounts are created on the web). Entra hosted page sign-up link: release review (A3) | MOBILE_ACCOUNT_ACCESS.md (step 81) |
@@ -96,6 +98,8 @@ as the code.
 
 | Step | Date | Change |
 |---|---|---|
+| 88 | 2026-10-15 | **German (part 1 of 3):** new `@rein-drop/i18n` package (English source, German drafts pending native review). Shared code and the whole mobile companion are translated; Account has a Language switch (device language by default). The mobile guard now also scans the English and German catalogs for purchase / upgrade wording. Web: step 89. Push, API, landing page and store listing: step 90. |
+| 87 | 2026-10-15 | Marketplace logos (eBay wordmark, Facebook icon) in both apps; target countries US / UK / Canada / Australia / Germany recorded. |
 | 86 | 2026-10-15 | **Phase E - store-compliance review:** [APP_STORE_READINESS.md](../release/APP_STORE_READINESS.md) - checklists from primary Apple / Google policy text, 3.1.3(f) analysis, blockers RB1-RB9, draft review notes, submission sequence. Nothing submitted. |
 | 85 | 2026-10-15 | **End-to-end review:**<br>- **Journey test:** the whole web-subscription + mobile-companion journey on the real API, worker classes and database (23 checks), with the report in [E2E_REVIEW_2026-10-15.md](../testing/E2E_REVIEW_2026-10-15.md).<br>- **Fixed:** development billing confirmation is now off whenever Stripe is configured (D1, self-granted paid plans), and a flaky test (D2).<br>- **Not yet run:** device, browser and real-provider checks. |
 | 84 | 2026-10-15 | **Push and deep links (phase E push re-check):**<br>- **Access:** sourcing pushes are gated by access at send time (suspended / no access / Hunt not live or above the limit = skipped).<br>- **Dead devices:** Expo receipts and stale-device clean-up.<br>- **Taps:** validated deep links that survive an expired session; cold start handled once; token rotation re-registers.<br>- **Testing:** development test push, plus [PUSH_NOTIFICATIONS.md](../PUSH_NOTIFICATIONS.md) with Android / iOS setup and a device checklist. |

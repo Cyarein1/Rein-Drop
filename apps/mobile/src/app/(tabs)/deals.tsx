@@ -2,16 +2,17 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import type { DealStatusFilter, DealSummary, MarketplaceKey } from '@rein-drop/api-client';
-import { buildIgnoreRequest, DEAL_FILTERS, dealActions, dealCardView, dealsWaitingState, huntFormContext, MARKETPLACE_LABEL, type ProductStateView } from '@rein-drop/client-core';
+import { buildIgnoreRequest, dealActions, dealCardView, dealFilters, dealsWaitingState, MARKETPLACE_LABEL, type ProductStateView } from '@rein-drop/client-core';
 import { fontSize, roles } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
 import { AccessNotice } from '@/access/AccessNotice';
+import { MarketplaceMark } from '@/brand/MarketplaceMark';
 import { DealCard } from '@/components/DealCard';
 import { LoadStatus } from '@/components/LoadStatus';
 import { ProductState } from '@/components/ProductState';
 import { LiveSourceBanner } from '@/components/SourceBanner';
 import { getApiClient } from '@/config/api';
 import { useRefreshable } from '@/data/useRefreshable';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, Card, ChoiceGroup, EmptyState, font, Screen, SystemBanner } from '@/ui';
 
 const PAGE_SIZE = 20;
@@ -26,8 +27,8 @@ type Done = { text: string; undo: (() => Promise<unknown>) | null };
  */
 export default function DealsScreen() {
   const router = useRouter();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [filter, setFilter] = useState<DealStatusFilter>('open');
   const [source, setSource] = useState<Source>('');
   const [huntId, setHuntId] = useState('');
@@ -46,8 +47,8 @@ export default function DealsScreen() {
     const unfiltered = !source && !huntId && (filter === 'open' || filter === 'all');
     const wants = page.items.length === 0 && unfiltered && hunts.items.some((h) => h.status === 'LIVE');
     const activity = wants ? await api.listHuntActivity().catch(() => null) : null;
-    return { items: page.items, cursor: page.nextCursor, hunts: hunts.items.map((h) => ({ id: h.id, name: h.name })), waiting: activity ? dealsWaitingState(hunts.items, activity, new Date()) : null };
-  }, [filter, source, huntId]);
+    return { items: page.items, cursor: page.nextCursor, hunts: hunts.items.map((h) => ({ id: h.id, name: h.name })), waiting: activity ? dealsWaitingState(hunts.items, activity, new Date(), t) : null };
+  }, [filter, source, huntId, t]);
   // Reloads on focus (e.g. after acting on a deal) and whenever a filter changes.
   const { state, refresh, retry, update } = useRefreshable(fetch, key);
   const data = state.status === 'ready' ? state.data : null;
@@ -79,11 +80,11 @@ export default function DealsScreen() {
     try {
       if (action === 'save') {
         await api.saveDeal(deal.id);
-        setDone({ text: `Saved "${deal.listing.title}". Find it under Saved.`, undo: () => api.unsaveDeal(deal.id) });
+        setDone({ text: t('deals.savedNotice', { title: deal.listing.title }), undo: () => api.unsaveDeal(deal.id) });
       } else {
-        const built = buildIgnoreRequest('');
+        const built = buildIgnoreRequest('', t);
         await api.ignoreDeal(deal.id, built.ok ? built.request : undefined);
-        setDone({ text: `"${deal.listing.title}" moved to Ignored.`, undo: () => api.unignoreDeal(deal.id) });
+        setDone({ text: t('deals.ignoredNotice', { title: deal.listing.title }), undo: () => api.unignoreDeal(deal.id) });
       }
       retry();
     } catch (err) {
@@ -97,7 +98,7 @@ export default function DealsScreen() {
     if (!done?.undo) return;
     try {
       await done.undo();
-      setDone({ text: 'Undone.', undo: null });
+      setDone({ text: t('deals.undone'), undo: null });
       retry();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err));
@@ -107,18 +108,18 @@ export default function DealsScreen() {
   const hunts = data?.hunts ?? [];
 
   return (
-    <Screen description="Ranked by how strong the opportunity is, then how fresh." onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
+    <Screen description={t('deals.feedDescription')} onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
       <LiveSourceBanner />
       <AccessNotice only={['suspended']} />
-      <ChoiceGroup legend="Show" options={DEAL_FILTERS} value={filter} onChange={change(setFilter)} />
+      <ChoiceGroup legend={t('deals.legendShow')} options={dealFilters(t)} value={filter} onChange={change(setFilter)} />
       <ChoiceGroup
-        legend="Source"
-        options={[{ value: '' as Source, label: 'All' }, ...Object.entries(MARKETPLACE_LABEL).map(([value, label]) => ({ value: value as Source, label }))]}
+        legend={t('deals.legendSource')}
+        options={[{ value: '' as Source, label: t('deals.filterAllSources') }, ...Object.entries(MARKETPLACE_LABEL).map(([value, label]) => ({ value: value as Source, label, icon: <MarketplaceMark marketplace={value as MarketplaceKey} size={18} /> }))]}
         value={source}
         onChange={change(setSource)}
       />
       {hunts.length > 1 && (
-        <ChoiceGroup legend="Hunt" options={[{ value: '', label: 'All' }, ...hunts.map((h) => ({ value: h.id, label: h.name }))]} value={huntId} onChange={change(setHuntId)} />
+        <ChoiceGroup legend={t('deals.legendHunt')} options={[{ value: '', label: t('deals.filterAllHunts') }, ...hunts.map((h) => ({ value: h.id, label: h.name }))]} value={huntId} onChange={change(setHuntId)} />
       )}
 
       <LoadStatus state={state} what="deals" onRetry={retry} />
@@ -129,26 +130,26 @@ export default function DealsScreen() {
           action={
             done.undo ? (
               <Button variant="text" onPress={() => void undo()}>
-                Undo
+                {t('deals.undo')}
               </Button>
             ) : undefined
           }
         />
       )}
-      {actionError && <SystemBanner tone="error" title="That didn't work" message={actionError} />}
+      {actionError && <SystemBanner tone="error" title={t('errors.actionFailed')} message={actionError} />}
       {data && data.items.length === 0 && data.waiting && <ProductState view={data.waiting} />}
       {data && data.items.length === 0 && !data.waiting && (
         <Card>
           {hunts.length === 0 ? (
             <EmptyState
-              title="No deals yet"
-              description="Deals appear here when a live Hunt finds a listing that clears your criteria."
-              action={<Button onPress={() => router.push('/hunts/new')}>Create a Hunt</Button>}
+              title={t('deals.emptyTitle')}
+              description={t('deals.emptyBody')}
+              action={<Button onPress={() => router.push('/hunts/new')}>{t('deals.createHunt')}</Button>}
             />
           ) : (
             <EmptyState
-              title={filter === 'open' ? 'Nothing to review right now' : 'Nothing here'}
-              description={filter === 'open' ? 'Rein Drop keeps checking your live Hunts and lists anything worth a look here.' : 'Try another filter.'}
+              title={t(filter === 'open' ? 'deals.emptyOpenTitle' : 'deals.emptyFilteredTitle')}
+              description={t(filter === 'open' ? 'deals.emptyOpenBody' : 'deals.emptyFilteredBody')}
             />
           )}
         </Card>
@@ -168,10 +169,10 @@ export default function DealsScreen() {
       })}
       {data && (data.cursor || more.error) && (
         <View style={styles.more}>
-          {more.error && <Text style={[styles.error, font('regular')]}>Couldn&apos;t load more: {more.error}</Text>}
+          {more.error && <Text style={[styles.error, font('regular')]}>{t('errors.loadMoreFailed', { message: more.error })}</Text>}
           {data.cursor && (
             <Button variant="secondary" loading={more.loading} onPress={showMore}>
-              Show more
+              {t('deals.showMore')}
             </Button>
           )}
         </View>

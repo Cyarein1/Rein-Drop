@@ -1,8 +1,9 @@
+import { displayContext } from './hunt-form.js';
 import { describe, expect, it } from 'vitest';
 import type { Home } from '@rein-drop/contracts';
 import { attentionLine, homeTargetPath, huntsLine, profitView, recentView } from './home-view.js';
 
-const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
+const ZA = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' });
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 const nbsp = (s: string | undefined) => s?.replace(/[  ]/g, ' ');
 const profit = (over: Partial<Home['profit']> = {}): Home['profit'] => ({
@@ -38,5 +39,14 @@ describe('home view', () => {
     expect({ ...view, amount: nbsp(view.amount ?? undefined) }).toEqual({ label: 'Sold', title: 'iPhone 12', when: '2 h ago', amount: 'R 4 500,00', dealId: null });
     expect(homeTargetPath({ kind: 'edit_hunt', huntId: 'h1' })).toBe('/hunts/h1/edit');
     expect(homeTargetPath({ kind: 'onboarding' })).toBe('/onboarding');
+  });
+
+  it('German (draft): plurals and realized-only captions', () => {
+    const DE = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'de-DE' }, 'de');
+    expect(attentionLine({ unreadAlerts: 1, toReview: 3, top: [] }, DE.t)).toBe('3 Deals zu prüfen · 1 ungelesene Benachrichtigung');
+    expect(huntsLine({ live: 2, paused: 1, drafts: 2, items: [] }, DE.t)).toBe('2 aktiv · 1 pausiert · 2 Entwürfe');
+    expect(profitView(profit(), DE)).toMatchObject({ caption: 'Aus 1 Verkauf nach erfassten Kosten', periodLabel: 'Letzte 30 Tage' });
+    expect(profitView(profit({ periodDays: 1 }), ZA).periodLabel).toBe('Last 1 day');
+    expect(recentView({ kind: 'bought', at: '2026-10-07T08:00:00.000Z', title: 'iPhone 12', dealId: null, amount: null }, DE, new Date('2026-10-07T10:00:00.000Z')).label).toBe('Gekauft');
   });
 });

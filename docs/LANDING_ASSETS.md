@@ -131,3 +131,7 @@ web size from images.unsplash.com, converted to WebP q80 (`public/assets/photos/
 | `docs/brand/reference/concept-mascot-asset-pack.png`, `concept-mascot-branding-kit.png` | Concept / reference sheets (Mascot Usage Guide) |
 | `Downloads/ReinDrop/landing page/Rein Drop Reseller Landing Page Mockup.png` | Inspiration only; different mascot; stock photos |
 | Anything generated to fill a missing pose | Never invent mascot art |
+
+## In-app use (step 87)
+
+The eBay wordmark (`ebay.svg` paths, embedded unaltered in `apps/mobile/src/brand/MarketplaceMark.tsx`) and the Facebook icon (`apps/mobile/assets/marketplaces/facebook.webp`, a copy of `facebook.webp`) are also shown inside the mobile and web apps next to the marketplace name (deal cards, deal detail, Hunts, Create Hunt, Sell, inventory). Same rules: official files, unaltered, never instead of the name. Brand / trademark terms for in-app use are a release review item (docs/release/APP_STORE_READINESS.md section 9).

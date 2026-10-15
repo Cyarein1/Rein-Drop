@@ -1,6 +1,9 @@
+import { displayContext } from './hunt-form.js';
 import { describe, expect, it } from 'vitest';
 import type { AnalyticsOverview, HuntAnalytics, HuntFunnel, MissedPotential, ProductAnalytics, ProductPerformance } from '@rein-drop/contracts';
 import {
+  ANALYTICS_PERIOD_OPTIONS,
+  analyticsPeriodOptions,
   analyticsRecommendation,
   analyticsTargetPath,
   funnelView,
@@ -13,7 +16,7 @@ import {
   toBars,
 } from './analytics-view.js';
 
-const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
+const ZA = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' });
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 const nbsp = (s: string | null | undefined) => s?.replace(/[  ]/g, ' ');
 const period = { key: '30d' as const, since: '2026-09-08T12:00:00.000Z', until: '2026-10-08T12:00:00.000Z' };
@@ -219,5 +222,24 @@ describe('recommendation (one, grounded in the numbers)', () => {
     expect(analyticsTargetPath({ kind: 'edit_hunt', huntId: 'h1' }, '7d')).toBe('/hunts/h1/edit');
     expect(periodLabel('365d')).toBe('Last 12 months');
     expect(periodLabel('all')).toBe('All time');
+  });
+});
+
+describe('German (draft)', () => {
+  const DE = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'de-DE' }, 'de');
+  it('cards carry a translated basis; estimates are Potenzial, never Gewinn', () => {
+    const view = overviewView(overview(), DE);
+    expect(view.cards.map((c) => [c.label, c.basis, c.basisLabel])[0]).toEqual(['Realisierter Gewinn', 'Realized', 'Realisiert']);
+    expect(view.cards[0]!.caption).toBe('Aus 1 Verkauf nach erfassten Kosten (1 Verkauf in anderer Währung nicht berücksichtigt)');
+    expect(view.cards[2]!.value).toBe('17 %');
+    expect(overviewView(overview(), ZA).cards.map((c) => c.basisLabel)).toEqual(['Realized', 'Realized', 'Realized', 'Activity', 'Now', 'Realized']);
+    const missedDe = missedView(missed(), DE);
+    expect(missedDe.headline).toBe('2 starke Deals, die du nicht gekauft hast');
+    expect(missedDe.potential!.caption).toBe('Geschätztes Potenzial des 1 Deals mit Schätzung. Potenzial, kein Verlust – es zählt nie zu deinem Gewinn.');
+    expect(missedDe.items.map((i) => i.estimate && nbsp(i.estimate))[0]).toMatch(/geschätztes Potenzial$/);
+    expect([periodLabel('30d', DE.t), periodLabel('all', DE.t)]).toEqual(['Letzte 30 Tage', 'Gesamter Zeitraum']);
+    expect(analyticsPeriodOptions(DE.t).map((o) => o.label)).toEqual(['7 Tage', '30 Tage', '90 Tage', '12 Monate', 'Gesamter Zeitraum']);
+    expect(analyticsPeriodOptions(ZA.t)).toEqual(ANALYTICS_PERIOD_OPTIONS);
+    expect(funnelView(funnel(), DE).stages.map((s) => [s.label, s.tone]).at(-1)).toEqual(['Verkauft', 'profit']);
   });
 });

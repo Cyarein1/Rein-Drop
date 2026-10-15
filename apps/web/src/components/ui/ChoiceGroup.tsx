@@ -1,11 +1,13 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import styles from "./ChoiceGroup.module.css";
 
 export interface ChoiceOption<T extends string> {
   value: T;
   label: string;
+  /** Optional mark before the label (e.g. a marketplace logo). Hidden from screen readers - the label is read. */
+  icon?: ReactNode;
 }
 
 interface BaseProps<T extends string> {
@@ -65,7 +67,10 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
               checked={isChecked(option.value)}
               onChange={() => toggle(option.value)}
             />
-            <span>{option.label}</span>
+            <span className={styles.chipLabel}>
+              {option.icon && <span aria-hidden className={styles.chipIcon}>{option.icon}</span>}
+              {option.label}
+            </span>
           </label>
         ))}
       </div>

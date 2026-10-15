@@ -12,6 +12,7 @@
     "@rein-drop/brand-assets": "workspace:*",
     "@rein-drop/client-core": "workspace:*",
     "@rein-drop/design-tokens": "workspace:*",
+    "@rein-drop/i18n": "workspace:*",
     "expo": "~57.0.27",
     "expo-auth-session": "~57.0.14",
     "expo-clipboard": "~57.0.2",
@@ -33,7 +34,8 @@
     "react-native": "0.86.3",
     "react-native-maps": "1.27.2",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.2"
+    "react-native-screens": "~4.26.2",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@react-native/jest-preset": "0.86.3",

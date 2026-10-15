@@ -5,9 +5,8 @@ import { ApiError, type InventoryItem, type ReplacePurchaseCostsRequest, type Up
 import {
   buildPurchaseUpdate,
   dayShortcuts,
-  huntFormContext,
   inventoryDetailView,
-  PURCHASE_COST_LABEL,
+  purchaseCostLabels,
   purchaseFormDefaults,
   saleResultView,
   type HuntFormContext,
@@ -15,9 +14,10 @@ import {
   type PurchaseFormErrors,
 } from '@rein-drop/client-core';
 import { fontSize, roles, size, space } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
+import { MarketplaceName } from '@/brand/MarketplaceMark';
 import { CostRows } from '@/components/CostRows';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext, useT } from '@/i18n/useT';
 import { Badge, Button, Card, font, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string; notFound: boolean } | { status: 'ready'; item: InventoryItem; version: number };
@@ -27,8 +27,8 @@ const messageOf = (err: unknown) => (err instanceof ApiError ? (err.details?.[0]
 /** Inventory detail: the purchase (editable), holding state, what was expected, and the sale if any. */
 export default function InventoryItemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
 
   const fetchItem = useCallback(() => {
@@ -49,13 +49,13 @@ export default function InventoryItemScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Inventory item' }} />
-      {load.status === 'loading' && <LoadingState label="Loading the item…" />}
+      <Stack.Screen options={{ title: t('inventory.itemTitle') }} />
+      {load.status === 'loading' && <LoadingState label={t('inventory.loadingItem')} />}
       {load.status === 'error' && (
         <SystemBanner
           tone={load.notFound ? 'info' : 'error'}
-          title={load.notFound ? 'Item not found' : "Couldn't load this item"}
-          message={load.notFound ? 'It may belong to another account or no longer exist.' : load.message}
+          title={load.notFound ? t('inventory.notFoundTitle') : t('inventory.loadItemFailed')}
+          message={load.notFound ? t('inventory.notFoundBody') : load.message}
           action={
             load.notFound ? undefined : (
               <Button
@@ -65,7 +65,7 @@ export default function InventoryItemScreen() {
                   fetchItem();
                 }}
               >
-                Try again
+                {t('inventory.tryAgain')}
               </Button>
             )
           }
@@ -79,6 +79,7 @@ export default function InventoryItemScreen() {
 
 function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntFormContext }) {
   const router = useRouter();
+  const { t } = context;
   const [item, setItem] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
@@ -123,7 +124,7 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
     <>
       <View style={styles.badges}>
         <Badge tone={view.status.tone}>{view.status.label}</Badge>
-        {view.source && <Badge tone="neutral">{view.source}</Badge>}
+        {view.marketplace && <MarketplaceName marketplace={view.marketplace} size={18} />}
       </View>
       <Text style={[styles.heading, font('bold')]} accessibilityRole="header">
         {view.title}
@@ -136,27 +137,27 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
         {view.holding && (
           // Opens this item's listing (created on first use): write it or Use AI, add photos, cross-list.
           <Button loading={listing} onPress={() => void openListing()}>
-            {item.status === 'LISTED' ? 'Manage listing' : 'List for sale'}
+            {item.status === 'LISTED' ? t('inventory.manageListing') : t('inventory.listForSale')}
           </Button>
         )}
         {view.holding && (
           <Button variant="secondary" onPress={() => go('/inventory/[id]/sell')}>
-            Mark sold
+            {t('inventory.actionMarkSold')}
           </Button>
         )}
         {view.holding && item.status === 'IN_STOCK' && (
-          <Button variant="text" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'LISTED' }), 'Marked as listed for sale.')}>
-            I listed it elsewhere
+          <Button variant="text" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'LISTED' }), t('inventory.doneListed'))}>
+            {t('inventory.listedElsewhere')}
           </Button>
         )}
         {view.holding && item.status === 'LISTED' && (
-          <Button variant="secondary" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'IN_STOCK' }), 'Back to in stock.')}>
-            Not listed any more
+          <Button variant="secondary" loading={pending} onPress={() => run(() => api.updateInventoryItem(item.id, { status: 'IN_STOCK' }), t('inventory.doneInStock'))}>
+            {t('inventory.notListed')}
           </Button>
         )}
-        {!view.holding && <Button onPress={() => go('/inventory/[id]/result')}>See sale result</Button>}
+        {!view.holding && <Button onPress={() => go('/inventory/[id]/result')}>{t('inventory.seeResult')}</Button>}
       </View>
-      {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
+      {error && <SystemBanner tone="error" title={t('inventory.actionFailed')} message={error} />}
       {notice && (
         <Text style={[styles.muted, font('regular')]} accessibilityLiveRegion="polite">
           {notice}
@@ -164,24 +165,24 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
       )}
 
       {result && item.sale && (
-        <Card title="Sale">
+        <Card title={t('inventory.saleCard')}>
           <Metric label={result.headline} value={result.value} tone={result.tone} caption={result.summary ?? undefined} />
           <View style={styles.actions}>
             <Button variant="secondary" onPress={() => go('/inventory/[id]/sell')}>
-              Correct the sale
+              {t('inventory.correctSale')}
             </Button>
             {!confirmUndo ? (
               <Button variant="text" onPress={() => setConfirmUndo(true)} disabled={pending}>
-                Undo sale
+                {t('inventory.undoSale')}
               </Button>
             ) : (
               <>
-                <Text style={[styles.muted, font('regular')]}>Back to your inventory, with no result?</Text>
-                <Button variant="destructive" loading={pending} onPress={() => run(() => api.undoSale(item.id), 'Sale removed. The item is back in stock.')}>
-                  Undo sale
+                <Text style={[styles.muted, font('regular')]}>{t('inventory.undoConfirm')}</Text>
+                <Button variant="destructive" loading={pending} onPress={() => run(() => api.undoSale(item.id), t('inventory.doneUndo'))}>
+                  {t('inventory.undoSale')}
                 </Button>
                 <Button variant="text" onPress={() => setConfirmUndo(false)} disabled={pending}>
-                  Keep it
+                  {t('inventory.keepIt')}
                 </Button>
               </>
             )}
@@ -190,11 +191,11 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
       )}
 
       <Card
-        title="Purchase"
+        title={t('inventory.purchaseCard')}
         action={
           !editing ? (
             <Button variant="text" onPress={() => setEditing(true)}>
-              Edit
+              {t('inventory.edit')}
             </Button>
           ) : undefined
         }
@@ -209,26 +210,26 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
                 let next = update ? await api.updateInventoryItem(item.id, update) : null;
                 if (costs) next = await api.replacePurchaseCosts(item.id, costs);
                 return next ?? api.getInventoryItem(item.id);
-              }, 'Purchase updated.')
+              }, t('inventory.donePurchase'))
             }
           />
         ) : (
           <>
             {view.purchaseLines.map(([label, value], i) => (
-              <View key={`${label}-${i}`} style={[styles.row, label === 'Total cost' && styles.total]}>
+              <View key={`${label}-${i}`} style={[styles.row, label === t('inventory.totalCost') && styles.total]}>
                 <Text style={[styles.body, font('regular')]}>{label}</Text>
                 <Text style={[styles.body, font('semibold')]}>{value}</Text>
               </View>
             ))}
             {item.purchase.costs.length === 0 && (
-              <Text style={[styles.muted, font('regular')]}>No extra costs yet. Add tax, shipping or repairs so your profit is accurate.</Text>
+              <Text style={[styles.muted, font('regular')]}>{t('inventory.noExtraCosts')}</Text>
             )}
             {view.notes && <Text style={[styles.body, font('regular')]}>{view.notes}</Text>}
           </>
         )}
       </Card>
 
-      <Card title="When you bought it">
+      <Card title={t('inventory.whenBought')}>
         {view.expectedLines.length > 0 ? (
           <>
             {view.expectedLines.map(([label, value]) => (
@@ -237,20 +238,20 @@ function ItemBody({ initial, context }: { initial: InventoryItem; context: HuntF
                 <Text style={[styles.body, font('semibold')]}>{value}</Text>
               </View>
             ))}
-            <Text style={[styles.muted, font('regular')]}>Estimates are not profit. Your result comes only from the sale you record.</Text>
+            <Text style={[styles.muted, font('regular')]}>{t('inventory.estimatesNotProfit')}</Text>
           </>
         ) : (
-          <Text style={[styles.muted, font('regular')]}>Rein Drop didn&apos;t capture an estimate for this item.</Text>
+          <Text style={[styles.muted, font('regular')]}>{t('inventory.noEstimate')}</Text>
         )}
         <View style={styles.actions}>
           {view.dealId && (
             <Button variant="text" onPress={() => router.push({ pathname: '/deals/[id]', params: { id: view.dealId! } })}>
-              Open the deal
+              {t('inventory.openDeal')}
             </Button>
           )}
           {view.sourceUrl && (
             <Button variant="text" onPress={() => void Linking.openURL(view.sourceUrl!)}>
-              Original listing ↗
+              {t('inventory.originalListing')}
             </Button>
           )}
         </View>
@@ -270,12 +271,13 @@ function PurchaseEditor({
   onCancel: () => void;
   onSave: (update: UpdateInventoryItemRequest | null, costs: ReplacePurchaseCostsRequest | null) => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState<PurchaseForm>(() => purchaseFormDefaults(item));
   const [errors, setErrors] = useState<PurchaseFormErrors>({});
   const set = (patch: Partial<PurchaseForm>) => setForm((f) => ({ ...f, ...patch }));
   const currency = item.purchase.price.currency;
   const submit = () => {
-    const built = buildPurchaseUpdate(form, item, new Date());
+    const built = buildPurchaseUpdate(form, item, new Date(), t);
     if (!built.ok) return setErrors(built.errors);
     setErrors({});
     if (!built.update && !built.costs) return onCancel();
@@ -284,32 +286,32 @@ function PurchaseEditor({
 
   return (
     <View style={styles.form}>
-      <TextInput label="Name" value={form.title} maxLength={200} onChangeText={(title) => set({ title })} error={errors.title} />
-      <TextInput label="What you paid" kind="money" currency={currency} value={form.price} onChangeText={(price) => set({ price })} error={errors.price} />
-      <TextInput label="Bought on" kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} />
+      <TextInput label={t('inventory.formName')} value={form.title} maxLength={200} onChangeText={(title) => set({ title })} error={errors.title} />
+      <TextInput label={t('inventory.formPaid')} kind="money" currency={currency} value={form.price} onChangeText={(price) => set({ price })} error={errors.price} />
+      <TextInput label={t('inventory.formBoughtOn')} kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} />
       <View style={styles.actions}>
-        {dayShortcuts(new Date()).map((s) => (
+        {dayShortcuts(new Date(), t).map((s) => (
           <Button key={s.value} variant="text" onPress={() => set({ day: s.value })}>
             {s.label}
           </Button>
         ))}
       </View>
       <CostRows
-        legend="Purchase costs"
-        hint="Tax, shipping to you, repairs, cleaning - anything it cost to get it ready."
+        legend={t('inventory.purchaseCosts')}
+        hint={t('inventory.purchaseCostsHint')}
         rows={form.costs}
-        labels={PURCHASE_COST_LABEL}
+        labels={purchaseCostLabels(t)}
         currency={currency}
         errors={errors.costs}
         onChange={(costs) => set({ costs })}
       />
-      <TextInput label="Notes (optional)" value={form.notes} maxLength={1000} multiline onChangeText={(notes) => set({ notes })} />
+      <TextInput label={t('inventory.formNotes')} value={form.notes} maxLength={1000} multiline onChangeText={(notes) => set({ notes })} />
       <View style={styles.actions}>
         <Button loading={pending} onPress={submit}>
-          Save purchase
+          {t('inventory.savePurchase')}
         </Button>
         <Button variant="text" onPress={onCancel} disabled={pending}>
-          Cancel
+          {t('inventory.cancel')}
         </Button>
       </View>
     </View>

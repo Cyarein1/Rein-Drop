@@ -4,8 +4,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
 import { apiBaseUrl } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { Button, font, LoadingState, Screen, SystemBanner } from '@/ui';
-import { useSessionState } from './SessionProvider';
+import { sessionMessage, useSessionState } from './SessionProvider';
 
 /**
  * Protects the app's tabs: children render only with an authenticated session.
@@ -16,6 +17,7 @@ import { useSessionState } from './SessionProvider';
 export function SessionGate({ children }: { children: ReactNode }) {
   const { state, refresh, signIn } = useSessionState();
   const router = useRouter();
+  const t = useT();
 
   // Keyed by account: switching accounts remounts every screen, so nothing of the previous
   // account (lists, drafts, cached answers) can show.
@@ -23,16 +25,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
-        <LoadingState label="Signing you in…" />
+        <LoadingState label={t('auth.signingIn')} />
       </View>
     );
   }
 
   const actions = (
     <View style={styles.actions}>
-      <Button onPress={refresh}>Try again</Button>
+      <Button onPress={refresh}>{t('common.tryAgain')}</Button>
       <Button variant="secondary" onPress={() => router.push('/settings')}>
-        Open Settings
+        {t('auth.openSettings')}
       </Button>
     </View>
   );
@@ -45,19 +47,20 @@ export function SessionGate({ children }: { children: ReactNode }) {
             <>
               <SystemBanner
                 tone={state.sessionEnded ? 'warning' : 'info'}
-                title={state.sessionEnded ? 'Your session has ended' : 'Sign in to Rein Drop'}
-                message={state.reason}
+                title={t(state.sessionEnded ? 'auth.sessionEndedTitle' : 'auth.signInTitle')}
+                message={sessionMessage(state, t)}
               />
               <Text style={[styles.help, font('regular')]}>
-                {"Sign in with your Rein Drop account. You'll continue on a secure Microsoft page to enter your email and password."}
+                {t('auth.signInHelp')}
               </Text>
               <View style={styles.actions}>
-                <Button onPress={() => void signIn()}>Sign in</Button>
+                <Button onPress={() => void signIn()}>{t('auth.signIn')}</Button>
               </View>
             </>
           ) : (
-            <SystemBanner tone="warning" title="You're not signed in" message={state.reason} />
+            <SystemBanner tone="warning" title={t('auth.notSignedInTitle')} message={sessionMessage(state, t)} />
           )}
+          {/* Developer-only note: English. */}
           {__DEV__ && !signIn && (
             <Text style={[styles.help, font('regular')]}>
               Development sign-in is automatic. Make sure the API is running and the development user exists
@@ -73,10 +76,8 @@ export function SessionGate({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Screen>
-        <SystemBanner tone="error" title="Can't reach Rein Drop" message={state.message} />
-        <Text style={[styles.help, font('regular')]}>
-          Check your connection and try again. Nothing on your account has changed.
-        </Text>
+        <SystemBanner tone="error" title={t('auth.cantReachTitle')} message={sessionMessage(state, t)} />
+        <Text style={[styles.help, font('regular')]}>{t('auth.cantReachHelp')}</Text>
         {__DEV__ && <Text style={[styles.help, font('regular')]}>API: {apiBaseUrl.url ?? 'not configured'}</Text>}
         {actions}
       </Screen>

@@ -14,6 +14,7 @@ import {
   type PurchaseFormErrors,
 } from "@rein-drop/client-core";
 import { Badge, Button, ButtonLink, Card, Metric, SystemBanner, TextInput } from "@/components/ui";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import { savePurchase, setHoldingStatus, undoSale, type InventoryActionResult } from "../actions";
 import { startListing } from "../../sell/actions";
 import { CostRows } from "../CostRows";
@@ -60,7 +61,7 @@ export function InventoryDetail({ initial, context }: { initial: InventoryItem; 
       </Link>
       <div className={styles.badges}>
         <Badge tone={view.status.tone}>{view.status.label}</Badge>
-        {view.source && <Badge tone="neutral">{view.source}</Badge>}
+        {view.marketplace && <MarketplaceName marketplace={view.marketplace} size={18} />}
       </div>
       <h1 className={styles.title}>{view.title}</h1>
       <p className={styles.meta}>

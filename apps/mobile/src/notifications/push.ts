@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { getLocales } from 'expo-localization';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import type { ApiClient, PushDeviceProvider } from '@rein-drop/api-client';
 import type { PushState } from '@rein-drop/client-core';
+import { resolveLanguage, translator } from '@rein-drop/i18n';
 import { loadNotifications } from './load-notifications';
 
 /**
@@ -154,7 +156,8 @@ async function ensureAlertsChannel(): Promise<void> {
   const Notifications = loadNotifications();
   if (Platform.OS !== 'android' || !Notifications) return;
   await Notifications.setNotificationChannelAsync(ALERTS_CHANNEL_ID, {
-    name: 'Deal alerts',
+    // Shown in the phone's settings: in the phone's language (set once, when the channel is created).
+    name: translator(resolveLanguage(getLocales()[0]?.languageTag))('push.channelName'),
     importance: Notifications.AndroidImportance.HIGH,
   }).catch(() => undefined);
 }

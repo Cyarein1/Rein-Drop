@@ -3,6 +3,7 @@ import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { Translator } from '@rein-drop/i18n';
 import { ApiError, type MarketplaceKey, type SellDraftSuggestion, type SellListing, type SellMarketplacesResponse } from '@rein-drop/api-client';
 import {
   applyDraft,
@@ -10,22 +11,22 @@ import {
   channelView,
   draftWouldReplace,
   formatMoney,
-  huntFormContext,
-  LISTING_CONDITION_OPTIONS,
+  listingConditionOptions,
   photoSrc,
-  SELL_LISTING_STATUS_LABEL,
+  sellListingStatusLabel,
   sellFormFrom,
   type SellForm,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
+import { MarketplaceMark, MarketplaceName } from '@/brand/MarketplaceMark';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { isOffline } from '@/data/useRefreshable';
+import { useDisplayContext, useT } from '@/i18n/useT';
 import { Badge, Button, Card, ChoiceGroup, font, LoadingState, Screen, SystemBanner, TextInput } from '@/ui';
 
 const PHOTOS_MAX = 12;
-const message = (err: unknown) =>
-  err instanceof ApiError ? ((err.details ?? []).map((d) => d.message).join('. ') || err.message) : isOffline(err) ? "You're offline - try again when you're connected." : String(err);
+const message = (err: unknown, t: Translator) =>
+  err instanceof ApiError ? ((err.details ?? []).map((d) => d.message).join('. ') || err.message) : isOffline(err) ? t('sell.offline') : String(err);
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; listing: SellListing; markets: SellMarketplacesResponse };
 
@@ -37,33 +38,34 @@ type Load = { status: 'loading' } | { status: 'error'; message: string } | { sta
 export default function SellListingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
+  const t = useT();
 
   const fetch = useCallback(() => {
     let cancelled = false;
     const api = getApiClient();
     Promise.all([api.getSellListing(id), api.getSellMarketplaces()]).then(
       ([listing, markets]) => !cancelled && setLoad((prev) => (prev.status === 'ready' ? { ...prev, listing, markets } : { status: 'ready', listing, markets })),
-      (err: unknown) => !cancelled && setLoad({ status: 'error', message: message(err) }),
+      (err: unknown) => !cancelled && setLoad({ status: 'error', message: message(err, t) }),
     );
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
   // Fresh signed photo links whenever the screen comes back into focus.
   useFocusEffect(fetch);
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'List for sale' }} />
-      {load.status === 'loading' && <LoadingState label="Loading the listing…" />}
+      <Stack.Screen options={{ title: t('sell.screenTitle') }} />
+      {load.status === 'loading' && <LoadingState label={t('sell.loading')} />}
       {load.status === 'error' && (
         <SystemBanner
           tone="error"
-          title="Couldn't load the listing"
+          title={t('sell.loadFailed')}
           message={load.message}
           action={
             <Button variant="secondary" onPress={() => (setLoad({ status: 'loading' }), fetch())}>
-              Try again
+              {t('sell.tryAgain')}
             </Button>
           }
         />
@@ -74,8 +76,7 @@ export default function SellListingScreen() {
 }
 
 function Editor({ initial, markets }: { initial: SellListing; markets: SellMarketplacesResponse }) {
-  const { state: session } = useSessionState();
-  const localeTag = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null).localeTag;
+  const { localeTag, t } = useDisplayContext();
   const [listing, setListing] = useState(initial);
   const [form, setForm] = useState<SellForm>(() => sellFormFrom(initial));
   const [dirty, setDirty] = useState(false);
@@ -91,7 +92,7 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
   const api = getApiClient();
   const base = apiBaseUrl.url ?? '';
   const currency = listing.price?.currency ?? 'ZAR';
-  const status = SELL_LISTING_STATUS_LABEL[listing.status];
+  const status = sellListingStatusLabel(listing.status, t);
 
   const edit = (patch: Partial<SellForm>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -107,7 +108,7 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
       if (done) setNotice(done);
       return true;
     } catch (err) {
-      setError(message(err));
+      setError(message(err, t));
       return false;
     } finally {
       setBusy(null);
@@ -115,13 +116,13 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
   };
 
   const save = async () => {
-    const built = buildSellUpdate(form, currency);
+    const built = buildSellUpdate(form, currency, t);
     if (!built.ok) {
       setPriceError(built.message);
       return false;
     }
     setPriceError(undefined);
-    const ok = await act('save', () => api.updateSellListing(listing.id, built.request), 'Saved.');
+    const ok = await act('save', () => api.updateSellListing(listing.id, built.request), t('sell.saved'));
     if (ok) setDirty(false);
     return ok;
   };
@@ -141,7 +142,7 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
       if (draftWouldReplace(form)) setAskReplace(suggestion);
       else take(suggestion, false);
     } catch (err) {
-      setError(message(err));
+      setError(message(err, t));
     } finally {
       setBusy(null);
     }
@@ -152,7 +153,7 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
     if (from === 'camera') {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        setError('Allow camera access in your phone settings to take photos here.');
+        setError(t('sell.cameraPermission'));
         return;
       }
     }
@@ -167,54 +168,54 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
         setListing(await api.uploadSellPhoto(listing.id, { uri: asset.uri, name: asset.fileName ?? `photo-${i + 1}.jpg`, type }));
       }
     } catch (err) {
-      setError(message(err));
+      setError(message(err, t));
     } finally {
       setBusy(null);
     }
   };
 
   const makeCover = (photoId: string) =>
-    act('cover', () => api.reorderSellPhotos(listing.id, [photoId, ...listing.photos.filter((p) => p.id !== photoId).map((p) => p.id)]), 'Cover photo changed.');
+    act('cover', () => api.reorderSellPhotos(listing.id, [photoId, ...listing.photos.filter((p) => p.id !== photoId).map((p) => p.id)]), t('sell.coverChanged'));
 
   const publish = async () => {
     if (dirty && !(await save())) return;
-    await act('publish', () => api.publishSellListing(listing.id, chosen), 'Published - see where it is listed below.');
+    await act('publish', () => api.publishSellListing(listing.id, chosen), t('sell.published'));
   };
 
   return (
     <>
       <View style={styles.row}>
         <Badge tone={status.tone}>{status.label}</Badge>
-        {listing.aiAssisted && <Badge tone="info">Written with AI - check it</Badge>}
+        {listing.aiAssisted && <Badge tone="info">{t('sell.aiBadge')}</Badge>}
       </View>
       <Text style={[styles.heading, font('bold')]} accessibilityRole="header">
-        {listing.title || 'New listing'}
+        {listing.title || t('sell.newListing')}
       </Text>
-      {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
+      {error && <SystemBanner tone="error" title={t('sell.actionFailed')} message={error} />}
       {notice && (
         <Text style={[styles.muted, font('regular')]} accessibilityLiveRegion="polite">
           {notice}
         </Text>
       )}
 
-      <Card title="Write the listing">
-        <TextInput label="Anything the AI should know? (optional)" value={notes} maxLength={500} placeholder="e.g. battery 89%, small scratch, comes with box" onChangeText={setNotes} />
+      <Card title={t('sell.writeTitle')}>
+        <TextInput label={t('sell.aiNotes')} value={notes} maxLength={500} placeholder={t('sell.aiNotesPlaceholder')} onChangeText={setNotes} />
         <Button variant="secondary" loading={busy === 'ai'} disabled={!markets.ai} onPress={() => void askAi()}>
-          Use AI
+          {t('sell.useAi')}
         </Button>
-        {!markets.ai && <Text style={[styles.muted, font('regular')]}>AI drafts aren&apos;t set up here yet - write it yourself.</Text>}
+        {!markets.ai && <Text style={[styles.muted, font('regular')]}>{t('sell.aiUnavailable')}</Text>}
         {askReplace && (
           <SystemBanner
             tone="info"
-            title="Replace what you've written?"
-            message="The AI draft is ready."
+            title={t('sell.replaceTitle')}
+            message={t('sell.replaceBody')}
             action={
               <View style={styles.row}>
                 <Button variant="secondary" onPress={() => take(askReplace, true)}>
-                  Replace
+                  {t('sell.replace')}
                 </Button>
                 <Button variant="text" onPress={() => take(askReplace, false)}>
-                  Only fill empty fields
+                  {t('sell.fillEmpty')}
                 </Button>
               </View>
             }
@@ -223,30 +224,30 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
         {draft && (
           <SystemBanner
             tone="info"
-            title="Filled in from the AI draft - edit anything"
+            title={t('sell.filledTitle')}
             message={[
-              draft.suggestedPrice ? `Suggested price from the resale estimate: ${formatMoney(draft.suggestedPrice.amount, localeTag)} (an estimate, not a guarantee).` : 'No resale estimate for this item - set your own price.',
+              draft.suggestedPrice ? t('sell.suggestedPrice', { amount: formatMoney(draft.suggestedPrice.amount, localeTag) }) : t('sell.noSuggestedPrice'),
               ...draft.checks,
             ].join(' ')}
           />
         )}
-        <TextInput label="Title" value={form.title} maxLength={80} hint={`${form.title.length} / 80`} onChangeText={(title) => edit({ title })} />
-        <ChoiceGroup legend="Condition" options={LISTING_CONDITION_OPTIONS} value={form.condition ?? ('' as never)} onChange={(condition) => edit({ condition })} />
-        <TextInput label="Your price" kind="money" currency={currency} value={form.price} error={priceError} onChangeText={(price) => edit({ price })} />
-        <TextInput label="Description" value={form.description} maxLength={4000} multiline numberOfLines={6} textAlignVertical="top" onChangeText={(description) => edit({ description })} />
+        <TextInput label={t('sell.formTitle')} value={form.title} maxLength={80} hint={t('sell.charCount', { count: form.title.length, max: 80 })} onChangeText={(title) => edit({ title })} />
+        <ChoiceGroup legend={t('sell.formCondition')} options={listingConditionOptions(t)} value={form.condition ?? ('' as never)} onChange={(condition) => edit({ condition })} />
+        <TextInput label={t('sell.formPrice')} kind="money" currency={currency} value={form.price} error={priceError} onChangeText={(price) => edit({ price })} />
+        <TextInput label={t('sell.formDescription')} value={form.description} maxLength={4000} multiline numberOfLines={6} textAlignVertical="top" onChangeText={(description) => edit({ description })} />
         {form.itemSpecifics.length > 0 && (
           <View style={styles.stack}>
-            <Text style={[styles.label, font('semibold')]}>Item details</Text>
+            <Text style={[styles.label, font('semibold')]}>{t('sell.itemDetails')}</Text>
             {form.itemSpecifics.map((s, i) => (
               <View key={i} style={styles.specific}>
                 <View style={styles.flex}>
-                  <TextInput label="Name" value={s.name} maxLength={40} onChangeText={(name) => edit({ itemSpecifics: form.itemSpecifics.map((x, j) => (j === i ? { ...x, name } : x)) })} />
+                  <TextInput label={t('sell.detailName')} value={s.name} maxLength={40} onChangeText={(name) => edit({ itemSpecifics: form.itemSpecifics.map((x, j) => (j === i ? { ...x, name } : x)) })} />
                 </View>
                 <View style={styles.flex}>
-                  <TextInput label="Value" value={s.value} maxLength={80} onChangeText={(value) => edit({ itemSpecifics: form.itemSpecifics.map((x, j) => (j === i ? { ...x, value } : x)) })} />
+                  <TextInput label={t('sell.detailValue')} value={s.value} maxLength={80} onChangeText={(value) => edit({ itemSpecifics: form.itemSpecifics.map((x, j) => (j === i ? { ...x, value } : x)) })} />
                 </View>
-                <Button variant="text" accessibilityLabel={`Remove ${s.name || 'detail'}`} onPress={() => edit({ itemSpecifics: form.itemSpecifics.filter((_, j) => j !== i) })}>
-                  Remove
+                <Button variant="text" accessibilityLabel={s.name ? t('sell.removeNamed', { name: s.name }) : t('sell.removeDetail')} onPress={() => edit({ itemSpecifics: form.itemSpecifics.filter((_, j) => j !== i) })}>
+                  {t('sell.remove')}
                 </Button>
               </View>
             ))}
@@ -254,29 +255,29 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
         )}
         <View style={styles.row}>
           <Button variant="text" onPress={() => edit({ itemSpecifics: [...form.itemSpecifics, { name: '', value: '' }] })}>
-            Add a detail
+            {t('sell.addDetail')}
           </Button>
           <Button variant="secondary" loading={busy === 'save'} disabled={!dirty} onPress={() => void save()}>
-            Save
+            {t('sell.save')}
           </Button>
         </View>
       </Card>
 
-      <Card title="Photos" action={<Text style={[styles.muted, font('regular')]}>{`${listing.photos.length} / ${PHOTOS_MAX}`}</Text>}>
-        <Text style={[styles.muted, font('regular')]}>The first photo is the cover. Tap Make cover to change it.</Text>
+      <Card title={t('sell.photos')} action={<Text style={[styles.muted, font('regular')]}>{t('sell.charCount', { count: listing.photos.length, max: PHOTOS_MAX })}</Text>}>
+        <Text style={[styles.muted, font('regular')]}>{t('sell.coverHint')}</Text>
         <View style={styles.grid}>
           {listing.photos.map((p, i) => (
             <View key={p.id} style={styles.tile}>
-              <Image source={{ uri: photoSrc(p.url, base) }} style={styles.thumb} accessibilityLabel={`Photo ${i + 1}${i === 0 ? ', cover' : ''}`} />
+              <Image source={{ uri: photoSrc(p.url, base) }} style={styles.thumb} accessibilityLabel={i === 0 ? t('sell.photoCoverA11y', { number: i + 1 }) : t('sell.photoA11y', { number: i + 1 })} />
               {i === 0 ? (
-                <Badge tone="action">Cover</Badge>
+                <Badge tone="action">{t('sell.cover')}</Badge>
               ) : (
                 <Button variant="text" disabled={busy !== null} onPress={() => void makeCover(p.id)}>
-                  Make cover
+                  {t('sell.makeCover')}
                 </Button>
               )}
-              <Button variant="text" accessibilityLabel={`Remove photo ${i + 1}`} disabled={busy !== null} onPress={() => void act('remove', () => api.removeSellPhoto(listing.id, p.id))}>
-                Remove
+              <Button variant="text" accessibilityLabel={t('sell.removePhotoA11y', { number: i + 1 })} disabled={busy !== null} onPress={() => void act('remove', () => api.removeSellPhoto(listing.id, p.id))}>
+                {t('sell.remove')}
               </Button>
             </View>
           ))}
@@ -284,63 +285,63 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
         {markets.uploads ? (
           <View style={styles.row}>
             <Button variant="secondary" loading={busy === 'upload'} disabled={listing.photos.length >= PHOTOS_MAX} onPress={() => void addPhotos('camera')}>
-              Take photos
+              {t('sell.takePhotos')}
             </Button>
             <Button variant="secondary" disabled={busy !== null || listing.photos.length >= PHOTOS_MAX} onPress={() => void addPhotos('library')}>
-              Choose from library
+              {t('sell.chooseLibrary')}
             </Button>
           </View>
         ) : (
-          <Text style={[styles.muted, font('regular')]}>Adding your own photos isn&apos;t available here yet.</Text>
+          <Text style={[styles.muted, font('regular')]}>{t('sell.uploadsUnavailable')}</Text>
         )}
         {listing.sourcePhotos.length > 0 && (
           <View style={styles.stack}>
-            <Text style={[styles.label, font('semibold')]}>From the original listing</Text>
+            <Text style={[styles.label, font('semibold')]}>{t('sell.fromOriginal')}</Text>
             <View style={styles.grid}>
               {listing.sourcePhotos.map((url, i) => (
                 <Pressable
                   key={url}
                   style={styles.tile}
                   accessibilityRole="button"
-                  accessibilityLabel={`Add original listing photo ${i + 1}`}
+                  accessibilityLabel={t('sell.addSourcePhotoA11y', { number: i + 1 })}
                   disabled={busy !== null || listing.photos.length >= PHOTOS_MAX}
                   onPress={() => void act('source', () => api.addSourcePhoto(listing.id, url))}
                 >
                   <Image source={{ uri: url }} style={styles.thumb} />
-                  <Text style={[styles.body, font('semibold')]}>+ Add</Text>
+                  <Text style={[styles.body, font('semibold')]}>{t('sell.add')}</Text>
                 </Pressable>
               ))}
             </View>
-            <Text style={[styles.muted, font('regular')]}>These were taken by the original seller. Some marketplaces reject reused photos - your own are safest.</Text>
+            <Text style={[styles.muted, font('regular')]}>{t('sell.sourcePhotosNote')}</Text>
           </View>
         )}
       </Card>
 
-      <Card title="Where to list">
-        <ChoiceGroup multiple legend="Marketplaces" options={markets.items.map((m) => ({ value: m.marketplace, label: m.label }))} value={chosen} onChange={setChosen} />
+      <Card title={t('sell.whereToList')}>
+        <ChoiceGroup multiple legend={t('sell.marketplaces')} options={markets.items.map((m) => ({ value: m.marketplace, label: m.label, icon: <MarketplaceMark marketplace={m.marketplace} size={18} /> }))} value={chosen} onChange={setChosen} />
         {markets.items.map((m) => (
-          <Text key={m.marketplace} style={[styles.muted, font('regular')]}>{`${m.label}: ${m.note}`}</Text>
+          <Text key={m.marketplace} style={[styles.muted, font('regular')]}>{t('sell.channelLine', { name: m.label, label: m.note })}</Text>
         ))}
-        {listing.missing.length > 0 && <SystemBanner tone="info" title="Before you can publish" message={listing.missing.join(' · ')} />}
+        {listing.missing.length > 0 && <SystemBanner tone="info" title={t('sell.beforePublish')} message={listing.missing.join(' · ')} />}
         <Button loading={busy === 'publish'} disabled={chosen.length === 0 || busy !== null} onPress={() => void publish()}>
-          {listing.status === 'PUBLISHED' ? 'Publish to more marketplaces' : 'Publish'}
+          {listing.status === 'PUBLISHED' ? t('sell.publishMore') : t('sell.publish')}
         </Button>
       </Card>
 
       {listing.channels.length > 0 && (
-        <Card title="Where it's listed">
+        <Card title={t('sell.whereListed')}>
           {listing.channels.map((c) => {
-            const v = channelView(c, localeTag);
+            const v = channelView(c, localeTag, t);
             return (
               <View key={c.marketplace} style={styles.channel}>
                 <View style={styles.row}>
-                  <Text style={[styles.body, font('semibold')]}>{v.name}</Text>
+                  <MarketplaceName marketplace={c.marketplace} size={18} textStyle={[styles.body, font('semibold')]} />
                   <Badge tone={v.tone}>{v.label}</Badge>
                 </View>
                 {v.detail && <Text style={[styles.muted, font('regular')]}>{v.detail}</Text>}
                 {c.url && (
                   <Button variant="text" onPress={() => void Linking.openURL(c.url!)}>
-                    Open listing ↗
+                    {t('sell.openListing')}
                   </Button>
                 )}
                 {v.awaiting && c.assist && (
@@ -349,22 +350,22 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
                       {c.assist.text}
                     </Text>
                     <View style={styles.row}>
-                      <Button variant="secondary" onPress={() => void Clipboard.setStringAsync(c.assist!.text).then(() => setNotice(`Copied - paste it on ${v.name}.`))}>
-                        Copy text
+                      <Button variant="secondary" onPress={() => void Clipboard.setStringAsync(c.assist!.text).then(() => setNotice(t('sell.copied', { name: v.name })))}>
+                        {t('sell.copyText')}
                       </Button>
-                      <Button variant="secondary" onPress={() => void Linking.openURL(c.assist!.openUrl)}>
-                        {`Open ${v.name} ↗`}
+                      <Button variant="secondary" icon={<MarketplaceMark marketplace={c.marketplace} size={16} />} onPress={() => void Linking.openURL(c.assist!.openUrl)}>
+                        {t('sell.openMarketplace', { name: v.name })}
                       </Button>
                     </View>
-                    <TextInput label="Link to your listing (optional)" value={postedUrl} autoCapitalize="none" onChangeText={setPostedUrl} />
-                    <Button variant="secondary" loading={busy === `confirm-${c.marketplace}`} onPress={() => void act(`confirm-${c.marketplace}`, () => api.confirmSellChannel(listing.id, c.marketplace, postedUrl.trim() || undefined), 'Marked as posted.')}>
-                      I&apos;ve posted it
+                    <TextInput label={t('sell.postedLink')} value={postedUrl} autoCapitalize="none" onChangeText={setPostedUrl} />
+                    <Button variant="secondary" loading={busy === `confirm-${c.marketplace}`} onPress={() => void act(`confirm-${c.marketplace}`, () => api.confirmSellChannel(listing.id, c.marketplace, postedUrl.trim() || undefined), t('sell.markedPosted'))}>
+                      {t('sell.posted')}
                     </Button>
                   </View>
                 )}
                 {v.canEnd && (
-                  <Button variant="text" loading={busy === `end-${c.marketplace}`} onPress={() => void act(`end-${c.marketplace}`, () => api.endSellChannel(listing.id, c.marketplace), `Taken down on ${v.name}.`)}>
-                    {c.mode === 'assisted' ? "I've taken it down" : 'Take it down'}
+                  <Button variant="text" loading={busy === `end-${c.marketplace}`} onPress={() => void act(`end-${c.marketplace}`, () => api.endSellChannel(listing.id, c.marketplace), t('sell.takenDown', { name: v.name }))}>
+                    {c.mode === 'assisted' ? t('sell.tookDown') : t('sell.takeDown')}
                   </Button>
                 )}
               </View>

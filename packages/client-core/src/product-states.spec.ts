@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HuntActivity, SourceStatus } from '@rein-drop/contracts';
+import { translator } from '@rein-drop/i18n';
 import { cancellationState, dealsWaitingState, firstScanState, noDealsYetState, planLimitState, reducedMonitoringState } from './product-states.js';
 
 const NOW = new Date('2026-10-08T12:00:00.000Z');
@@ -121,6 +122,50 @@ describe('plan suggestion', () => {
     expect(planLimitState(ent(2, 1), hunts)).toBeNull();
     expect(planLimitState(ent(null, null), hunts)).toBeNull();
     expect(planLimitState(ent(1, 0), [hunts[0]!])).toBeNull();
+  });
+});
+
+describe('German', () => {
+  const t = translator('de');
+  const ent = { entitlements: { activeHunts: { limit: 1 } } as never, usage: { activeHunts: 1 }, remaining: { activeHunts: 0 } };
+
+  it('first scan, no deals yet (plural days) and several Hunts', () => {
+    expect(firstScanState(HUNT, activity({ scanning: true }), NOW, t)).toMatchObject({ title: 'Rein Drop prüft zum ersten Mal', details: ['eBay: fertig vor 4 Min.', 'Facebook Marketplace: fertig vor 5 Min.'] });
+    expect(noDealsYetState(HUNT, activity(), NOW, t)).toMatchObject({ details: ['Zuletzt geprüft vor 4 Min.', 'Nächste Prüfung in 10 Min.'], actions: [{ label: 'Kriterien anpassen' }] });
+    expect(noDealsYetState({ ...HUNT, activatedAt: ago(60 * 25) }, activity(), NOW, t)!.body).toMatch(/^Dein Hunt ist seit 1 Tag aktiv/);
+    expect(noDealsYetState({ ...HUNT, activatedAt: ago(60 * 50) }, activity(), NOW, t)!.body).toMatch(/^Dein Hunt ist seit 2 Tagen aktiv/);
+  });
+
+  it('plan limit: one draft vs several, web vs companion', () => {
+    const hunts = [
+      { id: 'h1', name: 'ps4', status: 'LIVE' as const },
+      { id: 'h2', name: 'PS5', status: 'DRAFT' as const },
+    ];
+    expect(planLimitState(ent, hunts, 'web', t)).toMatchObject({
+      title: 'Dein Plan beobachtet 1 Hunt gleichzeitig',
+      body: '„PS5“ ist gespeichert und bereit. Pausiere „ps4“, um stattdessen diesen zu beobachten, oder wechsle auf einen größeren Plan, um mehr zu beobachten. So oder so geht nichts verloren.',
+    });
+    const more = [...hunts, { id: 'h3', name: 'Switch', status: 'DRAFT' as const }, { id: 'h4', name: 'Xbox', status: 'LIVE' as const }];
+    expect(planLimitState(ent, more, 'companion', t)).toMatchObject({
+      title: 'Dein aktueller Zugang beobachtet 1 Hunt gleichzeitig',
+      body: '2 Entwürfe sind gespeichert und bereit. Pausiere einen aktiven Hunt, um stattdessen einen davon zu beobachten. Es geht nichts verloren.',
+    });
+    // English plural branches match the old wording.
+    expect(planLimitState(ent, more, 'companion')!.body).toBe('2 drafts are saved and ready. Pause a live Hunt to watch one instead. Nothing is lost.');
+  });
+
+  it('reduced monitoring and cancellation', () => {
+    const quiet = reducedMonitoringState({ mode: 'reduced', reason: 'quiet_hours', checksEveryMinutes: 60, resumesAt: '2026-10-09T05:00:00.000Z' }, NOW, { localeTag: 'de-DE', t })!;
+    expect(quiet.title).toBe('Ruhezeit – seltenere Prüfungen');
+    expect(quiet.body).toMatch(/^Rein Drop prüft nachts alle 60 Min\. und kehrt um .+ zum normalen Takt zurück\. Starke Deals/);
+    expect(reducedMonitoringState({ mode: 'reduced', reason: 'plan_cadence', checksEveryMinutes: null, resumesAt: null }, NOW, { localeTag: 'de-DE', t }, 'companion')).toMatchObject({
+      body: expect.stringMatching(/^Dein aktueller Zugang prüft Marktplätze seltener\./),
+      actions: [],
+    });
+    const paid = cancellationState({ name: 'Pro', isFree: false }, { canCancelOnline: true, paidUntil: '12.11.2026' }, t);
+    expect(paid).toMatchObject({ title: 'Pro kündigen?', actions: [{ label: 'Meinen Plan behalten' }] });
+    expect(paid.consequences[0]).toBe('Du behältst Pro bis 12.11.2026 – dem Ende des Zeitraums, den du bezahlt hast. Dir wird nichts mehr berechnet.');
+    expect(cancellationState({ name: 'Free', isFree: true }, undefined, t).title).toBe('Du nutzt den Free-Plan');
   });
 });
 

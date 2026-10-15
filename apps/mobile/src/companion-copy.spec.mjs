@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { de, en } from '@rein-drop/i18n';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -8,6 +9,8 @@ import { describe, expect, it } from 'vitest';
  * Decision 0018: the mobile apps are companions and never sell. This scans every screen / component
  * for selling words in user-facing text and for billing calls, so a later change can't quietly add a
  * price, an "upgrade" button or "subscribe on the web" back. Plans and billing are web-only.
+ * Screen text lives in the shared catalogs (packages/i18n/src/messages, docs/i18n/README.md), so the
+ * English AND German messages the app can show are scanned too.
  */
 const SRC = path.dirname(fileURLToPath(import.meta.url));
 /** @param {string} dir @returns {string[]} */
@@ -30,6 +33,34 @@ function userFacingText(source) {
 // "Purchase" alone is a reseller's stock purchase (inventory) - only subscription purchases count.
 const SELLING = /\b(upgrade|subscribe|unlock|go premium|start (?:a |your )?free trial|restore purchases?|in-app purchase|purchase (?:a |the )?(?:plan|subscription)|buy (?:a|the) (?:plan|subscription)|pricing|price tbd|per month|\/ month|checkout|choose a plan|bigger plan|see plans|change plan|cancel plan|manage billing|billing is managed|on the web)\b/i;
 
+/**
+ * German selling words, mirroring SELLING (and client-core SELLING_WORDS_DE): plan buying, upgrades,
+ * subscriptions, price lists, monthly prices, checkout, "on the web". The reseller's own stock is
+ * fine ("Kaufpreis", "gekauft", "verkaufen", "Angebotspreis"), as is the neutral glossary term
+ * "kostenpflichtige Funktionen".
+ */
+const SELLING_DE =
+  /(\bupgrad\w*|\babonn\w*|\babos?\b|\bfreischalt\w*|\bpremium\b|\btestversion\b|\bkäufe wiederherstellen\b|\bin-app-kauf\w*|\b(?:tarif|plan|abo)\w* (?:kaufen|buchen|abschließen)\b|\bpreisliste\b|\bpreisübersicht\b|\bpro monat\b|\/\s?monat\b|\bmonatlich\b|\bcheckout\b|\b(?:tarif|plan)\w* (?:wählen|ansehen|vergleichen|ändern|wechseln|kündigen)\b|\bgrößere[nmrs]? (?:tarif|plan)\w*|\bjetzt kaufen\b|\babrechnung verwalten\b|\bim web\b|\bauf der website\b|\bwebseite\b)/i;
+
+/** Catalog areas only the web app shows (plans, billing, analytics, Home dashboard). */
+const WEB_ONLY_NAMESPACES = ['billing', 'analytics', 'home'];
+/** Web-only messages inside shared areas (client-core picks them only for surface "web"; cancellation is web-only). */
+const WEB_ONLY_KEYS = { states: /Web$|^(seePlans|seeOptions|backToSettings|keepMyPlan)$|^cancel/ };
+/** Reviewed exceptions: the reseller pricing their OWN item, not a plan. */
+const ALLOWED = ['inventory.insightFeesCausedLoss'];
+
+/** Every message the companion can show: [key, text], per language. */
+/** @param {Record<string, Record<string, string>>} catalog @returns {[string, string][]} */
+const companionMessages = (catalog) =>
+  Object.entries(catalog)
+    .filter(([ns]) => !WEB_ONLY_NAMESPACES.includes(ns))
+    .flatMap(([ns, messages]) =>
+      Object.entries(messages)
+        .filter(([key]) => !(/** @type {Record<string, RegExp>} */ (WEB_ONLY_KEYS)[ns]?.test(key)))
+        .map(([key, text]) => /** @type {[string, string]} */ ([`${ns}.${key}`, text])),
+    )
+    .filter(([key]) => !ALLOWED.includes(key));
+
 describe('mobile companion never sells (decision 0018)', () => {
   const sources = files(SRC).map((f) => ({ file: path.relative(SRC, f), text: readFileSync(f, 'utf8') }));
 
@@ -40,6 +71,35 @@ describe('mobile companion never sells (decision 0018)', () => {
   it('no user-facing selling words on any screen', () => {
     const hits = sources.flatMap(({ file, text }) => userFacingText(text).filter((t) => SELLING.test(t)).map((t) => `${file}: "${t.trim().slice(0, 80)}"`));
     expect(hits).toEqual([]);
+  });
+
+  it('no selling words in the English or German messages the app can show', () => {
+    const english = companionMessages(en);
+    const german = companionMessages(de);
+    expect(english.length).toBeGreaterThan(300); // the scan sees the catalogs, so it isn't vacuous
+    expect(german.length).toBe(english.length);
+    expect(english.filter(([, text]) => SELLING.test(text)).map(([key, text]) => `${key}: "${text.slice(0, 80)}"`)).toEqual([]);
+    expect(german.filter(([, text]) => SELLING_DE.test(text)).map(([key, text]) => `${key}: "${text.slice(0, 80)}"`)).toEqual([]);
+  });
+
+  it("the German guard catches selling words and lets the reseller's own buying and selling through", () => {
+    for (const bad of ['Jetzt upgraden', 'Abo abschließen', 'Tarif wählen', '9,99 € pro Monat', 'Zum Checkout', 'Verwalte dein Konto im Web', 'Jetzt kaufen', 'Premium freischalten']) {
+      expect(SELLING_DE.test(bad), bad).toBe(true);
+    }
+    for (const fine of ['Kaufpreis', 'Als gekauft markieren', 'Zum Verkauf einstellen', 'Angebotspreis', 'Kein Zugang zu kostenpflichtigen Funktionen', 'Gekauft', 'verkaufen']) {
+      expect(SELLING_DE.test(fine), fine).toBe(false);
+    }
+    expect(SELLING.test('Upgrade now')).toBe(true);
+  });
+
+  it('web-only messages are never used in the app', () => {
+    const keys = Object.entries(en).flatMap(([ns, messages]) =>
+      Object.keys(messages)
+        .filter((key) => WEB_ONLY_NAMESPACES.includes(ns) || /** @type {Record<string, RegExp>} */ (WEB_ONLY_KEYS)[ns]?.test(key))
+        .map((key) => `${ns}.${key}`),
+    );
+    expect(keys.length).toBeGreaterThan(0);
+    expect(sources.flatMap(({ file, text }) => keys.filter((k) => text.includes(`'${k}'`)).map((k) => `${file}: ${k}`))).toEqual([]);
   });
 
   it('no billing calls: checkout, portal, plan choice, development billing, plan list', () => {
@@ -79,7 +139,8 @@ describe('mobile companion never sells (decision 0018)', () => {
   it('the account line is plain text (no link) and only when the build sets EXPO_PUBLIC_ACCOUNT_SITE', () => {
     const uses = sources.filter(({ text }) => /accountSiteLine\(/.test(text));
     for (const { file, text } of uses) {
-      expect(text, file).toMatch(/accountSiteLine\(process\.env\.EXPO_PUBLIC_ACCOUNT_SITE\)/);
+      // Optionally with the translator (`t`) as the second argument - nothing else.
+      expect(text, file).toMatch(/accountSiteLine\(process\.env\.EXPO_PUBLIC_ACCOUNT_SITE(?:, t)?\)/);
       expect(text, file).not.toMatch(/onPress=\{[^}]*accountLine/);
     }
   });

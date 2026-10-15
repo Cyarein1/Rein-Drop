@@ -178,12 +178,28 @@ purchasing inside the app, or calls to action for purchase outside of the app." 
 - **IP:** reusing source-listing photos.
 - **Marketplace terms:** the eBay API license.
 - **Lock-screen content.**
-- **Regional distribution:**
-  - Choose countries where the eBay source and the Rein Drop service actually operate. The app shows
-    nothing useful without a supported marketplace in the person's region.
-  - EEA distribution brings DMA-related programs and the EU trader-status declaration (Apple) /
-    developer verification (Google). Not reviewed in detail here.
+- **Regional distribution** - target countries (owner, 2026-10-15): see section 6a.
 
+## 6a. Target countries: United States, United Kingdom, Canada, Australia, Germany
+
+| Country | Storefront payment rule as it affects Rein Drop (confirmed text in sections 2-3) | Product / legal points to check (interpretation / recommendation) |
+|---|---|---|
+| **United States** | Apple: the CTA prohibition doesn't apply on the US storefront (3.1.1(a)). Google: link-out only via the US programs with fees from Oct 1, 2026 [GU]. **Rein Drop uses neither - the app stays CTA-free (3.1.3(f))** | eBay US (EBAY_US, USD), miles. Sales tax on web subscriptions (Stripe Tax, P8). State privacy laws (e.g. CCPA / CPRA) in the privacy policy |
+| **United Kingdom** | Apple: no CTAs ("all other storefronts"). Google: Play Billing / steering rules | eBay UK (EBAY_GB, GBP), miles. UK GDPR + PECR (marketing / cookies). VAT on subscriptions |
+| **Canada** | As UK | eBay Canada (EBAY_CA, CAD), km. PIPEDA (+ Quebec Law 25). **Quebec French-language rules (Charter / Bill 96) may require French for consumers in Quebec - legal review** (the app is English-only). GST / HST |
+| **Australia** | As UK | eBay Australia (EBAY_AU, AUD), km. Privacy Act 1988 / APPs. Australian Consumer Law (subscription terms). GST |
+| **Germany (EU)** | Apple: no CTAs; EU alternative terms (DMA) **not used**. Google: EEA programs **not used** | eBay Germany (EBAY_DE, EUR), km. GDPR + TTDSG. **Impressum** (legal notice) on the website / app listing. **EU Digital Services Act trader status** must be declared in App Store Connect and Play Console before EU distribution (*verify current requirements - not fetched in this review*). VAT. **German UI / store listing** (the app is English-only; decide whether German launches in English) |
+
+**Code facts for these countries (verified):**
+- **Supported today:**
+  - Currency, distance unit and language defaults follow the user's locale: USD / GBP / CAD / AUD /
+    EUR; miles for US / GB.
+  - The mock place search includes towns in all five countries.
+  - The eBay client supports EBAY_US / GB / CA / AU / DE (currency map).
+- **Gap (build needed):** eBay search uses **one site per deployment** (EBAY_MARKETPLACE_ID,
+  default EBAY_US). For five countries, each Hunt must search its owner's eBay site.
+- **Gap:** Facebook Marketplace has no production source in any country.
+- **Not supported:** UI translations - only English exists.
 ## 7. Draft app-review explanation (for App Review notes and the Play "App access" field)
 
 > **About Rein Drop**
@@ -275,6 +291,8 @@ decision. Don't use this text until the blockers above are closed and counsel ha
 - **What counts as "supports account creation":** does a hosted sign-up page reached from the app
   count? Not addressed by Apple's text; Google's FAQ suggests yes.
 - **Lock-screen content of alerts** (titles / Hunt names).
+- **Marketplace logos inside the apps** (eBay wordmark, Facebook icon - step 87): check eBay's and Meta's brand / trademark terms for use in a commercial app (Apple 5.2.1 / Play IP policy). The landing page uses the same files (decision L-D6).
+- **Country-specific obligations** in section 6a (Quebec French, Impressum, EU trader status, tax).
 - **Reuse of other sellers' photos** in listings (IP / marketplace rules).
 - **eBay API license display / attribution terms.**
 - **Regional programs** (EEA DMA, India, Korea): not needed while CTA-free; not reviewed in detail.

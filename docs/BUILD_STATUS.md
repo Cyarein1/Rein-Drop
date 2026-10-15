@@ -1,11 +1,86 @@
 # Build Status
 
-_Last updated: 2026-10-15 (step 86 - release readiness and app-store compliance assessment)_
+_Last updated: 2026-10-15 (step 88 - German language: foundation, shared code, mobile app)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 88 - German language (part 1 of 3): foundation, shared code, mobile app
+
+Owner decisions (2026-10-15):
+- **Scope:** German for Germany in the apps, push messages and the landing page.
+- **Drafts:** Claude drafts the German and a native speaker reviews it. Legal texts are excluded.
+- **Language choice:** follows the device or browser language, with a switch in Account.
+
+What changed:
+- **New package `@rein-drop/i18n`:**
+  - A small ICU-style formatter (`{name}`, plural, select, `Intl.PluralRules`) with no dependencies.
+  - Typed `ns.key` message keys and `translator(language)`, which falls back to English.
+  - `resolveLanguage()`: any `de*` locale gets German; everything else gets English.
+  - Catalogs in 18 namespaces. English is the source; German must have the same keys and
+    placeholders (type-checked and tested).
+  - `TRANSLATION_STATUS.de = 'draft'`.
+- **contracts:** `SUPPORTED_LANGUAGES = ['en', 'de']`.
+- **client-core:**
+  - `HuntFormContext` now carries `language` and `t`.
+  - About 635 strings now come from the catalogs, through translated accessors and functions
+    with an optional `t` argument (English by default).
+  - The old English constants remain until step 89 converts the web app.
+- **Mobile:**
+  - `i18n/useT.ts` provides `useT`, `useLanguage` and `useDisplayContext`.
+  - Every screen, component, tab and header title, notification channel name and session or
+    sign-in message is translated.
+  - Account has a **Language** card that saves `language` through `PUT /me/locale` and
+    switches the app at once.
+  - Errors carry a `messageKey` (`TranslatableError`, `sessionMessage`).
+  - Developer-only notes stay in English.
+- **Guard test:** `companion-copy.spec.mjs` now also checks every English and German message the
+  companion can show for purchase or upgrade wording. It includes German patterns ("Jetzt
+  upgraden", …).
+  - Namespaces only the web app uses (billing, analytics, home) are skipped, and the test fails
+    if the app uses one of them.
+  - One message is allowed by name: `inventory.insightFeesCausedLoss`.
+- **Docs:** [i18n/README.md](i18n/README.md) (how it works, review status) and
+  [i18n/GLOSSARY_DE.md](i18n/GLOSSARY_DE.md) (du-form, „…“ quotes, Hunt kept, estimates are
+  never „Gewinn“).
+- **Still English:**
+  - Text the API sends, such as go-live problems, alert reasons, risk notes, marketplace notes,
+    AI-draft checks and error messages. Step 90 covers these.
+  - The web app (step 89).
+  - The landing page and store listing (step 90).
+
+Checks run: `pnpm turbo run build typecheck lint test` passed all 70 of 70 tasks. Results
+included i18n 8, client-core 211, web 204, mobile vitest 19 and mobile jest 40 of 40 (including
+`German-test.tsx`, which renders DealCard and LoadStatus with the phone set to de-DE).
+
+### Step 87 - Marketplace logos in the apps; target countries recorded
+
+- **Logos:** the official eBay wordmark and the Facebook icon (the landing page's files, unaltered)
+  now sit next to the marketplace name, which stays the accessible text.
+  - **Mobile:** `brand/MarketplaceMark.tsx` (`react-native-svg` 15.15.4 via `npx expo install`,
+    `assets/marketplaces/facebook.webp`). Shown on deal cards, deal detail (incl. "View on…"), the
+    Deals source filter, the Hunts list, the Create / Edit Hunt marketplace choice, the Sell editor
+    (choices, channels, "Open Facebook") and inventory rows / detail. `Button` and `ChoiceGroup`
+    gained an optional decorative `icon`.
+  - **Web:** `components/MarketplaceName.tsx` reuses the landing `MarketplaceMark`. Shown on deal
+    cards, deal detail, the Hunts list, Create Hunt, the Sell editor and inventory. `ChoiceGroup`
+    gained an optional `icon` (aria-hidden).
+  - **Shared code:** client-core `DealCardView.marketplace` and `InventoryRowView.marketplace` give
+    screens the key for the logo.
+- **Target countries** (owner): United States, United Kingdom, Canada, Australia, Germany.
+  [APP_STORE_READINESS.md](release/APP_STORE_READINESS.md) section 6a covers storefront rules,
+  per-country obligations and code facts.
+  - **Supported:** locale defaults (currencies, miles for US / GB), mock places, and the eBay site
+    currency map all cover the five countries.
+  - **Gaps:** eBay searches one site per deployment, so each Hunt needs its owner's eBay site; the
+    UI is English-only (Germany, Quebec).
+- **Tests:**
+  - mobile `MarketplaceMark-test` (4) and `DealCard-test` (asserts the logo + accessible name);
+  - mobile jest 38/38 and vitest 16/16;
+  - web typecheck + lint clean;
+  - full run below.
 
 ### Step 86 - Release readiness and app-store compliance assessment (no code changes, nothing submitted)
 

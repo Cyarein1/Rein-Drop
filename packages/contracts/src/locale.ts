@@ -10,11 +10,11 @@ import { currencySchema } from './common.js';
  *
  * TODO(region): app-store storefront country could refine detection on mobile (needs a
  * native module); the device region is used for now.
- * TODO(i18n): UI translations - only English exists today (SUPPORTED_LANGUAGES).
+ * UI translations: English (source) and German (draft, native review pending) - @rein-drop/i18n.
  */
 
 /** Languages the UI is translated into. Preferences outside this list fall back to the first. */
-export const SUPPORTED_LANGUAGES = ['en'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 /** BCP 47 primary language subtag, lower case (e.g. "en", "af", "zu", "fil"). */

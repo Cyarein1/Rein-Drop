@@ -6,6 +6,7 @@ import { alertView, unreadText } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { getApiClient } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { Badge, Button, Card, EmptyState, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; alerts: Alert[]; unread: number };
@@ -21,6 +22,7 @@ export default function AlertsScreen() {
 
 function Inbox() {
   const router = useRouter();
+  const t = useT();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +68,11 @@ function Inbox() {
 
   return (
     <Screen>
-      {state.status === 'loading' && <LoadingState label="Loading your inbox…" />}
+      {state.status === 'loading' && <LoadingState label={t('notifications.inboxLoading')} />}
       {state.status === 'error' && (
         <SystemBanner
           tone="error"
-          title="Couldn't load your inbox"
+          title={t('notifications.inboxLoadFailed')}
           message={state.message}
           action={
             <Button
@@ -80,7 +82,7 @@ function Inbox() {
                 load();
               }}
             >
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         />
@@ -88,11 +90,11 @@ function Inbox() {
       {state.status === 'ready' && state.alerts.length === 0 && (
         <Card>
           <EmptyState
-            title="No alerts yet"
-            description="Rein Drop alerts you only when a live Hunt finds something worth acting on. Your deals feed shows everything else."
+            title={t('notifications.inboxEmptyTitle')}
+            description={t('notifications.inboxEmptyBody')}
             action={
               <Button variant="secondary" onPress={() => router.push('/deals')}>
-                Open deals
+                {t('notifications.openDeals')}
               </Button>
             }
           />
@@ -102,24 +104,24 @@ function Inbox() {
         <>
           <View style={styles.toolbar}>
             <Text style={[styles.muted, font('regular')]} accessibilityLiveRegion="polite">
-              {unreadText(state.unread)}
+              {unreadText(state.unread, t)}
             </Text>
             {state.unread > 0 && (
               <Button variant="secondary" loading={busy} onPress={markAll}>
-                Mark all read
+                {t('notifications.markAllRead')}
               </Button>
             )}
           </View>
-          {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
+          {error && <SystemBanner tone="error" title={t('errors.actionFailed')} message={error} />}
           {state.alerts.map((alert) => {
-            const view = alertView(alert);
+            const view = alertView(alert, new Date(), t);
             return (
               <Pressable
                 key={view.id}
                 onPress={() => open(alert)}
                 accessibilityRole="button"
-                accessibilityLabel={`${view.unread ? 'Unread. ' : ''}${view.title}. ${view.when}`}
-                accessibilityHint={view.dealId ? 'Opens the deal' : undefined}
+                accessibilityLabel={t(view.unread ? 'notifications.alertA11yUnread' : 'notifications.alertA11y', { title: view.title, when: view.when })}
+                accessibilityHint={view.dealId ? t('deals.openHint') : undefined}
                 style={({ pressed }) => [styles.item, view.unread && styles.unread, view.exceptional && styles.exceptional, pressed && styles.pressed]}
               >
                 <View style={styles.meta}>

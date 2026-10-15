@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import type { InventoryItem } from '@rein-drop/api-client';
-import { huntFormContext, INVENTORY_FILTERS, inventoryEmptyText, inventoryRowView, type InventoryFilter } from '@rein-drop/client-core';
-import { useSessionState } from '@/auth/SessionProvider';
+import { inventoryEmptyText, inventoryFilters, inventoryRowView, type InventoryFilter } from '@rein-drop/client-core';
 import { InventoryRow } from '@/components/InventoryRow';
 import { LoadStatus } from '@/components/LoadStatus';
 import { getApiClient } from '@/config/api';
 import { useRefreshable } from '@/data/useRefreshable';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, Card, ChoiceGroup, EmptyState, Screen, SystemBanner } from '@/ui';
 
 const PAGE_SIZE = 20;
@@ -18,8 +18,8 @@ const PAGE_SIZE = 20;
  */
 export default function InventoryScreen() {
   const router = useRouter();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [filter, setFilter] = useState<InventoryFilter>('holding');
   const [more, setMore] = useState<'idle' | 'loading' | string>('idle');
 
@@ -39,19 +39,19 @@ export default function InventoryScreen() {
     }
   };
 
-  const empty = inventoryEmptyText(filter);
+  const empty = inventoryEmptyText(filter, t);
   return (
-    <Screen description="What you bought, how long you've held it, and what it sold for." onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
+    <Screen description={t('inventory.listDescription')} onRefresh={refresh} refreshing={state.status === 'ready' && state.refreshing}>
       <ChoiceGroup
-        legend="Show"
-        options={INVENTORY_FILTERS}
+        legend={t('inventory.filterLegend')}
+        options={inventoryFilters(t)}
         value={filter}
         onChange={(v) => {
           setMore('idle');
           setFilter(v);
         }}
       />
-      <LoadStatus state={state} what="inventory" onRetry={retry} />
+      <LoadStatus state={state} what={t('inventory.loadWhat')} onRetry={retry} />
       {page && page.items.length === 0 && (
         <Card>
           <EmptyState
@@ -62,20 +62,20 @@ export default function InventoryScreen() {
             action={
               filter === 'sold' ? (
                 <Button variant="secondary" onPress={() => setFilter('holding')}>
-                  See what you&apos;re holding
+                  {t('inventory.seeHolding')}
                 </Button>
               ) : (
-                <Button onPress={() => router.navigate('/deals')}>Go to deals</Button>
+                <Button onPress={() => router.navigate('/deals')}>{t('inventory.goToDeals')}</Button>
               )
             }
           />
         </Card>
       )}
       {page?.items.map((item) => <InventoryRow key={item.id} view={inventoryRowView(item, context)} />)}
-      {more !== 'idle' && more !== 'loading' && <SystemBanner tone="error" title="Couldn't load more" message={more} />}
+      {more !== 'idle' && more !== 'loading' && <SystemBanner tone="error" title={t('inventory.loadMoreFailed')} message={more} />}
       {page?.nextCursor && (
         <Button variant="secondary" loading={more === 'loading'} onPress={showMore}>
-          Show more
+          {t('inventory.showMore')}
         </Button>
       )}
     </Screen>

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Hunt, HuntActivity, SourceHealth, SourceStatus } from '@rein-drop/contracts';
 import { dealCardView } from './deal-view.js';
+import { displayContext } from './hunt-form.js';
 import { huntMonitoringHealth, marketplaceRows, monitoringLine } from './hunt-view.js';
-import { durationUntilText, sourceBanner, sourceIssue } from './source-view.js';
+import { translator } from '@rein-drop/i18n';
+import { durationUntilText, sourceBanner, sourceIssue, sourceIssueText } from './source-view.js';
 
 const NOW = new Date('2026-10-08T12:00:00.000Z');
 const ago = (min: number) => new Date(NOW.getTime() - min * 60_000).toISOString();
@@ -49,7 +51,25 @@ describe('source banner (calm, says the others continue)', () => {
   });
 
   it('waits read naturally at any length', () => {
-    expect([5, 90, 47 * 60, 49 * 60, 80_000 * 60].map(durationUntilText)).toEqual(['in 5 min', 'in 2 h', 'in 47 h', 'in 2 days', 'in 3333 days']);
+    expect([5, 90, 47 * 60, 49 * 60, 80_000 * 60].map((m) => durationUntilText(m))).toEqual(['in 5 min', 'in 2 h', 'in 47 h', 'in 2 days', 'in 3333 days']);
+  });
+
+  it('German: banner sentences, waits and labels', () => {
+    const t = translator('de');
+    expect(sourceBanner([src('ebay', { status: 'down', reason: 'unavailable', nextAttemptAt: inMin(4) }), src('facebook')], NOW, t)).toEqual({
+      tone: 'warning',
+      title: 'eBay reagiert gerade nicht',
+      message: 'Die Prüfungen auf Facebook Marketplace laufen normal weiter. Rein Drop versucht es in 4 Min. erneut – du musst nichts tun. Neue Deals von dort kommen eventuell verspätet an.',
+    });
+    expect(sourceBanner([src('ebay', { status: 'down' }), src('facebook', { status: 'degraded', reason: 'slow' })], NOW, t)).toMatchObject({
+      title: 'Marktplätze haben gerade Probleme',
+      message: 'eBay und Facebook Marketplace funktionieren gerade nicht vollständig. Rein Drop versucht es automatisch erneut – deine Hunts sind sicher und du musst nichts tun.',
+    });
+    expect([5, 90, 49 * 60].map((m) => durationUntilText(m, t))).toEqual(['in 5 Min.', 'in 2 Std.', 'in 2 Tagen']);
+    expect(sourceIssue({ status: 'degraded', reason: 'partial', nextAttemptAt: null }, t)).toEqual({ label: 'Weniger Ergebnisse', phrase: 'liefert gerade weniger Ergebnisse', tone: 'fresh' });
+    expect(sourceIssueText({ status: 'not_configured', reason: null, nextAttemptAt: null }, 'eBay', t)).toBe('eBay ist nicht eingerichtet');
+    // English phrase (older callers) is unchanged.
+    expect(sourceIssue({ status: 'down', reason: null, nextAttemptAt: null })?.phrase).toBe("isn't responding right now");
   });
 
   it('labels per state', () => {
@@ -118,6 +138,6 @@ describe('a Hunt never looks fully healthy while a source is not', () => {
       isSaved: false,
       decision: { seenAt: null, savedAt: null, ignoredAt: null, ignoreReason: null, boughtAt: null, inventoryItemId: null },
     } as unknown as Parameters<typeof dealCardView>[0];
-    expect(dealCardView(deal, { currency: 'ZAR', distanceUnit: 'km', localeTag: 'en-ZA' }).sourceNote).toEqual({ text: 'Facebook Marketplace is slow right now - updates may be late', tone: 'fresh' });
+    expect(dealCardView(deal, displayContext({ currency: 'ZAR', distanceUnit: 'km', localeTag: 'en-ZA' })).sourceNote).toEqual({ text: 'Facebook Marketplace is slow right now - updates may be late', tone: 'fresh' });
   });
 });

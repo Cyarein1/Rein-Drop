@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fontSize, radius, roles, size, space, wash } from '@rein-drop/design-tokens';
 import { font } from './fonts';
@@ -5,6 +6,8 @@ import { font } from './fonts';
 export interface ChoiceOption<T extends string> {
   value: T;
   label: string;
+  /** Optional mark before the label (e.g. a marketplace logo). Decorative - the label is announced. */
+  icon?: ReactNode;
 }
 
 interface BaseProps<T extends string> {
@@ -46,10 +49,14 @@ export function ChoiceGroup<T extends string>(props: ChoiceGroupProps<T>) {
               key={option.value}
               accessibilityRole={props.multiple ? 'checkbox' : 'radio'}
               accessibilityState={{ checked }}
+              accessibilityLabel={option.label}
               onPress={() => toggle(option.value)}
               style={({ pressed }) => [styles.chip, checked && styles.chipChecked, pressed && styles.pressed]}
             >
-              <Text style={[styles.chipText, font(checked ? 'semibold' : 'medium')]}>{option.label}</Text>
+              <View style={styles.chipContent}>
+                {option.icon}
+                <Text style={[styles.chipText, font(checked ? 'semibold' : 'medium')]}>{option.label}</Text>
+              </View>
             </Pressable>
           );
         })}
@@ -79,6 +86,7 @@ const styles = StyleSheet.create({
   },
   // Selected: navy outline on Sky Wash - selection is structure, not action, so not orange.
   chipChecked: { borderColor: roles.text, borderWidth: 2, backgroundColor: wash.sky },
+  chipContent: { flexDirection: 'row', alignItems: 'center', gap: space[2] },
   chipText: { color: roles.text, fontSize: fontSize.md },
   pressed: { opacity: 0.8 },
   error: {

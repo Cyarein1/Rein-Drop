@@ -1,4 +1,5 @@
 import type { AccountIdentity, AuthProviderId } from '@rein-drop/api-client';
+import type { MessageKey } from '@rein-drop/i18n';
 
 /**
  * Mobile auth boundary - mirrors apps/web/src/auth/types.ts. Screens use
@@ -13,11 +14,30 @@ export interface Session {
 
 export type SignInOutcome = 'signed_in' | 'cancelled';
 
+/** An error whose text the UI shows in its own language (`messageKey`); `message` is the English text for logs. */
+export class TranslatableError extends Error {
+  constructor(
+    message: string,
+    readonly messageKey: MessageKey,
+  ) {
+    super(message);
+    this.name = 'TranslatableError';
+  }
+}
+
 /** The session is kept, but its token couldn't be refreshed because the sign-in service is unreachable. */
-export class SignInServiceUnreachable extends Error {
+export class SignInServiceUnreachable extends TranslatableError {
   constructor() {
-    super("Couldn't reach the sign-in service. Check your connection - you're still signed in.");
+    super("Couldn't reach the sign-in service. Check your connection - you're still signed in.", 'errors.signInServiceUnreachable');
     this.name = 'SignInServiceUnreachable';
+  }
+}
+
+/** The browser sign-in came back without a result. */
+export class SignInIncomplete extends TranslatableError {
+  constructor() {
+    super('Sign-in did not complete. Please try again.', 'auth.signInIncomplete');
+    this.name = 'SignInIncomplete';
   }
 }
 

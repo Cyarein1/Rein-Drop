@@ -1,3 +1,4 @@
+import { displayContext } from './hunt-form.js';
 import { describe, expect, it } from 'vitest';
 import type { DealDetail } from '@rein-drop/contracts';
 import {
@@ -5,17 +6,24 @@ import {
   buildBoughtRequest,
   buildIgnoreRequest,
   boughtFormDefaults,
+  DEAL_FILTERS,
   dealActions,
   dealCardView,
   dealDetailView,
+  dealFilters,
   ESTIMATE_NOTE,
+  estimateNote,
+  nextStepLabel,
   resaleView,
+  riskLevelLabel,
+  STRENGTH_LABEL,
+  strengthLabel,
   upsideView,
 } from './deal-view.js';
 
 const ID = '01990000-0000-7000-8000-000000000001';
 const NOW = '2026-10-07T10:00:00.000Z';
-const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
+const ZA = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' });
 const ZAR = (amountMinor: number) => ({ amountMinor, currency: 'ZAR' });
 const nbsp = (s: string) => s.replace(/[  ]/g, ' ');
 
@@ -114,7 +122,7 @@ describe('deal card', () => {
   });
 
   it('ages read naturally', () => {
-    expect([0, 5, 59, 60, 47 * 60, 49 * 60].map(ageText)).toEqual(['just now', '5 min ago', '59 min ago', '1 h ago', '47 h ago', '2 days ago']);
+    expect([0, 5, 59, 60, 47 * 60, 49 * 60].map((m) => ageText(m))).toEqual(['just now', '5 min ago', '59 min ago', '1 h ago', '47 h ago', '2 days ago']);
   });
 });
 
@@ -163,6 +171,57 @@ describe('estimated resale and the estimate note', () => {
     expect(ESTIMATE_NOTE).toMatch(/not guaranteed profit/i);
     const words = JSON.stringify(dealDetailView(deal, ZA));
     expect(words).not.toMatch(/guaranteed|realized profit|you will (make|earn)/i);
+  });
+});
+
+describe('German', () => {
+  const DE = displayContext({ currency: 'EUR', distanceUnit: 'km', localeTag: 'de-DE' }, 'de');
+  const EUR = (amountMinor: number) => ({ amountMinor, currency: 'EUR' });
+  const euroDeal: DealDetail = { ...deal, price: { asking: EUR(40_000), knownCosts: EUR(1_500), knownTotal: EUR(41_500) } };
+
+  it('card labels, freshness and estimates in German', () => {
+    const card = dealCardView(euroDeal, DE);
+    expect(card).toMatchObject({
+      freshness: 'Eingestellt vor 25 Min.',
+      status: { label: 'Neu', tone: 'fresh' },
+      strength: { label: 'Stark', tone: 'action' },
+      confidence: 'Mittlere Sicherheit',
+      upside: { value: 'Nicht geschätzt', estimated: false, caption: 'Noch keine Daten zum Wiederverkaufswert' },
+    });
+    expect(nbsp(card.priceExtra!)).toBe('+ 15,00 € bekannte Kosten');
+    expect(card.accessibleSummary).toContain('Potenzial nicht geschätzt');
+    expect(dealCardView({ ...euroDeal, source: { ...euroDeal.source, listingStatus: 'SOLD', available: false } }, DE).sourceNote).toEqual({ text: 'Auf eBay verkauft', tone: 'loss' });
+  });
+
+  it('ages, plurals and the estimate note', () => {
+    const t = DE.t;
+    expect([0, 5, 60, 49 * 60].map((m) => ageText(m, t))).toEqual(['gerade eben', 'vor 5 Min.', 'vor 1 Std.', 'vor 2 Tagen']);
+    const resale = (sampleSize: number) => resaleView({ ...deal.estimate, resale: { status: 'estimated', basis: 'comparable_sales', low: EUR(45_000), typical: EUR(50_000), high: EUR(56_000), sampleSize } }, DE);
+    expect(nbsp(resale(1).caption)).toBe('Spanne 450,00 € bis 560,00 €, aus 1 vergleichbaren Verkauf');
+    expect(nbsp(resale(12).caption)).toBe('Spanne 450,00 € bis 560,00 €, aus 12 vergleichbaren Verkäufen');
+    expect(estimateNote(t)).toMatch(/^Schätzungen, kein garantierter Gewinn/);
+    expect(estimateNote()).toBe(ESTIMATE_NOTE);
+  });
+
+  it('detail: price lines, max price, costs and decisions', () => {
+    const view = dealDetailView({ ...euroDeal, economics: { ...deal.economics!, knownCosts: [{ kind: 'shipping', label: 'Versand', amount: EUR(1_500) }], maxPrice: { limit: EUR(45_000), status: 'within', withKnownCosts: 'within', headroom: EUR(3_500) } }, decision: { ...deal.decision, savedAt: NOW } }, DE);
+    expect(view.priceLines.map(([l]) => l)).toEqual(['Angebotspreis', 'Versand', 'Bekannte Gesamtsumme']);
+    expect(view.notIncluded).toBe('Nicht enthalten: Verkaufsgebühren und Versand an deinen Käufer.');
+    expect(nbsp(view.maxPriceNote!)).toBe('35,00 € unter deinem Höchstpreis von 450,00 €, inklusive bekannter Kosten');
+    expect(view.checks[0]).toMatchObject({ label: 'Höchstpreis', outcome: { label: 'Erfüllt', tone: 'profit' } });
+    expect(view.decisions[0]).toMatch(/^Du hast ihn .+ gemerkt\.$/);
+  });
+
+  it('translated accessors keep the tones; forms answer in German', () => {
+    const t = DE.t;
+    expect(dealFilters(t).map((f) => f.label)).toEqual(['Zu prüfen', 'Gemerkt', 'Gekauft', 'Ausgeblendet', 'Nicht verfügbar', 'Alle']);
+    expect(dealFilters().map((f) => f.label)).toEqual(DEAL_FILTERS.map((f) => f.label));
+    expect(strengthLabel('exceptional', t)).toEqual({ label: 'Außergewöhnlich', tone: STRENGTH_LABEL.exceptional.tone });
+    expect(riskLevelLabel('high', t)).toEqual({ label: 'Hohes Risiko', tone: 'loss' });
+    expect(nextStepLabel('ask_seller', t).label).toBe('Frag zuerst beim Verkäufer nach');
+    expect(buildBoughtRequest('', 'EUR', null, '', t)).toEqual({ ok: false, error: 'Gib ein, was du bezahlt hast', field: 'price' });
+    expect(buildBoughtRequest('viel', 'EUR', null, '', t)).toMatchObject({ ok: false, error: 'Gib einen Betrag wie 1500 oder 1500,50 ein' });
+    expect(buildIgnoreRequest('x'.repeat(201), t)).toEqual({ ok: false, error: 'Bitte weniger als 200 Zeichen' });
   });
 });
 

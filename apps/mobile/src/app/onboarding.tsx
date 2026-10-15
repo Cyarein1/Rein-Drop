@@ -3,20 +3,19 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AccessibilityInfo, Image, StyleSheet, Text, View } from 'react-native';
 import { ApiError, type SellerSnapshot, type UpdateSellerSnapshotRequest } from '@rein-drop/api-client';
 import {
-  SELLER_SNAPSHOT_COPY,
   SELLER_SNAPSHOT_QUESTION_COUNT,
-  SNAPSHOT_GATE_COPY,
   buildStepUpdate,
   dealCriterionOptions,
   dealTargetField,
   hasAnswer,
-  huntFormContext,
   nextStep,
   previousStep,
   questionNumber,
   questionOptions,
   resumeStep,
   snapshotDraft,
+  snapshotGateCopy,
+  snapshotQuestionText,
   snapshotSummary,
   type HuntFormContext,
   type SnapshotDraft,
@@ -25,9 +24,9 @@ import {
 } from '@rein-drop/client-core';
 import { colors, fontSize, radius, roles, space, wash } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { useSession } from '@/auth/SessionProvider';
 import { mascotAssets } from '@/brand/assets';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, ChoiceGroup, font, LoadingState, Screen, SystemBanner, TextInput } from '@/ui';
 
 /**
@@ -46,7 +45,8 @@ export default function OnboardingScreen() {
 
 function OnboardingLoader() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
-  const session = useSession();
+  const context = useDisplayContext();
+  const { t } = context;
   const [state, setState] = useState<{ status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; snapshot: SellerSnapshot }>({
     status: 'loading',
   });
@@ -68,7 +68,7 @@ function OnboardingLoader() {
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
-        <LoadingState label="Loading your answers…" />
+        <LoadingState label={t('onboarding.loadingAnswers')} />
       </View>
     );
   }
@@ -77,7 +77,7 @@ function OnboardingLoader() {
       <Screen>
         <SystemBanner
           tone="error"
-          title="Couldn't load your answers"
+          title={t('onboarding.loadFailed')}
           message={state.message}
           action={
             <Button
@@ -87,7 +87,7 @@ function OnboardingLoader() {
                 setAttempt((n) => n + 1);
               }}
             >
-              Try again
+              {t('onboarding.tryAgain')}
             </Button>
           }
         />
@@ -96,11 +96,13 @@ function OnboardingLoader() {
   }
   const { snapshot } = state;
   const startAt: SnapshotStep = edit === '1' ? (snapshot.isReseller ? 'categories' : 'gate') : resumeStep(snapshot);
-  return <SnapshotFlow initial={snapshot} startAt={startAt} context={huntFormContext(session.user.locale)} />;
+  return <SnapshotFlow initial={snapshot} startAt={startAt} context={context} />;
 }
 
 function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; startAt: SnapshotStep; context: HuntFormContext }) {
   const router = useRouter();
+  const { t } = context;
+  const gateCopy = snapshotGateCopy(t);
   const [snapshot, setSnapshot] = useState(initial);
   const [step, setStep] = useState<SnapshotStep>(startAt);
   const [draft, setDraft] = useState<SnapshotDraft>(() => snapshotDraft(initial));
@@ -112,7 +114,7 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
     setError(null);
     setStep(to);
     const n = questionNumber(to);
-    if (n) AccessibilityInfo.announceForAccessibility(`Question ${n} of ${SELLER_SNAPSHOT_QUESTION_COUNT}`);
+    if (n) AccessibilityInfo.announceForAccessibility(t('onboarding.questionOf', { number: n, total: SELLER_SNAPSHOT_QUESTION_COUNT }));
   };
   const set = <K extends keyof SnapshotDraft>(key: K, value: SnapshotDraft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -129,29 +131,29 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
       go(then(saved));
     } catch (err) {
       const detail = err instanceof ApiError ? err.details?.[0]?.message : undefined;
-      setError(err instanceof Error ? (detail ? `${err.message}: ${detail}` : err.message) : "We couldn't save your answer.");
+      setError(err instanceof Error ? (detail ? `${err.message}: ${detail}` : err.message) : t('onboarding.saveFailed'));
     } finally {
       setSaving(false);
     }
   };
 
-  const banner = error && <SystemBanner tone="error" title="Not saved yet" message={error} />;
+  const banner = error && <SystemBanner tone="error" title={t('onboarding.notSavedYet')} message={error} />;
 
   if (step === 'gate') {
     return (
       <Screen>
-        <Stack.Screen options={{ title: 'Set up Rein Drop' }} />
+        <Stack.Screen options={{ title: t('onboarding.setupTitle') }} />
         <Mascot token="welcome" />
         <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          {SNAPSHOT_GATE_COPY.question}
+          {gateCopy.question}
         </Text>
-        <Text style={[styles.lead, font('regular')]}>Five quick taps set up Rein Drop around how you source.</Text>
+        <Text style={[styles.lead, font('regular')]}>{t('onboarding.gateLead')}</Text>
         <ChoiceGroup
           hideLegend
-          legend={SNAPSHOT_GATE_COPY.question}
+          legend={gateCopy.question}
           options={[
-            { value: 'yes', label: SNAPSHOT_GATE_COPY.options.yes },
-            { value: 'no', label: SNAPSHOT_GATE_COPY.options.no },
+            { value: 'yes', label: gateCopy.options.yes },
+            { value: 'no', label: gateCopy.options.no },
           ]}
           value={gateChoice ?? ('' as 'yes')}
           onChange={(v) => {
@@ -173,7 +175,7 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
           loading={saving}
           fullWidth
         >
-          Continue
+          {t('onboarding.continue')}
         </Button>
       </Screen>
     );
@@ -182,16 +184,16 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
   if (step === 'not_reseller') {
     return (
       <Screen>
-        <Stack.Screen options={{ title: 'Coming soon' }} />
+        <Stack.Screen options={{ title: t('onboarding.comingSoonTitle') }} />
         <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          {SNAPSHOT_GATE_COPY.comingSoon.title}
+          {gateCopy.comingSoon.title}
         </Text>
-        <Text style={[styles.lead, font('regular')]}>{SNAPSHOT_GATE_COPY.comingSoon.body}</Text>
+        <Text style={[styles.lead, font('regular')]}>{gateCopy.comingSoon.body}</Text>
         <Button variant="secondary" onPress={() => go('gate')} fullWidth>
-          Change my answer
+          {t('onboarding.changeAnswer')}
         </Button>
         <Button variant="text" onPress={() => leave('/')}>
-          Go to Home
+          {t('onboarding.goHome')}
         </Button>
       </Screen>
     );
@@ -201,28 +203,28 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
     const summary = snapshotSummary(snapshot, context);
     return (
       <Screen>
-        <Stack.Screen options={{ title: "You're set up" }} />
+        <Stack.Screen options={{ title: t('onboarding.setUpDone') }} />
         <Mascot token="confirmed" />
         <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-          You&apos;re set up
+          {t('onboarding.setUpDone')}
         </Text>
         <Text style={[styles.body, font('regular')]}>{summary.sentence}</Text>
         <View style={styles.priorities}>
-          <Text style={[styles.muted, font('semibold')]}>Rein Drop will prioritize</Text>
+          <Text style={[styles.muted, font('semibold')]}>{t('onboarding.willPrioritize')}</Text>
           {summary.priorities.map((p) => (
             <Text key={p} style={[styles.body, font('regular')]}>
-              • {p}
+              {t('onboarding.bullet', { text: p })}
             </Text>
           ))}
         </View>
         <Button onPress={() => leave('/hunts/new')} fullWidth>
-          Create my first Hunt
+          {t('onboarding.createFirstHunt')}
         </Button>
         <Button variant="secondary" onPress={() => go('categories')} fullWidth>
-          Edit my answers
+          {t('onboarding.editAnswers')}
         </Button>
         <Button variant="text" onPress={() => leave('/')}>
-          Go to Home
+          {t('onboarding.goHome')}
         </Button>
       </Screen>
     );
@@ -241,26 +243,26 @@ function SnapshotFlow({ initial, startAt, context }: { initial: SellerSnapshot; 
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: `${number} of ${SELLER_SNAPSHOT_QUESTION_COUNT}` }} />
+      <Stack.Screen options={{ title: t('onboarding.stepOf', { number, total: SELLER_SNAPSHOT_QUESTION_COUNT }) }} />
       <View
         style={styles.track}
         accessible
         accessibilityRole="progressbar"
-        accessibilityLabel="Setup progress"
+        accessibilityLabel={t('onboarding.progress')}
         accessibilityValue={{ min: 0, max: SELLER_SNAPSHOT_QUESTION_COUNT, now: number }}
       >
         <View style={[styles.fill, { width: `${(number / SELLER_SNAPSHOT_QUESTION_COUNT) * 100}%` }]} />
       </View>
       <Text accessibilityRole="header" style={[styles.title, font('extrabold')]}>
-        {SELLER_SNAPSHOT_COPY[step].question}
+        {snapshotQuestionText(step, t)}
       </Text>
       <QuestionInput step={step} draft={draft} set={set} context={context} />
       {banner}
       <Button onPress={submit} disabled={!hasAnswer(step, draft)} loading={saving} fullWidth>
-        {isLast ? 'See my summary' : 'Next'}
+        {isLast ? t('onboarding.seeSummary') : t('onboarding.next')}
       </Button>
       <Button variant="secondary" onPress={() => go(previousStep(step))} disabled={saving} fullWidth>
-        Back
+        {t('onboarding.back')}
       </Button>
     </Screen>
   );
@@ -277,25 +279,26 @@ function QuestionInput({
   set: <K extends keyof SnapshotDraft>(key: K, value: SnapshotDraft[K]) => void;
   context: HuntFormContext;
 }) {
-  const legend = SELLER_SNAPSHOT_COPY[step].question;
+  const { t } = context;
+  const legend = snapshotQuestionText(step, t);
   switch (step) {
     case 'categories':
       return (
         <>
-          <ChoiceGroup multiple hideLegend legend={legend} hint="Choose all that apply" options={questionOptions('categories')} value={draft.categories} onChange={(v) => set('categories', v)} />
+          <ChoiceGroup multiple hideLegend legend={legend} hint={t('onboarding.chooseAll')} options={questionOptions('categories', t)} value={draft.categories} onChange={(v) => set('categories', v)} />
           {draft.categories.includes('other') && (
-            <TextInput label="What else? (optional)" value={draft.categoriesOther} maxLength={60} onChangeText={(t) => set('categoriesOther', t)} />
+            <TextInput label={t('onboarding.whatElse')} value={draft.categoriesOther} maxLength={60} onChangeText={(text) => set('categoriesOther', text)} />
           )}
         </>
       );
     case 'stage':
-      return <ChoiceGroup hideLegend legend={legend} options={questionOptions('stage')} value={draft.stage ?? ('' as never)} onChange={(v) => set('stage', v)} />;
+      return <ChoiceGroup hideLegend legend={legend} options={questionOptions('stage', t)} value={draft.stage ?? ('' as never)} onChange={(v) => set('stage', v)} />;
     case 'sources':
       return (
         <>
-          <ChoiceGroup multiple hideLegend legend={legend} hint="Choose all that apply" options={questionOptions('sources')} value={draft.sources} onChange={(v) => set('sources', v)} />
+          <ChoiceGroup multiple hideLegend legend={legend} hint={t('onboarding.chooseAll')} options={questionOptions('sources', t)} value={draft.sources} onChange={(v) => set('sources', v)} />
           {draft.sources.includes('other') && (
-            <TextInput label="Where else? (optional)" value={draft.sourcesOther} maxLength={60} onChangeText={(t) => set('sourcesOther', t)} />
+            <TextInput label={t('onboarding.whereElse')} value={draft.sourcesOther} maxLength={60} onChangeText={(text) => set('sourcesOther', text)} />
           )}
         </>
       );
@@ -319,9 +322,9 @@ function QuestionInput({
               kind={field.kind === 'money' ? 'money' : 'text'}
               currency={field.kind === 'money' ? context.currency : undefined}
               keyboardType={field.kind === 'percent' ? 'number-pad' : undefined}
-              hint="Used as a starting point for your Hunts. You can change it any time."
+              hint={t('onboarding.targetHint')}
               value={draft.dealTarget}
-              onChangeText={(t) => set('dealTarget', t)}
+              onChangeText={(text) => set('dealTarget', text)}
             />
           )}
         </>
@@ -332,7 +335,7 @@ function QuestionInput({
         <ChoiceGroup
           hideLegend
           legend={legend}
-          options={questionOptions('improvementGoal')}
+          options={questionOptions('improvementGoal', t)}
           value={draft.improvementGoal ?? ('' as never)}
           onChange={(v) => set('improvementGoal', v)}
         />

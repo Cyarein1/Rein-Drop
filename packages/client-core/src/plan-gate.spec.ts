@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Plan, PlanEntitlements } from '@rein-drop/contracts';
-import { describeEntitlements, planGateOptions, priceLabel } from './index.js';
+import { translator } from '@rein-drop/i18n';
+import { describeEntitlements, planGateOptions, priceLabel, RESOLUTION_LABEL, resolutionLabels } from './index.js';
 
 const ent = (overrides: Partial<PlanEntitlements> = {}): PlanEntitlements => ({
   activeHunts: { limit: 1 },
@@ -71,6 +72,23 @@ describe('priceLabel', () => {
     expect(priceLabel({ status: 'tbd' }, 'en-US')).toBe('Price TBD');
     expect(priceLabel({ status: 'priced', amount: { amountMinor: 1999, currency: 'USD' }, interval: 'month', intervalCount: 1 }, 'en-US')).toBe('$19.99 / month');
     expect(priceLabel({ status: 'priced', amount: { amountMinor: 50000, currency: 'USD' }, interval: 'month', intervalCount: 3 }, 'en-US')).toBe('$500.00 every 3 months');
+  });
+
+  it('German (draft): limits and prices', () => {
+    const de = translator('de');
+    expect(describeEntitlements(ent(), de)).toEqual([
+      '1 aktiver Hunt',
+      'Bis zu 10 gespeicherte Hunts',
+      'eBay und Facebook Marketplace',
+      'Hot Hunts: kommen später',
+      'Normale Beobachtungspriorität',
+      '30 Tage Analyseverlauf',
+      '1 Platz',
+    ]);
+    expect(priceLabel({ status: 'tbd' }, 'de-DE', de)).toBe('Preis folgt');
+    expect(priceLabel({ status: 'priced', amount: { amountMinor: 1999, currency: 'EUR' }, interval: 'month', intervalCount: 1 }, 'de-DE', de).replace(/\s/g, ' ')).toBe('19,99 € / Monat');
+    expect(priceLabel({ status: 'priced', amount: { amountMinor: 50000, currency: 'EUR' }, interval: 'month', intervalCount: 3 }, 'de-DE', de).replace(/\s/g, ' ')).toBe('500,00 € alle 3 Monate');
+    expect(resolutionLabels(translator('en'))).toEqual(RESOLUTION_LABEL);
   });
 
   it('marks TBD plans unavailable', () => {

@@ -1,4 +1,5 @@
 import type { AccessResponse } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 
 /**
  * Mobile companion account access (decision 0018): what the signed-in account can use right now,
@@ -33,8 +34,16 @@ export interface CompanionAccessView {
 
 export const NO_PAID_ACCESS_LINE = "This account doesn't currently have access to paid features.";
 export const DATA_KEPT_LINE = 'Your Hunts, inventory and saved deals are kept.';
+/** NO_PAID_ACCESS_LINE in the UI language. Use this; the English constant will be removed in step 89. */
+export function noPaidAccessLine(t: Translator): string {
+  return t('access.noPaidAccess');
+}
+/** DATA_KEPT_LINE in the UI language. Use this; the English constant will be removed in step 89. */
+export function dataKeptLine(t: Translator): string {
+  return t('access.dataKept');
+}
 
-export function companionAccessView(access: AccessResponse, localeTag: string): CompanionAccessView {
+export function companionAccessView(access: AccessResponse, localeTag: string, t: Translator = translator('en')): CompanionAccessView {
   const source = access.products.source;
   const date = (iso: string | null) => (iso ? new Intl.DateTimeFormat(localeTag, { dateStyle: 'medium' }).format(new Date(iso)) : null);
   const planName = source.plan?.name ?? null;
@@ -42,9 +51,9 @@ export function companionAccessView(access: AccessResponse, localeTag: string): 
   if (access.suspended || source.state === 'suspended') {
     return {
       kind: 'suspended',
-      label: 'Suspended',
+      label: t('access.labelSuspended'),
       tone: 'loss',
-      lines: ["This account's access is suspended by Rein Drop, so Hunts aren't being watched.", DATA_KEPT_LINE],
+      lines: [t('access.suspendedLine'), dataKeptLine(t)],
       paidFeatures: false,
       canUseHunts: false,
     };
@@ -54,23 +63,30 @@ export function companionAccessView(access: AccessResponse, localeTag: string): 
   switch (source.state) {
     case 'active':
       return source.cancelsAtPeriodEnd && until
-        ? { kind: 'ending', label: 'Active', tone: 'profit', lines: [`Your current access continues until ${until}.`], paidFeatures: true, canUseHunts: true }
-        : { kind: 'active', label: 'Active', tone: 'profit', lines: [planName ? `Your ${planName} access is active.` : 'Your access is active.'], paidFeatures: true, canUseHunts: true };
+        ? { kind: 'ending', label: t('access.labelActive'), tone: 'profit', lines: [t('access.continuesUntil', { date: until })], paidFeatures: true, canUseHunts: true }
+        : {
+            kind: 'active',
+            label: t('access.labelActive'),
+            tone: 'profit',
+            lines: [planName ? t('access.planActive', { plan: planName }) : t('access.accessActive')],
+            paidFeatures: true,
+            canUseHunts: true,
+          };
     case 'trialing':
       return {
         kind: 'trial',
-        label: 'Trial',
+        label: t('access.labelTrial'),
         tone: 'info',
-        lines: [until ? `Your trial access continues until ${until}.` : 'Your trial access is active.'],
+        lines: [until ? t('access.trialUntil', { date: until }) : t('access.trialActive')],
         paidFeatures: true,
         canUseHunts: true,
       };
     case 'past_due':
       return {
         kind: 'needs_attention',
-        label: 'Needs attention',
+        label: t('access.labelNeedsAttention'),
         tone: 'fresh',
-        lines: ['Your account needs attention. Your current access continues for now.'],
+        lines: [t('access.needsAttentionLine')],
         paidFeatures: true,
         canUseHunts: true,
       };
@@ -78,9 +94,9 @@ export function companionAccessView(access: AccessResponse, localeTag: string): 
       const graceUntil = date(source.graceEndsAt);
       return {
         kind: 'grace',
-        label: 'Needs attention',
+        label: t('access.labelNeedsAttention'),
         tone: 'fresh',
-        lines: [graceUntil ? `Your current access continues until ${graceUntil}.` : 'Your current access continues for a short time.'],
+        lines: [graceUntil ? t('access.continuesUntil', { date: graceUntil }) : t('access.continuesShort')],
         paidFeatures: true,
         canUseHunts: true,
       };
@@ -89,23 +105,25 @@ export function companionAccessView(access: AccessResponse, localeTag: string): 
     case 'expired':
       return {
         kind: 'ended',
-        label: 'Free',
+        label: t('access.labelFree'),
         tone: 'neutral',
-        lines: [NO_PAID_ACCESS_LINE, `${DATA_KEPT_LINE} Hunts beyond what's included now are paused, not deleted.`],
+        lines: [noPaidAccessLine(t), t('access.dataKeptPaused')],
         paidFeatures: false,
         canUseHunts: true,
       };
     default:
       // free / none: never had paid access on this account.
-      return { kind: 'no_paid_access', label: 'Free', tone: 'neutral', lines: [NO_PAID_ACCESS_LINE], paidFeatures: false, canUseHunts: true };
+      return { kind: 'no_paid_access', label: t('access.labelFree'), tone: 'neutral', lines: [noPaidAccessLine(t)], paidFeatures: false, canUseHunts: true };
   }
 }
 
 /** "Live Hunts: 1 of 1" / "Saved Hunts: 3 (no limit)". */
-export function companionUsageLines(access: AccessResponse): string[] {
+export function companionUsageLines(access: AccessResponse, t: Translator = translator('en')): string[] {
   const { activeHunts, savedHunts } = access.products.source.limits;
-  const line = (label: string, u: { limit: number | null; used: number }) => `${label}: ${u.used}${u.limit === null ? ' (no limit)' : ` of ${u.limit}`}`;
-  return [line('Live Hunts', activeHunts), line('Saved Hunts', savedHunts)];
+  return [
+    activeHunts.limit === null ? t('access.usageLiveUnlimited', { used: activeHunts.used }) : t('access.usageLive', { used: activeHunts.used, limit: activeHunts.limit }),
+    savedHunts.limit === null ? t('access.usageSavedUnlimited', { used: savedHunts.used }) : t('access.usageSaved', { used: savedHunts.used, limit: savedHunts.limit }),
+  ];
 }
 
 /**

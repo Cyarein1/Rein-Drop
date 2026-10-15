@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, type ColorValue } from 'react-native';
 import { fontSize, roles, size } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from '@/ui';
 
 /** Native header styling from the design tokens (navy on white). */
@@ -23,9 +24,10 @@ export function NavIcon({ name, color, size: iconSize = 24 }: { name: SymbolName
 
 /** Inventory tab header: your listings (Sell, decision 0019). */
 export function ListingsHeaderButton() {
+  const t = useT();
   return (
     <Link href="/sell" asChild>
-      <Pressable accessibilityRole="button" accessibilityLabel="Your listings" hitSlop={8} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('nav.titleListings')} hitSlop={8} style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}>
         <NavIcon name={{ ios: 'storefront', android: 'storefront' }} color={roles.text} />
       </Pressable>
     </Link>
@@ -34,11 +36,12 @@ export function ListingsHeaderButton() {
 
 /** Header button to the in-app inbox (alerts). */
 export function InboxHeaderButton() {
+  const t = useT();
   return (
     <Link href="/alerts" asChild>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Inbox"
+        accessibilityLabel={t('nav.titleInbox')}
         hitSlop={8}
         style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
       >

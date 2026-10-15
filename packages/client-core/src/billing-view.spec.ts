@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AccessResponse, Plan } from '@rein-drop/contracts';
+import { translator } from '@rein-drop/i18n';
 import { billingStatusView, checkoutReturnView, planCards } from './billing-view.js';
 
 type Source = AccessResponse['products']['source'];
@@ -47,5 +48,15 @@ describe('web billing view (decision 0018 - web only)', () => {
     expect(checkoutReturnView('success', src({ state: 'active', paid: true, plan: PRO }))).toMatchObject({ tone: 'success', title: 'You’re on Pro' });
     expect(checkoutReturnView('cancelled', src({}))).toMatchObject({ title: 'Checkout cancelled' });
     expect(checkoutReturnView(undefined, src({}))).toBeNull();
+  });
+
+  it('German (draft): status lines, plan actions and checkout banners', () => {
+    const de = translator('de');
+    expect(billingStatusView(src({ state: 'active', paid: true, plan: PRO, periodEndsAt: '2026-11-14T10:00:00Z' }), 'de-DE', de)).toMatchObject({ label: 'Aktiv', lines: ['Verlängert sich am 14.11.2026.'] });
+    expect(billingStatusView(src({ state: 'active', paid: true, plan: PRO, cancelsAtPeriodEnd: true }), 'de-DE', de).lines[0]).toBe(
+      'Dein Pro-Tarif bleibt bis zum Ende der Laufzeit aktiv, danach wechselst du zu Free. Es wird nichts gelöscht.',
+    );
+    expect(planCards(PLANS, src({}), STRIPE, 'de-DE', de)[2]!.action).toEqual({ kind: 'unavailable', reason: 'Noch nicht verfügbar' });
+    expect(checkoutReturnView('success', src({ state: 'active', paid: true, plan: PRO }), de)).toMatchObject({ title: 'Du nutzt jetzt Pro' });
   });
 });

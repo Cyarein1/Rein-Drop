@@ -5,13 +5,12 @@ import { ApiError, type Hunt, type HuntActivity, type HuntEvent } from '@rein-dr
 import {
   ageText,
   firstScanState,
-  HUNT_ACTION_CONFIRM,
-  HUNT_ACTION_LABEL,
-  HUNT_EVENT_LABEL,
-  HUNT_STATUS_LABEL,
+  huntActionConfirm,
+  huntActionLabel,
   huntActions,
   huntCriteria,
-  huntFormContext,
+  huntEventLabel,
+  huntStatusLabel,
   marketplaceRows,
   monitoringLine,
   noDealsYetState,
@@ -19,9 +18,9 @@ import {
 } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
-import { useSession } from '@/auth/SessionProvider';
 import { ProductState } from '@/components/ProductState';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext } from '@/i18n/useT';
 import { Badge, Button, Card, font, LoadingState, Metric, Screen, SystemBanner } from '@/ui';
 
 /** loadedAt is "now" for every relative time on screen (render stays pure). */
@@ -44,8 +43,8 @@ export default function HuntScreen() {
 function HuntDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const session = useSession();
-  const context = huntFormContext(session.user.locale);
+  const context = useDisplayContext();
+  const { t } = context;
   const [state, setState] = useState<State>({ status: 'loading' });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
@@ -76,18 +75,18 @@ function HuntDetail() {
     return () => clearInterval(timer);
   }, [scanning, load]);
 
-  if (state.status === 'loading') return <LoadingState label="Loading the Hunt…" />;
+  if (state.status === 'loading') return <LoadingState label={t('hunts.loadingOne')} />;
   if (state.status === 'error') {
     return (
       <Screen>
         <SystemBanner
           tone={state.notFound ? 'info' : 'error'}
-          title={state.notFound ? 'Hunt not found' : "Couldn't load this Hunt"}
-          message={state.notFound ? 'It may belong to another account.' : state.message}
+          title={state.notFound ? t('hunts.notFoundTitle') : t('hunts.loadOneFailed')}
+          message={state.notFound ? t('hunts.notFoundBody') : state.message}
           action={
             state.notFound ? undefined : (
               <Button variant="secondary" onPress={load}>
-                Try again
+                {t('hunts.tryAgain')}
               </Button>
             )
           }
@@ -97,12 +96,12 @@ function HuntDetail() {
   }
 
   const { hunt, activity, events, loadedAt } = state.data;
-  const status = HUNT_STATUS_LABEL[hunt.status];
-  const monitoring = monitoringLine(hunt, activity, loadedAt);
+  const status = huntStatusLabel(hunt.status, t);
+  const monitoring = monitoringLine(hunt, activity, loadedAt, t);
   const criteria = huntCriteria(hunt, context);
   // Product states by semantic mascot token (approved art or a neutral placeholder).
-  const firstScan = firstScanState(hunt, activity, loadedAt);
-  const noDeals = noDealsYetState(hunt, activity, loadedAt);
+  const firstScan = firstScanState(hunt, activity, loadedAt, t);
+  const noDeals = noDealsYetState(hunt, activity, loadedAt, t);
 
   const run = async (action: Transition) => {
     setBusy(true);
@@ -110,10 +109,10 @@ function HuntDetail() {
     try {
       const updated = await getApiClient().transitionHunt(hunt.id, action);
       const done: Record<Transition, string> = {
-        pause: 'Paused - nothing is checked until you resume.',
-        resume: 'Resumed - Rein Drop is watching again.',
-        archive: 'Archived. Restore it any time from Archived.',
-        restore: updated.status === 'DRAFT' ? 'Restored as a draft.' : 'Restored as paused. Resume it when you want it to watch again.',
+        pause: t('hunts.donePause'),
+        resume: t('hunts.doneResume'),
+        archive: t('hunts.doneArchive'),
+        restore: updated.status === 'DRAFT' ? t('hunts.doneRestoreDraft') : t('hunts.doneRestorePaused'),
       };
       setNotice({ error: false, text: done[action] });
       load();
@@ -125,38 +124,40 @@ function HuntDetail() {
     }
   };
   /** Pause and archive change what Rein Drop does: confirm with a native dialog first. */
-  const confirm = (action: 'pause' | 'archive') =>
-    Alert.alert(`${HUNT_ACTION_LABEL[action]} this Hunt?`, HUNT_ACTION_CONFIRM[action], [
-      { text: 'Cancel', style: 'cancel' },
-      { text: HUNT_ACTION_LABEL[action], style: action === 'archive' ? 'destructive' : 'default', onPress: () => void run(action) },
+  const confirm = (action: 'pause' | 'archive') => {
+    const copy = huntActionConfirm(action, t);
+    Alert.alert(copy?.title ?? huntActionLabel(action, t), copy?.body, [
+      { text: t('hunts.cancel'), style: 'cancel' },
+      { text: huntActionLabel(action, t), style: action === 'archive' ? 'destructive' : 'default', onPress: () => void run(action) },
     ]);
+  };
 
   const button = (action: HuntDetailAction) => {
     switch (action) {
       case 'start':
         return (
           <Button key={action} onPress={() => router.push({ pathname: '/hunts/[id]/start', params: { id: hunt.id } })}>
-            Start watching
+            {t('hunts.actionStart')}
           </Button>
         );
       case 'edit':
         return (
           <Button key={action} variant="secondary" onPress={() => router.push({ pathname: '/hunts/[id]/edit', params: { id: hunt.id } })}>
-            Edit
+            {t('hunts.actionEdit')}
           </Button>
         );
       case 'resume':
       case 'restore':
         return (
           <Button key={action} variant={action === 'resume' ? 'primary' : 'secondary'} loading={busy} onPress={() => void run(action)}>
-            {HUNT_ACTION_LABEL[action]}
+            {huntActionLabel(action, t)}
           </Button>
         );
       case 'pause':
       case 'archive':
         return (
           <Button key={action} variant={action === 'archive' ? 'text' : 'secondary'} disabled={busy} onPress={() => confirm(action)}>
-            {HUNT_ACTION_LABEL[action]}
+            {huntActionLabel(action, t)}
           </Button>
         );
       default:
@@ -176,34 +177,34 @@ function HuntDetail() {
         <Text style={[styles.body, font('regular'), monitoring.tone === 'fresh' && styles.warn]}>{monitoring.text}</Text>
       )}
       {noDeals && <ProductState view={noDeals} />}
-      {notice && <SystemBanner tone={notice.error ? 'error' : 'success'} title={notice.error ? "That didn't work" : notice.text} message={notice.error ? notice.text : undefined} />}
+      {notice && <SystemBanner tone={notice.error ? 'error' : 'success'} title={notice.error ? t('hunts.actionFailed') : notice.text} message={notice.error ? notice.text : undefined} />}
       <View style={styles.actions}>{huntActions(hunt.status).map(button)}</View>
 
       <Card
-        title="Performance"
+        title={t('hunts.performance')}
         action={
           activity.counts.deals > 0 ? (
             <Button variant="text" onPress={() => router.push('/deals')}>
-              Open deals
+              {t('hunts.openDeals')}
             </Button>
           ) : undefined
         }
       >
         <View style={styles.metrics}>
-          <Metric label="Deals found" value={String(activity.counts.deals)} />
-          <Metric label="To review" value={String(activity.counts.toReview)} />
-          <Metric label="Alerts" value={String(activity.counts.alerts)} />
-          <Metric label="Saved" value={String(activity.counts.saved)} />
-          <Metric label="Bought" value={String(activity.counts.bought)} />
+          <Metric label={t('hunts.metricDeals')} value={String(activity.counts.deals)} />
+          <Metric label={t('hunts.metricToReview')} value={String(activity.counts.toReview)} />
+          <Metric label={t('hunts.metricAlerts')} value={String(activity.counts.alerts)} />
+          <Metric label={t('hunts.metricSaved')} value={String(activity.counts.saved)} />
+          <Metric label={t('hunts.metricBought')} value={String(activity.counts.bought)} />
         </View>
       </Card>
 
-      <Card title="Monitoring">
+      <Card title={t('hunts.monitoring')}>
         {hunt.status === 'DRAFT' ? (
-          <Text style={[styles.muted, font('regular')]}>Not watching yet - start watching to begin checking marketplaces.</Text>
+          <Text style={[styles.muted, font('regular')]}>{t('hunts.draftMonitoring')}</Text>
         ) : (
-          marketplaceRows(hunt, activity, loadedAt).map((row) => (
-            <View key={row.name} style={styles.row} accessible accessibilityLabel={`${row.name}: ${row.status.label}. ${row.detail}`}>
+          marketplaceRows(hunt, activity, loadedAt, t).map((row) => (
+            <View key={row.name} style={styles.row} accessible accessibilityLabel={t('hunts.rowA11y', { name: row.name, status: row.status.label, detail: row.detail })}>
               <View style={styles.rowHead}>
                 <Text style={[styles.body, font('semibold')]}>{row.name}</Text>
                 <Badge tone={row.status.tone}>{row.status.label}</Badge>
@@ -212,27 +213,27 @@ function HuntDetail() {
             </View>
           ))
         )}
-        <Text style={[styles.muted, font('regular')]}>Priority: Normal</Text>
+        <Text style={[styles.muted, font('regular')]}>{t('hunts.priorityNormal')}</Text>
       </Card>
 
-      <Card title="What Rein Drop watches for">
+      <Card title={t('hunts.criteriaTitle')}>
         <Text style={[styles.body, font('regular')]}>{criteria.sentence}</Text>
         {criteria.items.map((item) => (
-          <View key={item.label} style={styles.rowHead} accessible accessibilityLabel={`${item.label}: ${item.value}`}>
+          <View key={item.label} style={styles.rowHead} accessible accessibilityLabel={t('hunts.labelValue', { label: item.label, value: item.value })}>
             <Text style={[styles.muted, font('regular')]}>{item.label}</Text>
             <Text style={[styles.body, styles.value, font('semibold')]}>{item.value}</Text>
           </View>
         ))}
         {criteria.warnings.map((w) => (
-          <SystemBanner key={w} tone="warning" title="Before this Hunt can watch" message={w} />
+          <SystemBanner key={w} tone="warning" title={t('hunts.beforeWatch')} message={w} />
         ))}
       </Card>
 
-      <Card title="History">
+      <Card title={t('hunts.history')}>
         {[...events].reverse().map((e) => (
           <View key={e.id} style={styles.rowHead}>
-            <Text style={[styles.body, font('regular')]}>{HUNT_EVENT_LABEL[e.type]}</Text>
-            <Text style={[styles.muted, font('regular')]}>{ageText(Math.max(0, Math.floor((loadedAt.getTime() - Date.parse(e.createdAt)) / 60_000)))}</Text>
+            <Text style={[styles.body, font('regular')]}>{huntEventLabel(e.type, t)}</Text>
+            <Text style={[styles.muted, font('regular')]}>{ageText(Math.max(0, Math.floor((loadedAt.getTime() - Date.parse(e.createdAt)) / 60_000)), t)}</Text>
           </View>
         ))}
       </Card>

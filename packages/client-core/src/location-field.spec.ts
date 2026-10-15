@@ -51,4 +51,13 @@ describe('location field', () => {
     expect(mapCaption('Sandton', 25, '25', 'km')).toBe('Deals within 25 km of Sandton. Drag the pin to adjust the centre.');
     expect(mapCaption('Sandton', null, '', 'km')).toMatch(/^Centre: Sandton. Add a radius/);
   });
+
+  it('German: caption and the radius-without-location error', () => {
+    const de = huntFormContext({ countryCode: 'DE', currency: 'EUR', distanceUnit: 'km', language: 'de', source: 'detected' });
+    expect(de.language).toBe('de');
+    expect(mapCaption('Berlin', 25, ' 25 ', 'km', de.t)).toBe('Deals im Umkreis von 25 km um Berlin. Zieh die Markierung, um den Mittelpunkt anzupassen.');
+    expect(mapCaption('Berlin', null, '', 'km', de.t)).toMatch(/^Mittelpunkt: Berlin\. Füge einen Umkreis hinzu/);
+    const result = buildCreateHuntRequest({ ...base, locationText: '', radius: '10' }, de);
+    expect(result.ok === false && result.errors.locationText).toBe('Füge einen Ort für den Umkreis hinzu');
+  });
 });

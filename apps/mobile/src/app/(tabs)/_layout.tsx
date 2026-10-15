@@ -2,10 +2,12 @@ import type { ReactNode } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { MOBILE_TABS } from '@rein-drop/api-client';
+import type { MessageKey } from '@rein-drop/i18n';
 import { fontSize, radius, roles, size } from '@rein-drop/design-tokens';
 import { useCanUseHunts } from '@/access/AccessNotice';
 import { SessionGate } from '@/auth/SessionGate';
 import { useCapabilities } from '@/capabilities/CapabilitiesProvider';
+import { useT } from '@/i18n/useT';
 import { headerOptions, InboxHeaderButton, ListingsHeaderButton, NavIcon } from '@/navigation/options';
 import { useOnboardingPrompt } from '@/onboarding/useOnboardingPrompt';
 import { font } from '@/ui';
@@ -33,6 +35,12 @@ const ICONS: Record<Exclude<TabName, 'create'>, IconName> = {
   inventory: { ios: 'shippingbox', android: 'inventory_2' },
   account: { ios: 'person.crop.circle', android: 'account_circle' },
 };
+const TAB_TITLE: Record<Exclude<TabName, 'create'>, MessageKey> = {
+  deals: 'nav.tabDeals',
+  hunts: 'nav.tabHunts',
+  inventory: 'nav.tabInventory',
+  account: 'nav.tabAccount',
+};
 const HEADER_RIGHT: Partial<Record<TabName, () => ReactNode>> = {
   deals: () => <InboxHeaderButton />,
   // Your listings (Sell, decision 0019) - only when the Sell workspace is available.
@@ -42,6 +50,7 @@ const HEADER_RIGHT: Partial<Record<TabName, () => ReactNode>> = {
 function AppTabs() {
   const caps = useCapabilities();
   const canUseHunts = useCanUseHunts();
+  const t = useT();
   useOnboardingPrompt();
   return (
     <Tabs
@@ -60,7 +69,7 @@ function AppTabs() {
             key={tab.name}
             name="create"
             options={{
-              title: 'Create Hunt',
+              title: t('nav.createHunt'),
               href: caps[tab.feature].available && canUseHunts ? undefined : null,
               tabBarButton: (props) => <CreateTabButton style={props.style} />,
             }}
@@ -70,7 +79,7 @@ function AppTabs() {
             key={tab.name}
             name={tab.name}
             options={{
-              title: tab.title,
+              title: t(TAB_TITLE[tab.name]),
               // A tab whose feature isn't available isn't shown (and can't be navigated to from the bar).
               href: caps[tab.feature].available ? undefined : null,
               headerRight: HEADER_RIGHT[tab.name],
@@ -92,17 +101,18 @@ function SellHeaderButton() {
 /** The central "+": opens the Create Hunt modal over the current tab (Mobile UI Screenbook). */
 function CreateTabButton({ style }: { style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
+  const t = useT();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Create Hunt"
+      accessibilityLabel={t('nav.createHunt')}
       onPress={() => router.push('/hunts/new')}
       style={({ pressed }) => [style, styles.createButton, pressed && styles.pressed]}
     >
       <View style={styles.createCircle}>
         <NavIcon name={{ ios: 'plus', android: 'add' }} color={roles.onAction} size={26} />
       </View>
-      <Text style={[styles.createLabel, font('semibold')]}>Create</Text>
+      <Text style={[styles.createLabel, font('semibold')]}>{t('nav.create')}</Text>
     </Pressable>
   );
 }

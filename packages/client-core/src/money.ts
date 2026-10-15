@@ -1,4 +1,5 @@
 import type { Money } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 
 /** Number of minor-unit digits for a currency (2 for USD/ZAR, 0 for JPY...). */
 export function currencyDigits(currency: string): number {
@@ -13,12 +14,12 @@ export type ParsedAmount = { ok: true; money: Money | null } | { ok: false; mess
 
 /**
  * Parses what a person types into a money field ("1500", "1 500", "1,500.50", "1500,50")
- * into integer minor units. Empty input = no amount (null).
+ * into integer minor units. Empty input = no amount (null). Error messages in 	's language.
  */
-export function parseMoneyInput(text: string, currency: string): ParsedAmount {
+export function parseMoneyInput(text: string, currency: string, t: Translator = translator('en')): ParsedAmount {
   const raw = text.replace(/[\s ']/g, '');
   if (raw === '') return { ok: true, money: null };
-  if (!/^\d[\d.,]*$/.test(raw)) return { ok: false, message: 'Enter an amount like 1500 or 1500.50' };
+  if (!/^\d[\d.,]*$/.test(raw)) return { ok: false, message: t('common.moneyInvalid') };
 
   const lastSep = Math.max(raw.lastIndexOf('.'), raw.lastIndexOf(','));
   const digits = currencyDigits(currency);
@@ -32,9 +33,9 @@ export function parseMoneyInput(text: string, currency: string): ParsedAmount {
   }
 
   const value = Number(normalized);
-  if (!Number.isFinite(value)) return { ok: false, message: 'Enter an amount like 1500 or 1500.50' };
+  if (!Number.isFinite(value)) return { ok: false, message: t('common.moneyInvalid') };
   const amountMinor = Math.round(value * 10 ** digits);
-  if (!Number.isSafeInteger(amountMinor)) return { ok: false, message: 'That amount is too large' };
+  if (!Number.isSafeInteger(amountMinor)) return { ok: false, message: t('common.moneyTooLarge') };
   return { ok: true, money: { amountMinor, currency } };
 }
 

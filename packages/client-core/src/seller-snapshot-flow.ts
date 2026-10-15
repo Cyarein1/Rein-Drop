@@ -11,6 +11,7 @@ import {
   type UpdateSellerSnapshotRequest,
 } from '@rein-drop/contracts';
 import type { HuntFormContext } from './hunt-form.js';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { formatMoney, moneyToInput, parseMoneyInput } from './money.js';
 
 /**
@@ -120,43 +121,49 @@ export type StepUpdate = { ok: true; update: UpdateSellerSnapshotRequest } | { o
 
 const otherText = (selected: boolean, text: string) => (selected && text.trim() ? text.trim() : null);
 
+/** A context's translator, English when the caller passes only currency / locale (older callers). */
+type WithT = { t?: Translator };
+const EN = translator('en');
+const tOf = (ctx: WithT): Translator => ctx.t ?? EN;
+
 /** Validates one screen and builds the PATCH body that saves it. */
-export function buildStepUpdate(step: SnapshotQuestion, draft: SnapshotDraft, ctx: Pick<HuntFormContext, 'currency'>): StepUpdate {
+export function buildStepUpdate(step: SnapshotQuestion, draft: SnapshotDraft, ctx: Pick<HuntFormContext, 'currency'> & WithT): StepUpdate {
+  const t = tOf(ctx);
   const otherTooLong = (text: string) => text.trim().length > OTHER_TEXT_MAX_LENGTH;
   switch (step) {
     case 'categories':
-      if (draft.categories.length === 0) return { ok: false, error: 'Choose at least one' };
-      if (otherTooLong(draft.categoriesOther)) return { ok: false, error: `Keep "Other" under ${OTHER_TEXT_MAX_LENGTH} characters` };
+      if (draft.categories.length === 0) return { ok: false, error: t('onboarding.chooseAtLeastOne') };
+      if (otherTooLong(draft.categoriesOther)) return { ok: false, error: t('onboarding.otherTooLong', { max: OTHER_TEXT_MAX_LENGTH }) };
       return {
         ok: true,
         update: { categories: draft.categories, categoriesOther: otherText(draft.categories.includes('other'), draft.categoriesOther) },
       };
     case 'stage':
-      return draft.stage ? { ok: true, update: { stage: draft.stage } } : { ok: false, error: 'Choose one' };
+      return draft.stage ? { ok: true, update: { stage: draft.stage } } : { ok: false, error: t('onboarding.chooseOne') };
     case 'sources':
-      if (draft.sources.length === 0) return { ok: false, error: 'Choose at least one' };
-      if (otherTooLong(draft.sourcesOther)) return { ok: false, error: `Keep "Other" under ${OTHER_TEXT_MAX_LENGTH} characters` };
+      if (draft.sources.length === 0) return { ok: false, error: t('onboarding.chooseAtLeastOne') };
+      if (otherTooLong(draft.sourcesOther)) return { ok: false, error: t('onboarding.otherTooLong', { max: OTHER_TEXT_MAX_LENGTH }) };
       return {
         ok: true,
         update: { sources: draft.sources, sourcesOther: otherText(draft.sources.includes('other'), draft.sourcesOther) },
       };
     case 'improvementGoal':
-      return draft.improvementGoal ? { ok: true, update: { improvementGoal: draft.improvementGoal } } : { ok: false, error: 'Choose one' };
+      return draft.improvementGoal ? { ok: true, update: { improvementGoal: draft.improvementGoal } } : { ok: false, error: t('onboarding.chooseOne') };
     case 'dealRule': {
       const criterion = draft.dealCriterion;
-      if (!criterion) return { ok: false, error: 'Choose one' };
+      if (!criterion) return { ok: false, error: t('onboarding.chooseOne') };
       const text = draft.dealTarget.trim();
       if (criterion === 'min_profit' || criterion === 'max_buy_price') {
         const parsed = parseMoneyInput(text, ctx.currency);
         if (!parsed.ok) return { ok: false, error: parsed.message };
-        if (parsed.money && parsed.money.amountMinor <= 0) return { ok: false, error: 'Enter an amount above 0, or leave it empty' };
+        if (parsed.money && parsed.money.amountMinor <= 0) return { ok: false, error: t('onboarding.amountAboveZero') };
         return { ok: true, update: { dealRule: { criterion, target: parsed.money } } };
       }
       if (criterion === 'min_margin') {
         if (!text) return { ok: true, update: { dealRule: { criterion, targetPercent: null } } };
         const percent = Number(text.replace('%', '').trim());
         if (!Number.isInteger(percent) || percent < 1 || percent > 100) {
-          return { ok: false, error: 'Enter a whole percent from 1 to 100, or leave it empty' };
+          return { ok: false, error: t('onboarding.percentRange') };
         }
         return { ok: true, update: { dealRule: { criterion, targetPercent: percent } } };
       }
@@ -179,38 +186,112 @@ export function currencySymbol(ctx: Pick<HuntFormContext, 'currency' | 'localeTa
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Question and option text in the UI language
+// ---------------------------------------------------------------------------
+
+const QUESTION_KEY: Record<SnapshotQuestion, MessageKey> = {
+  categories: 'onboarding.categoriesQuestion',
+  stage: 'onboarding.stageQuestion',
+  sources: 'onboarding.sourcesQuestion',
+  dealRule: 'onboarding.dealRuleQuestion',
+  improvementGoal: 'onboarding.goalQuestion',
+};
+const CATEGORY_KEY: Record<HuntCategory, MessageKey> = {
+  phones_tablets: 'onboarding.categoryPhonesTablets',
+  computers: 'onboarding.categoryComputers',
+  gaming: 'onboarding.categoryGaming',
+  cameras: 'onboarding.categoryCameras',
+  sneakers_fashion: 'onboarding.categorySneakersFashion',
+  collectibles: 'onboarding.categoryCollectibles',
+  tools: 'onboarding.categoryTools',
+  auto_parts: 'onboarding.categoryAutoParts',
+  other: 'onboarding.categoryOther',
+};
+const STAGE_KEY: Record<ResellerStage, MessageKey> = {
+  getting_started: 'onboarding.stageGettingStarted',
+  side_income: 'onboarding.stageSideIncome',
+  regular_reseller: 'onboarding.stageRegularReseller',
+  full_time: 'onboarding.stageFullTime',
+  team_store: 'onboarding.stageTeamStore',
+};
+const SOURCE_KEY: Record<SourcingChannel, MessageKey> = {
+  facebook_marketplace: 'onboarding.sourceFacebookMarketplace',
+  ebay: 'onboarding.sourceEbay',
+  local_classifieds: 'onboarding.sourceLocalClassifieds',
+  thrift_retail: 'onboarding.sourceThriftRetail',
+  auctions: 'onboarding.sourceAuctions',
+  other: 'onboarding.sourceOther',
+};
+const DEAL_KEY: Record<DealCriterion, MessageKey> = {
+  min_profit: 'onboarding.dealMinProfit',
+  min_margin: 'onboarding.dealMinMargin',
+  max_buy_price: 'onboarding.dealMaxBuyPrice',
+  fast_resale: 'onboarding.dealFastResale',
+  case_by_case: 'onboarding.dealCaseByCase',
+};
+const GOAL_KEY: Record<ImprovementGoal, MessageKey> = {
+  find_deals_faster: 'onboarding.goalFindDealsFaster',
+  stop_checking_marketplaces: 'onboarding.goalStopChecking',
+  find_better_margins: 'onboarding.goalBetterMargins',
+  miss_fewer_listings: 'onboarding.goalMissFewer',
+  know_what_to_buy: 'onboarding.goalKnowWhatToBuy',
+  track_profit: 'onboarding.goalTrackProfit',
+};
+const OPTION_KEYS = { categories: CATEGORY_KEY, stage: STAGE_KEY, sources: SOURCE_KEY, improvementGoal: GOAL_KEY } as const;
+
+/** A question's text in the UI language. Use this; SELLER_SNAPSHOT_COPY[q].question will be removed in step 89. */
+export function snapshotQuestionText(question: SnapshotQuestion, t: Translator): string {
+  return t(QUESTION_KEY[question]);
+}
+
+/** The "Are you a reseller?" gate in the UI language (same shape). Use this; SNAPSHOT_GATE_COPY will be removed in step 89. */
+export function snapshotGateCopy(t: Translator): {
+  question: string;
+  options: { yes: string; no: string };
+  comingSoon: { title: string; body: string };
+} {
+  return {
+    question: t('onboarding.gateQuestion'),
+    options: { yes: t('onboarding.gateYes'), no: t('onboarding.gateNo') },
+    comingSoon: { title: t('onboarding.comingSoonTitle'), body: t('onboarding.comingSoonBody') },
+  };
+}
+
 /** Q4 options with the user's currency instead of a hard-coded "$". */
-export function dealCriterionOptions(ctx: Pick<HuntFormContext, 'currency' | 'localeTag'>): { value: DealCriterion; label: string }[] {
+export function dealCriterionOptions(ctx: Pick<HuntFormContext, 'currency' | 'localeTag'> & WithT): { value: DealCriterion; label: string }[] {
+  const t = tOf(ctx);
   const symbol = currencySymbol(ctx);
-  return (Object.entries(SELLER_SNAPSHOT_COPY.dealRule.options) as [DealCriterion, string][]).map(([value, label]) => ({
-    value,
-    label: label.replace('$', symbol),
-  }));
+  return (Object.keys(SELLER_SNAPSHOT_COPY.dealRule.options) as DealCriterion[]).map((value) => ({ value, label: t(DEAL_KEY[value], { symbol }) }));
 }
 
 /** The optional number Q4 asks for, if the chosen criterion has one. */
 export function dealTargetField(
   criterion: DealCriterion | null,
-  ctx: Pick<HuntFormContext, 'currency'>,
+  ctx: Pick<HuntFormContext, 'currency'> & WithT,
 ): { kind: 'money' | 'percent'; label: string } | null {
+  const t = tOf(ctx);
   switch (criterion) {
     case 'min_profit':
-      return { kind: 'money', label: `Minimum profit per deal (${ctx.currency}, optional)` };
+      return { kind: 'money', label: t('onboarding.targetMinProfit', { currency: ctx.currency }) };
     case 'max_buy_price':
-      return { kind: 'money', label: `Usual max buy price (${ctx.currency}, optional)` };
+      return { kind: 'money', label: t('onboarding.targetMaxBuyPrice', { currency: ctx.currency }) };
     case 'min_margin':
-      return { kind: 'percent', label: 'Minimum margin (%, optional)' };
+      return { kind: 'percent', label: t('onboarding.targetMinMargin') };
     default:
       return null;
   }
 }
 
-/** Options for a question as {value, label} pairs, in the Blueprint's order. */
-export function questionOptions<Q extends 'categories' | 'stage' | 'sources' | 'improvementGoal'>(question: Q) {
+/** Options for a question as {value, label} pairs, in the Blueprint's order, in the UI language. */
+export function questionOptions<Q extends 'categories' | 'stage' | 'sources' | 'improvementGoal'>(question: Q, t: Translator = EN) {
   type Value = keyof (typeof SELLER_SNAPSHOT_COPY)[Q]['options'] & string;
-  return Object.entries(SELLER_SNAPSHOT_COPY[question].options).map(([value, label]) => ({ value: value as Value, label: label as string }));
+  const keys = OPTION_KEYS[question] as Record<string, MessageKey>;
+  return Object.keys(SELLER_SNAPSHOT_COPY[question].options).map((value) => ({ value: value as Value, label: t(keys[value]!) }));
 }
 
+/** English gate copy (contracts). Prefer snapshotGateCopy(t); this will be removed in step 89. */
 export const SNAPSHOT_GATE_COPY = RESELLER_INTENT_COPY;
 export { SELLER_SNAPSHOT_COPY, SELLER_SNAPSHOT_QUESTION_COUNT, answeredQuestionCount } from '@rein-drop/contracts';
 
@@ -218,37 +299,42 @@ export { SELLER_SNAPSHOT_COPY, SELLER_SNAPSHOT_QUESTION_COUNT, answeredQuestionC
 // Summary ("Rein Drop will prioritize...") and the answers list for Settings
 // ---------------------------------------------------------------------------
 
-function joinList(items: string[]): string {
+function joinList(items: string[], t: Translator): string {
   if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+  return t('onboarding.listAnd', { items: items.slice(0, -1).join(', '), last: items.at(-1) });
 }
 
-const lower = (label: string) => label.charAt(0).toLowerCase() + label.slice(1);
-
-const GOAL_PHRASE: Record<ImprovementGoal, string> = {
-  find_deals_faster: 'find deals faster',
-  stop_checking_marketplaces: 'stop checking marketplaces all day',
-  find_better_margins: 'find better margins',
-  miss_fewer_listings: 'miss fewer listings',
-  know_what_to_buy: 'know what to buy',
-  track_profit: 'track what actually makes you money',
+/** Answers as they read inside a sentence (lower case in English). */
+const CATEGORY_INLINE_KEY: Record<Exclude<HuntCategory, 'other'>, MessageKey> = {
+  phones_tablets: 'onboarding.inlinePhonesTablets',
+  computers: 'onboarding.inlineComputers',
+  gaming: 'onboarding.inlineGaming',
+  cameras: 'onboarding.inlineCameras',
+  sneakers_fashion: 'onboarding.inlineSneakersFashion',
+  collectibles: 'onboarding.inlineCollectibles',
+  tools: 'onboarding.inlineTools',
+  auto_parts: 'onboarding.inlineAutoParts',
+};
+const SOURCE_INLINE_KEY: Record<'local_classifieds' | 'thrift_retail' | 'auctions', MessageKey> = {
+  local_classifieds: 'onboarding.inlineLocalClassifieds',
+  thrift_retail: 'onboarding.inlineThriftRetail',
+  auctions: 'onboarding.inlineAuctions',
 };
 
+/** Marketplace names (never translated). */
 const SUPPORTED_SOURCES: Partial<Record<SourcingChannel, string>> = {
   facebook_marketplace: 'Facebook Marketplace',
   ebay: 'eBay',
 };
 
-function categoryNames(snapshot: SellerSnapshot): string[] {
-  return snapshot.categories.map((c) =>
-    c === 'other' ? (snapshot.categoriesOther ?? 'other items') : lower(SELLER_SNAPSHOT_COPY.categories.options[c]),
-  );
+function categoryNames(snapshot: SellerSnapshot, t: Translator): string[] {
+  return snapshot.categories.map((c) => (c === 'other' ? (snapshot.categoriesOther ?? t('onboarding.inlineOtherItems')) : t(CATEGORY_INLINE_KEY[c])));
 }
 
-function sourceNames(snapshot: SellerSnapshot): string[] {
+function sourceNames(snapshot: SellerSnapshot, t: Translator): string[] {
   return snapshot.sources.map((s) => {
-    if (s === 'other') return snapshot.sourcesOther ?? 'other places';
-    return SUPPORTED_SOURCES[s] ?? lower(SELLER_SNAPSHOT_COPY.sources.options[s]);
+    if (s === 'other') return snapshot.sourcesOther ?? t('onboarding.inlineOtherPlaces');
+    return SUPPORTED_SOURCES[s] ?? t(SOURCE_INLINE_KEY[s as keyof typeof SOURCE_INLINE_KEY]);
   });
 }
 
@@ -264,47 +350,54 @@ export interface SnapshotSummary {
  * what the answers really drive today: Hunt suggestions, default marketplaces and deal thresholds.
  */
 export function snapshotSummary(snapshot: SellerSnapshot, ctx: HuntFormContext): SnapshotSummary {
+  const { t } = ctx;
   const money = (m: Parameters<typeof formatMoney>[0]) => formatMoney(m, ctx.localeTag);
   const rule = snapshot.dealRule;
-  let dealClause: string;
+  // `deal` picks the clause inside the one summary message; `target` fills it.
+  let deal: string;
+  let target: string | number | null = null;
   let dealPriority: string;
   switch (rule?.criterion) {
     case 'min_profit':
-      dealClause = rule.target ? `care most about ${money(rule.target)}+ profit` : 'care most about profit per deal';
-      dealPriority = rule.target ? `Deals with at least ${money(rule.target)} profit` : 'Deals judged on profit';
+      deal = rule.target ? 'min_profit' : 'min_profit_open';
+      target = rule.target ? money(rule.target) : null;
+      dealPriority = rule.target ? t('onboarding.priorityMinProfit', { amount: money(rule.target) }) : t('onboarding.priorityProfit');
       break;
     case 'min_margin':
-      dealClause = rule.targetPercent ? `care most about ${rule.targetPercent}%+ margins` : 'care most about margins';
-      dealPriority = rule.targetPercent ? `Deals with at least a ${rule.targetPercent}% margin` : 'Deals judged on margin';
+      deal = rule.targetPercent ? 'min_margin' : 'min_margin_open';
+      target = rule.targetPercent || null;
+      dealPriority = rule.targetPercent ? t('onboarding.priorityMinMargin', { percent: rule.targetPercent }) : t('onboarding.priorityMargin');
       break;
     case 'max_buy_price':
-      dealClause = rule.target ? `like to buy below ${money(rule.target)}` : 'like to buy below a set price';
-      dealPriority = rule.target ? `Listings under ${money(rule.target)}` : 'Listings under your max buy price';
+      deal = rule.target ? 'max_buy_price' : 'max_buy_price_open';
+      target = rule.target ? money(rule.target) : null;
+      dealPriority = rule.target ? t('onboarding.priorityMaxBuy', { amount: money(rule.target) }) : t('onboarding.priorityMaxBuyOpen');
       break;
     case 'fast_resale':
-      dealClause = 'care most about items that sell fast';
-      dealPriority = 'Your call on each deal - no fixed money threshold';
+      deal = 'fast_resale';
+      dealPriority = t('onboarding.priorityYourCall');
       break;
     default:
-      dealClause = 'decide case by case';
-      dealPriority = 'Your call on each deal - no fixed money threshold';
+      deal = 'case_by_case';
+      dealPriority = t('onboarding.priorityYourCall');
   }
-  const clauses = [
-    `hunt for ${joinList(categoryNames(snapshot))}`,
-    `source on ${joinList(sourceNames(snapshot))}`,
-    dealClause,
-  ];
-  const goal = snapshot.improvementGoal ? GOAL_PHRASE[snapshot.improvementGoal] : null;
-  const sentence = `Got it. You ${clauses.join(', ')}${goal ? `, and want to ${goal}` : ''}. Let's build your first Hunt.`;
+  const categories = joinList(categoryNames(snapshot, t), t);
+  const sentence = t('onboarding.summarySentence', {
+    categories,
+    sources: joinList(sourceNames(snapshot, t), t),
+    deal,
+    target: target ?? '',
+    goal: snapshot.improvementGoal ?? 'none',
+  });
 
   const supported = snapshot.sources.flatMap((s) => (SUPPORTED_SOURCES[s] ? [SUPPORTED_SOURCES[s]] : []));
   return {
     sentence,
     priorities: [
-      `Hunt ideas for ${joinList(categoryNames(snapshot))}`,
+      t('onboarding.priorityHuntIdeas', { categories }),
       supported.length > 0
-        ? `${joinList(supported)} as your starting marketplace${supported.length > 1 ? 's' : ''}`
-        : 'eBay and Facebook Marketplace - the marketplaces Rein Drop covers today',
+        ? t('onboarding.priorityMarketplaces', { marketplaces: joinList(supported, t), count: supported.length })
+        : t('onboarding.priorityDefaultMarketplaces'),
       dealPriority,
     ],
   };
@@ -312,7 +405,8 @@ export function snapshotSummary(snapshot: SellerSnapshot, ctx: HuntFormContext):
 
 /** The answers as label/value rows (Settings). Unanswered questions show "Not answered". */
 export function snapshotAnswerRows(snapshot: SellerSnapshot, ctx: HuntFormContext): { question: string; answer: string }[] {
-  const none = 'Not answered';
+  const { t } = ctx;
+  const none = t('onboarding.notAnswered');
   const options = dealCriterionOptions(ctx);
   const rule = snapshot.dealRule;
   let deal = none;
@@ -322,25 +416,26 @@ export function snapshotAnswerRows(snapshot: SellerSnapshot, ctx: HuntFormContex
       (rule.criterion === 'min_profit' || rule.criterion === 'max_buy_price') && rule.target
         ? formatMoney(rule.target, ctx.localeTag)
         : rule.criterion === 'min_margin' && rule.targetPercent
-          ? `${rule.targetPercent}%`
+          ? t('onboarding.percent', { value: rule.targetPercent })
           : null;
-    deal = target ? `${label}: ${target}` : label;
+    deal = target ? t('onboarding.dealAnswer', { label, target }) : label;
   }
   const list = (labels: string[]) => (labels.length > 0 ? labels.join(', ') : none);
+  const other = (text: string | null, key: MessageKey) => (text ? t('onboarding.otherWithText', { text }) : t(key));
   return [
     {
-      question: SELLER_SNAPSHOT_COPY.categories.question,
-      answer: list(snapshot.categories.map((c) => (c === 'other' && snapshot.categoriesOther ? `Other (${snapshot.categoriesOther})` : SELLER_SNAPSHOT_COPY.categories.options[c]))),
+      question: snapshotQuestionText('categories', t),
+      answer: list(snapshot.categories.map((c) => (c === 'other' ? other(snapshot.categoriesOther, CATEGORY_KEY.other) : t(CATEGORY_KEY[c])))),
     },
-    { question: SELLER_SNAPSHOT_COPY.stage.question, answer: snapshot.stage ? SELLER_SNAPSHOT_COPY.stage.options[snapshot.stage] : none },
+    { question: snapshotQuestionText('stage', t), answer: snapshot.stage ? t(STAGE_KEY[snapshot.stage]) : none },
     {
-      question: SELLER_SNAPSHOT_COPY.sources.question,
-      answer: list(snapshot.sources.map((s) => (s === 'other' && snapshot.sourcesOther ? `Other (${snapshot.sourcesOther})` : SELLER_SNAPSHOT_COPY.sources.options[s]))),
+      question: snapshotQuestionText('sources', t),
+      answer: list(snapshot.sources.map((s) => (s === 'other' ? other(snapshot.sourcesOther, SOURCE_KEY.other) : t(SOURCE_KEY[s])))),
     },
-    { question: SELLER_SNAPSHOT_COPY.dealRule.question, answer: deal },
+    { question: snapshotQuestionText('dealRule', t), answer: deal },
     {
-      question: SELLER_SNAPSHOT_COPY.improvementGoal.question,
-      answer: snapshot.improvementGoal ? SELLER_SNAPSHOT_COPY.improvementGoal.options[snapshot.improvementGoal] : none,
+      question: snapshotQuestionText('improvementGoal', t),
+      answer: snapshot.improvementGoal ? t(GOAL_KEY[snapshot.improvementGoal]) : none,
     },
   ];
 }

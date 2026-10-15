@@ -1,17 +1,20 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import type { NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot, UserLocale } from '@rein-drop/api-client';
-import { accountSiteLine, companionAccessView, companionUsageLines, huntFormContext, NOTIFICATION_CHANNELS_NOTE, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
+import type { NotificationCategory, NotificationChannel, NotificationPreferences, SellerSnapshot } from '@rein-drop/api-client';
+import { accountSiteLine, companionAccessView, companionUsageLines, notificationChannelsNote, preferenceSections, snapshotAnswerRows, withPreference } from '@rein-drop/client-core';
 import { fontSize, roles, space, tones } from '@rein-drop/design-tokens';
+import { countryFromLocaleTag } from '@rein-drop/api-client';
+import { LANGUAGE_NAMES, LANGUAGES, translator, type Language } from '@rein-drop/i18n';
 import { useAccess } from '@/access/AccessProvider';
-import { useSessionState } from '@/auth/SessionProvider';
+import { deviceLanguageTag, useDisplayContext, useLanguage, useT } from '@/i18n/useT';
+import { sessionMessage, useSessionState } from '@/auth/SessionProvider';
 import { PlaceholderNotice } from '@/components/PlaceholderNotice';
 import { useCan } from '@/capabilities/CapabilitiesProvider';
 import { AreaSettings } from '@/geo/AreaSettings';
 import { PushCard } from '@/notifications/PushCard';
 import { apiBaseUrl, getApiClient } from '@/config/api';
-import { Badge, Button, Card, font, LoadingState, Screen, SystemBanner } from '@/ui';
+import { Badge, Button, Card, ChoiceGroup, font, LoadingState, Screen, SystemBanner } from '@/ui';
 
 type Check =
   | { state: 'idle' }
@@ -35,6 +38,7 @@ export default function AccountScreen() {
   const devTools = useCan('dev.tools');
   const router = useRouter();
   const [check, setCheck] = useState<Check>({ state: 'idle' });
+  const t = useT();
 
   const checkConnection = async () => {
     setCheck({ state: 'checking' });
@@ -54,30 +58,30 @@ export default function AccountScreen() {
 
   return (
     <Screen>
-      <PlaceholderNotice>Most settings sections are listed but not editable yet.</PlaceholderNotice>
+      <PlaceholderNotice>{t('account.placeholder')}</PlaceholderNotice>
 
       <Card
-        title="Account"
+        title={t('account.accountTitle')}
         action={
           sessionState.status === 'authenticated' && sessionState.session.isDevelopment ? (
-            <Badge tone="info">Development sign-in</Badge>
+            <Badge tone="info">{t('account.devSignIn')}</Badge>
           ) : undefined
         }
       >
-        {sessionState.status === 'loading' && <LoadingState label="Checking your session…" />}
+        {sessionState.status === 'loading' && <LoadingState label={t('account.checkingSession')} />}
         {sessionState.status === 'authenticated' && (
           <>
             <Text style={[styles.body, font('medium')]}>{sessionState.session.user.email}</Text>
             {sessionState.session.isDevelopment && (
               <Text style={[styles.muted, font('regular')]}>
-                Signed in automatically as the seeded local user (development only).
+                {t('account.devSignedIn')}
               </Text>
             )}
             {signOut && (
               <>
-                <Text style={[styles.muted, font('regular')]}>To use another account, sign out and sign in with it.</Text>
+                <Text style={[styles.muted, font('regular')]}>{t('account.switchAccount')}</Text>
                 <Button variant="secondary" onPress={() => void signOut()}>
-                  Sign out
+                  {t('account.signOut')}
                 </Button>
               </>
             )}
@@ -87,44 +91,46 @@ export default function AccountScreen() {
           <>
             <SystemBanner
               tone={sessionState.status === 'error' ? 'error' : 'warning'}
-              title={sessionState.status === 'unauthenticated' && sessionState.sessionEnded ? 'Your session has ended' : sessionState.status === 'error' ? "Can't reach Rein Drop" : 'Not signed in'}
-              message={sessionState.status === 'error' ? sessionState.message : sessionState.reason}
+              title={sessionState.status === 'unauthenticated' && sessionState.sessionEnded ? t('account.sessionEnded') : sessionState.status === 'error' ? t('account.cantReach') : t('account.notSignedIn')}
+              message={sessionMessage(sessionState, t)}
             />
             {sessionState.status === 'unauthenticated' && signIn ? (
-              <Button onPress={() => void signIn()}>Sign in</Button>
+              <Button onPress={() => void signIn()}>{t('account.signIn')}</Button>
             ) : (
               <Button variant="secondary" onPress={refresh}>
-                Try again
+                {t('account.tryAgain')}
               </Button>
             )}
           </>
         )}
       </Card>
 
+      {sessionState.status === 'authenticated' && <LanguageCard />}
+
       {sessionState.status === 'authenticated' && (
-        <Card title="Your area">
+        <Card title={t('account.areaTitle')}>
           <AreaSettings />
         </Card>
       )}
 
       {sessionState.status === 'authenticated' ? (
-        <SellerSnapshotCard locale={sessionState.session.user.locale} />
+        <SellerSnapshotCard />
       ) : (
-        <Card title="Seller Snapshot">
-          <Text style={[styles.muted, font('regular')]}>Sign in to see your onboarding answers.</Text>
+        <Card title={t('account.snapshotTitle')}>
+          <Text style={[styles.muted, font('regular')]}>{t('account.snapshotSignIn')}</Text>
         </Card>
       )}
 
       {sessionState.status === 'authenticated' ? (
-        <AccessCard locale={sessionState.session.user.locale} />
+        <AccessCard />
       ) : (
-        <Card title="Your access">
-          <Text style={[styles.muted, font('regular')]}>Sign in to see your access.</Text>
+        <Card title={t('account.accessTitle')}>
+          <Text style={[styles.muted, font('regular')]}>{t('account.accessSignIn')}</Text>
         </Card>
       )}
 
       {sessionState.status === 'authenticated' && (
-        <Card title="Notifications on this phone">
+        <Card title={t('account.pushTitle')}>
           <PushCard variant="settings" />
         </Card>
       )}
@@ -132,8 +138,8 @@ export default function AccountScreen() {
       {sessionState.status === 'authenticated' ? (
         <NotificationsCard />
       ) : (
-        <Card title="Notifications">
-          <Text style={[styles.muted, font('regular')]}>Sign in to choose how Rein Drop alerts you.</Text>
+        <Card title={t('account.notificationsTitle')}>
+          <Text style={[styles.muted, font('regular')]}>{t('account.notificationsSignIn')}</Text>
         </Card>
       )}
 
@@ -180,8 +186,10 @@ export default function AccountScreen() {
 }
 
 /** The five onboarding answers, editable (Screenbook frame 30). Reloads when Settings regains focus. */
-function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
+function SellerSnapshotCard() {
   const router = useRouter();
+  const context = useDisplayContext();
+  const { t } = context;
   const [state, setState] = useState<{ status: 'loading' } | { status: 'error' } | { status: 'ready'; snapshot: SellerSnapshot }>({
     status: 'loading',
   });
@@ -203,32 +211,32 @@ function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
 
   if (state.status === 'loading') {
     return (
-      <Card title="Seller Snapshot">
-        <LoadingState label="Loading your answers…" />
+      <Card title={t('account.snapshotTitle')}>
+        <LoadingState label={t('onboarding.loadingAnswers')} />
       </Card>
     );
   }
   if (state.status === 'error') {
     return (
-      <Card title="Seller Snapshot">
-        <SystemBanner tone="error" title="Couldn't load your answers" message="Leave and reopen Settings to try again." />
+      <Card title={t('account.snapshotTitle')}>
+        <SystemBanner tone="error" title={t('onboarding.loadFailed')} message={t('account.reopenToRetry')} />
       </Card>
     );
   }
   const { snapshot } = state;
   if (snapshot.status === 'not_started' || snapshot.status === 'not_reseller') {
     return (
-      <Card title="Seller Snapshot">
+      <Card title={t('account.snapshotTitle')}>
         <Text style={[styles.muted, font('regular')]}>
           {snapshot.status === 'not_started'
-            ? 'Five quick questions set Rein Drop up around how you source.'
-            : "You told us you're not reselling right now - that experience is coming soon."}
+            ? t('account.snapshotNotStarted')
+            : t('account.snapshotNotReseller')}
         </Text>
         <Button
           variant="secondary"
           onPress={() => router.push(snapshot.status === 'not_started' ? '/onboarding' : { pathname: '/onboarding', params: { edit: '1' } })}
         >
-          {snapshot.status === 'not_started' ? 'Set up now' : 'Change my answer'}
+          {snapshot.status === 'not_started' ? t('account.setUpNow') : t('onboarding.changeAnswer')}
         </Button>
       </Card>
     );
@@ -236,21 +244,21 @@ function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
 
   const inProgress = snapshot.status === 'in_progress';
   return (
-    <Card title="Seller Snapshot" action={inProgress ? <Badge tone="fresh">Not finished</Badge> : undefined}>
-      {snapshotAnswerRows(snapshot, huntFormContext(locale)).map((row) => (
+    <Card title={t('account.snapshotTitle')} action={inProgress ? <Badge tone="fresh">{t('account.notFinished')}</Badge> : undefined}>
+      {snapshotAnswerRows(snapshot, context).map((row) => (
         <View key={row.question} style={styles.answer}>
           <Text style={[styles.muted, font('regular')]}>{row.question}</Text>
           <Text style={[styles.body, font('semibold')]}>{row.answer}</Text>
         </View>
       ))}
       <Text style={[styles.muted, font('regular')]}>
-        These answers set the defaults for new Hunts. Changing them never changes existing Hunts.
+        {t('account.snapshotNote')}
       </Text>
       <Button
         variant="secondary"
         onPress={() => router.push(inProgress ? '/onboarding' : { pathname: '/onboarding', params: { edit: '1' } })}
       >
-        {inProgress ? 'Finish setting up' : 'Edit answers'}
+        {inProgress ? t('account.finishSetup') : t('account.editAnswers')}
       </Button>
     </Card>
   );
@@ -261,6 +269,7 @@ function SellerSnapshotCard({ locale }: { locale: UserLocale | null }) {
  * marketing are separate sections; marketing is opt-in. Each switch saves on its own.
  */
 function NotificationsCard() {
+  const t = useT();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [failed, setFailed] = useState(false);
   const [status, setStatus] = useState<{ error: boolean; text: string } | null>(null);
@@ -289,10 +298,10 @@ function NotificationsCard() {
     setStatus(null);
     try {
       setPrefs(await getApiClient().updateNotificationPreferences({ changes: [{ category, channel, enabled }] }));
-      setStatus({ error: false, text: 'Saved' });
+      setStatus({ error: false, text: t('account.prefsSaved') });
     } catch (err) {
       setPrefs(before);
-      setStatus({ error: true, text: `Not saved: ${err instanceof Error ? err.message : String(err)}` });
+      setStatus({ error: true, text: t('account.prefsFailed', { message: err instanceof Error ? err.message : String(err) }) });
     } finally {
       setSaving(null);
     }
@@ -300,21 +309,21 @@ function NotificationsCard() {
 
   if (failed && !prefs) {
     return (
-      <Card title="Notifications">
-        <SystemBanner tone="error" title="Couldn't load your notification settings" message="Leave and reopen Settings to try again." />
+      <Card title={t('account.notificationsTitle')}>
+        <SystemBanner tone="error" title={t('account.prefsLoadFailed')} message={t('account.reopenToRetry')} />
       </Card>
     );
   }
   if (!prefs) {
     return (
-      <Card title="Notifications">
-        <LoadingState label="Loading notification settings…" />
+      <Card title={t('account.notificationsTitle')}>
+        <LoadingState label={t('account.prefsLoading')} />
       </Card>
     );
   }
   return (
-    <Card title="Notifications">
-      {preferenceSections(prefs).map((section) => (
+    <Card title={t('account.notificationsTitle')}>
+      {preferenceSections(prefs, t).map((section) => (
         <View key={section.group} style={styles.prefSection}>
           <Text style={[styles.label, font('bold')]} accessibilityRole="header">
             {section.title}
@@ -327,14 +336,13 @@ function NotificationsCard() {
               {c.channels.map((ch) => (
                 <View key={ch.channel} style={styles.switchRow}>
                   <Text style={[styles.body, font('regular')]}>
-                    {ch.label}
-                    {!ch.editable ? ' (always on)' : ''}
+                    {ch.editable ? ch.label : t('account.alwaysOn', { label: ch.label })}
                   </Text>
                   <Switch
                     value={ch.enabled}
                     disabled={!ch.editable || saving === `${c.category}:${ch.channel}`}
                     onValueChange={(v) => void toggle(c.category, ch.channel, v)}
-                    accessibilityLabel={`${c.title}: ${ch.label}`}
+                    accessibilityLabel={t('account.labelValue', { label: c.title, value: ch.label })}
                     trackColor={{ true: roles.text, false: roles.border }}
                   />
                 </View>
@@ -343,7 +351,7 @@ function NotificationsCard() {
           ))}
         </View>
       ))}
-      <Text style={[styles.muted, font('regular')]}>{NOTIFICATION_CHANNELS_NOTE}</Text>
+      <Text style={[styles.muted, font('regular')]}>{notificationChannelsNote(t)}</Text>
       {status && (
         <Text style={[status.error ? styles.error : styles.muted, font('regular')]} accessibilityLiveRegion="polite">
           {status.text}
@@ -370,20 +378,21 @@ const styles = StyleSheet.create({
  * "manage billing on the web". The optional neutral account line shows only when the app is built
  * with EXPO_PUBLIC_ACCOUNT_SITE (off until the store review).
  */
-function AccessCard({ locale }: { locale: UserLocale | null }) {
+function AccessCard() {
   const { load, reload } = useAccess();
+  const { localeTag, t } = useDisplayContext();
   const access = load.status === 'ready' ? load.access : load.status === 'error' ? load.stale : null;
   if (!access) {
     if (load.status === 'error') {
       return (
-        <Card title="Your access">
+        <Card title={t('account.accessTitle')}>
           <SystemBanner
             tone="error"
-            title={load.reason === 'offline' ? "You're offline" : "Couldn't load your access"}
-            message="Your access hasn't changed. Try again when you're connected."
+            title={load.reason === 'offline' ? t('account.offline') : t('account.accessLoadFailed')}
+            message={t('account.accessUnchanged')}
             action={
               <Button variant="secondary" onPress={reload}>
-                Try again
+                {t('account.tryAgain')}
               </Button>
             }
           />
@@ -391,24 +400,24 @@ function AccessCard({ locale }: { locale: UserLocale | null }) {
       );
     }
     return (
-      <Card title="Your access">
-        <LoadingState label="Loading your access…" />
+      <Card title={t('account.accessTitle')}>
+        <LoadingState label={t('account.accessLoading')} />
       </Card>
     );
   }
-  const view = companionAccessView(access, huntFormContext(locale).localeTag);
-  const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE);
+  const view = companionAccessView(access, localeTag, t);
+  const accountLine = accountSiteLine(process.env.EXPO_PUBLIC_ACCOUNT_SITE, t);
   return (
-    <Card title="Your access" action={<Badge tone={view.tone}>{view.label}</Badge>}>
+    <Card title={t('account.accessTitle')} action={<Badge tone={view.tone}>{view.label}</Badge>}>
       {load.status === 'error' && (
-        <SystemBanner tone="info" title="Showing your last known access" message="Couldn't check for changes - you may be offline." />
+        <SystemBanner tone="info" title={t('account.accessStale')} message={t('account.accessStaleBody')} />
       )}
       {view.lines.map((line) => (
         <Text key={line} style={[styles.body, font('regular')]}>
           {line}
         </Text>
       ))}
-      {companionUsageLines(access).map((line) => (
+      {companionUsageLines(access, t).map((line) => (
         <Text key={line} style={[styles.muted, font('regular')]}>
           {line}
         </Text>
@@ -444,5 +453,51 @@ function TestPushButton() {
       </Button>
       {status && <Text style={[styles.muted, font('regular')]}>{status}</Text>}
     </View>
+  );
+}
+
+/**
+ * Language (docs/i18n/README.md): English or German. Until one is chosen the phone's language is
+ * used. Saved to the account (PUT /me/locale), so web and push follow the same choice.
+ */
+function LanguageCard() {
+  const t = useT();
+  const language = useLanguage();
+  const { state, setLocale } = useSessionState();
+  const [status, setStatus] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const locale = state.status === 'authenticated' ? state.session.user.locale : null;
+  const choose = async (next: Language) => {
+    if (next === language) return;
+    setSaving(true);
+    setStatus(null);
+    try {
+      const country = locale?.countryCode ?? countryFromLocaleTag(deviceLanguageTag()) ?? 'US';
+      const saved = await getApiClient().updateLocale({ countryCode: country, currency: locale?.currency, distanceUnit: locale?.distanceUnit, language: next });
+      setLocale(saved);
+      setStatus(translator(next)('account.languageSaved'));
+    } catch (err) {
+      setStatus(t('account.languageFailed', { message: err instanceof Error ? err.message : String(err) }));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Card title={t('account.languageTitle')}>
+      <ChoiceGroup<Language>
+        legend={t('account.languageTitle')}
+        hideLegend
+        options={LANGUAGES.map((value) => ({ value, label: LANGUAGE_NAMES[value] }))}
+        value={language}
+        onChange={(next) => void choose(next)}
+      />
+      <Text style={[styles.muted, font('regular')]}>{t('account.languageHint')}</Text>
+      {saving && <LoadingState label="…" />}
+      {status && (
+        <Text style={[styles.muted, font('regular')]} accessibilityLiveRegion="polite">
+          {status}
+        </Text>
+      )}
+    </Card>
   );
 }

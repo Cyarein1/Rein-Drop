@@ -1,3 +1,4 @@
+import { translator, type Translator } from '@rein-drop/i18n';
 import { currencyDigits, formatMoney, parseMoneyInput } from './money.js';
 
 /**
@@ -76,16 +77,23 @@ export function priceSliderText(slider: PriceSlider, position: number): string {
  * What a screen reader announces for the slider: the amount actually in the field (formatted for
  * the user's locale), "No limit" when empty, or the stop when the text isn't a valid amount yet.
  */
-export function priceSliderValueText(slider: PriceSlider, text: string, position: number, currency: string, localeTag: string): string {
-  const parsed = parseMoneyInput(text, currency);
+export function priceSliderValueText(
+  slider: PriceSlider,
+  text: string,
+  position: number,
+  currency: string,
+  localeTag: string,
+  t: Translator = translator('en'),
+): string {
+  const parsed = parseMoneyInput(text, currency, t);
   if (parsed.ok && parsed.money) return formatMoney(parsed.money, localeTag);
-  if (parsed.ok) return 'No limit';
+  if (parsed.ok) return t('common.noLimit');
   const stop = slider.stops[Math.min(position, slider.stops.length - 1)]!;
   return formatMoney({ amountMinor: Math.round(stop * 10 ** currencyDigits(currency)), currency }, localeTag);
 }
 
 /** The labels under the slider ends, e.g. "$5" and "No limit". */
-export function priceSliderEnds(slider: PriceSlider, currency: string, localeTag: string): { min: string; max: string } {
+export function priceSliderEnds(slider: PriceSlider, currency: string, localeTag: string, t: Translator = translator('en')): { min: string; max: string } {
   const first = slider.stops[0]!;
   let min: string;
   try {
@@ -93,5 +101,5 @@ export function priceSliderEnds(slider: PriceSlider, currency: string, localeTag
   } catch {
     min = `${currency} ${first}`;
   }
-  return { min, max: 'No limit' };
+  return { min, max: t('common.noLimit') };
 }

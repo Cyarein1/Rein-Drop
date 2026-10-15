@@ -10,6 +10,7 @@ import {
   type ReplacePurchaseCostsRequest,
   type UpdateInventoryItemRequest,
 } from '@rein-drop/contracts';
+import { translator, type MessageKey, type Translator } from '@rein-drop/i18n';
 import { MARKETPLACE_LABEL, type Labelled } from './deal-view.js';
 import type { HuntFormContext } from './hunt-form.js';
 import { formatMoney, moneyToInput, parseMoneyInput } from './money.js';
@@ -38,9 +39,39 @@ export const SALE_COST_LABEL: Record<SaleCostCategory, string> = {
   SHIPPING: 'Shipping to buyer',
   OTHER: 'Other',
 };
+const PURCHASE_COST_KEY: Record<PurchaseCostCategory, MessageKey> = {
+  TAX: 'inventory.purchaseCostTax',
+  SHIPPING: 'inventory.purchaseCostShipping',
+  REPAIR: 'inventory.purchaseCostRepair',
+  SUPPLIES: 'inventory.purchaseCostSupplies',
+  OTHER: 'inventory.purchaseCostOther',
+};
+const SALE_COST_KEY: Record<SaleCostCategory, MessageKey> = {
+  MARKETPLACE_FEE: 'inventory.saleCostMarketplaceFee',
+  PAYMENT_FEE: 'inventory.saleCostPaymentFee',
+  SHIPPING: 'inventory.saleCostShipping',
+  OTHER: 'inventory.saleCostOther',
+};
+/** Purchase cost labels in the UI language. Use this; the English PURCHASE_COST_LABEL will be removed in step 89. */
+export function purchaseCostLabels(t: Translator): Record<PurchaseCostCategory, string> {
+  return mapKeys(PURCHASE_COST_KEY, t);
+}
+/** Selling cost labels in the UI language. Use this; the English SALE_COST_LABEL will be removed in step 89. */
+export function saleCostLabels(t: Translator): Record<SaleCostCategory, string> {
+  return mapKeys(SALE_COST_KEY, t);
+}
+function mapKeys<K extends string>(keys: Record<K, MessageKey>, t: Translator): Record<K, string> {
+  return Object.fromEntries(Object.entries(keys).map(([k, key]) => [k, t(key as MessageKey)])) as Record<K, string>;
+}
 // SHIPPING is in both lists, so each side uses its own labels.
-const purchaseCostLabel = (category: string) => (PURCHASE_COST_LABEL as Record<string, string>)[category] ?? category;
-const saleCostLabel = (category: string) => (SALE_COST_LABEL as Record<string, string>)[category] ?? category;
+const purchaseCostLabel = (category: string, t: Translator) => {
+  const key = (PURCHASE_COST_KEY as Record<string, MessageKey | undefined>)[category];
+  return key ? t(key) : category;
+};
+const saleCostLabel = (category: string, t: Translator) => {
+  const key = (SALE_COST_KEY as Record<string, MessageKey | undefined>)[category];
+  return key ? t(key) : category;
+};
 
 export const INVENTORY_STATUS_LABEL: Record<InventoryStatus, Labelled> = {
   IN_STOCK: { label: 'In stock', tone: 'neutral' },
@@ -49,6 +80,17 @@ export const INVENTORY_STATUS_LABEL: Record<InventoryStatus, Labelled> = {
   RETURNED: { label: 'Returned', tone: 'neutral' },
   WRITTEN_OFF: { label: 'Written off', tone: 'neutral' },
 };
+const STATUS_KEY: Record<InventoryStatus, MessageKey> = {
+  IN_STOCK: 'inventory.statusInStock',
+  LISTED: 'inventory.statusListed',
+  SOLD: 'inventory.statusSold',
+  RETURNED: 'inventory.statusReturned',
+  WRITTEN_OFF: 'inventory.statusWrittenOff',
+};
+/** Item status badge in the UI language (same tones). Use this; the English INVENTORY_STATUS_LABEL will be removed in step 89. */
+export function inventoryStatusLabel(status: InventoryStatus, t: Translator): Labelled {
+  return { label: t(STATUS_KEY[status]), tone: INVENTORY_STATUS_LABEL[status].tone };
+}
 
 export type InventoryFilter = 'holding' | 'sold' | 'all';
 export const INVENTORY_FILTERS: { value: InventoryFilter; label: string }[] = [
@@ -56,6 +98,14 @@ export const INVENTORY_FILTERS: { value: InventoryFilter; label: string }[] = [
   { value: 'sold', label: 'Sold' },
   { value: 'all', label: 'All' },
 ];
+/** List filters in the UI language. Use this; the English INVENTORY_FILTERS will be removed in step 89. */
+export function inventoryFilters(t: Translator): { value: InventoryFilter; label: string }[] {
+  return [
+    { value: 'holding', label: t('inventory.filterHolding') },
+    { value: 'sold', label: t('inventory.filterSold') },
+    { value: 'all', label: t('inventory.filterAll') },
+  ];
+}
 
 /** Where it sold: one of the marketplaces, or anywhere else. */
 export type SoldWhere = MarketplaceKey | 'other';
@@ -64,8 +114,15 @@ export const SOLD_WHERE_OPTIONS: { value: SoldWhere; label: string }[] = [
   { value: 'facebook', label: MARKETPLACE_LABEL.facebook },
   { value: 'other', label: 'Somewhere else' },
 ];
+/** "Where did it sell?" options in the UI language (marketplace names untranslated). Use this; SOLD_WHERE_OPTIONS will be removed in step 89. */
+export function soldWhereOptions(t: Translator): { value: SoldWhere; label: string }[] {
+  return [
+    { value: 'ebay', label: MARKETPLACE_LABEL.ebay },
+    { value: 'facebook', label: MARKETPLACE_LABEL.facebook },
+    { value: 'other', label: t('inventory.soldWhereOther') },
+  ];
+}
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const abs = (m: Money): Money => ({ ...m, amountMinor: Math.abs(m.amountMinor) });
 const toneOf = (amountMinor: number) => (amountMinor > 0 ? 'profit' : amountMinor < 0 ? 'loss' : 'neutral') as 'profit' | 'loss' | 'neutral';
 const sum = (list: Money[]) => list.reduce((s, m) => s + m.amountMinor, 0);
@@ -88,12 +145,12 @@ export function isValidDay(text: string): boolean {
 }
 
 /** "Today" / "Yesterday" shortcuts for date fields. */
-export function dayShortcuts(now: Date): { label: string; value: string }[] {
+export function dayShortcuts(now: Date, t: Translator = translator('en')): { label: string; value: string }[] {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   return [
-    { label: 'Today', value: localDay(now) },
-    { label: 'Yesterday', value: localDay(yesterday) },
+    { label: t('inventory.today'), value: localDay(now) },
+    { label: t('inventory.yesterday'), value: localDay(yesterday) },
   ];
 }
 
@@ -148,14 +205,14 @@ type ParsedCosts<C extends string> =
   | { ok: false; errors: Record<string, string> };
 
 /** Rows with an empty amount are skipped; zero / negative / unreadable amounts are errors. */
-export function parseCostDrafts<C extends string>(drafts: readonly CostDraft<C>[], currency: string): ParsedCosts<C> {
+export function parseCostDrafts<C extends string>(drafts: readonly CostDraft<C>[], currency: string, t: Translator = translator('en')): ParsedCosts<C> {
   const errors: Record<string, string> = {};
   const costs: { category: C; amount: Money; note?: string }[] = [];
   for (const d of drafts) {
     const parsed = parseMoneyInput(d.amount, currency);
     if (!parsed.ok) errors[d.key] = parsed.message;
     else if (!parsed.money) continue;
-    else if (parsed.money.amountMinor <= 0) errors[d.key] = 'Must be more than zero';
+    else if (parsed.money.amountMinor <= 0) errors[d.key] = t('inventory.errorMoreThanZero');
     else costs.push({ category: d.category, amount: parsed.money, ...(d.note.trim() ? { note: d.note.trim().slice(0, 200) } : {}) });
   }
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, costs };
@@ -169,6 +226,8 @@ export interface InventoryRowView {
   id: string;
   title: string;
   status: Labelled;
+  /** Where it was bought (key for its logo), when sourced through Rein Drop. */
+  marketplace: MarketplaceKey | null;
   source: string | null;
   /** "Cost R 4 750,00" (price + purchase costs). */
   cost: string;
@@ -182,38 +241,37 @@ export interface InventoryRowView {
   action: { label: string; kind: 'sell' | 'result' };
 }
 
-const costText = (item: InventoryItem, fmt: (m: Money) => string) =>
-  item.purchase.total ? fmt(item.purchase.total) : `${fmt(item.purchase.price)} + costs`;
+const costText = (item: InventoryItem, fmt: (m: Money) => string, t: Translator) =>
+  item.purchase.total ? fmt(item.purchase.total) : t('inventory.costPlusExtras', { price: fmt(item.purchase.price) });
 
 export function inventoryRowView(item: InventoryItem, ctx: HuntFormContext): InventoryRowView {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const sold = item.sale !== null;
   let result: InventoryRowView['result'] = null;
   if (item.result?.status === 'ok') {
     const p = item.result.realizedProfit.amountMinor;
-    result = { label: p < 0 ? 'Realized loss' : 'Realized profit', value: fmt(item.result.realizedProfit), tone: toneOf(p) };
+    result = { label: t(p < 0 ? 'inventory.realizedLoss' : 'inventory.realizedProfit'), value: fmt(item.result.realizedProfit), tone: toneOf(p) };
   } else if (item.result) {
-    result = { label: 'Result', value: 'Not calculated', tone: 'neutral' };
+    result = { label: t('inventory.result'), value: t('inventory.notCalculated'), tone: 'neutral' };
   }
   return {
     id: item.id,
     title: item.title,
-    status: INVENTORY_STATUS_LABEL[item.status],
+    status: inventoryStatusLabel(item.status, t),
+    marketplace: item.source?.marketplace ?? null,
     source: item.source ? MARKETPLACE_LABEL[item.source.marketplace] : null,
-    cost: `Cost ${costText(item, fmt)}`,
-    held: sold ? `Sold after ${plural(item.daysHeld, 'day')}` : `Held ${plural(item.daysHeld, 'day')}`,
+    cost: t('inventory.rowCost', { cost: costText(item, fmt, t) }),
+    held: t(sold ? 'inventory.rowSoldAfter' : 'inventory.rowHeld', { days: item.daysHeld }),
     result,
-    estimate: !sold && item.expected?.estimatedResale ? `Estimated resale ${fmt(item.expected.estimatedResale)} (estimate)` : null,
-    action: sold ? { label: 'Sale result', kind: 'result' } : { label: 'Mark sold', kind: 'sell' },
+    estimate: !sold && item.expected?.estimatedResale ? t('inventory.rowEstimate', { amount: fmt(item.expected.estimatedResale) }) : null,
+    action: sold ? { label: t('inventory.actionSaleResult'), kind: 'result' } : { label: t('inventory.actionMarkSold'), kind: 'sell' },
   };
 }
 
-export function inventoryEmptyText(filter: InventoryFilter): { title: string; body: string } {
-  if (filter === 'sold') return { title: 'Nothing sold yet', body: 'When you sell something you bought, mark it sold to see your realized profit.' };
-  return {
-    title: 'No inventory yet',
-    body: 'Mark a deal as Bought and it lands here, so you can track what it cost and what it sells for.',
-  };
+export function inventoryEmptyText(filter: InventoryFilter, t: Translator = translator('en')): { title: string; body: string } {
+  if (filter === 'sold') return { title: t('inventory.emptySoldTitle'), body: t('inventory.emptySoldBody') };
+  return { title: t('inventory.emptyTitle'), body: t('inventory.emptyBody') };
 }
 
 // ---------------------------------------------------------------------------
@@ -233,21 +291,25 @@ export interface InventoryDetailView extends InventoryRowView {
 }
 
 export function inventoryDetailView(item: InventoryItem, ctx: HuntFormContext): InventoryDetailView {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
-  const purchaseLines: [string, string][] = [['Price paid', fmt(item.purchase.price)]];
-  for (const c of item.purchase.costs) purchaseLines.push([c.note ? `${purchaseCostLabel(c.category)} (${c.note})` : purchaseCostLabel(c.category), fmt(c.amount)]);
-  if (item.purchase.costs.length > 0) purchaseLines.push(['Total cost', item.purchase.total ? fmt(item.purchase.total) : 'Mixed currencies']);
+  const purchaseLines: [string, string][] = [[t('inventory.pricePaid'), fmt(item.purchase.price)]];
+  for (const c of item.purchase.costs) {
+    const label = purchaseCostLabel(c.category, t);
+    purchaseLines.push([c.note ? t('inventory.costWithNote', { label, note: c.note }) : label, fmt(c.amount)]);
+  }
+  if (item.purchase.costs.length > 0) purchaseLines.push([t('inventory.totalCost'), item.purchase.total ? fmt(item.purchase.total) : t('inventory.mixedCurrencies')]);
 
   const e = item.expected;
   const expectedLines: [string, string][] = [];
-  if (e?.askingPrice) expectedLines.push(['Asking price', fmt(e.askingPrice)]);
-  if (e?.knownCosts) expectedLines.push(['Costs the listing showed', fmt(e.knownCosts)]);
-  if (e?.estimatedResale) expectedLines.push(['Estimated resale (estimate)', fmt(e.estimatedResale)]);
-  if (e?.estimatedUpside) expectedLines.push(['Estimated upside (estimate)', fmt(e.estimatedUpside)]);
+  if (e?.askingPrice) expectedLines.push([t('inventory.askingPrice'), fmt(e.askingPrice)]);
+  if (e?.knownCosts) expectedLines.push([t('inventory.listingCosts'), fmt(e.knownCosts)]);
+  if (e?.estimatedResale) expectedLines.push([t('inventory.estimatedResaleLine'), fmt(e.estimatedResale)]);
+  if (e?.estimatedUpside) expectedLines.push([t('inventory.estimatedUpsideLine'), fmt(e.estimatedUpside)]);
 
   return {
     ...inventoryRowView(item, ctx),
-    purchasedOn: `Bought ${dayText(item.purchase.purchasedAt, ctx)}`,
+    purchasedOn: t('inventory.boughtOn', { date: dayText(item.purchase.purchasedAt, ctx) }),
     purchaseLines,
     expectedLines,
     notes: item.notes,
@@ -289,19 +351,20 @@ export function buildPurchaseUpdate(
   form: PurchaseForm,
   item: InventoryItem,
   now: Date,
+  t: Translator = translator('en'),
 ): { ok: true; update: UpdateInventoryItemRequest | null; costs: ReplacePurchaseCostsRequest | null } | { ok: false; errors: PurchaseFormErrors } {
   const errors: PurchaseFormErrors = {};
   const currency = item.purchase.price.currency;
   const title = form.title.trim();
-  if (!title) errors.title = 'Give it a name';
+  if (!title) errors.title = t('inventory.errorName');
   const price = parseMoneyInput(form.price, currency);
   if (!price.ok) errors.price = price.message;
-  else if (!price.money || price.money.amountMinor <= 0) errors.price = 'Enter what you paid';
+  else if (!price.money || price.money.amountMinor <= 0) errors.price = t('inventory.errorPricePaid');
   const day = form.day.trim();
-  if (!isValidDay(day)) errors.day = 'Use a date like 2026-10-08';
-  else if (day > localDay(now)) errors.day = "Can't be in the future";
-  else if (item.sale && day > localDay(new Date(item.sale.soldAt))) errors.day = "Can't be after the sale date";
-  const costs = parseCostDrafts(form.costs, currency);
+  if (!isValidDay(day)) errors.day = t('inventory.errorDateFormat');
+  else if (day > localDay(now)) errors.day = t('inventory.errorFuture');
+  else if (item.sale && day > localDay(new Date(item.sale.soldAt))) errors.day = t('inventory.errorAfterSale');
+  const costs = parseCostDrafts(form.costs, currency, t);
   if (!costs.ok) errors.costs = costs.errors;
   if (Object.keys(errors).length > 0 || !costs.ok || !price.ok || !price.money) return { ok: false, errors };
 
@@ -362,7 +425,7 @@ export function saleFormDefaults(item: InventoryItem, ctx: HuntFormContext, now:
           sale.costs.map((c) => ({ category: c.category as SaleCostCategory, amount: moneyToInput(c.amount), note: c.note ?? '' })),
         )
       : initialCostDrafts<SaleCostCategory>('sale', [{ category: 'MARKETPLACE_FEE' }, { category: 'PAYMENT_FEE' }, { category: 'SHIPPING' }]),
-    estimateHint: item.expected?.estimatedResale ? `Rein Drop estimated about ${fmt(item.expected.estimatedResale)} when you bought it.` : null,
+    estimateHint: item.expected?.estimatedResale ? ctx.t('inventory.estimateHint', { amount: fmt(item.expected.estimatedResale) }) : null,
   };
 }
 
@@ -372,17 +435,18 @@ export function buildSaleRequest(
   form: SaleForm,
   item: InventoryItem,
   now: Date,
+  t: Translator = translator('en'),
 ): { ok: true; request: RecordSaleRequest } | { ok: false; errors: SaleFormErrors } {
   const errors: SaleFormErrors = {};
   const price = parseMoneyInput(form.price, form.currency);
   if (!price.ok) errors.price = price.message;
-  else if (!price.money || price.money.amountMinor <= 0) errors.price = 'Enter what it sold for';
+  else if (!price.money || price.money.amountMinor <= 0) errors.price = t('inventory.errorSalePrice');
   const day = form.day.trim();
   const purchasedAt = new Date(item.purchase.purchasedAt);
-  if (!isValidDay(day)) errors.day = 'Use a date like 2026-10-08';
-  else if (day > localDay(now)) errors.day = "Can't be in the future";
-  else if (day < localDay(purchasedAt)) errors.day = "Can't be before you bought it";
-  const costs = parseCostDrafts(form.costs, form.currency);
+  if (!isValidDay(day)) errors.day = t('inventory.errorDateFormat');
+  else if (day > localDay(now)) errors.day = t('inventory.errorFuture');
+  else if (day < localDay(purchasedAt)) errors.day = t('inventory.errorBeforePurchase');
+  const costs = parseCostDrafts(form.costs, form.currency, t);
   if (!costs.ok) errors.costs = costs.errors;
   if (Object.keys(errors).length > 0 || !costs.ok || !price.ok || !price.money) return { ok: false, errors };
 
@@ -404,6 +468,7 @@ export interface SalePreview {
 
 /** Live "what you'll make" preview while filling Mark Sold. Invalid rows are left out. */
 export function salePreview(form: SaleForm, item: InventoryItem, ctx: HuntFormContext): SalePreview {
+  const { t } = ctx;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const price = parseMoneyInput(form.price, form.currency);
   const saleCosts = form.costs.flatMap((d) => {
@@ -412,7 +477,7 @@ export function salePreview(form: SaleForm, item: InventoryItem, ctx: HuntFormCo
   });
   const costBasis = item.purchase.total;
   if (!price.ok || !price.money || price.money.amountMinor <= 0) {
-    return { profit: null, lines: costBasis ? [['What it cost you', fmt(costBasis)]] : [], note: 'Enter the sale price to see your profit.' };
+    return { profit: null, lines: costBasis ? [[t('inventory.whatItCost'), fmt(costBasis)]] : [], note: t('inventory.previewEnterPrice') };
   }
   const result = realizedResult({
     purchasePrice: item.purchase.price,
@@ -421,15 +486,15 @@ export function salePreview(form: SaleForm, item: InventoryItem, ctx: HuntFormCo
     saleCosts,
   });
   if (result.status !== 'ok') {
-    return { profit: null, lines: [], note: `The purchase was in ${item.purchase.price.currency}, so profit can't be calculated without converting (Rein Drop never converts).` };
+    return { profit: null, lines: [], note: t('inventory.previewCurrencyMismatch', { currency: item.purchase.price.currency }) };
   }
   const p = result.realizedProfit.amountMinor;
   return {
-    profit: { label: p < 0 ? 'You would lose' : 'You would make', value: fmt(abs(result.realizedProfit)), tone: toneOf(p) },
+    profit: { label: t(p < 0 ? 'inventory.youWouldLose' : 'inventory.youWouldMake'), value: fmt(abs(result.realizedProfit)), tone: toneOf(p) },
     lines: [
-      ['Sale price', fmt(price.money)],
-      ['Selling costs', saleCosts.length > 0 ? `− ${fmt({ amountMinor: sum(saleCosts), currency: form.currency })}` : 'None'],
-      ['What it cost you', `− ${fmt(result.costBasis)}`],
+      [t('inventory.salePrice'), fmt(price.money)],
+      [t('inventory.sellingCosts'), saleCosts.length > 0 ? `− ${fmt({ amountMinor: sum(saleCosts), currency: form.currency })}` : t('inventory.none')],
+      [t('inventory.whatItCost'), `− ${fmt(result.costBasis)}`],
     ],
     note: null,
   };
@@ -477,13 +542,14 @@ export function saleResultView(item: InventoryItem, ctx: HuntFormContext): SaleR
   if (!sale || !item.result) return null;
   const fmt = (m: Money) => formatMoney(m, ctx.localeTag);
   const r = item.result;
-  const held = `sold after ${plural(item.daysHeld, 'day')}`;
+  const { t } = ctx;
+  const held = t('inventory.summarySoldAfter', { days: item.daysHeld });
 
   const saleCosts = sale.costs.map((c) => c.amount);
-  const breakdown: [string, string][] = [['Sale price', fmt(sale.price)]];
-  for (const c of sale.costs) breakdown.push([saleCostLabel(c.category), `− ${fmt(c.amount)}`]);
-  breakdown.push(['Price paid', `− ${fmt(item.purchase.price)}`]);
-  for (const c of item.purchase.costs) breakdown.push([purchaseCostLabel(c.category), `− ${fmt(c.amount)}`]);
+  const breakdown: [string, string][] = [[t('inventory.salePrice'), fmt(sale.price)]];
+  for (const c of sale.costs) breakdown.push([saleCostLabel(c.category, t), `− ${fmt(c.amount)}`]);
+  breakdown.push([t('inventory.pricePaid'), `− ${fmt(item.purchase.price)}`]);
+  for (const c of item.purchase.costs) breakdown.push([purchaseCostLabel(c.category, t), `− ${fmt(c.amount)}`]);
 
   const comparisons: ComparisonRow[] = [];
   const cmp = item.comparison;
@@ -499,18 +565,16 @@ export function saleResultView(item: InventoryItem, ctx: HuntFormContext): SaleR
       tone: d && d.amountMinor !== 0 ? (d.amountMinor > 0 === higherIsGood ? 'profit' : 'loss') : 'neutral',
     });
   };
-  row('Buy price', 'Asking', cmp.purchasePrice, false);
-  row('Sale price', 'Estimated', cmp.salePrice, true);
-  row('Profit', 'Estimated upside', cmp.profit, true);
+  row(t('inventory.buyPrice'), t('inventory.expectedAsking'), cmp.purchasePrice, false);
+  row(t('inventory.salePrice'), t('inventory.expectedEstimated'), cmp.salePrice, true);
+  row(t('inventory.profit'), t('inventory.expectedUpside'), cmp.profit, true);
   const hadEstimate = cmp.salePrice.expected !== null || cmp.profit.expected !== null;
-  const comparisonNote = hadEstimate
-    ? "Estimates were made before you bought and didn't include selling fees. A gap is a comparison, not a loss."
-    : 'Rein Drop had no resale estimate for this item, so only the buy price can be compared.';
+  const comparisonNote = t(hadEstimate ? 'inventory.comparisonNoteEstimate' : 'inventory.comparisonNoteNone');
 
   if (r.status !== 'ok') {
     return {
       title: item.title,
-      headline: 'Sold',
+      headline: t('inventory.headlineSold'),
       value: fmt(sale.price),
       tone: 'neutral',
       celebrate: false,
@@ -518,37 +582,43 @@ export function saleResultView(item: InventoryItem, ctx: HuntFormContext): SaleR
       breakdown,
       comparisons,
       comparisonNote,
-      insight: `It sold in ${sale.price.currency} but was bought in ${item.purchase.price.currency}, so profit isn't calculated - Rein Drop never converts currencies.`,
+      insight: t('inventory.insightCurrency', { saleCurrency: sale.price.currency, buyCurrency: item.purchase.price.currency }),
     };
   }
 
   const p = r.realizedProfit.amountMinor;
-  const pct = [r.marginPercent !== null ? `${r.marginPercent}% margin` : null, r.returnPercent !== null ? `${r.returnPercent}% return on cost` : null, held].filter(Boolean).join(' · ');
+  const pct = [
+    r.marginPercent !== null ? t('inventory.summaryMargin', { percent: r.marginPercent }) : null,
+    r.returnPercent !== null ? t('inventory.summaryReturn', { percent: r.returnPercent }) : null,
+    held,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   let insight: string;
   const grossBeforeFees = sale.price.amountMinor - r.costBasis.amountMinor;
   if (p < 0 && grossBeforeFees >= 0 && saleCosts.length > 0) {
-    insight = `Selling costs of ${fmt({ amountMinor: sum(saleCosts), currency: sale.price.currency })} turned this into a loss. Check fees before pricing the next one.`;
+    insight = t('inventory.insightFeesCausedLoss', { fees: fmt({ amountMinor: sum(saleCosts), currency: sale.price.currency }) });
   } else if (p < 0) {
     const fees = sum(saleCosts);
     const short = fmt({ amountMinor: Math.abs(grossBeforeFees), currency: sale.price.currency });
     insight =
       fees > 0
-        ? `It sold for ${short} less than it cost you, and selling costs of ${fmt({ amountMinor: fees, currency: sale.price.currency })} added to the loss.`
-        : `It sold for ${short} less than it cost you.`;
+        ? t('inventory.insightBelowCostAndFees', { short, fees: fmt({ amountMinor: fees, currency: sale.price.currency }) })
+        : t('inventory.insightBelowCost', { short });
   } else if (cmp.salePrice.difference && cmp.salePrice.difference.amountMinor > 0) {
-    insight = `It sold for ${fmt(cmp.salePrice.difference)} more than Rein Drop estimated.`;
+    insight = t('inventory.insightAboveEstimate', { amount: fmt(cmp.salePrice.difference) });
   } else if (cmp.profit.difference && cmp.profit.difference.amountMinor < 0) {
-    insight = `You made ${fmt(r.realizedProfit)}, ${fmt(abs(cmp.profit.difference))} under the estimate - a comparison, not a loss.`;
+    insight = t('inventory.insightUnderEstimate', { profit: fmt(r.realizedProfit), gap: fmt(abs(cmp.profit.difference)) });
   } else if (p === 0) {
-    insight = 'You got your money back, with nothing left over after costs.';
+    insight = t('inventory.insightBrokeEven');
   } else {
-    insight = `You made ${fmt(r.realizedProfit)} in ${plural(item.daysHeld, 'day')}.`;
+    insight = t('inventory.insightProfit', { profit: fmt(r.realizedProfit), days: item.daysHeld });
   }
 
   return {
     title: item.title,
-    headline: p > 0 ? 'Realized profit' : p < 0 ? 'Realized loss' : 'Broke even',
+    headline: t(p > 0 ? 'inventory.headlineProfit' : p < 0 ? 'inventory.headlineLoss' : 'inventory.headlineBrokeEven'),
     value: p < 0 ? signed(r.realizedProfit, fmt) : fmt(r.realizedProfit),
     tone: toneOf(p),
     celebrate: p > 0,

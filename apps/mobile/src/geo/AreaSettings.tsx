@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { ApiError, type GeoPoint } from '@rein-drop/api-client';
 import { space } from '@rein-drop/design-tokens';
 import { getApiClient } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { Button, SystemBanner } from '@/ui';
 import { LocationField } from './LocationField';
 import { LocationMap } from './LocationMap';
@@ -22,13 +23,13 @@ export function AreaSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [error, setError] = useState<string | undefined>();
-
+  const t = useT();
 
   const changed = text.trim() !== (saved?.label ?? '') || JSON.stringify(point) !== JSON.stringify(saved?.point ?? null);
 
   const save = async () => {
     if (text.trim().length < 2) {
-      setError('Enter a suburb, town or postal code');
+      setError(t('location.areaErrorShort'));
       return;
     }
     setSaving(true);
@@ -38,11 +39,11 @@ export function AreaSettings() {
       setDraft(null);
       setMessage(
         area?.point
-          ? { tone: 'success', text: 'Saved. New Hunts can use it with one tap.' }
-          : { tone: 'info', text: "Saved as text - we couldn't find it on the map, so distance can't be checked for it. Try picking a suggestion." },
+          ? { tone: 'success', text: t('location.areaSaved') }
+          : { tone: 'info', text: t('location.areaSavedText') },
       );
     } catch (err) {
-      setMessage({ tone: 'error', text: err instanceof ApiError ? (err.details?.[0]?.message ?? err.message) : "We couldn't save your area. Please try again." });
+      setMessage({ tone: 'error', text: err instanceof ApiError ? (err.details?.[0]?.message ?? err.message) : t('location.areaSaveFailed') });
     } finally {
       setSaving(false);
     }
@@ -54,9 +55,9 @@ export function AreaSettings() {
       await getApiClient().clearMyArea();
       setSaved(null);
       setDraft(null);
-      setMessage({ tone: 'success', text: 'Your area was removed.' });
+      setMessage({ tone: 'success', text: t('location.areaRemoved') });
     } catch {
-      setMessage({ tone: 'error', text: "We couldn't remove your area. Please try again." });
+      setMessage({ tone: 'error', text: t('location.areaRemoveFailed') });
     } finally {
       setSaving(false);
     }
@@ -65,12 +66,12 @@ export function AreaSettings() {
   return (
     <View style={styles.wrap}>
       <LocationField
-        label="Suburb, town or postal code"
-        hint="Not your street address - only used to suggest where your Hunts look."
-        placeholder={geo.suggestions ? 'Start typing a suburb, town or postal code' : 'Suburb, town or postal code'}
+        label={t('location.areaLabel')}
+        hint={t('location.areaHint')}
+        placeholder={geo.suggestions ? t('hunts.formLocationSuggest') : t('location.areaLabel')}
         value={text}
-        onType={(t) => {
-          setDraft(t === text ? { text, point, postalCode } : { text: t, point: null, postalCode: null });
+        onType={(typed) => {
+          setDraft(typed === text ? { text, point, postalCode } : { text: typed, point: null, postalCode: null });
           setError(undefined);
           setMessage(null);
         }}
@@ -87,17 +88,17 @@ export function AreaSettings() {
           point={point}
           radiusKm={null}
           onMovePin={(p) => setDraft({ text, postalCode, point: { lat: Math.round(p.lat * 1000) / 1000, lng: Math.round(p.lng * 1000) / 1000 } })}
-          caption={`Centre of ${text || 'your area'}. Drag the pin to adjust.`}
+          caption={text ? t('location.areaCaption', { place: text }) : t('location.areaCaptionEmpty')}
         />
       )}
       {message && <SystemBanner tone={message.tone} title={message.text} />}
       <View style={styles.actions}>
         <Button onPress={save} loading={saving} disabled={!changed}>
-          Save area
+          {t('location.areaSave')}
         </Button>
         {saved && (
           <Button variant="text" onPress={remove} disabled={saving}>
-            Remove
+            {t('location.areaRemove')}
           </Button>
         )}
       </View>

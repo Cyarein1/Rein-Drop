@@ -1,5 +1,8 @@
 import type { AccessResponse, BillingInfo, Plan } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 import { describeEntitlements, priceLabel } from './plan-gate.js';
+
+const EN = translator('en');
 
 /**
  * WEB "Plans & billing" view model (decision 0018: subscription management is web-only - the mobile
@@ -27,28 +30,42 @@ export interface BillingStatusView {
   paymentAttention: boolean;
 }
 
-export function billingStatusView(source: SourceAccess, localeTag: string): BillingStatusView {
+export function billingStatusView(source: SourceAccess, localeTag: string, t: Translator = EN): BillingStatusView {
   const end = date(source.periodEndsAt, localeTag);
   switch (source.state) {
-    case 'active':
+    case 'active': {
+      const plan = source.plan?.name ?? '';
       return source.cancelsAtPeriodEnd
-        ? { label: 'Cancels at period end', tone: 'fresh', lines: [`Your ${source.plan?.name} plan stays active until ${end ?? 'the end of the period'}, then you move to Free. Nothing is deleted.`], paymentAttention: false }
-        : { label: 'Active', tone: 'profit', lines: end ? [`Renews on ${end}.`] : [], paymentAttention: false };
+        ? {
+            label: t('billing.statusCancelsAtEnd'),
+            tone: 'fresh',
+            lines: [end ? t('billing.cancelsLine', { plan, date: end }) : t('billing.cancelsLineNoDate', { plan })],
+            paymentAttention: false,
+          }
+        : { label: t('billing.statusActive'), tone: 'profit', lines: end ? [t('billing.renewsOn', { date: end })] : [], paymentAttention: false };
+    }
     case 'trialing':
-      return { label: 'Trial', tone: 'info', lines: end ? [`Your trial runs until ${end}; the plan then renews.`] : [], paymentAttention: false };
+      return { label: t('billing.statusTrial'), tone: 'info', lines: end ? [t('billing.trialUntil', { date: end })] : [], paymentAttention: false };
     case 'past_due':
-      return { label: 'Payment retrying', tone: 'fresh', lines: ['Your last payment didn’t go through. Stripe is retrying - you keep your plan meanwhile.', 'Update your payment method in Manage billing.'], paymentAttention: true };
-    case 'grace_period':
-      return { label: 'Grace period', tone: 'fresh', lines: [`Your paid access ended. You keep it until ${date(source.graceEndsAt, localeTag) ?? 'the grace period ends'}, then you move to Free.`], paymentAttention: true };
+      return { label: t('billing.statusPaymentRetrying'), tone: 'fresh', lines: [t('billing.pastDueLine'), t('billing.pastDueAction')], paymentAttention: true };
+    case 'grace_period': {
+      const graceEnd = date(source.graceEndsAt, localeTag);
+      return {
+        label: t('billing.statusGrace'),
+        tone: 'fresh',
+        lines: [graceEnd ? t('billing.graceLine', { date: graceEnd }) : t('billing.graceLineNoDate')],
+        paymentAttention: true,
+      };
+    }
     case 'canceled':
-      return { label: 'Free', tone: 'neutral', lines: ['Your paid plan was cancelled. You’re on Free; your Hunts and data are kept.'], paymentAttention: false };
+      return { label: t('billing.statusFree'), tone: 'neutral', lines: [t('billing.canceledLine')], paymentAttention: false };
     case 'expired':
-      return { label: 'Free', tone: 'neutral', lines: ['Your paid plan ended. You’re on Free; your Hunts and data are kept.'], paymentAttention: false };
+      return { label: t('billing.statusFree'), tone: 'neutral', lines: [t('billing.expiredLine')], paymentAttention: false };
     case 'suspended':
-      return { label: 'Suspended', tone: 'loss', lines: ['Access to this account is suspended. Your data is kept - contact support.'], paymentAttention: false };
+      return { label: t('billing.statusSuspended'), tone: 'loss', lines: [t('billing.suspendedLine')], paymentAttention: false };
     case 'free':
     case 'none':
-      return { label: 'Free', tone: 'neutral', lines: [], paymentAttention: false };
+      return { label: t('billing.statusFree'), tone: 'neutral', lines: [], paymentAttention: false };
   }
 }
 
@@ -72,28 +89,36 @@ export interface PlanCardView {
  * - On a paid plan: change to another paid plan, or cancel to move to Free (portal).
  * - Plans without a price, development mode or a suspended account: not available.
  */
-export function planCards(plans: readonly Plan[], source: SourceAccess, billing: BillingInfo, localeTag: string): PlanCardView[] {
+export function planCards(plans: readonly Plan[], source: SourceAccess, billing: BillingInfo, localeTag: string, t: Translator = EN): PlanCardView[] {
   const currentCode = source.plan?.code ?? null;
   return plans.map((plan) => {
-    const base = { plan, price: priceLabel(plan.pricing, localeTag), lines: describeEntitlements(plan.entitlements) };
+    const base = { plan, price: priceLabel(plan.pricing, localeTag, t), lines: describeEntitlements(plan.entitlements, t) };
     let action: PlanAction;
     if (plan.code === currentCode) action = { kind: 'current' };
-    else if (source.state === 'suspended') action = { kind: 'unavailable', reason: 'Not available while access is suspended' };
+    else if (source.state === 'suspended') action = { kind: 'unavailable', reason: t('billing.unavailableSuspended') };
     else if (plan.pricing.status === 'free') action = source.paid ? { kind: 'downgrade_to_free' } : { kind: 'current' };
-    else if (plan.pricing.status === 'tbd') action = { kind: 'unavailable', reason: 'Not available yet' };
-    else if (billing.mode !== 'stripe') action = { kind: 'unavailable', reason: 'Online billing isn’t set up here (development)' };
+    else if (plan.pricing.status === 'tbd') action = { kind: 'unavailable', reason: t('billing.unavailableYet') };
+    else if (billing.mode !== 'stripe') action = { kind: 'unavailable', reason: t('billing.unavailableDevelopment') };
     else action = source.paid ? { kind: 'change' } : { kind: 'subscribe' };
     return { ...base, action };
   });
 }
 
 /** Banner after coming back from checkout: only what the SERVER now says counts. */
-export function checkoutReturnView(result: string | undefined, source: SourceAccess): { tone: 'success' | 'info'; title: string; message: string } | null {
+export function checkoutReturnView(
+  result: string | undefined,
+  source: SourceAccess,
+  t: Translator = EN,
+): { tone: 'success' | 'info'; title: string; message: string } | null {
   if (result === 'success') {
     return source.paid
-      ? { tone: 'success', title: `You’re on ${source.plan?.name ?? 'your new plan'}`, message: 'Payment confirmed. Your new limits apply on the web and in the app.' }
-      : { tone: 'info', title: 'Confirming your payment', message: 'Stripe hasn’t confirmed it yet - this usually takes a few seconds. Use Refresh status in a moment.' };
+      ? {
+          tone: 'success',
+          title: source.plan?.name ? t('billing.checkoutSuccessTitle', { plan: source.plan.name }) : t('billing.checkoutSuccessTitleUnknown'),
+          message: t('billing.checkoutSuccessMessage'),
+        }
+      : { tone: 'info', title: t('billing.checkoutPendingTitle'), message: t('billing.checkoutPendingMessage') };
   }
-  if (result === 'cancelled') return { tone: 'info', title: 'Checkout cancelled', message: 'Nothing was charged and your plan didn’t change.' };
+  if (result === 'cancelled') return { tone: 'info', title: t('billing.checkoutCancelledTitle'), message: t('billing.checkoutCancelledMessage') };
   return null;
 }

@@ -1,0 +1,58 @@
+/** English source text - area: billing (WEB plans & billing, plan gate - never on the mobile companion). Keys are stable ids; text can change freely. */
+export default {
+  // What a plan includes
+  entLiveUnlimited: 'Unlimited live Hunts',
+  entLive: '{count, plural, one {# live Hunt} other {# live Hunts}}',
+  entSavedUnlimited: 'Unlimited saved Hunts',
+  entSaved: '{count, plural, one {Up to # saved Hunt} other {Up to # saved Hunts}}',
+  entNoMarketplaces: 'No marketplaces',
+  entHotHunts: 'Hot Hunts',
+  entHotHuntsLimit: 'Hot Hunts: {limit}',
+  entHotHuntsLater: 'Hot Hunts: coming later',
+  entPriority: '{priority, select, NORMAL {Normal monitoring priority} other {{priority} monitoring priority}}',
+  entAnalyticsFull: 'Full analytics history',
+  entAnalyticsDays: '{days, plural, one {# day of analytics history} other {# days of analytics history}}',
+  entSeats: '{count, plural, one {# seat} other {# seats}}',
+  listAnd: '{items} and {last}',
+  // Prices (from the provider - never made up)
+  priceFree: 'Free',
+  priceTbd: 'Price TBD',
+  pricePer: '{unit, select, day {{price} / day} week {{price} / week} month {{price} / month} year {{price} / year} other {{price} / {unit}}}',
+  priceEvery:
+    '{unit, select, day {{price} every {count} days} week {{price} every {count} weeks} month {{price} every {count} months} year {{price} every {count} years} other {{price} every {count} {unit}}}',
+  // Activation block resolutions
+  resolutionPauseAnother: 'Pause another Hunt',
+  resolutionUpgrade: 'Choose a bigger plan',
+  resolutionEdit: 'Edit this Hunt',
+  // Status
+  statusCancelsAtEnd: 'Cancels at period end',
+  cancelsLine: 'Your {plan} plan stays active until {date}, then you move to Free. Nothing is deleted.',
+  cancelsLineNoDate: 'Your {plan} plan stays active until the end of the period, then you move to Free. Nothing is deleted.',
+  statusActive: 'Active',
+  renewsOn: 'Renews on {date}.',
+  statusTrial: 'Trial',
+  trialUntil: 'Your trial runs until {date}; the plan then renews.',
+  statusPaymentRetrying: 'Payment retrying',
+  pastDueLine: 'Your last payment didn’t go through. Stripe is retrying - you keep your plan meanwhile.',
+  pastDueAction: 'Update your payment method in Manage billing.',
+  statusGrace: 'Grace period',
+  graceLine: 'Your paid access ended. You keep it until {date}, then you move to Free.',
+  graceLineNoDate: 'Your paid access ended. You keep it until the grace period ends, then you move to Free.',
+  statusFree: 'Free',
+  canceledLine: 'Your paid plan was cancelled. You’re on Free; your Hunts and data are kept.',
+  expiredLine: 'Your paid plan ended. You’re on Free; your Hunts and data are kept.',
+  statusSuspended: 'Suspended',
+  suspendedLine: 'Access to this account is suspended. Your data is kept - contact support.',
+  // Plan actions
+  unavailableSuspended: 'Not available while access is suspended',
+  unavailableYet: 'Not available yet',
+  unavailableDevelopment: 'Online billing isn’t set up here (development)',
+  // Back from checkout
+  checkoutSuccessTitle: 'You’re on {plan}',
+  checkoutSuccessTitleUnknown: 'You’re on your new plan',
+  checkoutSuccessMessage: 'Payment confirmed. Your new limits apply on the web and in the app.',
+  checkoutPendingTitle: 'Confirming your payment',
+  checkoutPendingMessage: 'Stripe hasn’t confirmed it yet - this usually takes a few seconds. Use Refresh status in a moment.',
+  checkoutCancelledTitle: 'Checkout cancelled',
+  checkoutCancelledMessage: 'Nothing was charged and your plan didn’t change.',
+} as const;

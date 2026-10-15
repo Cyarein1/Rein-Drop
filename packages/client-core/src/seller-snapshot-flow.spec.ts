@@ -9,9 +9,14 @@ import {
   nextStep,
   previousStep,
   questionNumber,
+  questionOptions,
   resumeStep,
+  SELLER_SNAPSHOT_COPY,
+  SNAPSHOT_GATE_COPY,
   snapshotAnswerRows,
   snapshotDraft,
+  snapshotGateCopy,
+  snapshotQuestionText,
   snapshotSummary,
 } from './index.js';
 
@@ -149,5 +154,35 @@ describe('summary', () => {
     expect(rows.map((r) => r.question)).toHaveLength(5);
     expect(rows[3]!.answer).toMatch(/^Minimum R profit: R\s?1\s?500,00$/);
     expect(snapshotAnswerRows({ ...empty, isReseller: true, status: 'in_progress' }, ZA)[1]!.answer).toBe('Not answered');
+  });
+});
+
+describe('German (draft)', () => {
+  const DE = huntFormContext({ countryCode: 'DE', currency: 'EUR', distanceUnit: 'km', language: 'de', source: 'detected' } as never);
+  const nb = (s: string) => s.replace(/\s/g, ' ');
+
+  it('questions, options and validation', () => {
+    expect(DE.language).toBe('de');
+    expect(snapshotQuestionText('categories', DE.t)).toBe('Wonach suchst du normalerweise?');
+    expect(questionOptions('stage', DE.t)[0]).toEqual({ value: 'getting_started', label: 'Ich fange gerade an' });
+    expect(questionOptions('stage')[0]).toEqual({ value: 'getting_started', label: SELLER_SNAPSHOT_COPY.stage.options.getting_started });
+    expect(dealCriterionOptions(DE)[0]).toEqual({ value: 'min_profit', label: 'Mindestgewinn in €' });
+    expect(dealTargetField('min_profit', DE)!.label).toBe('Mindestgewinn pro Deal (EUR, optional)');
+    expect(buildStepUpdate('categories', snapshotDraft(null), DE)).toEqual({ ok: false, error: 'Wähle mindestens eine Option' });
+    expect(snapshotGateCopy(DE.t).question).toBe('Bist du Wiederverkäufer?');
+    // English accessors match the English constants the apps use today.
+    expect(snapshotGateCopy(ZA.t)).toEqual(SNAPSHOT_GATE_COPY);
+  });
+
+  it('summary in one sentence, estimates not called profit', () => {
+    const eur = { ...complete, dealRule: { criterion: 'min_profit' as const, target: { amountMinor: 15_000, currency: 'EUR' } } };
+    const { sentence, priorities } = snapshotSummary(eur, DE);
+    expect(nb(sentence)).toBe(
+      'Alles klar. Du suchst nach Handys & Tablets, kaufst über Facebook Marketplace und eBay ein, willst mindestens 150,00 € pro Deal verdienen und willst nicht mehr den ganzen Tag Marktplätze checken. Lass uns deinen ersten Hunt erstellen.',
+    );
+    expect(priorities[1]).toBe('Facebook Marketplace und eBay als deine Start-Marktplätze');
+    expect(nb(priorities[2]!)).toBe('Deals mit mindestens 150,00 € geschätztem Potenzial');
+    expect(snapshotSummary({ ...complete, improvementGoal: null, dealRule: { criterion: 'case_by_case' } }, DE).sentence).toMatch(/entscheidest von Fall zu Fall\. Lass uns/);
+    expect(snapshotAnswerRows({ ...complete, dealRule: { criterion: 'min_margin', targetPercent: 30 } }, DE)[3]!.answer).toBe('Mindestmarge in %: 30 %');
   });
 });

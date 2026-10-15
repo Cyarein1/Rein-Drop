@@ -37,6 +37,7 @@ describe('locale', () => {
 
   it('falls back to a supported UI language', () => {
     expect(uiLanguage('en')).toBe('en');
+    expect(uiLanguage('de')).toBe('de');
     expect(uiLanguage('af')).toBe('en');
     expect(uiLanguage(null)).toBe('en');
   });

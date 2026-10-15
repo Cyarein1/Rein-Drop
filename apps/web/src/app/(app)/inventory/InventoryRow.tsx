@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { InventoryRowView } from "@rein-drop/client-core";
 import { Badge, ButtonLink } from "@/components/ui";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import styles from "./inventory.module.css";
 
 /** One inventory item: what it cost, how long it's been held (or its realized result), the next step. */
@@ -20,7 +21,7 @@ export function InventoryRow({ view, headingLevel = 2 }: { view: InventoryRowVie
       <p className={styles.figures}>
         <span>{view.cost}</span>
         <span>{view.held}</span>
-        {view.source && <span>{view.source}</span>}
+        {view.marketplace && <MarketplaceName marketplace={view.marketplace} />}
       </p>
       {view.result && (
         <p>

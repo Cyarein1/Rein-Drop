@@ -6,25 +6,25 @@ import {
   boughtFormDefaults,
   buildBoughtRequest,
   buildIgnoreRequest,
-  CONFIDENCE_LABEL,
+  confidenceLabel,
   dealActions,
   dealDetailView,
   IGNORE_REASON_MAX,
-  NEXT_STEP_LABEL,
-  OFFLINE_MESSAGE,
-  REASON_EFFECT_LABEL,
-  RISK_LEVEL_LABEL,
+  nextStepLabel,
+  offlineMessage,
+  reasonEffectLabel,
+  riskLevelLabel,
   SEVERITY_TONE,
-  STRENGTH_LABEL,
-  huntFormContext,
+  strengthLabel,
   type HuntFormContext,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, space, tones } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
 import { mascotAssets } from '@/brand/assets';
+import { MarketplaceMark, MarketplaceName } from '@/brand/MarketplaceMark';
 import { DealEconomics } from '@/components/DealEconomics';
 import { getApiClient } from '@/config/api';
 import { isOffline } from '@/data/useRefreshable';
+import { useDisplayContext } from '@/i18n/useT';
 import { Badge, Button, Card, Disclosure, font, LoadingState, Screen, SystemBanner, TextInput } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string; notFound: boolean } | { status: 'ready'; deal: DealDetail; version: number };
@@ -32,8 +32,8 @@ type Load = { status: 'loading' } | { status: 'error'; message: string; notFound
 /** Deal Detail: why it was flagged, evidence, View source, Save / Ignore / Bought. */
 export default function DealScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
 
   const fetchDeal = useCallback(() => {
@@ -46,25 +46,25 @@ export default function DealScreen() {
           !cancelled &&
           setLoad({
             status: 'error',
-            message: isOffline(err) ? OFFLINE_MESSAGE : err instanceof Error ? err.message : String(err),
+            message: isOffline(err) ? offlineMessage(t) : err instanceof Error ? err.message : String(err),
             notFound: err instanceof ApiError && (err.status === 404 || err.code === 'VALIDATION_FAILED'),
           }),
       );
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
   useFocusEffect(fetchDeal);
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Deal' }} />
-      {load.status === 'loading' && <LoadingState label="Loading the deal…" />}
+      <Stack.Screen options={{ title: t('nav.titleDeal') }} />
+      {load.status === 'loading' && <LoadingState label={t('deals.loadingDeal')} />}
       {load.status === 'error' && (
         <SystemBanner
           tone={load.notFound ? 'info' : 'error'}
-          title={load.notFound ? 'Deal not found' : "Couldn't load this deal"}
-          message={load.notFound ? 'It may belong to another account or no longer exist.' : load.message}
+          title={t(load.notFound ? 'deals.notFoundTitle' : 'deals.loadFailedTitle')}
+          message={load.notFound ? t('deals.notFoundBody') : load.message}
           action={
             load.notFound ? undefined : (
               <Button
@@ -74,7 +74,7 @@ export default function DealScreen() {
                   fetchDeal();
                 }}
               >
-                Try again
+                {t('common.tryAgain')}
               </Button>
             )
           }
@@ -95,6 +95,7 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const { t } = context;
   const view = dealDetailView(deal, context);
   const can = dealActions(deal);
 
@@ -131,8 +132,8 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
           {/* Only the approved "exceptional deal" mascot (surprised pose) may appear here. */}
           {exceptionalArt && <Image source={exceptionalArt} style={styles.art} accessibilityIgnoresInvertColors />}
           <View style={styles.flex}>
-            <Text style={[styles.title, font('bold')]}>Exceptional deal</Text>
-            <Text style={[styles.body, font('regular')]}>Rare: the estimate is well above your usual target. Still check the details before you buy.</Text>
+            <Text style={[styles.title, font('bold')]}>{t('deals.exceptionalTitle')}</Text>
+            <Text style={[styles.body, font('regular')]}>{t('deals.exceptionalBody')}</Text>
           </View>
         </View>
       )}
@@ -140,21 +141,24 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
       <View style={styles.badges}>
         {view.strength && <Badge tone={view.strength.tone}>{view.strength.label}</Badge>}
         {view.confidence && <Badge tone="neutral">{view.confidence}</Badge>}
-        {view.justDropped && <Badge tone="fresh">Just dropped</Badge>}
+        {view.justDropped && <Badge tone="fresh">{t('deals.justDropped')}</Badge>}
         <Badge tone={view.status.tone}>{view.status.label}</Badge>
       </View>
       <Text style={[styles.heading, font('bold')]} accessibilityRole="header">
         {view.title}
       </Text>
-      <Text style={[styles.muted, font('regular')]}>
-        {view.source} · {view.freshness} · Hunt: {view.huntName}
-      </Text>
+      <View style={styles.inline}>
+        <MarketplaceName marketplace={view.marketplace} size={18} />
+        <Text style={[styles.muted, styles.flex, font('regular')]}>
+          · {view.freshness} · {t('deals.huntLabel', { name: view.huntName })}
+        </Text>
+      </View>
 
       {view.sourceNote && (
         <SystemBanner
           tone={view.sourceNote.tone === 'loss' ? 'warning' : 'info'}
           title={view.sourceNote.text}
-          message={deal.source.available ? 'The listing may have changed since Rein Drop last saw it.' : 'You can still keep it for reference.'}
+          message={t(deal.source.available ? 'deals.sourceMayHaveChanged' : 'deals.sourceKeepForReference')}
         />
       )}
       {view.decisions.map((d) => (
@@ -165,38 +169,38 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
       {deal.decision.inventoryItemId && (
         <View style={styles.actions}>
           <Button variant="secondary" onPress={() => router.push({ pathname: '/inventory/[id]', params: { id: deal.decision.inventoryItemId! } })}>
-            Open in Inventory
+            {t('deals.openInInventory')}
           </Button>
         </View>
       )}
 
       <View style={styles.actions}>
-        <Button variant="secondary" onPress={() => void Linking.openURL(view.url)} accessibilityHint="Opens the listing in your browser">
-          {`View on ${view.source} ↗`}
+        <Button variant="secondary" icon={<MarketplaceMark marketplace={view.marketplace} size={16} />} onPress={() => void Linking.openURL(view.url)} accessibilityHint={t('deals.viewOnHint')}>
+          {t('deals.viewOn', { source: view.source })}
         </Button>
         {can.canBuy && form !== 'bought' && (
           <Button onPress={() => setForm('bought')} disabled={pending}>
-            Bought
+            {t('deals.actionBought')}
           </Button>
         )}
         {can.canSave && (
-          <Button variant="secondary" loading={pending} onPress={() => run(() => api.saveDeal(deal.id), 'Saved. Find it under Saved.')}>
-            Save
+          <Button variant="secondary" loading={pending} onPress={() => run(() => api.saveDeal(deal.id), t('deals.doneSaved'))}>
+            {t('deals.save')}
           </Button>
         )}
         {can.canUnsave && (
-          <Button variant="secondary" loading={pending} onPress={() => run(() => api.unsaveDeal(deal.id), 'Removed from Saved.')}>
-            Remove from Saved
+          <Button variant="secondary" loading={pending} onPress={() => run(() => api.unsaveDeal(deal.id), t('deals.doneUnsaved'))}>
+            {t('deals.removeFromSaved')}
           </Button>
         )}
         {can.canIgnore && form !== 'ignore' && (
           <Button variant="text" onPress={() => setForm('ignore')} disabled={pending}>
-            Ignore
+            {t('deals.actionIgnore')}
           </Button>
         )}
         {can.canUnignore && (
-          <Button variant="text" loading={pending} onPress={() => run(() => api.unignoreDeal(deal.id), 'Back in your deals.')}>
-            Undo ignore
+          <Button variant="text" loading={pending} onPress={() => run(() => api.unignoreDeal(deal.id), t('deals.doneUnignored'))}>
+            {t('deals.undoIgnore')}
           </Button>
         )}
       </View>
@@ -207,88 +211,89 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
           context={context}
           pending={pending}
           onCancel={() => setForm('none')}
-          onSubmit={(request) => run(() => api.markDealBought(deal.id, request), "Marked as bought. It's in your Inventory.")}
+          onSubmit={(request) => run(() => api.markDealBought(deal.id, request), t('deals.doneBought'))}
         />
       )}
       {form === 'ignore' && (
         <IgnoreForm
+          context={context}
           pending={pending}
           onCancel={() => setForm('none')}
-          onSubmit={(request) => run(() => api.ignoreDeal(deal.id, request), "Ignored. It's under Ignored if you change your mind.")}
+          onSubmit={(request) => run(() => api.ignoreDeal(deal.id, request), t('deals.doneIgnored'))}
         />
       )}
-      {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
+      {error && <SystemBanner tone="error" title={t('errors.actionFailed')} message={error} />}
       {notice && (
         <Text style={[styles.muted, font('regular')]} accessibilityLiveRegion="polite">
           {notice}
         </Text>
       )}
 
-      <Card title="Why Rein Drop flagged it">
-        {deal.assessment.status === 'pending' && <Text style={[styles.muted, font('regular')]}>Rein Drop is still analysing this listing. Check back shortly.</Text>}
-        {deal.assessment.status === 'failed' && <Text style={[styles.muted, font('regular')]}>The analysis didn&apos;t finish. Rein Drop will retry automatically.</Text>}
+      <Card title={t('deals.whyTitle')}>
+        {deal.assessment.status === 'pending' && <Text style={[styles.muted, font('regular')]}>{t('deals.whyPending')}</Text>}
+        {deal.assessment.status === 'failed' && <Text style={[styles.muted, font('regular')]}>{t('deals.whyFailed')}</Text>}
         {deal.why && (
           <>
-            <Badge tone={NEXT_STEP_LABEL[deal.why.nextStep].tone}>{NEXT_STEP_LABEL[deal.why.nextStep].label}</Badge>
+            <Badge tone={nextStepLabel(deal.why.nextStep, t).tone}>{nextStepLabel(deal.why.nextStep, t).label}</Badge>
             <Text style={[styles.body, font('semibold')]}>{deal.why.headline}</Text>
             <Text style={[styles.body, font('regular')]}>{deal.why.summary}</Text>
-            <Bullets title="In its favour" items={deal.why.positives} />
-            <Bullets title="Concerns" items={deal.why.concerns} />
+            <Bullets title={t('deals.inFavour')} items={deal.why.positives} />
+            <Bullets title={t('deals.concerns')} items={deal.why.concerns} />
           </>
         )}
       </Card>
 
       <DealEconomics view={view} />
 
-      <Card title="Risk and condition">
+      <Card title={t('deals.riskTitle')}>
         {deal.risk ? (
           <>
             <View style={styles.inline}>
-              <Badge tone={RISK_LEVEL_LABEL[deal.risk.level].tone}>{RISK_LEVEL_LABEL[deal.risk.level].label}</Badge>
-              <Text style={[styles.muted, font('regular')]}>Condition: {deal.risk.condition.replace('_', ' ')}</Text>
+              <Badge tone={riskLevelLabel(deal.risk.level, t).tone}>{riskLevelLabel(deal.risk.level, t).label}</Badge>
+              <Text style={[styles.muted, font('regular')]}>{t('deals.riskCondition', { condition: deal.risk.condition })}</Text>
             </View>
             {deal.risk.factors.length > 0 ? (
               deal.risk.factors.map((f) => (
                 <View key={`${f.code}-${f.note}`} style={styles.inline}>
-                  <Badge tone={SEVERITY_TONE[f.severity]}>{f.severity}</Badge>
+                  <Badge tone={SEVERITY_TONE[f.severity]}>{t(SEVERITY_LABEL[f.severity])}</Badge>
                   <Text style={[styles.body, styles.flex, font('regular')]}>{f.note}</Text>
                 </View>
               ))
             ) : (
-              <Text style={[styles.muted, font('regular')]}>Nothing in the listing raises a concern.</Text>
+              <Text style={[styles.muted, font('regular')]}>{t('deals.noConcerns')}</Text>
             )}
             <Text style={[styles.muted, font('regular')]}>{deal.risk.seller.note}</Text>
           </>
         ) : (
-          <Text style={[styles.muted, font('regular')]}>Not assessed yet.</Text>
+          <Text style={[styles.muted, font('regular')]}>{t('deals.notAssessed')}</Text>
         )}
-        <Bullets title="Ask the seller" items={questions} />
+        <Bullets title={t('deals.askSeller')} items={questions} />
       </Card>
 
-      <Card title="From the listing">
-        {view.conditionText && <Text style={[styles.body, font('regular')]}>Condition: {view.conditionText}</Text>}
-        {view.locationText && <Text style={[styles.body, font('regular')]}>Location: {view.locationText}</Text>}
-        <Text style={[view.description ? styles.body : styles.muted, font('regular')]}>{view.description ?? 'No description.'}</Text>
+      <Card title={t('deals.fromListing')}>
+        {view.conditionText && <Text style={[styles.body, font('regular')]}>{t('deals.listingCondition', { text: view.conditionText })}</Text>}
+        {view.locationText && <Text style={[styles.body, font('regular')]}>{t('deals.listingLocation', { text: view.locationText })}</Text>}
+        <Text style={[view.description ? styles.body : styles.muted, font('regular')]}>{view.description ?? t('deals.noDescription')}</Text>
       </Card>
 
-      <Disclosure summary="How Rein Drop scored it">
+      <Disclosure summary={t('deals.scoredTitle')}>
         <View style={styles.stack}>
           <View style={styles.inline}>
-            {deal.assessment.strength && <Badge tone={STRENGTH_LABEL[deal.assessment.strength].tone}>{STRENGTH_LABEL[deal.assessment.strength].label}</Badge>}
-            {deal.assessment.confidence && <Badge tone="neutral">{CONFIDENCE_LABEL[deal.assessment.confidence]}</Badge>}
+            {deal.assessment.strength && <Badge tone={strengthLabel(deal.assessment.strength, t).tone}>{strengthLabel(deal.assessment.strength, t).label}</Badge>}
+            {deal.assessment.confidence && <Badge tone="neutral">{confidenceLabel(deal.assessment.confidence, t)}</Badge>}
           </View>
           {[...deal.strengthReasons, ...deal.confidenceReasons].map((r) => (
             <View key={`${r.code}-${r.detail}`} style={styles.inline}>
-              <Badge tone={REASON_EFFECT_LABEL[r.effect].tone}>{REASON_EFFECT_LABEL[r.effect].label}</Badge>
+              <Badge tone={reasonEffectLabel(r.effect, t).tone}>{reasonEffectLabel(r.effect, t).label}</Badge>
               <Text style={[styles.body, styles.flex, font('regular')]}>{r.detail}</Text>
             </View>
           ))}
-          <Text style={[styles.muted, font('semibold')]}>Your Hunt&apos;s checks</Text>
+          <Text style={[styles.muted, font('semibold')]}>{t('deals.huntChecks')}</Text>
           {view.checks.map((c) => (
             <View key={c.label} style={styles.inline}>
               <Badge tone={c.outcome.tone}>{c.outcome.label}</Badge>
               <Text style={[styles.body, styles.flex, font('regular')]}>
-                {c.label}: {c.detail}
+                {t('deals.checkLine', { label: c.label, detail: c.detail })}
               </Text>
             </View>
           ))}
@@ -326,12 +331,13 @@ function BoughtForm({
   onCancel: () => void;
   onSubmit: (request: Parameters<ReturnType<typeof getApiClient>['markDealBought']>[1]) => void;
 }) {
+  const { t } = context;
   const defaults = boughtFormDefaults(deal, context);
   const [price, setPrice] = useState(defaults.price);
   const [shipping, setShipping] = useState(defaults.shipping);
   const [error, setError] = useState<{ field?: 'price' | 'shipping'; message: string } | undefined>();
   const submit = () => {
-    const built = buildBoughtRequest(price, defaults.currency, deal.price.asking, shipping);
+    const built = buildBoughtRequest(price, defaults.currency, deal.price.asking, shipping, t);
     if (!built.ok) return setError({ field: built.field, message: built.error });
     setError(undefined);
     onSubmit(built.request);
@@ -339,32 +345,32 @@ function BoughtForm({
   return (
     <View style={styles.form}>
       <TextInput
-        label="What did you pay?"
+        label={t('deals.paidLabel')}
         kind="money"
         currency={defaults.currency}
         value={price}
         onChangeText={setPrice}
-        hint={deal.price.asking ? 'Starts at the asking price - change it if you paid less or more.' : 'This listing shows no price.'}
+        hint={t(deal.price.asking ? 'deals.paidHintAsking' : 'deals.paidHintNoPrice')}
         error={error?.field !== 'shipping' ? error?.message : undefined}
         autoFocus
       />
       <TextInput
-        label="Shipping to you (optional)"
+        label={t('deals.shippingLabel')}
         kind="money"
         currency={defaults.currency}
         value={shipping}
         onChangeText={setShipping}
-        hint={defaults.shipping ? 'From the listing - change it if it was different.' : 'Leave empty if you collected it.'}
+        hint={t(defaults.shipping ? 'deals.shippingHintListing' : 'deals.shippingHintEmpty')}
         error={error?.field === 'shipping' ? error.message : undefined}
         onSubmitEditing={submit}
       />
-      <Text style={[styles.muted, font('regular')]}>It goes into your Inventory, where you can add tax or repairs and mark it sold later.</Text>
+      <Text style={[styles.muted, font('regular')]}>{t('deals.boughtNote')}</Text>
       <View style={styles.actions}>
         <Button loading={pending} onPress={submit}>
-          Mark as bought
+          {t('deals.markBought')}
         </Button>
         <Button variant="text" onPress={onCancel} disabled={pending}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </View>
     </View>
@@ -372,18 +378,21 @@ function BoughtForm({
 }
 
 function IgnoreForm({
+  context,
   pending,
   onCancel,
   onSubmit,
 }: {
+  context: HuntFormContext;
   pending: boolean;
   onCancel: () => void;
   onSubmit: (request: Parameters<ReturnType<typeof getApiClient>['ignoreDeal']>[1]) => void;
 }) {
+  const { t } = context;
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | undefined>();
   const submit = () => {
-    const built = buildIgnoreRequest(reason);
+    const built = buildIgnoreRequest(reason, t);
     if (!built.ok) return setError(built.error);
     setError(undefined);
     onSubmit(built.request);
@@ -391,26 +400,28 @@ function IgnoreForm({
   return (
     <View style={styles.form}>
       <TextInput
-        label="Why isn't it for you? (optional)"
+        label={t('deals.ignoreLabel')}
         value={reason}
         onChangeText={setReason}
         maxLength={IGNORE_REASON_MAX}
-        hint="e.g. too far, wrong model, price too high"
+        hint={t('deals.ignoreHint')}
         error={error}
         onSubmitEditing={submit}
         autoFocus
       />
       <View style={styles.actions}>
         <Button variant="secondary" loading={pending} onPress={submit}>
-          Ignore this deal
+          {t('deals.ignoreSubmit')}
         </Button>
         <Button variant="text" onPress={onCancel} disabled={pending}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </View>
     </View>
   );
 }
+
+const SEVERITY_LABEL = { low: 'deals.severityLow', medium: 'deals.severityMedium', high: 'deals.severityHigh' } as const;
 
 const styles = StyleSheet.create({
   exceptional: {

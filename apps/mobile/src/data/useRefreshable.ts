@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ApiError } from '@rein-drop/api-client';
 import { refreshFailed, refreshStarted, refreshSucceeded, refreshUpdated, type Refreshable } from '@rein-drop/client-core';
+import { useT } from '@/i18n/useT';
 
 /** No HTTP status = no answer at all (offline, timeout, DNS). */
 export function isOffline(err: unknown): boolean {
@@ -19,6 +20,7 @@ export function useRefreshable<T>(fetch: () => Promise<T>, key: string) {
   const [stored, setStored] = useState<{ key: string; value: Refreshable<T> }>({ key, value: LOADING });
   const value: Refreshable<T> = stored.key === key ? stored.value : LOADING;
   const latest = useRef(0);
+  const t = useT();
 
   const run = useCallback(
     (visible: boolean) => {
@@ -28,10 +30,10 @@ export function useRefreshable<T>(fetch: () => Promise<T>, key: string) {
         (data) => ticket === latest.current && setStored({ key, value: refreshSucceeded(data) }),
         (err: unknown) =>
           ticket === latest.current &&
-          setStored((s) => ({ key, value: refreshFailed(s.key === key ? s.value : LOADING, err instanceof Error ? err.message : String(err), isOffline(err)) })),
+          setStored((s) => ({ key, value: refreshFailed(s.key === key ? s.value : LOADING, err instanceof Error ? err.message : String(err), isOffline(err), t) })),
       );
     },
-    [fetch, key],
+    [fetch, key, t],
   );
 
   // Reload whenever the screen comes into focus (e.g. back from a detail) - silently.

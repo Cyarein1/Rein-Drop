@@ -4,6 +4,7 @@ import MapView, { Circle, Marker, type LatLng } from 'react-native-maps';
 import type { GeoPoint } from '@rein-drop/api-client';
 import { regionForRadius } from '@rein-drop/client-core';
 import { brand, fontSize, radius, roles, space } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from '@/ui';
 
 export interface LocationMapProps {
@@ -24,6 +25,7 @@ export interface LocationMapProps {
  */
 export function LocationMap({ point, radiusKm, onMovePin, caption }: LocationMapProps) {
   const mapRef = useRef<MapView>(null);
+  const t = useT();
 
   // Follow the point and radius when they change from the field.
   useEffect(() => {
@@ -39,14 +41,14 @@ export function LocationMap({ point, radiusKm, onMovePin, caption }: LocationMap
         initialRegion={regionForRadius(point, radiusKm)}
         rotateEnabled={false}
         pitchEnabled={false}
-        accessibilityLabel={`Map. ${caption}`}
+        accessibilityLabel={t('location.mapA11y', { caption })}
       >
         <Marker
           coordinate={centre}
           draggable
           pinColor={brand.orange}
-          title="Hunt centre"
-          description="Drag to move"
+          title={t('location.pinTitle')}
+          description={t('location.pinDescription')}
           onDragEnd={(e) => onMovePin({ lat: e.nativeEvent.coordinate.latitude, lng: e.nativeEvent.coordinate.longitude })}
         />
         {radiusKm ? <Circle center={centre} radius={radiusKm * 1000} strokeColor={brand.orange} strokeWidth={2} fillColor="rgba(255, 107, 53, 0.12)" /> : null}

@@ -1,0 +1,58 @@
+/** English source text - area: notifications (settings, inbox, push permission). Keys are stable ids; text can change freely. */
+export default {
+  // Settings groups
+  groupAlertsTitle: 'Alerts about your Hunts',
+  groupAlertsDescription: 'Rein Drop only alerts you when something clears your criteria and its own bar. Every alert stays in your inbox.',
+  groupInsightsTitle: 'Insights',
+  groupInsightsDescription: 'Optional summaries of how your reselling is going.',
+  groupMarketingTitle: 'News and offers',
+  groupMarketingDescription: 'Separate from your alerts, and off unless you turn it on.',
+  // Categories
+  categoryDealAlertsTitle: 'Deal alerts',
+  categoryDealAlertsDescription: 'A listing that looks worth acting on.',
+  categoryExceptionalTitle: 'Exceptional deals',
+  categoryExceptionalDescription: 'The rare, much stronger opportunities.',
+  categoryOperationalTitle: 'Hunt and source issues',
+  categoryOperationalDescription: 'When a marketplace problem or a Hunt setting stops Rein Drop from watching properly.',
+  categoryWeeklyTitle: 'Weekly insight',
+  categoryWeeklyDescription: 'Buys, sells, profit and one useful suggestion. Coming later.',
+  categoryMarketingTitle: 'Product news and offers',
+  categoryMarketingDescription: 'Occasional news about Rein Drop.',
+  // Channels
+  channelInbox: 'Inbox',
+  channelPush: 'Push',
+  channelEmail: 'Email',
+  channelsNote: 'Push and email are saved now and start arriving once they are connected. In development they are simulated and logged.',
+  // Inbox
+  unread: '{count, plural, =0 {All caught up} other {# unread}}',
+  // Push permission (mobile)
+  pushInbox: "You'll still find every alert in your inbox.",
+  pushUnavailableNotDevice: 'Push needs a physical phone.',
+  pushUnavailableNoProject: "This build isn't set up for push yet (no EAS project).",
+  pushUnavailableWeb: 'Push notifications are only available in the mobile app.',
+  pushAskTitle: 'Get deal alerts on this phone',
+  pushAskBody: "Rein Drop only notifies you when something clears your Hunt's criteria - not for every match. You can change this anytime.",
+  pushTurnOn: 'Turn on notifications',
+  pushOffTitle: 'Notifications are off',
+  pushOffCanAsk: 'You can turn them on whenever you like.',
+  pushOffBlocked: 'To get them on this phone, allow notifications for Rein Drop in your phone settings.',
+  pushOpenSettings: 'Open settings',
+  pushOnTitle: 'Notifications are on for this phone',
+  pushOnSimulated: "Development: Expo Go can't receive push, so pushes to this phone are simulated and logged. Every alert is in your inbox.",
+  pushOnBody: 'Rein Drop will notify this phone about deals worth acting on.',
+  pushTurnOff: 'Turn off for this phone',
+  pushUnavailableTitle: 'Push is not available here',
+  pushErrorTitle: "Couldn't connect this phone",
+  pushErrorRetry: 'Rein Drop will try again the next time you open the app.',
+  pushTryAgain: 'Try again',
+
+  // Inbox screen (mobile)
+  inboxLoading: 'Loading your inbox…',
+  inboxLoadFailed: "Couldn't load your inbox",
+  inboxEmptyTitle: 'No alerts yet',
+  inboxEmptyBody: 'Rein Drop alerts you only when a live Hunt finds something worth acting on. Your deals feed shows everything else.',
+  openDeals: 'Open deals',
+  markAllRead: 'Mark all read',
+  alertA11y: '{title}. {when}',
+  alertA11yUnread: 'Unread. {title}. {when}',
+} as const;

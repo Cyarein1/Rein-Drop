@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { Translator } from '@rein-drop/i18n';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { ApiError, type CreateHuntRequest, type Hunt, type HuntCondition, type UpdateHuntRequest } from '@rein-drop/api-client';
@@ -26,6 +27,7 @@ import {
   type PrefillNote,
 } from '@rein-drop/client-core';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { MarketplaceMark } from '@/brand/MarketplaceMark';
 import { getApiClient } from '@/config/api';
 import { LocationField } from '@/geo/LocationField';
 import { LocationMap } from '@/geo/LocationMap';
@@ -35,20 +37,22 @@ import { Button, Card, ChoiceGroup, Disclosure, font, Screen, Slider, SystemBann
 type ConditionChoice = HuntCondition | 'any';
 
 const MARKETPLACE_OPTIONS = [
-  { value: 'ebay', label: 'eBay' },
-  { value: 'facebook', label: 'Facebook Marketplace' },
+  { value: 'ebay', label: 'eBay', icon: <MarketplaceMark marketplace="ebay" size={18} /> },
+  { value: 'facebook', label: 'Facebook Marketplace', icon: <MarketplaceMark marketplace="facebook" size={18} /> },
 ] as const;
-const CONDITION_OPTIONS = [
-  { value: 'any', label: 'Any' },
-  { value: 'new', label: 'New' },
-  { value: 'used', label: 'Used' },
-  { value: 'refurbished', label: 'Refurbished' },
-] as const;
-const TARGET_OPTIONS = [
-  { value: 'none', label: 'No target' },
-  { value: 'profit', label: 'Minimum profit' },
-  { value: 'margin', label: 'Minimum margin' },
-] as const;
+const conditionOptions = (t: Translator) =>
+  [
+    { value: 'any', label: t('hunts.formConditionAny') },
+    { value: 'new', label: t('hunts.formConditionNew') },
+    { value: 'used', label: t('hunts.formConditionUsed') },
+    { value: 'refurbished', label: t('hunts.formConditionRefurbished') },
+  ] as const;
+const targetOptions = (t: Translator) =>
+  [
+    { value: 'none', label: t('hunts.formTargetNone') },
+    { value: 'profit', label: t('hunts.formTargetProfit') },
+    { value: 'margin', label: t('hunts.formTargetMargin') },
+  ] as const;
 
 export interface HuntFormFlowProps {
   values: HuntFormValues;
@@ -65,6 +69,7 @@ export interface HuntFormFlowProps {
  */
 export function HuntFormFlow({ values: initialValues, context, prefilled, placeholder, editing }: HuntFormFlowProps) {
   const router = useRouter();
+  const { t } = context;
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<HuntFormErrors>({});
   const [request, setRequest] = useState<CreateHuntRequest | null>(null);
@@ -78,7 +83,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   };
   const note = (field: HuntFormField) => prefilled.find((p) => p.field === field)?.note;
   const hint = (field: HuntFormField, text?: string) =>
-    [note(field) && `${note(field)} - change it anytime`, text].filter(Boolean).join('. ') || undefined;
+    [note(field) && t('hunts.prefillHint', { note: note(field)! }), text].filter(Boolean).join('. ') || undefined;
 
   // Location: text + point move together (decision 0017); suggestions / map / area from the API.
   const { geo, area } = useLocationSupport();
@@ -93,7 +98,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   // Where the slider stays while the typed text isn't a valid amount yet.
   const [heldPosition, setHeldPosition] = useState(() => priceSliderPosition(slider, initialValues.maxPrice, context.currency) ?? slider.max);
   const sliderPosition = priceSliderPosition(slider, values.maxPrice, context.currency) ?? heldPosition;
-  const sliderEnds = priceSliderEnds(slider, context.currency, context.localeTag);
+  const sliderEnds = priceSliderEnds(slider, context.currency, context.localeTag, t);
   const setMaxPrice = (text: string) => {
     const position = priceSliderPosition(slider, text, context.currency);
     if (position !== null) setHeldPosition(position);
@@ -133,7 +138,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
         setErrors(mapHuntErrors(details));
         setRequest(null);
       }
-      setSaveError(err instanceof Error ? err.message : "We couldn't save your hunt. Please try again.");
+      setSaveError(err instanceof Error ? err.message : t('hunts.saveFailed'));
     } finally {
       setSaving(null);
     }
@@ -154,7 +159,7 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
         setRequest(null);
       }
       const blocked = err instanceof ApiError ? err.activationBlock?.reasons.map((r) => r.message).join(' ') : undefined;
-      setSaveError(blocked || (err instanceof Error ? err.message : "We couldn't save your changes. Please try again."));
+      setSaveError(blocked || (err instanceof Error ? err.message : t('hunts.saveChangesFailed')));
     } finally {
       setSaving(null);
     }
@@ -163,28 +168,28 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   if (request && editing) {
     const review = huntReview(request, context);
     return (
-      <Screen description="This updates the same Hunt - its deals and history stay.">
-        <Stack.Screen options={{ title: 'Review changes' }} />
+      <Screen description={t('hunts.reviewChangesDescription')}>
+        <Stack.Screen options={{ title: t('hunts.reviewChanges') }} />
         <Card>
           <Text style={[styles.sentence, font('regular')]}>{review.sentence}</Text>
         </Card>
-        <Card title="Details">
+        <Card title={t('hunts.details')}>
           {review.items.map((item) => (
-            <View key={item.label} style={styles.reviewRow} accessible accessibilityLabel={`${item.label}: ${item.value}`}>
+            <View key={item.label} style={styles.reviewRow} accessible accessibilityLabel={t('hunts.labelValue', { label: item.label, value: item.value })}>
               <Text style={[styles.reviewLabel, font('regular')]}>{item.label}</Text>
               <Text style={[styles.reviewValue, font('semibold')]}>{item.value}</Text>
             </View>
           ))}
         </Card>
         {review.warnings.map((w) => (
-          <SystemBanner key={w} tone="warning" title={editing.status === 'LIVE' ? "This Hunt can't keep watching like this" : 'Before this Hunt can start watching'} message={w} />
+          <SystemBanner key={w} tone="warning" title={editing.status === 'LIVE' ? t('hunts.cantKeepWatching') : t('hunts.beforeStart')} message={w} />
         ))}
-        {saveError && <SystemBanner tone="error" title="Not saved" message={saveError} />}
+        {saveError && <SystemBanner tone="error" title={t('hunts.notSaved')} message={saveError} />}
         <Button onPress={saveChanges} loading={saving !== null} fullWidth>
-          Save changes
+          {t('hunts.saveChanges')}
         </Button>
         <Button variant="secondary" onPress={() => setRequest(null)} disabled={saving !== null} fullWidth>
-          Back to editing
+          {t('hunts.backToEditing')}
         </Button>
       </Screen>
     );
@@ -194,27 +199,27 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
     const review = huntReview(request, context);
     return (
       <Screen>
-        <Stack.Screen options={{ title: 'Review Hunt' }} />
+        <Stack.Screen options={{ title: t('hunts.reviewHunt') }} />
         <Card>
           <Text style={[styles.sentence, font('regular')]}>{review.sentence}</Text>
         </Card>
-        <Card title="Details">
+        <Card title={t('hunts.details')}>
           {review.items.map((item) => (
-            <View key={item.label} style={styles.reviewRow} accessible accessibilityLabel={`${item.label}: ${item.value}`}>
+            <View key={item.label} style={styles.reviewRow} accessible accessibilityLabel={t('hunts.labelValue', { label: item.label, value: item.value })}>
               <Text style={[styles.reviewLabel, font('regular')]}>{item.label}</Text>
               <Text style={[styles.reviewValue, font('semibold')]}>{item.value}</Text>
             </View>
           ))}
         </Card>
         {review.warnings.map((w) => (
-          <SystemBanner key={w} tone="warning" title="Before this Hunt can start watching" message={w} />
+          <SystemBanner key={w} tone="warning" title={t('hunts.beforeStart')} message={w} />
         ))}
-        {saveError && <SystemBanner tone="error" title="Not saved" message={saveError} />}
+        {saveError && <SystemBanner tone="error" title={t('hunts.notSaved')} message={saveError} />}
         <View style={styles.startWatching}>
           <Button onPress={() => save('start')} loading={saving === 'start'} disabled={saving !== null} fullWidth>
-            Start watching
+            {t('hunts.actionStart')}
           </Button>
-          <Text style={[styles.muted, font('regular')]}>Saves your Hunt, then starts watching within your current access.</Text>
+          <Text style={[styles.muted, font('regular')]}>{t('hunts.startNote')}</Text>
         </View>
         <Button
           variant="secondary"
@@ -223,10 +228,10 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
           disabled={saving !== null}
           fullWidth
         >
-          Save as draft
+          {t('hunts.saveDraft')}
         </Button>
         <Button variant="secondary" onPress={() => setRequest(null)} disabled={saving !== null} fullWidth>
-          Edit
+          {t('hunts.actionEdit')}
         </Button>
       </Screen>
     );
@@ -239,23 +244,23 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
   };
 
   return (
-    <Screen description={editing ? 'Changes apply from the next check. Deals found so far stay.' : 'Tell Rein Drop what to watch for.'}>
-      <Stack.Screen options={{ title: editing ? 'Edit Hunt' : 'Create Hunt' }} />
-      {errors.form && <SystemBanner tone="error" title="Please check the form" message={errors.form} />}
-      {saveError && !errors.form && <SystemBanner tone="error" title="Not saved" message={saveError} />}
+    <Screen description={editing ? t('hunts.editDescription') : t('hunts.createDescription')}>
+      <Stack.Screen options={{ title: editing ? t('hunts.editTitle') : t('hunts.create') }} />
+      {errors.form && <SystemBanner tone="error" title={t('hunts.errorCheckForm')} message={errors.form} />}
+      {saveError && !errors.form && <SystemBanner tone="error" title={t('hunts.notSaved')} message={saveError} />}
 
       <TextInput
-        label="What are you hunting for?"
-        hint="A product, model or a short description"
+        label={t('hunts.formQuery')}
+        hint={t('hunts.formQueryHint')}
         placeholder={placeholder}
         value={values.query}
-        onChangeText={(t) => set('query', t)}
+        onChangeText={(text) => set('query', text)}
         error={errors.query}
         autoFocus
       />
 
       <ChoiceGroup
-        legend="Where should Rein Drop look?"
+        legend={t('hunts.formWhere')}
         multiple
         options={MARKETPLACE_OPTIONS}
         value={values.marketplaces}
@@ -267,9 +272,9 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
       {needsLocation(values) && (
         <>
           <LocationField
-            label="Location"
-            hint="Facebook Marketplace is local pickup - needed before this Hunt can start watching"
-            placeholder={geo.suggestions ? 'Start typing a suburb, town or postal code' : 'City, area or postal code'}
+            label={t('hunts.reviewLocation')}
+            hint={t('hunts.formLocationHint')}
+            placeholder={geo.suggestions ? t('hunts.formLocationSuggest') : t('hunts.formLocationPlain')}
             value={values.locationText}
             onType={(text) => setLocation(typeLocation(values, text))}
             onPick={(place) => setLocation(pickPlace(values, place))}
@@ -279,11 +284,11 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
             onUseArea={(a) => setLocation(applyArea(values, a))}
           />
           <TextInput
-            label={`Radius (${context.distanceUnit})`}
+            label={t('hunts.formRadius', { unit: context.distanceUnit })}
             keyboardType="number-pad"
             placeholder={context.distanceUnit === 'mi' ? '25' : '40'}
             value={values.radius}
-            onChangeText={(t) => set('radius', t)}
+            onChangeText={(text) => set('radius', text)}
             error={errors.radius}
           />
           {geo.provider !== 'none' && values.locationPoint && (
@@ -291,19 +296,19 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
               point={values.locationPoint}
               radiusKm={mapRadiusKm}
               onMovePin={(point) => setLocation(movePin(values, point))}
-              caption={mapCaption(values.locationText, mapRadiusKm, values.radius, context.distanceUnit)}
+              caption={mapCaption(values.locationText, mapRadiusKm, values.radius, context.distanceUnit, t)}
             />
           )}
           {!area && geo.suggestions && (
-            <Text style={[styles.tip, font('regular')]}>Tip: save your area in Settings to fill this in with one tap next time.</Text>
+            <Text style={[styles.tip, font('regular')]}>{t('location.tipSaveArea')}</Text>
           )}
         </>
       )}
 
       <ChoiceGroup
-        legend="Condition"
+        legend={t('hunts.reviewCondition')}
         multiple
-        options={CONDITION_OPTIONS}
+        options={conditionOptions(t)}
         value={conditionChoices}
         onChange={onConditions}
         error={errors.conditions}
@@ -311,66 +316,66 @@ export function HuntFormFlow({ values: initialValues, context, prefilled, placeh
 
       <View style={styles.price}>
         <TextInput
-          label="Max price"
+          label={t('hunts.reviewMaxPrice')}
           kind="money"
           currency={context.currency}
           placeholder="0.00"
           value={values.maxPrice}
           onChangeText={setMaxPrice}
-          hint={hint('maxPrice', "The most you'd pay. Type an amount or use the slider; leave empty for no limit")}
+          hint={hint('maxPrice', t('hunts.formMaxPriceHint'))}
           error={errors.maxPrice}
         />
         <Slider
-          label="Adjust max price"
+          label={t('hunts.formAdjustMaxPrice')}
           value={sliderPosition}
           max={slider.max}
           onChange={(position) => setMaxPrice(priceSliderText(slider, position))}
-          valueText={priceSliderValueText(slider, values.maxPrice, sliderPosition, context.currency, context.localeTag)}
+          valueText={priceSliderValueText(slider, values.maxPrice, sliderPosition, context.currency, context.localeTag, t)}
           minLabel={sliderEnds.min}
           maxLabel={sliderEnds.max}
         />
       </View>
 
       <ChoiceGroup
-        legend="Target (optional)"
-        options={TARGET_OPTIONS}
+        legend={t('hunts.formTarget')}
+        options={targetOptions(t)}
         value={values.targetKind}
         onChange={(v) => set('targetKind', v)}
       />
       {values.targetKind === 'profit' && (
         <TextInput
-          label="Minimum profit per deal"
+          label={t('hunts.formMinProfit')}
           kind="money"
           currency={context.currency}
           value={values.targetProfit}
-          onChangeText={(t) => set('targetProfit', t)}
+          onChangeText={(text) => set('targetProfit', text)}
           hint={hint('targetProfit')}
           error={errors.targetProfit}
         />
       )}
       {values.targetKind === 'margin' && (
         <TextInput
-          label="Minimum margin (%)"
+          label={t('hunts.formMinMargin')}
           keyboardType="number-pad"
           value={values.targetMargin}
-          onChangeText={(t) => set('targetMargin', t)}
+          onChangeText={(text) => set('targetMargin', text)}
           hint={hint('targetMargin')}
           error={errors.targetMargin}
         />
       )}
 
-      <Disclosure summary="More filters" defaultOpen={Boolean(values.exclusions || errors.exclusions)}>
+      <Disclosure summary={t('hunts.formMoreFilters')} defaultOpen={Boolean(values.exclusions || errors.exclusions)}>
         <TextInput
-          label="Words to ignore"
-          hint="Separate with commas, e.g. broken, for parts, box only"
+          label={t('hunts.formIgnore')}
+          hint={t('hunts.formIgnoreHint')}
           value={values.exclusions}
-          onChangeText={(t) => set('exclusions', t)}
+          onChangeText={(text) => set('exclusions', text)}
           error={errors.exclusions}
         />
       </Disclosure>
 
       <Button onPress={goToReview} fullWidth>
-        {editing ? 'Review changes' : 'Review Hunt'}
+        {editing ? t('hunts.reviewChanges') : t('hunts.reviewHunt')}
       </Button>
     </Screen>
   );

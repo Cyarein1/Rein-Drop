@@ -86,3 +86,14 @@
   padding-left: var(--rd-space-2);
   border-left: 3px solid var(--rd-destructive);
 }
+
+/* Optional icon (e.g. a marketplace logo) before the label. */
+.chipLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+}
+
+.chipIcon {
+  display: inline-flex;
+}

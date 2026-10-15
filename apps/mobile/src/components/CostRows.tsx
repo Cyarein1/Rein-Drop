@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { newCostDraft, type CostDraft } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { Button, ChoiceGroup, font, TextInput } from '@/ui';
 
 const MAX_ROWS = 10;
@@ -23,6 +24,7 @@ export function CostRows<C extends string>({
   errors?: Record<string, string>;
   onChange: (rows: CostDraft<C>[]) => void;
 }) {
+  const t = useT();
   const categories = Object.keys(labels) as C[];
   const options = categories.map((c) => ({ value: c, label: labels[c] }));
   const update = (key: string, patch: Partial<CostDraft<C>>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -33,12 +35,12 @@ export function CostRows<C extends string>({
         {legend}
       </Text>
       {hint && <Text style={[styles.muted, font('regular')]}>{hint}</Text>}
-      {rows.length === 0 && <Text style={[styles.muted, font('regular')]}>None added.</Text>}
+      {rows.length === 0 && <Text style={[styles.muted, font('regular')]}>{t('inventory.costNoneAdded')}</Text>}
       {rows.map((row, i) => (
         <View key={row.key} style={styles.row}>
-          <ChoiceGroup legend={`Cost ${i + 1}`} options={options} value={row.category} onChange={(category) => update(row.key, { category })} />
+          <ChoiceGroup legend={t('inventory.costNumber', { number: i + 1 })} options={options} value={row.category} onChange={(category) => update(row.key, { category })} />
           <TextInput
-            label={`${labels[row.category]} amount`}
+            label={t('inventory.costAmount', { label: labels[row.category] })}
             kind="money"
             currency={currency}
             value={row.amount}
@@ -46,10 +48,10 @@ export function CostRows<C extends string>({
             error={errors?.[row.key]}
             placeholder="0.00"
           />
-          <TextInput label="Note (optional)" value={row.note} maxLength={200} onChangeText={(note) => update(row.key, { note })} />
+          <TextInput label={t('inventory.costNote')} value={row.note} maxLength={200} onChangeText={(note) => update(row.key, { note })} />
           <View style={styles.remove}>
-            <Button variant="text" onPress={() => onChange(rows.filter((r) => r.key !== row.key))} accessibilityLabel={`Remove cost ${i + 1}`}>
-              Remove
+            <Button variant="text" onPress={() => onChange(rows.filter((r) => r.key !== row.key))} accessibilityLabel={t('inventory.costRemoveA11y', { number: i + 1 })}>
+              {t('inventory.costRemove')}
             </Button>
           </View>
         </View>
@@ -57,7 +59,7 @@ export function CostRows<C extends string>({
       {rows.length < MAX_ROWS && (
         <View style={styles.remove}>
           <Button variant="secondary" onPress={() => onChange([...rows, newCostDraft(categories[categories.length - 1]!)])}>
-            Add a cost
+            {t('inventory.costAdd')}
           </Button>
         </View>
       )}

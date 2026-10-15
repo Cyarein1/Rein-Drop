@@ -1,4 +1,5 @@
 import type { EntitlementEvaluation, Home, Hunt, HuntActivity } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 import { ageText, joinList, MARKETPLACE_LABEL } from './deal-view.js';
 import { huntMonitoringHealth } from './hunt-view.js';
 import { durationUntilText } from './source-view.js';
@@ -8,6 +9,8 @@ import { durationUntilText } from './source-view.js';
  * frames 31-33). Each state names its PRODUCT_STATE_MASCOTS key; the apps map it to an approved
  * asset or a neutral placeholder (docs/MASCOT_ASSETS.md). Copy is calm and specific: what is
  * happening, what Rein Drop does next, and the one useful thing the user can do.
+ *
+ * Text goes through the translator: a trailing `t` parameter (English by default), or `ctx.t`.
  */
 
 export type StateKey = 'firstScan' | 'noDealsYet' | 'reducedMonitoring' | 'suggestion' | 'cancellation';
@@ -30,27 +33,26 @@ export interface ProductStateView {
   live: boolean;
 }
 
+const EN = (): Translator => translator('en');
 const minutesSince = (iso: string, now: Date) => Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 60_000));
 const minutesUntil = (iso: string, now: Date) => Math.max(1, Math.ceil((Date.parse(iso) - now.getTime()) / 60_000));
-const untilText = (iso: string, now: Date) => {
-  const m = minutesUntil(iso, now);
-  return durationUntilText(m);
-};
+const untilText = (iso: string, now: Date, t: Translator) => durationUntilText(minutesUntil(iso, now), t);
 
 // ---------------------------------------------------------------------------
 // Initial Hunt working (first scan)
 // ---------------------------------------------------------------------------
 
 /** The Hunt's very first check is running. Null otherwise. */
-export function firstScanState(hunt: Pick<Hunt, 'id' | 'status'>, activity: HuntActivity | null, now: Date): ProductStateView | null {
+export function firstScanState(hunt: Pick<Hunt, 'id' | 'status'>, activity: HuntActivity | null, now: Date, t: Translator = EN()): ProductStateView | null {
   if (hunt.status !== 'LIVE' || !activity?.scanning) return null;
-  const details = activity.marketplaces.map((m) =>
-    m.lastCheckedAt ? `${MARKETPLACE_LABEL[m.marketplace]}: done ${ageText(minutesSince(m.lastCheckedAt, now))}` : `${MARKETPLACE_LABEL[m.marketplace]}: checking…`,
-  );
+  const details = activity.marketplaces.map((m) => {
+    const name = MARKETPLACE_LABEL[m.marketplace];
+    return m.lastCheckedAt ? t('states.firstScanDone', { name, age: ageText(minutesSince(m.lastCheckedAt, now), t) }) : t('states.firstScanChecking', { name });
+  });
   return {
     state: 'firstScan',
-    title: 'Rein Drop is checking for the first time',
-    body: `It's looking through ${joinList(activity.marketplaces.map((m) => MARKETPLACE_LABEL[m.marketplace]))} for listings that fit your Hunt. This usually takes a minute or two, and this page updates by itself.`,
+    title: t('states.firstScanTitle'),
+    body: t('states.firstScanBody', { names: joinList(activity.marketplaces.map((m) => MARKETPLACE_LABEL[m.marketplace]), t) }),
     details,
     actions: [],
     live: true,
@@ -72,21 +74,21 @@ export function noDealsYetState(
   hunt: Pick<Hunt, 'id' | 'status' | 'activatedAt'>,
   activity: HuntActivity | null,
   now: Date,
+  t: Translator = EN(),
 ): ProductStateView | null {
   if (hunt.status !== 'LIVE' || !activity || activity.scanning || activity.counts.deals > 0) return null;
   if (huntMonitoringHealth(activity) !== 'ok') return null;
-  const last = activity.lastCheckedAt ? `Last checked ${ageText(minutesSince(activity.lastCheckedAt, now))}` : null;
-  const next = activity.marketplaces.map((m) => m.nextCheckAt).filter((t): t is string => t !== null).sort()[0];
+  const last = activity.lastCheckedAt ? t('hunts.lastChecked', { age: ageText(minutesSince(activity.lastCheckedAt, now), t) }) : null;
+  const next = activity.marketplaces.map((m) => m.nextCheckAt).filter((at): at is string => at !== null).sort()[0];
   const hoursLive = hunt.activatedAt ? (now.getTime() - Date.parse(hunt.activatedAt)) / 3_600_000 : 0;
+  // NO_DEALS_TUNE_AFTER_HOURS is a whole number of days, so a quiet Hunt has been live >= 1 day.
   const quietForLong = hoursLive >= NO_DEALS_TUNE_AFTER_HOURS;
   return {
     state: 'noDealsYet',
-    title: 'Watching - nothing has matched yet',
-    body: quietForLong
-      ? `Your Hunt has been live for ${Math.floor(hoursLive / 24) >= 1 ? `${Math.floor(hoursLive / 24)} ${Math.floor(hoursLive / 24) === 1 ? 'day' : 'days'}` : `${Math.floor(hoursLive)} hours`} without a match. A higher max price, more conditions or a wider area can help.`
-      : "Everything is working. Rein Drop keeps checking and tells you when something clears your criteria - that can take a while for a specific item.",
-    details: [last, next ? `Next check ${untilText(next, now)}` : null].filter((d): d is string => d !== null),
-    actions: [{ label: quietForLong ? 'Broaden criteria' : 'Tune criteria', path: `/hunts/${hunt.id}/edit`, variant: quietForLong ? 'primary' : 'secondary' }],
+    title: t('states.noDealsTitle'),
+    body: quietForLong ? t('states.noDealsBodyLong', { days: Math.max(1, Math.floor(hoursLive / 24)) }) : t('states.noDealsBody'),
+    details: [last, next ? t('states.nextCheck', { when: untilText(next, now, t) }) : null].filter((d): d is string => d !== null),
+    actions: [{ label: quietForLong ? t('states.broadenCriteria') : t('states.tuneCriteria'), path: `/hunts/${hunt.id}/edit`, variant: quietForLong ? 'primary' : 'secondary' }],
     live: false,
   };
 }
@@ -100,17 +102,18 @@ export function dealsWaitingState(
   hunts: readonly Pick<Hunt, 'id' | 'status' | 'activatedAt'>[],
   activity: readonly HuntActivity[],
   now: Date,
+  t: Translator = EN(),
 ): ProductStateView | null {
   const live = hunts.filter((h) => h.status === 'LIVE');
   if (live.length === 0) return null;
   const of = (id: string) => activity.find((a) => a.huntId === id) ?? null;
-  const scanning = live.map((h) => firstScanState(h, of(h.id), now)).find((v) => v !== null);
+  const scanning = live.map((h) => firstScanState(h, of(h.id), now, t)).find((v) => v !== null);
   if (scanning) return scanning;
-  const quiet = live.map((h) => noDealsYetState(h, of(h.id), now));
+  const quiet = live.map((h) => noDealsYetState(h, of(h.id), now, t));
   if (quiet.some((q) => q === null)) return null;
   const first = quiet[0]!;
   // Several quiet Hunts: tuning starts from the Hunts list.
-  return live.length === 1 ? first : { ...first, actions: [{ label: 'Review your Hunts', path: '/hunts', variant: 'secondary' }] };
+  return live.length === 1 ? first : { ...first, actions: [{ label: t('states.reviewHunts'), path: '/hunts', variant: 'secondary' }] };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,32 +123,34 @@ export function dealsWaitingState(
 /** Where a view is shown: the full web app, or a mobile companion app (no selling - decision 0018). */
 export type Surface = 'web' | 'companion';
 
-export function reducedMonitoringState(monitoring: Home['monitoring'], now: Date, ctx: { localeTag: string }, surface: Surface = 'web'): ProductStateView | null {
+export function reducedMonitoringState(
+  monitoring: Home['monitoring'],
+  now: Date,
+  ctx: { localeTag: string; t?: Translator },
+  surface: Surface = 'web',
+): ProductStateView | null {
   if (monitoring.mode !== 'reduced') return null;
+  const t = ctx.t ?? EN();
   let resumes: string | null = null;
   if (monitoring.resumesAt) {
     try {
       resumes = new Intl.DateTimeFormat(ctx.localeTag, { hour: 'numeric', minute: '2-digit' }).format(new Date(monitoring.resumesAt));
     } catch {
-      resumes = untilText(monitoring.resumesAt, now);
+      resumes = untilText(monitoring.resumesAt, now, t);
     }
   }
-  const cadence = monitoring.checksEveryMinutes ? `every ${monitoring.checksEveryMinutes} min` : 'less often';
+  const cadence = { hasCadence: monitoring.checksEveryMinutes ? 'yes' : 'no', minutes: monitoring.checksEveryMinutes };
+  const plan = monitoring.reason === 'plan_cadence';
+  const companion = surface === 'companion';
   return {
     state: 'reducedMonitoring',
-    title:
-      monitoring.reason === 'plan_cadence'
-        ? surface === 'companion'
-          ? 'Checking at your access’s pace'
-          : 'Checking at your plan’s pace'
-        : 'Quiet hours - checking less often',
-    body:
-      monitoring.reason === 'plan_cadence'
-        ? `${surface === 'companion' ? 'Your current access checks' : 'Your plan checks'} marketplaces ${cadence}. Strong deals still reach you as soon as they're found.`
-        : `Rein Drop checks ${cadence} overnight${resumes ? ` and goes back to normal at ${resumes}` : ''}. Strong deals still reach you as soon as they're found.`,
+    title: plan ? t(companion ? 'states.reducedPlanTitleCompanion' : 'states.reducedPlanTitleWeb') : t('states.reducedQuietTitle'),
+    body: plan
+      ? t(companion ? 'states.reducedPlanBodyCompanion' : 'states.reducedPlanBodyWeb', cadence)
+      : t('states.reducedQuietBody', { ...cadence, hasResumes: resumes ? 'yes' : 'no', resumes }),
     details: [],
     // The companion apps never point to plans (decision 0018).
-    actions: monitoring.reason === 'plan_cadence' && surface === 'web' ? [{ label: 'See plans', path: '/settings', variant: 'secondary' }] : [],
+    actions: plan && surface === 'web' ? [{ label: t('states.seePlans'), path: '/settings', variant: 'secondary' }] : [],
     live: false,
   };
 }
@@ -162,32 +167,34 @@ export function planLimitState(
   entitlements: Pick<EntitlementEvaluation, 'usage' | 'remaining' | 'entitlements'>,
   hunts: readonly Pick<Hunt, 'id' | 'name' | 'status'>[],
   surface: Surface = 'web',
+  t: Translator = EN(),
 ): ProductStateView | null {
   const limit = entitlements.entitlements.activeHunts.limit;
   const drafts = hunts.filter((h) => h.status === 'DRAFT');
   const live = hunts.filter((h) => h.status === 'LIVE');
   if (limit === null || entitlements.remaining.activeHunts !== 0 || drafts.length === 0 || live.length === 0) return null;
   const first = drafts[0]!;
-  const waiting = `${drafts.length === 1 ? `"${first.name}" is` : `${drafts.length} drafts are`} saved and ready. Pause ${live.length === 1 ? `"${live[0]!.name}"` : 'a live Hunt'} to watch ${drafts.length === 1 ? 'it' : 'one'} instead`;
+  // Hunt names are user content: passed through untranslated.
+  const waiting = { drafts: drafts.length, draft: first.name, live: live.length, liveName: live[0]!.name };
   if (surface === 'companion') {
     // Decision 0018: neutral "current access" wording, only actions inside that access.
     return {
       state: 'suggestion',
-      title: `Your current access watches ${limit} ${limit === 1 ? 'Hunt' : 'Hunts'} at a time`,
-      body: `${waiting}. Nothing is lost.`,
+      title: t('states.planLimitTitleCompanion', { limit }),
+      body: t('states.planLimitBodyCompanion', waiting),
       details: [],
-      actions: [{ label: 'Manage live Hunts', path: '/hunts?status=LIVE', variant: 'primary' }],
+      actions: [{ label: t('states.manageLiveHunts'), path: '/hunts?status=LIVE', variant: 'primary' }],
       live: false,
     };
   }
   return {
     state: 'suggestion',
-    title: `Your plan watches ${limit} ${limit === 1 ? 'Hunt' : 'Hunts'} at a time`,
-    body: `${waiting}, or upgrade to watch more. Nothing is lost either way.`,
+    title: t('states.planLimitTitleWeb', { limit }),
+    body: t('states.planLimitBodyWeb', waiting),
     details: [],
     actions: [
-      { label: 'See options', path: `/hunts/${first.id}/start`, variant: 'primary' },
-      { label: 'Manage live Hunts', path: '/hunts?status=LIVE', variant: 'text' },
+      { label: t('states.seeOptions'), path: `/hunts/${first.id}/start`, variant: 'primary' },
+      { label: t('states.manageLiveHunts'), path: '/hunts?status=LIVE', variant: 'text' },
     ],
     live: false,
   };
@@ -211,38 +218,34 @@ export interface CancellationOptions {
   canCancelOnline: boolean;
   /** When the paid period ends, already formatted for the user (e.g. "12 Nov 2026"); null if unknown. */
   paidUntil: string | null;
-  /** Where to cancel instead, when it can't be done here (e.g. "on the web"). */
+  /** Where to cancel instead, when it can't be done here (e.g. "on the web"), already in the UI language. */
   elsewhere?: string;
 }
 
 export function cancellationState(
   plan: { name: string; isFree: boolean },
   options: CancellationOptions = { canCancelOnline: false, paidUntil: null },
+  t: Translator = EN(),
 ): CancellationView {
+  // Plan names (Free / Pro / Ultimate) are never translated.
+  const name = plan.name;
   return {
     state: 'cancellation',
-    title: plan.isFree ? `You're on the ${plan.name} plan` : `Cancel ${plan.name}?`,
-    body: plan.isFree
-      ? 'There is nothing to cancel - the Free plan never charges you.'
-      : "We're sorry to see you go. Here's exactly what happens, so there are no surprises:",
+    title: plan.isFree ? t('states.cancelTitleFree', { plan: name }) : t('states.cancelTitle', { plan: name }),
+    body: plan.isFree ? t('states.cancelBodyFree') : t('states.cancelBody'),
     details: [],
     consequences: plan.isFree
       ? []
       : [
-          options.paidUntil
-            ? `You keep ${plan.name} until ${options.paidUntil} - the end of the period you've paid for. You won't be charged again.`
-            : `You keep ${plan.name} until the end of the period you've paid for. You won't be charged again.`,
-          'Your Hunts are kept - nothing is ever deleted.',
-          'After that you move to Free: live Hunts above its limit are paused, the most recently started first. You can resume them or upgrade again any time.',
-          'Your inventory, sales and analytics stay exactly as they are.',
+          options.paidUntil ? t('states.cancelKeepUntilDate', { plan: name, date: options.paidUntil }) : t('states.cancelKeepUntilEnd', { plan: name }),
+          t('states.cancelHuntsKept'),
+          t('states.cancelMoveToFree'),
+          t('states.cancelDataStays'),
         ],
-    actions: [{ label: plan.isFree ? 'Back to Settings' : 'Keep my plan', path: '/settings', variant: 'primary' }],
+    actions: [{ label: plan.isFree ? t('states.backToSettings') : t('states.keepMyPlan'), path: '/settings', variant: 'primary' }],
     live: false,
     available: !plan.isFree && options.canCancelOnline,
-    unavailableReason:
-      plan.isFree || options.canCancelOnline
-        ? null
-        : (options.elsewhere ?? 'This plan can’t be cancelled online here (it wasn’t bought through Rein Drop’s web checkout). Nothing will be charged.'),
+    unavailableReason: plan.isFree || options.canCancelOnline ? null : (options.elsewhere ?? t('states.cancelUnavailable')),
   };
 }
 
@@ -254,7 +257,7 @@ export function cancellationState(
  * Sample data for every product state, built through the real view functions - including states
  * the API can't produce yet (reduced monitoring, paid-plan cancellation). Development only.
  */
-export function productStateSamples(now: Date): (ProductStateView | CancellationView)[] {
+export function productStateSamples(now: Date, t: Translator = EN()): (ProductStateView | CancellationView)[] {
   const iso = (min: number) => new Date(now.getTime() + min * 60_000).toISOString();
   const ok = { status: 'healthy' as const, reason: null, nextAttemptAt: null };
   const hunt = { id: '00000000-0000-7000-8000-000000000001', status: 'LIVE' as const, activatedAt: iso(-90) };
@@ -269,16 +272,18 @@ export function productStateSamples(now: Date): (ProductStateView | Cancellation
     counts: { deals: 0, toReview: 0, new: 0, alerts: 0, saved: 0, bought: 0 },
   });
   return [
-    firstScanState(hunt, activity(true), now),
-    noDealsYetState(hunt, activity(false), now),
-    reducedMonitoringState({ mode: 'reduced', reason: 'quiet_hours', checksEveryMinutes: 60, resumesAt: iso(8 * 60) }, now, { localeTag: 'en' }),
+    firstScanState(hunt, activity(true), now, t),
+    noDealsYetState(hunt, activity(false), now, t),
+    reducedMonitoringState({ mode: 'reduced', reason: 'quiet_hours', checksEveryMinutes: 60, resumesAt: iso(8 * 60) }, now, { localeTag: t.language, t }),
     planLimitState(
       { entitlements: { activeHunts: { limit: 1 } } as never, usage: { activeHunts: 1 }, remaining: { activeHunts: 0 } },
       [
         { id: 'h1', name: 'ps4', status: 'LIVE' },
         { id: 'h2', name: 'PS5', status: 'DRAFT' },
       ],
+      'web',
+      t,
     ),
-    cancellationState({ name: 'Pro', isFree: false }),
+    cancellationState({ name: 'Pro', isFree: false }, undefined, t),
   ].filter((v): v is ProductStateView | CancellationView => v !== null);
 }

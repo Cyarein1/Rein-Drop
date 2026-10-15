@@ -8,6 +8,7 @@ import { SessionProvider } from '@/auth/SessionProvider';
 import { CapabilitiesProvider } from '@/capabilities/CapabilitiesProvider';
 import { NotificationsBridge } from '@/notifications/NotificationsBridge';
 import { headerOptions } from '@/navigation/options';
+import { useT } from '@/i18n/useT';
 import { interFonts, setInterLoaded } from '@/ui';
 
 // Catch rendering errors anywhere in the navigation tree.
@@ -38,26 +39,35 @@ export default function RootLayout() {
       <CapabilitiesProvider>
       <AccessProvider>
       <NotificationsBridge />
-      <Stack screenOptions={headerOptions()}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ title: 'Account' }} />
-        <Stack.Screen name="onboarding" options={{ title: 'Set up Rein Drop', presentation: 'modal' }} />
-        <Stack.Screen name="hunts/new" options={{ title: 'Create Hunt', presentation: 'modal' }} />
-        <Stack.Screen name="hunts/[id]/index" options={{ title: 'Hunt' }} />
-        <Stack.Screen name="hunts/[id]/edit" options={{ title: 'Edit Hunt' }} />
-        <Stack.Screen name="hunts/[id]/start" options={{ title: 'Start watching', presentation: 'modal' }} />
-        <Stack.Screen name="deals/[id]" options={{ title: 'Deal' }} />
-        <Stack.Screen name="inventory/[id]/index" options={{ title: 'Inventory item' }} />
-        <Stack.Screen name="inventory/[id]/sell" options={{ title: 'Mark sold' }} />
-        <Stack.Screen name="inventory/[id]/result" options={{ title: 'Sale result' }} />
-        <Stack.Screen name="sell/index" options={{ title: 'Your listings' }} />
-        <Stack.Screen name="sell/[id]" options={{ title: 'List for sale' }} />
-        <Stack.Screen name="alerts" options={{ title: 'Inbox' }} />
-        <Stack.Screen name="dev" options={{ title: 'Developer' }} />
-      </Stack>
+      <RootStack />
       <StatusBar style="dark" />
       </AccessProvider>
       </CapabilitiesProvider>
     </SessionProvider>
+  );
+}
+
+/** Screen titles in the UI language (inside the session, so the account's language applies). */
+function RootStack() {
+  const t = useT();
+  return (
+    <Stack screenOptions={headerOptions()}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ title: t('nav.titleAccount') }} />
+      <Stack.Screen name="onboarding" options={{ title: t('nav.titleOnboarding'), presentation: 'modal' }} />
+      <Stack.Screen name="hunts/new" options={{ title: t('nav.createHunt'), presentation: 'modal' }} />
+      <Stack.Screen name="hunts/[id]/index" options={{ title: t('nav.titleHunt') }} />
+      <Stack.Screen name="hunts/[id]/edit" options={{ title: t('nav.titleEditHunt') }} />
+      <Stack.Screen name="hunts/[id]/start" options={{ title: t('nav.titleStartWatching'), presentation: 'modal' }} />
+      <Stack.Screen name="deals/[id]" options={{ title: t('nav.titleDeal') }} />
+      <Stack.Screen name="inventory/[id]/index" options={{ title: t('nav.titleInventoryItem') }} />
+      <Stack.Screen name="inventory/[id]/sell" options={{ title: t('nav.titleMarkSold') }} />
+      <Stack.Screen name="inventory/[id]/result" options={{ title: t('nav.titleSaleResult') }} />
+      <Stack.Screen name="sell/index" options={{ title: t('nav.titleListings') }} />
+      <Stack.Screen name="sell/[id]" options={{ title: t('nav.titleListForSale') }} />
+      <Stack.Screen name="alerts" options={{ title: t('nav.titleInbox') }} />
+      {/* Developer-only screen: English. */}
+      <Stack.Screen name="dev" options={{ title: 'Developer' }} />
+    </Stack>
   );
 }

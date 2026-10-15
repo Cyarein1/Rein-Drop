@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { translator } from '@rein-drop/i18n';
 import { parseMoneyInput } from './money.js';
 import { priceSlider, priceSliderEnds, priceSliderPosition, priceSliderText, priceSliderValueText } from './price-slider.js';
 
@@ -84,6 +85,16 @@ describe('announced value and end labels', () => {
 
   it('falls back to the stop while the text is invalid', () => {
     expect(priceSliderValueText(priceSlider('USD'), '9x', 0, 'USD', 'en-US')).toBe('$5.00');
+  });
+
+  it('German: "Kein Limit" and money errors', () => {
+    const t = translator('de');
+    const eur = priceSlider('EUR');
+    expect(priceSliderValueText(eur, '', eur.max, 'EUR', 'de-DE', t)).toBe('Kein Limit');
+    expect(priceSliderEnds(eur, 'EUR', 'de-DE', t)).toEqual({ min: expect.stringMatching(/^5\s€$/), max: 'Kein Limit' });
+    expect(parseMoneyInput('12abc', 'EUR', t)).toEqual({ ok: false, message: 'Gib einen Betrag wie 1500 oder 1500,50 ein' });
+    expect(parseMoneyInput('9'.repeat(30), 'EUR', t)).toEqual({ ok: false, message: 'Dieser Betrag ist zu hoch' });
+    expect(parseMoneyInput('12abc', 'EUR')).toEqual({ ok: false, message: 'Enter an amount like 1500 or 1500.50' });
   });
 
   it('end labels: first stop without decimals, then "No limit"', () => {

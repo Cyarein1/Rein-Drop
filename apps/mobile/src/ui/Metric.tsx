@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { brand, fontSize, radius, roles, space, type MetricTone } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from './fonts';
 
 export interface MetricProps {
@@ -22,11 +23,12 @@ const VALUE_COLOR: Record<MetricTone, string> = {
 };
 
 export function Metric({ label, value, tone = 'neutral', estimated, comparison, caption }: MetricProps) {
+  const t = useT();
   return (
-    <View style={styles.metric} accessible accessibilityLabel={`${label}${estimated ? ', estimated' : ''}: ${value}`}>
+    <View style={styles.metric} accessible accessibilityLabel={t(estimated ? 'common.metricA11yEstimated' : 'common.metricA11y', { label, value })}>
       <View style={styles.labelRow}>
         <Text style={[styles.label, font('medium')]}>{label}</Text>
-        {estimated && <Text style={[styles.estimated, font('medium')]}>Estimated</Text>}
+        {estimated && <Text style={[styles.estimated, font('medium')]}>{t('common.estimated')}</Text>}
       </View>
       <Text style={[styles.value, font('extrabold'), { color: VALUE_COLOR[tone] }]}>{value}</Text>
       {comparison && (

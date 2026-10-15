@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OFFLINE_MESSAGE, refreshFailed, refreshStarted, refreshSucceeded, refreshUpdated, type Refreshable } from './refreshable.js';
+import { translator } from '@rein-drop/i18n';
+import { OFFLINE_MESSAGE, offlineMessage, refreshFailed, refreshStarted, refreshSucceeded, refreshUpdated, type Refreshable } from './refreshable.js';
 
 const LOADING: Refreshable<number[]> = { status: 'loading' };
 
@@ -25,6 +26,13 @@ describe('refreshable screen data (unreliable connections)', () => {
 
   it('retrying after a first-load error shows loading again', () => {
     expect(refreshStarted(refreshFailed(LOADING, 'x', false), false)).toEqual(LOADING);
+  });
+
+  it('German offline wording; the English constant stays the default', () => {
+    const t = translator('de');
+    expect(offlineMessage()).toBe(OFFLINE_MESSAGE);
+    expect(refreshFailed(LOADING, 'fetch failed', true, t)).toEqual({ status: 'error', message: 'Du bist offline oder Rein Drop ist gerade nicht erreichbar.', offline: true });
+    expect(refreshFailed(LOADING, 'HTTP 500', false, t)).toMatchObject({ message: 'HTTP 500' });
   });
 
   it('updates loaded data in place', () => {

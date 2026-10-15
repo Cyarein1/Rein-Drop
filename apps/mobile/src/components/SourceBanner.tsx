@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import type { SourceHealth } from '@rein-drop/api-client';
 import { sourceBanner } from '@rein-drop/client-core';
 import { getApiClient } from '@/config/api';
+import { useT } from '@/i18n/useT';
 import { SystemBanner } from '@/ui';
 
 /**
@@ -10,7 +11,8 @@ import { SystemBanner } from '@/ui';
  * Renders nothing when every source is working. Never an error banner.
  */
 export function SourceBanner({ sources, now }: { sources: readonly SourceHealth[] | null; now: Date }) {
-  const banner = sources ? sourceBanner(sources, now) : null;
+  const t = useT();
+  const banner = sources ? sourceBanner(sources, now, t) : null;
   if (!banner) return null;
   return <SystemBanner tone={banner.tone} title={banner.title} message={banner.message} />;
 }

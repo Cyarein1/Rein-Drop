@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fontSize, roles, space } from '@rein-drop/design-tokens';
+import { useT } from '@/i18n/useT';
 import { font } from './fonts';
 
 export interface ScreenProps {
@@ -20,6 +21,7 @@ export interface ScreenProps {
  * Web counterpart: `Page`.
  */
 export function Screen({ description, scroll = true, onRefresh, refreshing = false, children }: ScreenProps) {
+  const t = useT();
   const intro = description ? (
     <Text style={[styles.description, font('regular')]}>{description}</Text>
   ) : null;
@@ -38,7 +40,7 @@ export function Screen({ description, scroll = true, onRefresh, refreshing = fal
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
-      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={roles.text} accessibilityLabel="Pull to refresh" /> : undefined}
+      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={roles.text} accessibilityLabel={t('common.pullToRefresh')} /> : undefined}
     >
       {intro}
       {children}

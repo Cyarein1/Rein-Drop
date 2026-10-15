@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { entraApiScope, entraDiscoveryUrl } from '@rein-drop/api-client';
 import { afterRefreshFailure, nextTokenSession, tokenSessionState, type TokenSession } from '@rein-drop/client-core';
-import { SignInServiceUnreachable, type MobileAuthProvider, type SignInOutcome } from './types';
+import { SignInIncomplete, SignInServiceUnreachable, type MobileAuthProvider, type SignInOutcome } from './types';
 
 /**
  * Microsoft Entra External ID on mobile (decision 0013): authorization code + PKCE as a public
@@ -114,7 +114,7 @@ export function createEntraMobileAuthProvider(config: EntraMobileConfig): Mobile
       // promptAsync checks the returned state against the request's.
       const result = await request.promptAsync(doc);
       if (result.type === 'cancel' || result.type === 'dismiss') return 'cancelled';
-      if (result.type !== 'success' || !result.params.code) throw new Error('Sign-in did not complete. Please try again.');
+      if (result.type !== 'success' || !result.params.code) throw new SignInIncomplete();
       const token = await AuthSession.exchangeCodeAsync(
         { clientId: config.clientId, code: result.params.code, redirectUri, extraParams: { code_verifier: request.codeVerifier! }, scopes },
         doc,

@@ -6,6 +6,7 @@ const VIEW: DealCardView = {
   id: 'd1',
   title: 'PlayStation 5 console',
   huntName: 'Consoles',
+  marketplace: 'ebay',
   source: 'eBay',
   freshness: '5 min ago',
   justDropped: true,
@@ -28,7 +29,9 @@ describe('DealCard', () => {
     expect(screen.getByText('PlayStation 5 console')).toBeOnTheScreen();
     expect(screen.getByText('R 4 000,00')).toBeOnTheScreen();
     expect(screen.getByText('+ R 150,00 known costs')).toBeOnTheScreen();
-    expect(screen.getByText(/eBay/)).toBeOnTheScreen();
+    // The marketplace is shown with its logo (like the landing page) and named for screen readers.
+    expect(screen.getByTestId('marketplace-mark-ebay', { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.getByLabelText('eBay')).toBeOnTheScreen();
     expect(screen.getByText('R 1 200,00')).toBeOnTheScreen();
     // The upside is always marked as an estimate.
     expect(screen.getByText('Estimated')).toBeOnTheScreen();

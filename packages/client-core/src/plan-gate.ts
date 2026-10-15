@@ -6,6 +6,7 @@ import {
   type PlanEntitlements,
   type PlanPricing,
 } from '@rein-drop/contracts';
+import { translator, type Translator } from '@rein-drop/i18n';
 import { formatMoney } from './money.js';
 
 /**
@@ -14,32 +15,39 @@ import { formatMoney } from './money.js';
  */
 
 const MARKETPLACE_LABEL: Record<string, string> = { ebay: 'eBay', facebook: 'Facebook Marketplace' };
+const EN = translator('en');
 
 /** Human-readable lines for what a plan allows. */
-export function describeEntitlements(e: PlanEntitlements): string[] {
+export function describeEntitlements(e: PlanEntitlements, t: Translator = EN): string[] {
   const hunts = e.activeHunts.limit;
+  const markets = e.marketplaces.map((m) => MARKETPLACE_LABEL[m] ?? m);
   return [
-    hunts === null ? 'Unlimited live Hunts' : `${hunts} live ${hunts === 1 ? 'Hunt' : 'Hunts'}`,
-    e.savedHunts.limit === null ? 'Unlimited saved Hunts' : `Up to ${e.savedHunts.limit} saved ${e.savedHunts.limit === 1 ? 'Hunt' : 'Hunts'}`,
-    e.marketplaces.length ? e.marketplaces.map((m) => MARKETPLACE_LABEL[m] ?? m).join(' and ') : 'No marketplaces',
+    hunts === null ? t('billing.entLiveUnlimited') : t('billing.entLive', { count: hunts }),
+    e.savedHunts.limit === null ? t('billing.entSavedUnlimited') : t('billing.entSaved', { count: e.savedHunts.limit }),
+    markets.length === 0
+      ? t('billing.entNoMarketplaces')
+      : markets.length === 1
+        ? markets[0]!
+        : t('billing.listAnd', { items: markets.slice(0, -1).join(', '), last: markets.at(-1) }),
     e.hotHunts.available
-      ? `Hot Hunts${e.hotHunts.limit === null ? '' : `: ${e.hotHunts.limit}`}`
-      : 'Hot Hunts: coming later',
-    `${e.monitoringPriority === 'NORMAL' ? 'Normal' : e.monitoringPriority} monitoring priority`,
-    e.analyticsHistoryDays === null ? 'Full analytics history' : `${e.analyticsHistoryDays} days of analytics history`,
-    `${e.seats} ${e.seats === 1 ? 'seat' : 'seats'}`,
+      ? e.hotHunts.limit === null
+        ? t('billing.entHotHunts')
+        : t('billing.entHotHuntsLimit', { limit: e.hotHunts.limit })
+      : t('billing.entHotHuntsLater'),
+    t('billing.entPriority', { priority: e.monitoringPriority }),
+    e.analyticsHistoryDays === null ? t('billing.entAnalyticsFull') : t('billing.entAnalyticsDays', { days: e.analyticsHistoryDays }),
+    t('billing.entSeats', { count: e.seats }),
   ];
 }
 
-const INTERVAL_LABEL = { day: 'day', week: 'week', month: 'month', year: 'year' } as const;
-
 /** "Free", "Price TBD", or the provider's price, e.g. "R 199,00 / month" - never a made-up price. */
-export function priceLabel(pricing: PlanPricing, localeTag: string): string {
-  if (pricing.status === 'free') return 'Free';
-  if (pricing.status === 'tbd') return 'Price TBD';
-  const unit = INTERVAL_LABEL[pricing.interval];
-  const per = pricing.intervalCount === 1 ? `/ ${unit}` : `every ${pricing.intervalCount} ${unit}s`;
-  return `${formatMoney(pricing.amount, localeTag)} ${per}`;
+export function priceLabel(pricing: PlanPricing, localeTag: string, t: Translator = EN): string {
+  if (pricing.status === 'free') return t('billing.priceFree');
+  if (pricing.status === 'tbd') return t('billing.priceTbd');
+  const price = formatMoney(pricing.amount, localeTag);
+  return pricing.intervalCount === 1
+    ? t('billing.pricePer', { price, unit: pricing.interval })
+    : t('billing.priceEvery', { price, unit: pricing.interval, count: pricing.intervalCount });
 }
 
 export interface PlanGateOption {
@@ -66,14 +74,15 @@ export function planGateOptions(
   activeHuntsInUse: number,
   currentPlanCode: string | null,
   localeTag = 'en',
+  t: Translator = EN,
 ): PlanGateOption[] {
   const options = plans.map((plan) => {
     const reasons = evaluateActivation(plan.entitlements, activeHuntsInUse, hunt);
     return {
       plan,
-      priceLabel: priceLabel(plan.pricing, localeTag),
+      priceLabel: priceLabel(plan.pricing, localeTag, t),
       available: plan.pricing.status !== 'tbd',
-      lines: describeEntitlements(plan.entitlements),
+      lines: describeEntitlements(plan.entitlements, t),
       reasons,
       canRunHunt: reasons.length === 0,
       recommended: false,
@@ -91,3 +100,12 @@ export const RESOLUTION_LABEL = {
   upgrade_plan: 'Choose a bigger plan',
   edit_hunt: 'Edit this Hunt',
 } as const;
+
+/** RESOLUTION_LABEL in the UI language (web only - "upgrade_plan" sells). Use this; the English constant will be removed in step 89. */
+export function resolutionLabels(t: Translator): Record<keyof typeof RESOLUTION_LABEL, string> {
+  return {
+    pause_another_hunt: t('billing.resolutionPauseAnother'),
+    upgrade_plan: t('billing.resolutionUpgrade'),
+    edit_hunt: t('billing.resolutionEdit'),
+  };
+}

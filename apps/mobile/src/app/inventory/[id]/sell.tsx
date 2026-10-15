@@ -5,19 +5,18 @@ import { ApiError, type InventoryItem } from '@rein-drop/api-client';
 import {
   buildSaleRequest,
   dayShortcuts,
-  huntFormContext,
-  SALE_COST_LABEL,
+  saleCostLabels,
   saleFormDefaults,
   salePreview,
-  SOLD_WHERE_OPTIONS,
+  soldWhereOptions,
   type HuntFormContext,
   type SaleForm,
   type SaleFormErrors,
 } from '@rein-drop/client-core';
 import { fontSize, radius, roles, space, tones } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
 import { CostRows } from '@/components/CostRows';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, Card, ChoiceGroup, EmptyState, font, LoadingState, Metric, Screen, SystemBanner, TextInput } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; item: InventoryItem };
@@ -30,8 +29,8 @@ const messageOf = (err: unknown) => (err instanceof ApiError ? (err.details?.[0]
  */
 export default function MarkSoldScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
 
   const fetchItem = useCallback(() => {
@@ -51,12 +50,12 @@ export default function MarkSoldScreen() {
   const ready = load.status === 'ready' ? load.item : null;
   return (
     <Screen>
-      <Stack.Screen options={{ title: ready?.sale ? 'Correct the sale' : 'Mark sold' }} />
-      {load.status === 'loading' && <LoadingState label="Loading the item…" />}
-      {load.status === 'error' && <SystemBanner tone="error" title="Couldn't load this item" message={load.message} />}
+      <Stack.Screen options={{ title: ready?.sale ? t('inventory.correctSale') : t('inventory.actionMarkSold') }} />
+      {load.status === 'loading' && <LoadingState label={t('inventory.loadingItem')} />}
+      {load.status === 'error' && <SystemBanner tone="error" title={t('inventory.loadItemFailed')} message={load.message} />}
       {ready && !ready.holding && !ready.sale && (
         <Card>
-          <EmptyState title="This item can't be marked sold" description="Only items you're holding can be sold." />
+          <EmptyState title={t('inventory.cantSellTitle')} description={t('inventory.cantSellBody')} />
         </Card>
       )}
       {ready && (ready.holding || ready.sale) && <SellForm item={ready} context={context} />}
@@ -66,6 +65,7 @@ export default function MarkSoldScreen() {
 
 function SellForm({ item, context }: { item: InventoryItem; context: HuntFormContext }) {
   const router = useRouter();
+  const { t } = context;
   const [defaults] = useState(() => saleFormDefaults(item, context, new Date()));
   const [form, setForm] = useState<SaleForm>(defaults);
   const [errors, setErrors] = useState<SaleFormErrors>({});
@@ -75,10 +75,10 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
   const preview = salePreview(form, item, context);
 
   const submit = async () => {
-    const built = buildSaleRequest(form, item, new Date());
+    const built = buildSaleRequest(form, item, new Date(), t);
     if (!built.ok) {
       setErrors(built.errors);
-      setError('Check the highlighted fields.');
+      setError(t('inventory.checkFields'));
       return;
     }
     setErrors({});
@@ -98,28 +98,28 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
     <>
       <Text style={[styles.muted, font('regular')]}>{item.title}</Text>
       <TextInput
-        label="What did it sell for?"
+        label={t('inventory.formSoldFor')}
         kind="money"
         currency={form.currency}
         value={form.price}
         onChangeText={(price) => set({ price })}
-        hint={defaults.estimateHint ?? 'The price your buyer paid, before fees.'}
+        hint={defaults.estimateHint ?? t('inventory.formSoldForHint')}
         error={errors.price}
       />
-      <TextInput label="Sold on" kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} />
+      <TextInput label={t('inventory.formSoldOn')} kind="date" value={form.day} onChangeText={(day) => set({ day })} error={errors.day} />
       <View style={styles.row}>
-        {dayShortcuts(new Date()).map((s) => (
+        {dayShortcuts(new Date(), t).map((s) => (
           <Button key={s.value} variant="text" onPress={() => set({ day: s.value })} accessibilityState={{ selected: form.day === s.value }}>
             {s.label}
           </Button>
         ))}
       </View>
-      <ChoiceGroup legend="Where did it sell?" options={SOLD_WHERE_OPTIONS} value={form.where} onChange={(where) => set({ where })} />
+      <ChoiceGroup legend={t('inventory.formWhere')} options={soldWhereOptions(t)} value={form.where} onChange={(where) => set({ where })} />
       <CostRows
-        legend="Fees and selling costs"
-        hint="Leave a row empty if it doesn't apply."
+        legend={t('inventory.saleCosts')}
+        hint={t('inventory.saleCostsHint')}
         rows={form.costs}
-        labels={SALE_COST_LABEL}
+        labels={saleCostLabels(t)}
         currency={form.currency}
         errors={errors.costs}
         onChange={(costs) => set({ costs })}
@@ -127,7 +127,7 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
 
       <View style={styles.preview} accessibilityLiveRegion="polite">
         {preview.profit ? (
-          <Metric label={preview.profit.label} value={preview.profit.value} tone={preview.profit.tone} caption="Realized once you save the sale." />
+          <Metric label={preview.profit.label} value={preview.profit.value} tone={preview.profit.tone} caption={t('inventory.realizedOnSave')} />
         ) : (
           <Text style={[styles.muted, font('regular')]}>{preview.note}</Text>
         )}
@@ -139,9 +139,9 @@ function SellForm({ item, context }: { item: InventoryItem; context: HuntFormCon
         ))}
       </View>
 
-      {error && <SystemBanner tone="error" title="Couldn't save the sale" message={error} />}
+      {error && <SystemBanner tone="error" title={t('inventory.saveSaleFailed')} message={error} />}
       <Button loading={pending} onPress={submit} fullWidth>
-        {defaults.correcting ? 'Save the sale' : 'Mark sold'}
+        {defaults.correcting ? t('inventory.saveSale') : t('inventory.actionMarkSold')}
       </Button>
     </>
   );

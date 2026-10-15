@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { DealCardView } from '@rein-drop/client-core';
+import { confidenceLabel, type DealCardView } from '@rein-drop/client-core';
 import { fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
+import { MarketplaceName } from '@/brand/MarketplaceMark';
+import { useT } from '@/i18n/useT';
 import { Badge, Button, font } from '@/ui';
 
 export interface DealCardProps {
@@ -19,45 +21,52 @@ export interface DealCardProps {
  * card's pressable area (never nested buttons), so each has its own accessible name.
  */
 export function DealCard({ view, onPress, onSave, onIgnore, busy = false }: DealCardProps) {
+  const t = useT();
   const quick = onSave || onIgnore;
+  // The column is headed "Confidence", so show the short level ("High"), not "High confidence".
+  const level = (['high', 'medium', 'low'] as const).find((c) => confidenceLabel(c, t) === view.confidence);
+  const confidence = level ? t(CONFIDENCE_SHORT[level]) : view.confidence;
   return (
     <View style={[styles.wrap, view.exceptional && styles.exceptional]}>
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={view.accessibleSummary}
-      accessibilityHint="Opens the deal"
+      accessibilityHint={t('deals.openHint')}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.badges}>
         {view.strength && <Badge tone={view.strength.tone}>{view.strength.label}</Badge>}
-        {view.justDropped && <Badge tone="fresh">Just dropped</Badge>}
+        {view.justDropped && <Badge tone="fresh">{t('deals.justDropped')}</Badge>}
         <Badge tone={view.status.tone}>{view.status.label}</Badge>
       </View>
       <Text style={[styles.title, font('semibold')]}>{view.title}</Text>
-      <Text style={[styles.muted, font('regular')]}>
-        {view.source} · {view.freshness} · {view.huntName}
-      </Text>
+      <View style={styles.meta}>
+        <MarketplaceName marketplace={view.marketplace} />
+        <Text style={[styles.muted, styles.metaText, font('regular')]}>
+          · {view.freshness} · {view.huntName}
+        </Text>
+      </View>
 
       <View style={styles.figures}>
         <View style={styles.figure}>
-          <Text style={[styles.label, font('medium')]}>PRICE</Text>
+          <Text style={[styles.label, font('medium')]}>{t('deals.labelPrice')}</Text>
           <Text style={[styles.value, font('bold')]}>{view.price}</Text>
           {view.priceExtra && <Text style={[styles.small, font('regular')]}>{view.priceExtra}</Text>}
         </View>
         <View style={styles.figure}>
           <View style={styles.labelRow}>
-            <Text style={[styles.label, font('medium')]}>UPSIDE</Text>
-            {view.upside.estimated && <Text style={[styles.estimated, font('regular')]}>Estimated</Text>}
+            <Text style={[styles.label, font('medium')]}>{t('deals.labelUpside')}</Text>
+            {view.upside.estimated && <Text style={[styles.estimated, font('regular')]}>{t('common.estimated')}</Text>}
           </View>
           <Text style={[view.upside.estimated ? styles.value : styles.muted, font(view.upside.estimated ? 'bold' : 'regular')]}>
             {view.upside.value}
           </Text>
         </View>
         <View style={styles.figure}>
-          <Text style={[styles.label, font('medium')]}>CONFIDENCE</Text>
-          <Text style={[view.confidence ? styles.body : styles.muted, font('regular')]}>
-            {view.confidence ? view.confidence.replace(' confidence', '') : 'Not yet'}
+          <Text style={[styles.label, font('medium')]}>{t('deals.labelConfidence')}</Text>
+          <Text style={[confidence ? styles.body : styles.muted, font('regular')]}>
+            {confidence ?? t('deals.confidenceNotYet')}
           </Text>
         </View>
       </View>
@@ -69,13 +78,13 @@ export function DealCard({ view, onPress, onSave, onIgnore, busy = false }: Deal
     {quick && (
       <View style={styles.actions}>
         {onSave && (
-          <Button variant="secondary" loading={busy} onPress={onSave} accessibilityLabel={`Save ${view.title}`}>
-            Save
+          <Button variant="secondary" loading={busy} onPress={onSave} accessibilityLabel={t('deals.saveA11y', { title: view.title })}>
+            {t('deals.save')}
           </Button>
         )}
         {onIgnore && (
-          <Button variant="text" disabled={busy} onPress={onIgnore} accessibilityLabel={`Not for me: ${view.title}`}>
-            Not for me
+          <Button variant="text" disabled={busy} onPress={onIgnore} accessibilityLabel={t('deals.notForMeA11y', { title: view.title })}>
+            {t('deals.notForMe')}
           </Button>
         )}
       </View>
@@ -83,6 +92,12 @@ export function DealCard({ view, onPress, onSave, onIgnore, busy = false }: Deal
     </View>
   );
 }
+
+const CONFIDENCE_SHORT = {
+  high: 'deals.confidenceShortHigh',
+  medium: 'deals.confidenceShortMedium',
+  low: 'deals.confidenceShortLow',
+} as const;
 
 const styles = StyleSheet.create({
   wrap: {
@@ -99,6 +114,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
   title: { color: roles.text, fontSize: fontSize.lg },
+  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space[1] },
+  metaText: { flexShrink: 1 },
   muted: { color: roles.textMuted, fontSize: fontSize.sm },
   small: { color: roles.textMuted, fontSize: fontSize.xs },
   body: { color: roles.text, fontSize: fontSize.md },

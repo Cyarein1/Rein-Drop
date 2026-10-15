@@ -1,12 +1,22 @@
+import { displayContext } from './hunt-form.js';
 import { describe, expect, it } from 'vitest';
 import type { Hunt, HuntActivity } from '@rein-drop/contracts';
 import {
   buildUpdateHuntRequest,
   countsLine,
   editContext,
+  HUNT_ACTION_CONFIRM,
+  HUNT_FILTERS,
+  HUNT_STATUS_LABEL,
+  huntActionConfirm,
+  huntActionLabel,
   huntActions,
   huntCriteria,
+  huntEventLabel,
+  huntFilterEmptyTitle,
+  huntFilters,
   huntFormValues,
+  huntStatusLabel,
   marketplaceRows,
   monitoringLine,
 } from './hunt-view.js';
@@ -14,8 +24,8 @@ import {
 const NOW = new Date('2026-10-07T10:00:00.000Z');
 const ago = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000).toISOString();
 const HEALTHY = { status: 'healthy' as const, reason: null, nextAttemptAt: null };
-const ZA = { currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' };
-const US = { currency: 'USD', distanceUnit: 'mi' as const, localeTag: 'en-US' };
+const ZA = displayContext({ currency: 'ZAR', distanceUnit: 'km' as const, localeTag: 'en-ZA' });
+const US = displayContext({ currency: 'USD', distanceUnit: 'mi' as const, localeTag: 'en-US' });
 
 const hunt: Hunt = {
   id: '01990000-0000-7000-8000-000000000001',
@@ -76,6 +86,44 @@ describe('monitoring line', () => {
   it('counts read naturally and stay quiet when empty', () => {
     expect(countsLine(activity())).toBe('6 deals · 3 to review · 1 alert');
     expect(countsLine(activity({ counts: { deals: 0, toReview: 0, new: 0, alerts: 0, saved: 0, bought: 0 } }))).toBeNull();
+  });
+});
+
+describe('German', () => {
+  const DE = displayContext({ currency: 'EUR', distanceUnit: 'km', localeTag: 'de-DE' }, 'de');
+  const t = DE.t;
+
+  it('monitoring, counts (plurals) and marketplace rows', () => {
+    expect(monitoringLine(hunt, activity(), NOW, t).text).toBe('Beobachtung läuft · zuletzt geprüft vor 5 Min.');
+    expect(monitoringLine(hunt, activity({ scanning: true, lastCheckedAt: null }), NOW, t).text).toBe('Erste Prüfung von eBay und Facebook Marketplace…');
+    expect(monitoringLine({ ...hunt, status: 'DRAFT' }, null, NOW, t).text).toBe('Noch keine Beobachtung');
+    expect(countsLine(activity(), t)).toBe('6 Deals · 3 zu prüfen · 1 Benachrichtigung');
+    expect(countsLine(activity({ counts: { deals: 1, toReview: 0, new: 0, alerts: 2, saved: 0, bought: 0 } }), t)).toBe('1 Deal · 2 Benachrichtigungen');
+    expect(marketplaceRows(hunt, activity(), NOW, t)[0]).toEqual({ name: 'eBay', status: { label: 'OK', tone: 'profit' }, detail: 'Geprüft vor 5 Min. · nächste Prüfung in 10 Min.' });
+  });
+
+  it('labels, tabs, actions and confirmations', () => {
+    expect(huntStatusLabel('LIVE', t)).toEqual({ label: 'Aktiv', tone: HUNT_STATUS_LABEL.LIVE.tone });
+    expect(huntFilters(t).map((f) => f.label)).toEqual(['Alle', 'Aktiv', 'Pausiert', 'Entwurf', 'Archiviert']);
+    expect(huntFilters()).toEqual(HUNT_FILTERS);
+    expect(huntFilterEmptyTitle('PAUSED', t)).toBe('Keine pausierten Hunts');
+    expect(huntEventLabel('ACTIVATED', t)).toBe('Beobachtung gestartet');
+    expect(huntActionLabel('start', t)).toBe('Beobachtung starten');
+    expect(huntActionConfirm('pause', t)).toMatchObject({ title: 'Diesen Hunt pausieren?' });
+    expect(huntActionConfirm('archive')!.body).toBe(HUNT_ACTION_CONFIRM.archive);
+    expect(huntActionConfirm('resume', t)).toBeNull();
+  });
+
+  it('the review sentence and form errors', () => {
+    const review = huntCriteria(hunt, DE);
+    expect(review.sentence).toMatch(/^Rein Drop sucht auf eBay und Facebook Marketplace nach „iPhone 13“ im Umkreis von 40 km um Cape Town, Zustand: gebraucht, zum Preis von höchstens .+\. Bevorzugt werden Deals mit mindestens .+ Gewinn\. Angebote, die „for parts“ oder „cracked“ erwähnen, werden ignoriert\.$/);
+    expect(review.items.map((i) => i.label)).toEqual(['Gesucht wird', 'Marktplätze', 'Ort', 'Zustand', 'Höchstpreis', 'Ziel', 'Ausgeschlossen']);
+    expect(review.items.find((i) => i.label === 'Ort')?.value).toBe('40 km um Cape Town');
+    const bad = buildUpdateHuntRequest(hunt, { ...huntFormValues(hunt, DE), maxPrice: 'viel', radius: '9999', targetKind: 'margin', targetMargin: 'x' }, DE);
+    expect(bad).toMatchObject({
+      ok: false,
+      errors: { maxPrice: 'Gib einen Betrag wie 1500 oder 1500,50 ein', radius: 'Gib eine ganze Zahl zwischen 1 und 500 km ein', targetMargin: 'Gib einen ganzen Prozentwert ein, z. B. 30' },
+    });
   });
 });
 

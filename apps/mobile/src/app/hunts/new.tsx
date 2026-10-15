@@ -4,6 +4,7 @@ import { huntFormDefaults, queryPlaceholder } from '@rein-drop/client-core';
 import { roles } from '@rein-drop/design-tokens';
 import { SessionGate } from '@/auth/SessionGate';
 import { useSession } from '@/auth/SessionProvider';
+import { deviceLanguageTag, useT } from '@/i18n/useT';
 import { HuntFormFlow, type HuntFormFlowProps } from '@/components/HuntFormFlow';
 import { getApiClient } from '@/config/api';
 import { LoadingState } from '@/ui';
@@ -25,6 +26,7 @@ export default function CreateHuntScreen() {
 /** Loads the Seller Snapshot so the form starts with sensible, visible defaults. */
 function CreateHuntLoader() {
   const session = useSession();
+  const t = useT();
   const [prepared, setPrepared] = useState<Prepared | null>(null);
 
   useEffect(() => {
@@ -35,8 +37,8 @@ function CreateHuntLoader() {
       .catch(() => null)
       .then((snapshot) => {
         if (cancelled) return;
-        const defaults = huntFormDefaults(snapshot, session.user.locale);
-        setPrepared({ ...defaults, placeholder: queryPlaceholder(snapshot) });
+        const defaults = huntFormDefaults(snapshot, session.user.locale, deviceLanguageTag());
+        setPrepared({ ...defaults, placeholder: queryPlaceholder(snapshot, defaults.context.t) });
       });
     return () => {
       cancelled = true;
@@ -46,7 +48,7 @@ function CreateHuntLoader() {
   if (!prepared) {
     return (
       <View style={styles.center}>
-        <LoadingState label="Preparing your Hunt…" />
+        <LoadingState label={t('hunts.preparing')} />
       </View>
     );
   }

@@ -2,11 +2,11 @@ import { useCallback, useState } from 'react';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { InventoryItem } from '@rein-drop/api-client';
-import { huntFormContext, saleResultView } from '@rein-drop/client-core';
+import { saleResultView } from '@rein-drop/client-core';
 import { brand, fontSize, radius, roles, size, space, tones } from '@rein-drop/design-tokens';
-import { useSessionState } from '@/auth/SessionProvider';
 import { mascotAssets } from '@/brand/assets';
 import { getApiClient } from '@/config/api';
+import { useDisplayContext } from '@/i18n/useT';
 import { Button, Card, EmptyState, font, LoadingState, Metric, Screen, SystemBanner } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; item: InventoryItem };
@@ -17,8 +17,8 @@ const TONE_COLOR = { profit: brand.green, loss: brand.lossRed, neutral: roles.te
 export default function SaleResultScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state: session } = useSessionState();
-  const context = huntFormContext(session.status === 'authenticated' ? session.session.user.locale : null);
+  const context = useDisplayContext();
+  const { t } = context;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
 
   const fetchItem = useCallback(() => {
@@ -41,15 +41,15 @@ export default function SaleResultScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Sale result' }} />
-      {load.status === 'loading' && <LoadingState label="Loading the result…" />}
-      {load.status === 'error' && <SystemBanner tone="error" title="Couldn't load the result" message={load.message} />}
+      <Stack.Screen options={{ title: t('inventory.actionSaleResult') }} />
+      {load.status === 'loading' && <LoadingState label={t('inventory.loadingResult')} />}
+      {load.status === 'error' && <SystemBanner tone="error" title={t('inventory.loadResultFailed')} message={load.message} />}
       {load.status === 'ready' && !view && (
         <Card>
           <EmptyState
-            title="Not sold yet"
-            description="The result appears once you mark this item sold. Until then it's neither a profit nor a loss."
-            action={<Button onPress={() => router.replace({ pathname: '/inventory/[id]/sell', params: { id } })}>Mark sold</Button>}
+            title={t('inventory.notSoldTitle')}
+            description={t('inventory.notSoldBody')}
+            action={<Button onPress={() => router.replace({ pathname: '/inventory/[id]/sell', params: { id } })}>{t('inventory.actionMarkSold')}</Button>}
           />
         </Card>
       )}
@@ -64,21 +64,21 @@ export default function SaleResultScreen() {
           </View>
           <Text style={[styles.insight, font('medium')]}>{view.insight}</Text>
 
-          <Card title="Expected vs actual">
+          <Card title={t('inventory.expectedVsActual')}>
             {view.comparisons.map((c) => (
-              <View key={c.label} style={styles.compare} accessible accessibilityLabel={`${c.label}: ${c.expectedLabel.toLowerCase()} ${c.expected}, actual ${c.actual}${c.difference ? `, difference ${c.difference}` : ''}`}>
+              <View key={c.label} style={styles.compare} accessible accessibilityLabel={t('inventory.compareA11y', { label: c.label, expectedLabel: c.expectedLabel, expected: c.expected, actual: c.actual, hasDifference: c.difference ? 'yes' : 'no', difference: c.difference ?? '' })}>
                 <Text style={[styles.body, font('semibold')]}>{c.label}</Text>
                 <View style={styles.line}>
                   <Text style={[styles.muted, font('regular')]}>{c.expectedLabel}</Text>
                   <Text style={[styles.body, font('regular')]}>{c.expected}</Text>
                 </View>
                 <View style={styles.line}>
-                  <Text style={[styles.muted, font('regular')]}>Actual</Text>
+                  <Text style={[styles.muted, font('regular')]}>{t('inventory.actual')}</Text>
                   <Text style={[styles.body, font('semibold')]}>{c.actual}</Text>
                 </View>
                 {c.difference && (
                   <View style={styles.line}>
-                    <Text style={[styles.muted, font('regular')]}>Difference</Text>
+                    <Text style={[styles.muted, font('regular')]}>{t('inventory.difference')}</Text>
                     <Text style={[styles.body, font('bold'), { color: TONE_COLOR[c.tone] }]}>{c.difference}</Text>
                   </View>
                 )}
@@ -87,7 +87,7 @@ export default function SaleResultScreen() {
             <Text style={[styles.muted, font('regular')]}>{view.comparisonNote}</Text>
           </Card>
 
-          <Card title="How it adds up">
+          <Card title={t('inventory.howItAddsUp')}>
             {view.breakdown.map(([label, value], i) => (
               <View key={`${label}-${i}`} style={styles.line}>
                 <Text style={[styles.body, font('regular')]}>{label}</Text>
@@ -101,10 +101,10 @@ export default function SaleResultScreen() {
           </Card>
 
           <Button fullWidth onPress={() => router.dismissTo('/inventory')}>
-            Done
+            {t('inventory.done')}
           </Button>
           <Button variant="text" onPress={() => router.push({ pathname: '/inventory/[id]/sell', params: { id } })}>
-            Correct the sale
+            {t('inventory.correctSale')}
           </Button>
         </>
       )}

@@ -37,6 +37,7 @@ import {
   SystemBanner,
   TextInput,
 } from "@/components/ui";
+import { MarketplaceName } from "@/components/MarketplaceName";
 import { LocationField } from "@/geo/LocationField";
 import { LocationMap } from "@/geo/LocationMap";
 import { updateHuntAction } from "../[id]/actions";
@@ -44,9 +45,9 @@ import { saveHuntDraft } from "./actions";
 import styles from "./CreateHuntFlow.module.css";
 
 const MARKETPLACE_OPTIONS = [
-  { value: "ebay", label: "eBay" },
-  { value: "facebook", label: "Facebook Marketplace" },
-] as const satisfies readonly { value: MarketplaceKey; label: string }[];
+  { value: "ebay", label: "eBay", icon: <MarketplaceName marketplace="ebay" size={18} showName={false} /> },
+  { value: "facebook", label: "Facebook Marketplace", icon: <MarketplaceName marketplace="facebook" size={18} showName={false} /> },
+] as const satisfies readonly { value: MarketplaceKey; label: string; icon: React.ReactNode }[];
 
 type ConditionChoice = HuntCondition | "any";
 const CONDITION_OPTIONS = [
