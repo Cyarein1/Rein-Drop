@@ -103,3 +103,5 @@ guideline text before the first store submission (phase E).
 | A8 | Push is used for alerts the person enabled, not marketing (marketing is opt-in in settings) | Apple 4.5.4 | Rejection |
 | A9 | No reliance on regional exceptions (EU DMA alternative payments, US link-out rulings, Korea / Japan) | Regional storefront rules | None while nothing links out. Revisit if a link is ever wanted |
 | A10 | Trials, if ever enabled, are started on the web only. The app only displays the state | Apple 3.1.2 / 3.1.3; Play | Same as A1 |
+
+> **Step 86:** the assumptions above were checked against the primary policy text (fetched 2026-10-15) in [release/APP_STORE_READINESS.md](../release/APP_STORE_READINESS.md), which supersedes this table for release decisions (checklists, blockers RB1-RB9, draft review notes).

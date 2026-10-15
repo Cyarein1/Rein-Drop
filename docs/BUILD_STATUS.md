@@ -1,11 +1,36 @@
 # Build Status
 
-_Last updated: 2026-10-15 (step 85 - end-to-end review and testing pass)_
+_Last updated: 2026-10-15 (step 86 - release readiness and app-store compliance assessment)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 86 - Release readiness and app-store compliance assessment (no code changes, nothing submitted)
+
+[release/APP_STORE_READINESS.md](release/APP_STORE_READINESS.md) contains:
+- the policy text from primary Apple and Google pages fetched 2026-10-15 (Apple guidelines updated
+  June 8, 2026), quoted, with interpretations kept separate;
+- a code-verified inventory of the app's actual behaviour;
+- an Apple checklist (A1-A21) and a Google Play checklist (G1-G15);
+- the 3.1.3(f) applicability and limits, and Play consumption-only / sign-up-flow analysis;
+- release blockers RB1-RB9, a draft review explanation and a submission / testing sequence.
+
+Main blockers:
+- **RB1:** no account deletion.
+- **RB2:** no app privacy policy or in-app link.
+- **RB3:** store privacy forms not done.
+- **RB4:** no reviewer account with paid access.
+- **RB5:** placeholder / non-working features in store builds (stale "Placeholder screen" banner,
+  "Coming soon", simulated eBay publishing, Facebook offered without a production source).
+- **RB6:** third-party AI disclosure.
+- **RB7:** build identity / credentials.
+- **RB8:** legal sign-off on 3.1.3(f).
+- **RB9:** Entra sign-up / social-login decisions.
+
+Verified OK: no purchasing / CTAs (guard test, plus shared copy checked), system photo picker
+without READ_MEDIA_*, notification permission on explicit action, target SDK 36.
 
 ### Step 85 - End-to-end review: web-first subscription + mobile companion
 
