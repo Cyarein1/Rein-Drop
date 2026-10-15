@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   toNotificationPreferences,
@@ -5,6 +6,7 @@ import {
   type AlertPage,
   type ListAlertsQuery,
   type NotificationCategory,
+  type DevTestNotification,
   type NotificationLog,
   type NotificationPreferences,
   type PushDevice,
@@ -97,6 +99,31 @@ export class NotificationsService {
   }
 
   /** The caller's latest deliveries: the log of the local notification simulator. */
+  /**
+   * DEVELOPMENT ONLY: a test alert (category operational, so it isn't subject to Hunt access) with
+   * a PENDING push the worker sends like any other. It points at the caller's most recent deal so
+   * tapping it exercises the deep link; without deals it opens the inbox.
+   */
+  async sendTestNotification(userId: string): Promise<DevTestNotification> {
+    const deal = await this.prisma.huntMatch.findFirst({
+      where: { hunt: { userId } },
+      orderBy: { matchedAt: 'desc' },
+      select: { id: true, listing: { select: { title: true } } },
+    });
+    const alert = await this.prisma.alert.create({
+      data: {
+        userId,
+        category: 'operational',
+        huntMatchId: deal?.id ?? null,
+        dedupeKey: `test:${randomUUID()}`,
+        title: 'Test notification from Rein Drop',
+        body: deal ? `Tap to open "${deal.listing.title.slice(0, 80)}".` : 'Tap to open your inbox.',
+        deliveries: { create: [{ channel: 'IN_APP', status: 'SENT', sentAt: new Date() }, { channel: 'PUSH', status: 'PENDING' }] },
+      },
+    });
+    return { alertId: alert.id, dealId: deal?.id ?? null };
+  }
+
   async deliveryLog(userId: string): Promise<NotificationLog> {
     const rows = await this.prisma.notificationDelivery.findMany({
       where: { alert: { userId } },

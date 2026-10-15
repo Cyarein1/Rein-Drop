@@ -1,4 +1,5 @@
 import { ExpoPushProvider } from './expo-push-provider.js';
+import { maskToken } from './simulated-push-provider.js';
 import type { PushMessage } from './push-provider.js';
 
 const message = (n: number): PushMessage => ({ to: `ExponentPushToken[t${n}]`, title: 'Strong deal: iPhone 13', body: null, data: { alertId: 'a' }, channelId: 'alerts' });
@@ -54,5 +55,34 @@ describe('ExpoPushProvider', () => {
     expect(await send((async () => Promise.reject(new Error('ECONNRESET'))) as typeof fetch)).toMatchObject({ code: 'unavailable', retryable: true });
     expect(await send(fakeFetch(() => new Response('<html>', { status: 200 })).fn)).toMatchObject({ code: 'unavailable', retryable: true });
     expect(await send(fakeFetch(() => json({ errors: [{ message: 'bad request' }] })).fn)).toMatchObject({ code: 'other', message: expect.stringContaining('bad request') });
+  });
+});
+
+describe('Expo push receipts', () => {
+  it('asks for receipts in batches of up to 1000 and maps them (ok, DeviceNotRegistered, not ready yet = absent)', async () => {
+    const { fn, calls } = fakeFetch((body) => {
+      const ids = (body as unknown as { ids: string[] }).ids;
+      return json({ data: Object.fromEntries(ids.filter((id) => id !== 'pending').map((id) => [id, id === 'dead' ? { status: 'error', message: 'gone', details: { error: 'DeviceNotRegistered' } } : { status: 'ok' }])) });
+    });
+    const ids = ['ok-1', 'dead', 'pending', ...Array.from({ length: 1000 }, (_, i) => `more-${i}`)];
+    const receipts = await new ExpoPushProvider({ fetch: fn, accessToken: 'secret' }).getReceipts(ids);
+    expect(calls.map((c) => c.url)).toEqual(['https://exp.host/--/api/v2/push/getReceipts', 'https://exp.host/--/api/v2/push/getReceipts']);
+    expect(calls[0]!.headers.authorization).toBe('Bearer secret');
+    expect(receipts.get('ok-1')).toEqual({ status: 'ok' });
+    expect(receipts.get('dead')).toEqual({ status: 'error', code: 'device_not_registered', message: 'gone' });
+    expect(receipts.has('pending')).toBe(false);
+    expect(receipts.size).toBe(1002);
+  });
+
+  it('an outage throws, so the maintenance loop simply asks again later', async () => {
+    const { fn } = fakeFetch(() => json({}, 503));
+    await expect(new ExpoPushProvider({ fetch: fn }).getReceipts(['x'])).rejects.toThrow('Expo receipts HTTP 503');
+  });
+});
+
+describe('simulated push log', () => {
+  it('masks device tokens (a push token is enough to send to that phone)', () => {
+    expect(maskToken('ExponentPushToken[abcdefghijklmnop]')).toBe('…lmnop]');
+    expect(maskToken('dev-simulated:01990000-0000-7000-8000-000000000001')).toBe('…000001');
   });
 });

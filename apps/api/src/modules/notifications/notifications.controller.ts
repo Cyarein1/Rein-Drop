@@ -6,6 +6,7 @@ import {
   updateNotificationPreferencesRequestSchema,
   type Alert,
   type AlertPage,
+  type DevTestNotification,
   type NotificationLog,
   type NotificationPreferences,
   type PushDevice,
@@ -79,6 +80,19 @@ export class DevNotificationsController {
       throw new AppException('NOT_FOUND', 'Cannot GET /dev/notifications', HttpStatus.NOT_FOUND);
     }
     return this.notifications.deliveryLog(user.userId);
+  }
+
+  /**
+   * Sends the caller a test push (through the worker's outbox, like a real alert) that opens their
+   * most recent deal - or the inbox when they have none. Tests registration, delivery and the tap.
+   */
+  @Post('test')
+  @HttpCode(HttpStatus.OK)
+  async test(@CurrentUser() user: Principal): Promise<DevTestNotification> {
+    if (this.config.nodeEnv === 'production') {
+      throw new AppException('NOT_FOUND', 'Cannot POST /dev/notifications/test', HttpStatus.NOT_FOUND);
+    }
+    return this.notifications.sendTestNotification(user.userId);
   }
 }
 

@@ -48,3 +48,8 @@ infra/*.bicepparam
 
 # Local listing photos (MEDIA_STORAGE=local, decision 0019)
 .data/
+
+# Firebase / Apple push credentials (docs/PUSH_NOTIFICATIONS.md) - kept in EAS / Key Vault, never in git
+google-services.json
+GoogleService-Info.plist
+*.p8

@@ -19,7 +19,7 @@ describe('loadWorkerConfig', () => {
         searchTimeoutMs: 30_000,
       },
       sourceHealth: { slowMs: 5_000, downAfterFailures: 3, backoffBaseMs: 30_000, backoffMaxMs: 900_000, probeIntervalMs: 60_000 },
-      notifications: { delivery: 'simulator', push: { provider: 'simulator', expoAccessToken: null } },
+      notifications: { delivery: 'simulator', push: { provider: 'simulator', expoAccessToken: null, staleDeviceDays: 90 } },
       ai: { provider: 'mock', foundry: null },
       devMarketplaceScenarios: { ebay: 'normal', facebook: 'normal' },
       devMarketplaceLatencyMs: { ebay: 0, facebook: 0 },
@@ -102,7 +102,7 @@ describe('loadWorkerConfig', () => {
   it('simulates notifications locally and refuses the simulator in production', () => {
     expect(loadWorkerConfig({ NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'expo', EXPO_ACCESS_TOKEN: 'secret' }).notifications).toEqual({
       delivery: 'disabled',
-      push: { provider: 'expo', expoAccessToken: 'secret' },
+      push: { provider: 'expo', expoAccessToken: 'secret', staleDeviceDays: 90 },
     });
     expect(() =>
       loadWorkerConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@db/app', HUNT_POLL_INTERVAL_MINUTES: '15', AI_PROVIDER: 'foundry', NOTIFICATION_DELIVERY: 'disabled', PUSH_PROVIDER: 'simulator' }),

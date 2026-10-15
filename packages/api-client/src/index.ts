@@ -10,6 +10,8 @@ import {
   listAlertsQuerySchema,
   markAllAlertsReadResponseSchema,
   notificationLogSchema,
+  devTestNotificationSchema,
+  type DevTestNotification,
   notificationPreferencesSchema,
   pushDeviceListSchema,
   pushDeviceSchema,
@@ -296,6 +298,8 @@ export interface ApiClient {
   markAllAlertsRead(): Promise<{ updated: number }>;
   /** DEVELOPMENT ONLY: the notification simulator log (404 in production). */
   getNotificationLog(): Promise<NotificationLog>;
+  /** DEVELOPMENT ONLY: send yourself a test push that opens your latest deal (404 in production). */
+  sendTestNotification(): Promise<DevTestNotification>;
 
   /** Register (or refresh) this phone for push. Same token = same device. */
   registerPushDevice(input: RegisterPushDeviceRequest): Promise<PushDevice>;
@@ -542,6 +546,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     markAlertRead: (id) => send(http, { method: 'POST', path: `/alerts/${pathId(id)}/read`, response: alertSchema }),
     markAllAlertsRead: () => send(http, { method: 'POST', path: '/alerts/read-all', response: markAllAlertsReadResponseSchema }),
     getNotificationLog: () => send(http, { method: 'GET', path: '/dev/notifications', response: notificationLogSchema }),
+    sendTestNotification: () => send(http, { method: 'POST', path: '/dev/notifications/test', body: {}, response: devTestNotificationSchema }),
 
     registerPushDevice: async (input) =>
       send(http, {

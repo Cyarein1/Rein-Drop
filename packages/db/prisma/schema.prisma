@@ -747,7 +747,8 @@ model NotificationDelivery {
   createdAt   DateTime       @default(now()) @db.Timestamptz(3)
   sentAt      DateTime?      @db.Timestamptz(3)
 
-  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  alert       Alert        @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  pushTickets PushTicket[]
 
   @@unique([alertId, channel])
   @@index([status, createdAt])
@@ -774,9 +775,33 @@ model PushDevice {
   disabledAt     DateTime? @db.Timestamptz(3)
   disabledReason String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets PushTicket[]
 
   @@index([userId, disabledAt])
+}
+
+/// A push accepted by the provider (Expo ticket). Its receipt is checked ~15 minutes later: errors
+/// such as DeviceNotRegistered often only appear there (the device is then disabled). Rows are
+/// deleted a week after they're checked. No payload or token is stored here.
+model PushTicket {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  /// PushProvider id, e.g. "expo".
+  provider      String
+  /// The provider's ticket / receipt id.
+  ticketId      String    @unique
+  pushDeviceId  String    @db.Uuid
+  deliveryId    String    @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  checkedAt     DateTime? @db.Timestamptz(3)
+  /// ok | error | unknown (no receipt within 24 hours).
+  receiptStatus String?
+  receiptError  String?
+
+  device   PushDevice           @relation(fields: [pushDeviceId], references: [id], onDelete: Cascade)
+  delivery NotificationDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([checkedAt, createdAt])
 }
 
 /// A user's explicit choice for one (category, channel). Missing rows use the defaults in

@@ -14,6 +14,8 @@ describe('DevNotificationsController', () => {
     const calls = vi.mocked(service.deliveryLog).mock.calls.length;
     const prod = { ...loadApiConfig({ NODE_ENV: 'test' }), nodeEnv: 'production' } as ReturnType<typeof loadApiConfig>;
     await expect(new DevNotificationsController(service, prod).log(user)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    // The test push too.
+    await expect(new DevNotificationsController(service, prod).test(user)).rejects.toMatchObject({ code: 'NOT_FOUND' });
     expect(vi.mocked(service.deliveryLog).mock.calls.length).toBe(calls);
   });
 });

@@ -41,16 +41,28 @@ export interface SenderConfig {
  *   development. PUSH_PROVIDER=none -> no push sender (deliveries SKIPPED not_configured).
  * - EMAIL: simulator or nothing.
  */
-export function createNotificationSenders(prisma: PrismaClient, config: SenderConfig): NotificationSenders {
+export function createNotificationSenders(prisma: PrismaClient, config: SenderConfig, push = createPushProviders(config)): NotificationSenders {
   const senders: NotificationSenders = {};
   if (config.delivery === 'simulator') senders.EMAIL = new SimulatedSender();
-  if (config.push.provider !== 'none') {
-    const simulator = new SimulatedPushProvider();
-    const providers: Record<string, PushProvider> = {
-      expo: config.push.provider === 'expo' ? new ExpoPushProvider({ accessToken: config.push.expoAccessToken ?? undefined }) : simulator,
-    };
-    if (config.nodeEnv !== 'production') providers.dev_simulated = simulator;
-    senders.PUSH = new PushNotificationSender(prisma, providers);
-  }
+  if (push) senders.PUSH = new PushNotificationSender(prisma, push);
   return senders;
+}
+
+/**
+ * Push providers keyed by PushDevice.provider (null when PUSH_PROVIDER=none). Shared by the sender
+ * and PushMaintenance (receipts), so both talk to the same Expo client.
+ */
+export function createPushProviders(config: Pick<SenderConfig, 'nodeEnv' | 'push'>): Record<string, PushProvider> | null {
+  if (config.push.provider === 'none') return null;
+  const simulator = new SimulatedPushProvider();
+  const providers: Record<string, PushProvider> = {
+    expo: config.push.provider === 'expo' ? new ExpoPushProvider({ accessToken: config.push.expoAccessToken ?? undefined }) : simulator,
+  };
+  if (config.nodeEnv !== 'production') providers.dev_simulated = simulator;
+  return providers;
+}
+
+/** The same providers keyed by PushProvider.id (what PushTicket.provider stores). */
+export function pushProvidersById(providers: Record<string, PushProvider> | null): Record<string, PushProvider> {
+  return Object.fromEntries(Object.values(providers ?? {}).map((p) => [p.id, p]));
 }

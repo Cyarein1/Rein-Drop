@@ -193,6 +193,10 @@ export const notificationLogSchema = z.object({
 });
 export type NotificationLog = z.infer<typeof notificationLogSchema>;
 
+/** DEVELOPMENT ONLY: POST /dev/notifications/test - a test alert whose push opens dealId (or the inbox). */
+export const devTestNotificationSchema = z.object({ alertId: idSchema, dealId: idSchema.nullable() });
+export type DevTestNotification = z.infer<typeof devTestNotificationSchema>;
+
 // ---------------------------------------------------------------------------
 // Push devices
 // ---------------------------------------------------------------------------

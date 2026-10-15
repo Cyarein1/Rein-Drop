@@ -77,3 +77,11 @@ clears user + Rein Drop thresholds; notification precision is a product metric.
   permission was already granted. Denied -> "every alert is still in your inbox" + Open settings.
 - TODO(push): Expo push receipts (errors that surface after the ticket); EAS project id for a
   development build (`eas init`) - not configured in this repo.
+
+## Update - step 84 (push hardening)
+
+- **Access gate at send time** (`apps/worker/src/notifications/alert-gate.ts`): deal / exceptional pushes go out only while the account isn't suspended, has Source access (shared resolver incl. `BILLING_GRACE_DAYS`) and the Hunt is LIVE after enforcing the plan limit. Otherwise SKIPPED, inbox kept.
+- **Expo receipts** are fetched ~15 min after sending (`PushTicket` table, `PushMaintenance`); `DeviceNotRegistered` disables the device. Devices silent for `PUSH_DEVICE_STALE_DAYS` (default 90) are disabled.
+- **App:** tap targets validated (ids only), taps wait for sign-in, cold-start response cleared, token rotation re-registers, foreground duplicates suppressed.
+- **Dev:** `POST /dev/notifications/test` + mobile Developer card button; simulator log masks tokens.
+- Setup and device checklist: [PUSH_NOTIFICATIONS.md](../PUSH_NOTIFICATIONS.md).

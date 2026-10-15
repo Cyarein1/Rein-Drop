@@ -9,8 +9,10 @@ import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { CLOCK, JOB_QUEUE, type Clock, type JobQueue } from '../queue/job-queue.js';
 import { JobRunner } from '../queue/job-runner.js';
 import { PostgresJobQueue } from '../queue/postgres-job-queue.js';
+import { AccessAlertGate } from '../notifications/alert-gate.js';
 import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
-import { createNotificationSenders } from '../notifications/senders.js';
+import { PUSH_MAINTENANCE_DEFAULTS, PushMaintenance } from '../notifications/push/push-maintenance.js';
+import { createNotificationSenders, createPushProviders, pushProvidersById } from '../notifications/senders.js';
 import { ANALYSIS_QUEUE, ANALYSIS_RUNNER, DealAnalysisHandler } from './deal-analysis.handler.js';
 import { SourceHealthStore } from '../health/source-health.store.js';
 import { HuntScheduler } from './hunt-scheduler.js';
@@ -23,6 +25,7 @@ import { SEARCH_QUEUE } from './search-plan.js';
 export const PRISMA = Symbol('PRISMA');
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
 export const PRODUCT_EVENTS = Symbol('PRODUCT_EVENTS');
+const PUSH_PROVIDERS = Symbol('PUSH_PROVIDERS');
 
 @Injectable()
 class PrismaLifecycle implements OnApplicationShutdown {
@@ -106,14 +109,24 @@ function createProductEvents(c: WorkerConfig): ProductEvents {
     },
     {
       provide: NotificationDispatcher,
-      inject: [PRISMA, WORKER_CONFIG, CLOCK],
-      useFactory: (p: PrismaClient, c: WorkerConfig, clock: Clock) =>
+      inject: [PRISMA, WORKER_CONFIG, CLOCK, PUSH_PROVIDERS],
+      useFactory: (p: PrismaClient, c: WorkerConfig, clock: Clock, push: ReturnType<typeof createPushProviders>) =>
         new NotificationDispatcher(
           p,
-          createNotificationSenders(p, { nodeEnv: c.nodeEnv, delivery: c.notifications.delivery, push: c.notifications.push }),
+          createNotificationSenders(p, { nodeEnv: c.nodeEnv, delivery: c.notifications.delivery, push: c.notifications.push }, push),
           { batchSize: 20, leaseMs: c.pipeline.leaseMs, maxAttempts: c.pipeline.maxAttempts },
           clock,
+          // Sourcing alerts only while the account may run the Hunt (access + live-Hunt limit + grace).
+          new AccessAlertGate(p, c.accessPolicy),
         ),
+    },
+    // One set of push providers for sending and for receipts (PushMaintenance).
+    { provide: PUSH_PROVIDERS, inject: [WORKER_CONFIG], useFactory: (c: WorkerConfig) => createPushProviders({ nodeEnv: c.nodeEnv, push: c.notifications.push }) },
+    {
+      provide: PushMaintenance,
+      inject: [PRISMA, WORKER_CONFIG, PUSH_PROVIDERS],
+      useFactory: (p: PrismaClient, c: WorkerConfig, push: ReturnType<typeof createPushProviders>) =>
+        new PushMaintenance(p, pushProvidersById(push), { ...PUSH_MAINTENANCE_DEFAULTS, staleDeviceDays: c.notifications.push.staleDeviceDays }),
     },
     PipelineService,
   ],

@@ -45,6 +45,9 @@ export class PushNotificationSender implements NotificationSender {
     }
 
     const accepted = results.filter((r) => r.ticket.status === 'ok');
+    // Keep the ticket ids of providers with receipts, so PushMaintenance can check delivery later.
+    const tickets = accepted.flatMap((r) => (r.ticket.status === 'ok' && r.ticket.id && r.provider.getReceipts ? [{ provider: r.provider.id, ticketId: r.ticket.id, pushDeviceId: r.deviceId, deliveryId: message.deliveryId }] : []));
+    if (tickets.length > 0) await this.prisma.pushTicket.createMany({ data: tickets, skipDuplicates: true });
     if (accepted.length > 0) {
       const providers = [...new Set(accepted.map((r) => r.provider.id))];
       return { provider: providers.join(','), simulated: accepted.every((r) => r.provider.simulated) };

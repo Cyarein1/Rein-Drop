@@ -1,11 +1,58 @@
 # Build Status
 
-_Last updated: 2026-10-15 (step 83 - Sell workspace: listings, AI drafts, cross-listing; central "+" restored)_
+_Last updated: 2026-10-15 (step 84 - push notifications and authenticated deep links)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 84 - Push notifications and authenticated deep linking (mobile companion)
+
+Audited first: registration, preferences, one-alert-per-deal dedupe, the outbox, the Expo /
+simulator providers, ids-only payloads and deal 404s already existed (steps 24-28). This step fixed
+the gaps. Guide, Android / iOS setup and device checklist:
+[PUSH_NOTIFICATIONS.md](PUSH_NOTIFICATIONS.md).
+
+- **Entitlement gate at send time:** `AccessAlertGate`, called by the dispatcher right before a push
+  or email.
+  - Sourcing alerts are SKIPPED when the account is suspended, has no Source access (shared
+    resolver incl. grace) or the Hunt isn't LIVE.
+  - The plan's live-Hunt limit is enforced eagerly at that moment, so no Hunt above the limit can
+    alert inside the 5-minute sweep gap.
+  - The inbox keeps the alert.
+- **Stale tokens:**
+  - **Expo receipts:** the `PushTicket` table (migration `push_tickets`, additive) stores accepted
+    tickets. `PushMaintenance` (worker loop, every 5 minutes) checks receipts after ~15 min:
+    DeviceNotRegistered disables the device; no receipt after 24 h is closed as unknown; checked
+    rows are deleted after 7 days. `ExpoPushProvider.getReceipts` batches 1000 ids.
+  - **Silent devices:** devices not refreshed for `PUSH_DEVICE_STALE_DAYS` (default 90) are disabled.
+- **Simulator:** the log masks device tokens.
+- **Dev test push:** `POST /dev/notifications/test` (404 in production) queues an operational alert
+  that opens your latest deal, or the inbox, through the normal outbox. A mobile Developer card
+  button sends it.
+- **Mobile `NotificationsBridge`:**
+  - taps are validated by client-core `notificationTarget` (ids only, otherwise the inbox), each is
+    handled once, and the cold-start response is cleared;
+  - a tap while signed out or expired waits and opens after sign-in (never for another account);
+  - when the token rotates, the phone re-registers;
+  - a foreground alert is shown once, and not for the deal already on screen.
+- **Build config:** `app.config.ts` reads `EAS_PROJECT_ID`, `APP_BUNDLE_ID` and
+  `GOOGLE_SERVICES_FILE` (owner values, nothing invented). Push credential files are ignored by git.
+- **Tests:**
+  - worker `push-delivery.int-spec` (6: ids-only payload + ticket stored, suspended, paused Hunt,
+    over-limit Hunt, receipts incl. not-ready / give-up, stale devices);
+  - Expo receipts + token masking unit tests;
+  - API `dev-test-notification.int-spec` (2) and controller 404 in production;
+  - client-core `notification-target.spec` (6);
+  - mobile `NotificationsBridge-test` (6: deep link + mark read, cold start once + cleared,
+    malformed -> inbox, tap waits for sign-in, foreground dedupe / on-screen, token rotation);
+  - worker config spec.
+- **Checks:**
+  - `pnpm turbo run build typecheck lint test` 66/66;
+  - API integration 108/108 and worker integration 61/61 on the preview database (5433);
+  - not tested on a real phone (needs the EAS project, credentials and a development build -
+    checklist in the guide).
 
 ### Step 83 - Sell workspace: list bought items with AI help and cross-list them (decision 0019); mobile central "+" restored
 

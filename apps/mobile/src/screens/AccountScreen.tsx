@@ -172,6 +172,7 @@ export default function AccountScreen() {
               UI primitives
             </Button>
           </View>
+          <TestPushButton />
         </Card>
       )}
     </Screen>
@@ -414,5 +415,34 @@ function AccessCard({ locale }: { locale: UserLocale | null }) {
       ))}
       {accountLine && <Text style={[styles.muted, font('regular')]}>{accountLine}</Text>}
     </Card>
+  );
+}
+
+/**
+ * DEVELOPMENT ONLY (inside the Developer card): asks the API for a test alert; the worker sends it
+ * through the normal outbox (Expo on a development build, the simulator log otherwise). Tapping it
+ * opens your latest deal - the whole register -> send -> tap -> deep link path.
+ */
+function TestPushButton() {
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      const sent = await getApiClient().sendTestNotification();
+      setStatus(sent.dealId ? 'Queued - it arrives within a few seconds and opens your latest deal.' : 'Queued - it arrives within a few seconds and opens the inbox (no deals yet).');
+    } catch (err) {
+      setStatus(`Not sent: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={styles.answer}>
+      <Button variant="secondary" loading={busy} onPress={() => void send()}>
+        Send a test notification
+      </Button>
+      {status && <Text style={[styles.muted, font('regular')]}>{status}</Text>}
+    </View>
   );
 }

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdo
 import { WORKER_CONFIG, type WorkerConfig } from '../config/worker-config.js';
 import { JobRunner } from '../queue/job-runner.js';
 import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
+import { PushMaintenance } from '../notifications/push/push-maintenance.js';
 import { ANALYSIS_RUNNER } from './deal-analysis.handler.js';
 import { MarketplaceRegistry } from '@rein-drop/marketplace-core';
 import { SourceHealthStore } from '../health/source-health.store.js';
@@ -26,6 +27,7 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
     private readonly runner: JobRunner,
     @Inject(ANALYSIS_RUNNER) private readonly analysisRunner: JobRunner,
     private readonly notifications: NotificationDispatcher,
+    private readonly pushMaintenance: PushMaintenance,
     private readonly sourceHealth: SourceHealthStore,
     private readonly registry: MarketplaceRegistry,
   ) {}
@@ -51,6 +53,11 @@ export class PipelineService implements OnApplicationBootstrap, OnApplicationShu
       this.loop('notifications', runnerIntervalMs, async () => {
         const n = await this.notifications.dispatchPending();
         if (n.claimed > 0) this.logger.log(`Notifications: ${JSON.stringify(n)}`);
+      }),
+      // Push receipts (dead tokens) and devices silent for too long - every 5 minutes.
+      this.loop('push-maintenance', 5 * 60_000, async () => {
+        const m = await this.pushMaintenance.run(new Date());
+        if (m.checked + m.disabledByReceipt + m.disabledStale > 0) this.logger.log(`Push maintenance: ${JSON.stringify(m)}`);
       }),
       // Sources' own health checks: fills in when there were no searches lately, notices
       // "not configured", and lets a recovered source out of its cool-down early.

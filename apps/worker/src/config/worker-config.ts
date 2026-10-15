@@ -71,6 +71,8 @@ const workerEnvSchema = z.object({
   PUSH_PROVIDER: z.enum(['expo', 'simulator', 'none'], { error: 'must be one of: expo, simulator, none' }).optional(),
   /** Only needed if 'enhanced push security' is on for the Expo project. Secret. */
   EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+  /** Devices that haven't refreshed their registration for this many days stop receiving pushes. */
+  PUSH_DEVICE_STALE_DAYS: intSchema({ min: 7, max: 365, default: 90 }),
   NOTIFICATION_DELIVERY: z.enum(['simulator', 'disabled'], { error: 'must be one of: simulator, disabled' }).optional(),
   /** json = one JSON object per log line (default in production); text = readable. */
   LOG_FORMAT: z.enum(['json', 'text'], { error: 'must be one of: json, text' }).optional(),
@@ -113,7 +115,7 @@ export interface WorkerConfig {
   readonly notifications: {
     /** Email (push has its own provider). */
     readonly delivery: 'simulator' | 'disabled';
-    readonly push: { readonly provider: 'expo' | 'simulator' | 'none'; readonly expoAccessToken: string | null };
+    readonly push: { readonly provider: 'expo' | 'simulator' | 'none'; readonly expoAccessToken: string | null; readonly staleDeviceDays: number };
   };
   /** AIProvider for deal analysis (@rein-drop/ai-core); `foundry` holds its config (secret - never log it). */
   readonly ai: { readonly provider: AIProviderId; readonly foundry: FoundryConfig | null };
@@ -189,7 +191,7 @@ export function loadWorkerConfig(
     }),
     notifications: Object.freeze({
       delivery: parsed.NOTIFICATION_DELIVERY ?? 'simulator',
-      push: Object.freeze({ provider: parsed.PUSH_PROVIDER ?? 'simulator', expoAccessToken: parsed.EXPO_ACCESS_TOKEN ?? null }),
+      push: Object.freeze({ provider: parsed.PUSH_PROVIDER ?? 'simulator', expoAccessToken: parsed.EXPO_ACCESS_TOKEN ?? null, staleDeviceDays: parsed.PUSH_DEVICE_STALE_DAYS }),
     }),
     ai: Object.freeze({ provider: aiProvider, foundry: ai.foundry ? Object.freeze(ai.foundry) : null }),
     devMarketplaceScenarios: Object.freeze({

@@ -1,6 +1,9 @@
-import type { PushErrorCode, PushMessage, PushProvider, PushTicket } from './push-provider.js';
+import type { PushErrorCode, PushMessage, PushProvider, PushReceipt, PushTicket } from './push-provider.js';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+const EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts';
+/** Expo accepts at most 1000 receipt ids per request. */
+const MAX_RECEIPT_BATCH = 1000;
 /** Expo accepts at most 100 messages per request. */
 const MAX_BATCH = 100;
 
@@ -24,8 +27,8 @@ interface ExpoTicket {
  * Expo push tokens from development and store builds. The access token is optional (only needed
  * when "enhanced push security" is turned on for the Expo project).
  *
- * TODO(push): fetch push receipts (`/getReceipts`) ~15 min later - delivery errors such as
- * DeviceNotRegistered can also surface there, not only in the ticket.
+ * Receipts (`/getReceipts`) are fetched ~15 minutes later by PushMaintenance - delivery errors such
+ * as DeviceNotRegistered often only surface there, not in the ticket.
  */
 export class ExpoPushProvider implements PushProvider {
   readonly id = 'expo';
@@ -39,6 +42,28 @@ export class ExpoPushProvider implements PushProvider {
     const tickets: PushTicket[] = [];
     for (let i = 0; i < messages.length; i += MAX_BATCH) tickets.push(...(await this.sendBatch(messages.slice(i, i + MAX_BATCH))));
     return tickets;
+  }
+
+  async getReceipts(ticketIds: readonly string[]): Promise<Map<string, PushReceipt>> {
+    const receipts = new Map<string, PushReceipt>();
+    const doFetch = this.options.fetch ?? globalThis.fetch;
+    for (let i = 0; i < ticketIds.length; i += MAX_RECEIPT_BATCH) {
+      const ids = ticketIds.slice(i, i + MAX_RECEIPT_BATCH);
+      const response = await doFetch(EXPO_RECEIPTS_URL, {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json', ...(this.options.accessToken ? { authorization: `Bearer ${this.options.accessToken}` } : {}) },
+        body: JSON.stringify({ ids }),
+        signal: AbortSignal.timeout(this.options.timeoutMs ?? 10_000),
+      });
+      // An outage just means "not yet": the maintenance loop asks again later.
+      if (!response.ok) throw new Error(`Expo receipts HTTP ${response.status}`);
+      const payload = (await response.json()) as { data?: Record<string, ExpoTicket> };
+      for (const [id, r] of Object.entries(payload.data ?? {})) {
+        if (r.status === 'ok') receipts.set(id, { status: 'ok' });
+        else receipts.set(id, { status: 'error', code: (EXPO_ERRORS[r.details?.error ?? ''] ?? { code: 'other' as const }).code, message: r.message ?? r.details?.error ?? 'Expo push error' });
+      }
+    }
+    return receipts;
   }
 
   private async sendBatch(batch: readonly PushMessage[]): Promise<PushTicket[]> {

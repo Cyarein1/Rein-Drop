@@ -3,6 +3,7 @@ import type { NotificationCategory } from '@rein-drop/contracts';
 import { Prisma, type PrismaClient } from '@rein-drop/db';
 import type { Clock } from '../queue/job-queue.js';
 import { exponentialBackoffMs } from '../queue/job-runner.js';
+import { OPEN_GATE, type AlertGate } from './alert-gate.js';
 import { DeliverySkipped } from './sender-types.js';
 import type { NotificationSenders } from './senders.js';
 
@@ -40,6 +41,8 @@ export class NotificationDispatcher {
     private readonly senders: NotificationSenders,
     private readonly options: DispatcherOptions,
     private readonly clock: Clock = () => new Date(),
+    /** Access check right before sending (sourcing alerts stop when the account may not run the Hunt). */
+    private readonly gate: AlertGate = OPEN_GATE,
   ) {}
 
   async dispatchPending(): Promise<DispatchSummary> {
@@ -76,11 +79,14 @@ export class NotificationDispatcher {
       return 'skipped';
     }
     try {
+      const category = delivery.alert.category as NotificationCategory;
+      const gate = await this.gate.check({ userId: delivery.alert.user.id, category, huntId: delivery.alert.huntId }, now);
+      if (!gate.send) throw new DeliverySkipped(gate.reason);
       const result = await sender.send({
         deliveryId: id,
         alertId: delivery.alertId,
         channel: channel as 'PUSH' | 'EMAIL',
-        category: delivery.alert.category as NotificationCategory,
+        category,
         title: delivery.alert.title,
         body: delivery.alert.body,
         dealId: delivery.alert.huntMatchId,

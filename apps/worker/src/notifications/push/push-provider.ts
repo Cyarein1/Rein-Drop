@@ -29,6 +29,9 @@ export type PushErrorCode =
 
 export type PushTicket = { status: 'ok'; id: string | null } | { status: 'error'; code: PushErrorCode; message: string; retryable: boolean };
 
+/** Final delivery result for a ticket (Expo push receipts). Missing = not ready yet. */
+export type PushReceipt = { status: 'ok' } | { status: 'error'; code: PushErrorCode; message: string };
+
 export interface PushProvider {
   /** Stored as NotificationDelivery.provider. */
   readonly id: string;
@@ -36,4 +39,6 @@ export interface PushProvider {
   readonly simulated: boolean;
   /** One ticket per message, in order. Never throws for per-message problems. */
   send(messages: readonly PushMessage[]): Promise<PushTicket[]>;
+  /** Receipts for earlier ticket ids, when the provider has them (Expo). Unknown / not-ready ids are absent. */
+  getReceipts?(ticketIds: readonly string[]): Promise<Map<string, PushReceipt>>;
 }
