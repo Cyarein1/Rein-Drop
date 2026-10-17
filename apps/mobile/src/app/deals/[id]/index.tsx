@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
-import { AccessibilityInfo, Image, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, Alert, Image, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ApiError, type DealDetail } from '@rein-drop/api-client';
+import { ApiError, type DealDetail, type InventoryItem } from '@rein-drop/api-client';
 import {
+  cancelBlockedHint,
   confidenceLabel,
   dealActions,
   dealDetailView,
+  itemActionsView,
   nextStepLabel,
   offlineMessage,
   reasonEffectLabel,
@@ -23,11 +25,12 @@ import { DealEconomics } from '@/components/DealEconomics';
 import { getApiClient } from '@/config/api';
 import { isOffline } from '@/data/useRefreshable';
 import { useDisplayContext, useT } from '@/i18n/useT';
-import { ActionBar, Badge, Button, colors, font, GUTTER, haptic, Icon, IconButton, icons, SkeletonRows, SystemBanner, type } from '@/ui';
+import { ActionBar, Badge, Button, colors, font, GUTTER, haptic, Icon, IconButton, icons, SkeletonRows, SystemBanner, type, type IconName } from '@/ui';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string; notFound: boolean } | { status: 'ready'; deal: DealDetail; version: number };
 
 const PHOTO_HEIGHT = 300;
+const UNDO_ICON = { ios: 'arrow.uturn.backward', android: 'undo' } as const;
 
 /**
  * Deal Detail (step 89 mock-up): swipeable photo header with floating back / share / save, the
@@ -152,6 +155,35 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
   const share = () =>
     void Share.share(Platform.OS === 'ios' ? { message: view.title, url: view.url } : { message: t('deals.shareMessage', { title: view.title, url: view.url }) }).catch(() => undefined);
   const openSheet = (sheet: 'bought' | 'dismiss') => router.push({ pathname: sheet === 'bought' ? '/deals/[id]/bought' : '/deals/[id]/dismiss', params: { id: deal.id } });
+
+  // Undo bought (decision 0021): offered only when the purchase's item allows it (API state machine).
+  // Re-checked after Undo bought / Bought again (same item id, new state): keyed by both.
+  const itemId = deal.decision.inventoryItemId;
+  const itemKey = itemId ? [itemId, deal.matchStatus, deal.decision.boughtAt ?? ''].join('|') : null;
+  const [loaded, setLoaded] = useState<{ key: string; item: InventoryItem } | null>(null);
+  const boughtItem = loaded && loaded.key === itemKey ? loaded.item : null;
+  useEffect(() => {
+    if (!itemId || !itemKey) return;
+    let cancelled = false;
+    getApiClient()
+      .getInventoryItem(itemId)
+      .then(
+        (item) => !cancelled && setLoaded({ key: itemKey, item }),
+        () => undefined,
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, itemKey]);
+  const undoBought = boughtItem ? itemActionsView(boughtItem, t).find((a) => a.action === 'cancel') : undefined;
+  const undoBlocked = boughtItem ? cancelBlockedHint(boughtItem, t) : null;
+  const confirmUndoBought = () => {
+    if (!undoBought?.confirm) return;
+    Alert.alert(undoBought.confirm.title, undoBought.confirm.body, [
+      { text: undoBought.confirm.cancelLabel, style: 'cancel' },
+      { text: undoBought.confirm.confirmLabel, style: 'destructive', onPress: () => void run(() => api.undoDealBought(deal.id), t('inventory.doneCancelled')) },
+    ]);
+  };
 
   const questions = [...new Set([...(deal.why?.questionsForSeller ?? []), ...(deal.risk?.missingInformation.map((m) => m.question) ?? [])])];
   const exceptionalArt = mascotAssets.exceptionalDeal;
@@ -280,6 +312,8 @@ function DealBody({ initial, context }: { initial: DealDetail; context: HuntForm
             </InfoRow>
 
             {can.canIgnore && <ActionRow icon={icons.dismiss} title={t('deals.notForMe')} onPress={() => openSheet('dismiss')} disabled={pending} />}
+            {undoBought && <ActionRow icon={UNDO_ICON} title={undoBought.label} onPress={confirmUndoBought} disabled={pending} />}
+            {undoBlocked && <Text style={[styles.small, font('regular')]}>{undoBlocked}</Text>}
             {can.canUnignore && <ActionRow icon={icons.dismiss} title={t('deals.undoIgnore')} onPress={() => void run(() => api.unignoreDeal(deal.id), t('deals.doneUnignored'))} disabled={pending} />}
           </View>
         </View>
@@ -405,7 +439,7 @@ function InfoRow({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ActionRow({ icon, title, onPress, disabled }: { icon: (typeof icons)[keyof typeof icons]; title: string; onPress: () => void; disabled?: boolean }) {
+function ActionRow({ icon, title, onPress, disabled }: { icon: IconName; title: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"

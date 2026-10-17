@@ -4,12 +4,13 @@ import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { ButtonLink, Card, EmptyState, Page } from "@/components/ui";
+import { itemHref } from "@/sell/routes";
 import { loadInventoryItem } from "../../load-item";
 import { MarkSoldForm } from "./MarkSoldForm";
 
 export const metadata: Metadata = { title: "Mark sold" };
 
-export default function MarkSoldPage({ params }: PageProps<"/inventory/[id]/sell">) {
+export default function MarkSoldPage({ params }: PageProps<"/sell/items/[id]/sold">) {
   return (
     <Protected>
       <Page>
@@ -19,7 +20,7 @@ export default function MarkSoldPage({ params }: PageProps<"/inventory/[id]/sell
   );
 }
 
-async function SellLoader({ params }: { params: PageProps<"/inventory/[id]/sell">["params"] }) {
+async function SellLoader({ params }: { params: PageProps<"/sell/items/[id]/sold">["params"] }) {
   await connection(); // "today" is per request
   const { id } = await params;
   const session = await verifySession();
@@ -30,7 +31,7 @@ async function SellLoader({ params }: { params: PageProps<"/inventory/[id]/sell"
         <EmptyState
           title="This item can't be marked sold"
           description="Only items you're holding can be sold."
-          action={<ButtonLink href={`/inventory/${item.id}`} variant="secondary">Back to the item</ButtonLink>}
+          action={<ButtonLink href={itemHref(item.id)} variant="secondary">Back to the item</ButtonLink>}
         />
       </Card>
     );

@@ -1,26 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState, useTransition } from "react";
-import type { MarketplaceKey, SellDraftSuggestion, SellListing, SellMarketplacesResponse } from "@rein-drop/api-client";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
+import type { MarketplaceKey, RecordSaleRequest, SellDraftSuggestion, SellListing, SellMarketplacesResponse } from "@rein-drop/api-client";
 import {
   applyDraft,
+  buildListingSoldRequest,
   buildSellUpdate,
   channelView,
   draftWouldReplace,
   formatMoney,
+  inventoryStatusLabel,
   LISTING_CONDITION_OPTIONS,
+  listingSoldDoneText,
+  listingSoldFormDefaults,
+  listingSoldWhereOptions,
+  MARKETPLACE_NAME,
+  removeManuallyView,
+  saleCostLabels,
   SELL_LISTING_STATUS_LABEL,
   sellFormFrom,
+  withTranslator,
+  type HuntFormContext,
+  type ListingSoldErrors,
+  type ListingSoldForm,
+  type PlainContext,
   type SellForm,
 } from "@rein-drop/client-core";
 import { Badge, Button, Card, ChoiceGroup, SystemBanner, TextInput } from "@/components/ui";
 import { MarketplaceName } from "@/components/MarketplaceName";
+import { itemHref, sellHref } from "@/sell/routes";
 import {
   addSourcePhoto,
   confirmPosted,
+  discardListing,
   draftListing,
   endChannel,
+  markListingSold,
+  restoreListing,
   publishListing,
   removePhoto,
   reorderPhotos,
@@ -28,6 +45,7 @@ import {
   uploadPhoto,
   type SellActionResult,
 } from "../actions";
+import { CostRows } from "../items/CostRows";
 import styles from "../sell.module.css";
 
 const TITLE_MAX = 80;
@@ -37,8 +55,24 @@ const TITLE_MAX = 80;
  * form - everything stays editable), photos (yours, the original listing's, or both; any can be
  * the cover), then pick marketplaces and publish. eBay is simulated for now; Facebook is assisted.
  */
-export function SellEditor({ initial, marketplaces, localeTag }: { initial: SellListing; marketplaces: SellMarketplacesResponse; localeTag: string }) {
+export function SellEditor({
+  initial,
+  marketplaces,
+  context: plain,
+  purchasedAt,
+  today,
+}: {
+  initial: SellListing;
+  marketplaces: SellMarketplacesResponse;
+  context: PlainContext;
+  /** The item's purchase date (a sale can't be before it), when known. */
+  purchasedAt?: string;
+  today: string;
+}) {
+  const context = withTranslator(plain);
+  const { t, localeTag } = context;
   const [listing, setListing] = useState(initial);
+  const [lifecycle, setLifecycle] = useState<"none" | "sold" | "discard">("none");
   const [form, setForm] = useState<SellForm>(() => sellFormFrom(initial));
   const [dirty, setDirty] = useState(false);
   const [priceError, setPriceError] = useState<string | undefined>();
@@ -148,23 +182,117 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
 
   const publish = () => save(() => act("publish", () => publishListing(listing.id, chosen), "Published. See where it's listed below."));
 
+  const sold = (request: RecordSaleRequest) => {
+    // Other marketplaces where it was live or waiting: the API ends them with the sale.
+    const endedOthers = listing.channels.filter((c) => (c.status === "PUBLISHED" || c.status === "AWAITING_CONFIRMATION") && c.marketplace !== request.marketplace).length;
+    setBusy("sold");
+    startTransition(async () => {
+      setError(null);
+      setNotice(null);
+      const r = await markListingSold(listing.id, request);
+      setBusy(null);
+      if (!r.ok) {
+        setError(r.message);
+        return;
+      }
+      setListing(r.sold.listing);
+      setLifecycle("none");
+      setNotice(listingSoldDoneText(endedOthers, t));
+    });
+  };
+
+  const removal = removeManuallyView(listing.removeManually, t);
+  const itemStatus = inventoryStatusLabel(listing.itemStatus, t);
+  // Publishing only while the item is held and the listing isn't discarded.
+  const canPublish = listing.canSell && listing.status !== "DISCARDED";
+
   return (
     <div className={styles.stack}>
-      <Link href="/sell" className={styles.back}>
+      <Link href={sellHref("listed", listing.status === "PUBLISHED" ? "active" : listing.status === "DISCARDED" ? "discarded" : "drafts")} className={styles.back}>
         ← Sell
       </Link>
       <div className={styles.badges}>
         <Badge tone={status.tone}>{status.label}</Badge>
+        {listing.itemStatus !== "IN_STOCK" && listing.itemStatus !== "LISTED" && <Badge tone={itemStatus.tone}>Item: {itemStatus.label}</Badge>}
         {listing.aiAssisted && <Badge tone="info">Written with AI - check it</Badge>}
       </div>
       <h1 className={styles.title}>{listing.title || "New listing"}</h1>
-
-      {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
-      {notice && (
-        <p role="status" className={styles.small}>
-          {notice}
+      {listing.sale && (
+        <p className={styles.small}>
+          Sold for {formatMoney(listing.sale.price, localeTag)} on {new Intl.DateTimeFormat(localeTag, { dateStyle: "medium" }).format(new Date(listing.sale.soldAt))}
+          {listing.sale.marketplace ? ` · ${MARKETPLACE_NAME[listing.sale.marketplace]}` : ""}
         </p>
       )}
+      <Link href={itemHref(listing.inventoryItemId)} className={styles.back}>
+        The item: costs, actions and history →
+      </Link>
+
+      {removal && (
+        <SystemBanner
+          tone="warning"
+          title={removal.title}
+          message={removal.body}
+          action={
+            <span className={styles.badges}>
+              {[...new Set(listing.removeManually)].map((m) => (
+                <Button key={m} variant="secondary" loading={busy === `removed-${m}`} onClick={() => act(`removed-${m}`, () => endChannel(listing.id, m), "Thanks - noted that it's off the marketplace.")}>
+                  {removal.doneLabel}
+                  <span className="visually-hidden"> on {MARKETPLACE_NAME[m]}</span>
+                </Button>
+              ))}
+            </span>
+          }
+        />
+      )}
+
+      {/* ---------- Sold / discard / restore (nothing is deleted) ---------- */}
+      {(listing.canSell || listing.canDiscard || listing.status === "DISCARDED") && (
+        <div className={styles.badges}>
+          {canPublish && (
+            <Button variant={lifecycle === "sold" ? "secondary" : "primary"} aria-expanded={lifecycle === "sold"} disabled={pending} onClick={() => setLifecycle(lifecycle === "sold" ? "none" : "sold")}>
+              {t("sell.markSold")}
+            </Button>
+          )}
+          {listing.canDiscard && (
+            <Button variant="text" aria-expanded={lifecycle === "discard"} disabled={pending} onClick={() => setLifecycle(lifecycle === "discard" ? "none" : "discard")}>
+              {t("sell.discard")}
+            </Button>
+          )}
+          {listing.status === "DISCARDED" && (
+            <Button variant="secondary" loading={busy === "restore"} onClick={() => act("restore", () => restoreListing(listing.id), t("sell.doneRestored"), false)}>
+              {t("sell.restore")}
+            </Button>
+          )}
+        </div>
+      )}
+      {lifecycle === "discard" && listing.canDiscard && (
+        <div role="group" aria-label={t("sell.discard")} className={styles.confirm}>
+          <p>{t("sell.discardConfirm")}</p>
+          <div className={styles.badges}>
+            <Button
+              variant="destructive"
+              loading={busy === "discard"}
+              onClick={() => {
+                setLifecycle("none");
+                act("discard", () => discardListing(listing.id), t("sell.doneDiscarded"));
+              }}
+            >
+              {t("sell.discard")}
+            </Button>
+            <Button variant="text" onClick={() => setLifecycle("none")}>
+              {t("inventory.keepIt")}
+            </Button>
+          </div>
+        </div>
+      )}
+      {lifecycle === "sold" && canPublish && (
+        <ListingSoldPanel listing={listing} context={context} today={today} purchasedAt={purchasedAt} pending={busy === "sold"} onCancel={() => setLifecycle("none")} onSubmit={sold} />
+      )}
+
+      {error && <SystemBanner tone="error" title="That didn't work" message={error} />}
+      <p role="status" aria-live="polite" className={styles.small}>
+        {notice}
+      </p>
 
       {/* ---------- Write it (or let AI draft it) ---------- */}
       <Card title="Write the listing">
@@ -285,6 +413,7 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
       </Card>
 
       {/* ---------- Where to list ---------- */}
+      {canPublish && (
       <Card title="Where to list">
         <ChoiceGroup
           multiple
@@ -309,6 +438,7 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
           </Button>
         </div>
       </Card>
+      )}
 
       {listing.channels.length > 0 && (
         <Card title="Where it's listed">
@@ -356,5 +486,71 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
         </Card>
       )}
     </div>
+  );
+}
+
+/** "Sold on eBay for $X": price, date, where (one of the listing's marketplaces or elsewhere), fees. */
+function ListingSoldPanel({
+  listing,
+  context,
+  today,
+  purchasedAt,
+  pending,
+  onCancel,
+  onSubmit,
+}: {
+  listing: SellListing;
+  context: HuntFormContext;
+  today: string;
+  purchasedAt?: string;
+  pending: boolean;
+  onCancel: () => void;
+  onSubmit: (request: RecordSaleRequest) => void;
+}) {
+  const { t } = context;
+  const [form, setForm] = useState<ListingSoldForm>(() => listingSoldFormDefaults(listing, new Date(today)));
+  const [errors, setErrors] = useState<ListingSoldErrors>({});
+  const set = (patch: Partial<ListingSoldForm>) => setForm((f) => ({ ...f, ...patch }));
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus(), []);
+  return (
+    <form
+      noValidate
+      aria-labelledby="listing-sold-title"
+      className={styles.confirm}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const built = buildListingSoldRequest(form, listing, new Date(), t, purchasedAt);
+        if (!built.ok) return setErrors(built.errors);
+        setErrors({});
+        onSubmit(built.request);
+      }}
+    >
+      <h2 id="listing-sold-title" ref={heading} tabIndex={-1} className={styles.label}>
+        {t("sell.markSold")}
+      </h2>
+      <p className={styles.small}>Recording the sale ends this listing everywhere else, so nobody else buys it.</p>
+      <TextInput label={t("inventory.formSoldFor")} kind="money" currency={form.currency} value={form.price} hint={t("inventory.formSoldForHint")} error={errors.price} onChange={(e) => set({ price: e.target.value })} />
+      <TextInput label={t("inventory.formSoldOn")} kind="date" value={form.day} error={errors.day} onChange={(e) => set({ day: e.target.value })} />
+      <ChoiceGroup legend={t("sell.soldWhere")} options={listingSoldWhereOptions(listing, t)} value={form.where ?? ("" as never)} error={errors.where} onChange={(where) => set({ where })} />
+      <CostRows
+        legend={t("inventory.saleCosts")}
+        hint={t("inventory.saleCostsHint")}
+        rows={form.costs}
+        labels={saleCostLabels(t)}
+        currency={form.currency}
+        errors={errors.costs}
+        disabled={pending}
+        onChange={(costs) => set({ costs })}
+      />
+      <div className={styles.badges}>
+        <Button type="submit" loading={pending}>
+          {t("sell.markSold")}
+        </Button>
+        <Button variant="text" onClick={onCancel} disabled={pending}>
+          {t("inventory.cancel")}
+        </Button>
+      </div>
+    </form>
   );
 }

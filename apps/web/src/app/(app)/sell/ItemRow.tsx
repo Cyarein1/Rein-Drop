@@ -2,17 +2,18 @@ import Link from "next/link";
 import type { InventoryRowView } from "@rein-drop/client-core";
 import { Badge, ButtonLink } from "@/components/ui";
 import { MarketplaceName } from "@/components/MarketplaceName";
-import styles from "./inventory.module.css";
+import { itemHref, itemResultHref, itemSoldHref } from "@/sell/routes";
+import styles from "./items/items.module.css";
 
-/** One inventory item: what it cost, how long it's been held (or its realized result), the next step. */
-export function InventoryRow({ view, headingLevel = 2 }: { view: InventoryRowView; headingLevel?: 2 | 3 }) {
+/** One item in a Sell section: what it cost, how long it's been held (or its realized result), the next step. */
+export function ItemRow({ view, headingLevel = 2 }: { view: InventoryRowView; headingLevel?: 2 | 3 }) {
   const Heading = headingLevel === 2 ? "h2" : "h3";
-  const actionHref = view.action.kind === "sell" ? `/inventory/${view.id}/sell` : `/inventory/${view.id}/result`;
+  const actionHref = view.action.kind === "sell" ? itemSoldHref(view.id) : view.action.kind === "result" ? itemResultHref(view.id) : itemHref(view.id);
   return (
     <article className={styles.card}>
       <div className={styles.cardHead}>
         <Heading className={styles.cardTitle}>
-          <Link href={`/inventory/${view.id}`} className={styles.stretched}>
+          <Link href={itemHref(view.id)} className={styles.stretched}>
             {view.title}
           </Link>
         </Heading>

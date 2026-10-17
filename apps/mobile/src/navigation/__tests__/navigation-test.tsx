@@ -1,13 +1,13 @@
 import { Text } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import type { FeatureKey } from '@rein-drop/api-client';
 import TabsLayout from '../../app/(tabs)/_layout';
 import StartRedirect from '../../app/(tabs)/index';
 import CreateRedirect from '../../app/(tabs)/create';
 import NotFound from '../../app/+not-found';
-import { useCapabilities } from '@/capabilities/CapabilitiesProvider';
-import { InboxHeaderButton, ListingsHeaderButton } from '../options';
+import SellListingsRedirect from '../../app/sell/index';
+import { InboxHeaderButton } from '../options';
 
 /**
  * Companion navigation (decision 0018, PLATFORM_FEATURE_MATRIX.md): the REAL tabs layout and
@@ -39,15 +39,10 @@ const DealsStub = () => (
     <InboxHeaderButton unread={2} />
   </>
 );
-// The Inventory header offers your listings only with the Sell workspace (as app/(tabs)/inventory.tsx does).
-const InventoryStub = () => {
-  const caps = useCapabilities();
-  return (
-    <>
-      <Text>Inventory screen</Text>
-      {caps['sell.workspace'].available && <ListingsHeaderButton />}
-    </>
-  );
+// The Sell tab keeps the shared key / route "inventory" (decision 0021); it shows the section it was opened on.
+const SellStub = () => {
+  const { section } = useLocalSearchParams<{ section?: string }>();
+  return <Text>{`Sell screen ${section ?? 'holding'}`}</Text>;
 };
 const routes = () => ({
   _layout: () => <Stack screenOptions={{ headerShown: false }} />,
@@ -57,13 +52,15 @@ const routes = () => ({
   // Tab screens draw their own header (LargeTitleHeader): the Deals stub carries its inbox button.
   '(tabs)/deals': DealsStub,
   '(tabs)/hunts': stub('Hunts'),
-  '(tabs)/inventory': InventoryStub,
+  '(tabs)/inventory': SellStub,
   '(tabs)/account': stub('Account'),
   '+not-found': NotFound,
   'hunts/new': stub('Create Hunt'),
   'deals/[id]/index': stub('Deal detail'),
   alerts: stub('Inbox'),
-  'sell/index': stub('Your listings'),
+  'sell/index': SellListingsRedirect,
+  'inventory/[id]/index': stub('Item'),
+  'sell/[id]/index': stub('Listing editor'),
 });
 
 beforeEach(() => {
@@ -71,11 +68,11 @@ beforeEach(() => {
 });
 
 describe('companion navigation', () => {
-  it('opens on Deals; the tab bar is Deals, Hunts, central Create, Inventory, Account in that order', () => {
+  it('opens on Deals; the tab bar is Deals, Hunts, central Create, Sell, Account in that order', () => {
     const router = renderRouter(routes(), { initialUrl: '/' });
     expect(router.getPathname()).toBe('/deals');
     expect(screen.getByText('Deals screen')).toBeOnTheScreen();
-    const labels = ['Deals', 'Hunts', 'Create Hunt', 'Inventory', 'Account'];
+    const labels = ['Deals', 'Hunts', 'Create Hunt', 'Sell', 'Account'];
     const tabs = screen.getAllByRole('button').filter((b) => labels.some((l) => (b.props.accessibilityLabel ?? '').startsWith(l)));
     expect(tabs.map((t) => labels.find((l) => (t.props.accessibilityLabel as string).startsWith(l)))).toEqual(labels);
   });
@@ -117,22 +114,32 @@ describe('companion navigation', () => {
     expect(screen.getByText('Deal detail screen')).toBeOnTheScreen();
   });
 
-  it('Sell (decision 0019): the Inventory header opens your listings; hidden when Sell is not available', () => {
-    const router = renderRouter(routes(), { initialUrl: '/inventory' });
-    fireEvent.press(screen.getByLabelText('Your listings'));
-    expect(router.getPathname()).toBe('/sell');
+  it('Sell tab (decision 0021): the tab key stays inventory and opens the Sell area', () => {
+    const router = renderRouter(routes(), { initialUrl: '/deals' });
+    fireEvent.press(screen.getByRole('button', { name: /^Sell/ }));
+    expect(router.getPathname()).toBe('/inventory');
+    expect(screen.getByText('Sell screen holding')).toBeOnTheScreen();
   });
 
-  it('no listings shortcut without the Sell workspace', () => {
-    mockUnavailable = ['sell.workspace'];
-    renderRouter(routes(), { initialUrl: '/inventory' });
-    expect(screen.queryByLabelText('Your listings')).toBeNull();
+  it('old link /sell (Your listings) opens the Sell tab on Listings', () => {
+    const router = renderRouter(routes(), { initialUrl: '/sell' });
+    expect(router.getPathname()).toBe('/inventory');
+    expect(screen.getByText('Sell screen listed')).toBeOnTheScreen();
   });
 
-  it('a tab whose feature is not available is not shown (e.g. no Inventory)', () => {
+  it.each([
+    ['/inventory/0199-item', 'Item screen'],
+    ['/sell/0199-listing', 'Listing editor screen'],
+  ])('old deep link %s still opens its page', (url, text) => {
+    const router = renderRouter(routes(), { initialUrl: url });
+    expect(router.getPathname()).toBe(url);
+    expect(screen.getByText(text)).toBeOnTheScreen();
+  });
+
+  it('a tab whose feature is not available is not shown (e.g. no Sell / inventory)', () => {
     mockUnavailable = ['inventory'];
     renderRouter(routes(), { initialUrl: '/deals' });
-    expect(screen.queryByRole('button', { name: /^Inventory/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Sell/ })).toBeNull();
     expect(screen.getByRole('button', { name: /^Hunts/ })).toBeOnTheScreen();
   });
 });

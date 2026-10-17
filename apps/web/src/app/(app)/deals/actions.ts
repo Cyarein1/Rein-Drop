@@ -5,6 +5,7 @@ import {
   type DealDetail,
   type DealSummary,
   type IgnoreDealRequest,
+  type InventoryItem,
   type ListDealsQueryInput,
   type MarkDealBoughtRequest,
   type Page,
@@ -65,6 +66,20 @@ export async function markDealBought(id: string, request: MarkDealBoughtRequest)
   try {
     const api = await getServerApiClient();
     return { ok: true, deal: await api.markDealBought(id, request) };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+export type UndoBoughtResult = { ok: true; deal: DealDetail; item: InventoryItem | null } | { ok: false; message: string; field?: string };
+
+/** Undo Bought (bought by mistake): the purchase is cancelled - kept in history, out of every figure. */
+export async function undoDealBought(id: string): Promise<UndoBoughtResult> {
+  try {
+    const api = await getServerApiClient();
+    const deal = await api.undoDealBought(id);
+    const item = deal.decision.inventoryItemId ? await api.getInventoryItem(deal.decision.inventoryItemId).catch(() => null) : null;
+    return { ok: true, deal, item };
   } catch (err) {
     return failure(err);
   }

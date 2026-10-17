@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError } from "@rein-drop/api-client";
-import { huntFormContext } from "@rein-drop/client-core";
+import { connection } from "next/server";
+import { huntFormContext, plainContext } from "@rein-drop/client-core";
 import { getServerApiClient, verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { Page } from "@/components/ui";
@@ -20,6 +21,7 @@ export default function SellListingPage({ params }: PageProps<"/sell/[id]">) {
 }
 
 async function ListingLoader({ params }: { params: PageProps<"/sell/[id]">["params"] }) {
+  await connection(); // "today" (Mark as sold defaults) is per request
   const { id } = await params;
   const [session, api] = await Promise.all([verifySession(), getServerApiClient()]);
   const [listing, marketplaces] = await Promise.all([
@@ -29,5 +31,18 @@ async function ListingLoader({ params }: { params: PageProps<"/sell/[id]">["para
     }),
     api.getSellMarketplaces(),
   ]);
-  return <SellEditor initial={listing} marketplaces={marketplaces} localeTag={huntFormContext(session.user.locale).localeTag} />;
+  // The purchase date keeps "Sold on" from going before it (the API checks it anyway).
+  const purchasedAt = await api
+    .getInventoryItem(listing.inventoryItemId)
+    .then((item) => item.purchase.purchasedAt)
+    .catch(() => undefined);
+  return (
+    <SellEditor
+      initial={listing}
+      marketplaces={marketplaces}
+      context={plainContext(huntFormContext(session.user.locale))}
+      purchasedAt={purchasedAt}
+      today={new Date().toISOString()}
+    />
+  );
 }

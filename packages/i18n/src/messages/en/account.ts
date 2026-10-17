@@ -68,4 +68,7 @@ export default {
   deleting: 'Deleting your account…',
   deleteDone: 'Your account was deleted.',
   deleteFailed: "Couldn't delete your account: {message}",
+  /** Mobile companion: replaces deleteBilling (no billing wording in the app, decision 0018). */
+  deleteAccessEnds: 'Your access ends right away.',
+  deleteRowHint: 'Erases your account and everything in it.',
 } as const;

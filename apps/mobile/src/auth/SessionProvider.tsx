@@ -40,6 +40,11 @@ interface SessionContextValue {
   signIn: (() => Promise<void>) | null;
   /** Forgets the session on this device; null for development auth. */
   signOut: (() => Promise<void>) | null;
+  /**
+   * After POST /me/delete: forgets the session on this device (any provider, development too) and
+   * shows the signed-out screen with "Your account was deleted". Never calls the API again.
+   */
+  accountDeleted: () => Promise<void>;
   /** Applies a saved locale (e.g. a new language) to the signed-in session without reloading it. */
   setLocale: (locale: UserLocale | null) => void;
 }
@@ -127,6 +132,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState({ status: 'unauthenticated', reason: "You're signed out.", reasonKey: 'auth.signedOut' });
   }, [provider]);
 
+  const accountDeleted = useCallback(async () => {
+    // The account (and this phone's push registration) is gone on the server: just sign out here.
+    await provider?.signOut?.().catch(() => undefined);
+    signedInBefore.current = false;
+    setState({ status: 'unauthenticated', reason: 'Your account was deleted.', reasonKey: 'account.deleteDone' });
+  }, [provider]);
+
   const setLocale = useCallback(
     (locale: UserLocale | null) =>
       setState((s) => (s.status === 'authenticated' ? { ...s, session: { ...s.session, user: { ...s.session.user, locale } } } : s)),
@@ -134,7 +146,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <SessionContext.Provider value={{ state, refresh, signIn: provider?.signIn ? signIn : null, signOut: provider?.signOut ? signOut : null, setLocale }}>
+    <SessionContext.Provider value={{ state, refresh, signIn: provider?.signIn ? signIn : null, signOut: provider?.signOut ? signOut : null, accountDeleted, setLocale }}>
       {children}
     </SessionContext.Provider>
   );

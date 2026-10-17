@@ -6,6 +6,7 @@ export default {
   tabDeals: 'Deals',
   tabHunts: 'Hunts',
   tabInventory: 'Bestand',
+  tabSell: 'Verkaufen',
   tabAccount: 'Konto',
   create: 'Erstellen',
   createHunt: 'Hunt erstellen',

@@ -1,43 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { AnalyticsPeriod } from "@rein-drop/api-client";
-import {
-  ANALYTICS_PERIOD_OPTIONS,
-  analyticsTargetPath,
-  isAnalyticsPeriod,
-  type AnalyticsRecommendation,
-  type Bar,
-  type MetricCard,
-} from "@rein-drop/client-core";
+import type { AnalyticsPeriod, DealStatusFilter, MarketplaceKey } from "@rein-drop/api-client";
+import { analyticsTargetPath, formatMoney, type AnalyticsRecommendation } from "@rein-drop/client-core";
 import { mascotAssets } from "@/brand/assets";
+import { withPeriod } from "@/components/charts";
 import { ButtonLink } from "@/components/ui";
 import styles from "./analytics.module.css";
 
-/** ?period= from the URL; unknown values fall back to the default. */
-export function readPeriod(params: Record<string, string | string[] | undefined>): AnalyticsPeriod {
-  return isAnalyticsPeriod(params.period) ? params.period : "30d";
-}
+export { PeriodTabs, readPeriod, withPeriod } from "@/components/charts";
 
-export const withPeriod = (path: string, period: AnalyticsPeriod) => (period === "30d" ? path : `${path}?period=${period}`);
-
-export function PeriodTabs({ path, period }: { path: string; period: AnalyticsPeriod }) {
-  return (
-    <nav aria-label="Period" className={styles.tabs}>
-      {ANALYTICS_PERIOD_OPTIONS.map((o) => (
-        <Link key={o.value} href={withPeriod(path, o.value)} className={styles.tab} aria-current={period === o.value ? "page" : undefined}>
-          {o.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-/** Overview / Hunts / Products / Missed potential. */
-export function AnalyticsNav({ period, current }: { period: AnalyticsPeriod; current: "overview" | "hunts" | "products" | "missed" }) {
+/** Overview / Hunts / Missed potential, plus the way to the selling side (Sell > Insights). */
+export function AnalyticsNav({ period, current }: { period: AnalyticsPeriod; current: "overview" | "hunts" | "missed" }) {
   const links = [
     ["overview", "/analytics", "Overview"],
     ["hunts", "/analytics/hunts", "Hunts"],
-    ["products", "/analytics/products", "Products"],
     ["missed", "/analytics/missed", "Missed potential"],
   ] as const;
   return (
@@ -47,45 +23,41 @@ export function AnalyticsNav({ period, current }: { period: AnalyticsPeriod; cur
           {label}
         </Link>
       ))}
-      <Link href="/inventory" className={styles.link}>
-        Inventory
+      <Link href={withPeriod("/sell/insights", period)} className={styles.link}>
+        Selling insights
       </Link>
     </nav>
   );
 }
 
-/** A labelled number. The basis (Realized / Estimated / Now / Activity) is always visible. */
-export function MetricTile({ card }: { card: MetricCard }) {
-  return (
-    <div className={styles.card}>
-      <p className={styles.cardLabel}>
-        {card.label}
-        <span className={[styles.basis, card.basis === "Estimated" ? styles.basisEstimated : ""].join(" ")}>{card.basis}</span>
-      </p>
-      <p className={[styles.cardValue, card.tone === "neutral" ? "" : styles[card.tone]].join(" ")}>{card.value}</p>
-      {card.caption && <p className={styles.small}>{card.caption}</p>}
-    </div>
-  );
+// ---------------------------------------------------------------------------
+// Drill-down URLs (the details live in Deals, Hunts and Sell - decision 0021)
+// ---------------------------------------------------------------------------
+
+/** The Deals list with its existing filters (?status, ?hunt, ?source). It has no date filter. */
+export function dealsHref(f: { status?: DealStatusFilter; huntId?: string; marketplace?: MarketplaceKey }): string {
+  const q = new URLSearchParams();
+  if (f.status && f.status !== "open") q.set("status", f.status);
+  if (f.huntId) q.set("hunt", f.huntId);
+  if (f.marketplace) q.set("source", f.marketplace);
+  const s = q.toString();
+  return s ? `/deals?${s}` : "/deals";
 }
 
-/** Horizontal bars. The text (label + value) carries the meaning; the bar is decoration. */
-export function Bars({ bars, label }: { bars: Bar[]; label: string }) {
-  return (
-    <ul className={styles.bars} aria-label={label}>
-      {bars.map((b) => (
-        <li key={b.label} className={styles.barRow}>
-          <span className={styles.barLabel} title={b.label}>
-            {b.label}
-          </span>
-          <span className={styles.barTrack} aria-hidden="true">
-            <span className={[styles.bar, styles[`bar_${b.tone}`]].join(" ")} style={{ width: `${b.widthPercent}%`, display: "block" }} />
-          </span>
-          <span className={styles.barValue}>{b.value}</span>
-        </li>
-      ))}
-    </ul>
-  );
+/** A Sell-area section (Holding / Listings / Sold / Other). It has no product, Hunt or date filter. */
+export const sellHref = (section: "holding" | "listed" | "sold" | "other") => `/sell?section=${section}`;
+export const itemHref = (id: string) => `/sell/items/${id}`;
+export const dealHref = (id: string) => `/deals/${id}`;
+export const huntHref = (id: string) => `/hunts/${id}`;
+
+/** Money formatter in the user's locale for one chart currency (minor units in). */
+export function moneyIn(currency: string, localeTag: string) {
+  return (amountMinor: number) => formatMoney({ amountMinor, currency }, localeTag);
 }
+
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+export const toneOfAmount = (n: number) => (n > 0 ? "profit" : n < 0 ? "loss" : "neutral") as "profit" | "loss" | "neutral";
 
 /**
  * The one recommendation. The thinking / idea mascot may appear only here (Mascot Usage Guide) -
@@ -93,6 +65,10 @@ export function Bars({ bars, label }: { bars: Bar[]; label: string }) {
  */
 export function RecommendationBox({ recommendation, period }: { recommendation: AnalyticsRecommendation; period: AnalyticsPeriod }) {
   const art = mascotAssets.suggestion;
+  // Inventory and product insights moved into Sell (decision 0021); the shared path still names the old screens.
+  const { target } = recommendation;
+  const href =
+    target.kind === "inventory" ? sellHref("holding") : target.kind === "products" ? withPeriod("/sell/insights", period) : analyticsTargetPath(target, period);
   return (
     <section aria-labelledby="recommendation" className={styles.recommendation}>
       {art && <Image src={art} alt="" width={64} height={Math.round((art.height / art.width) * 64)} />}
@@ -103,7 +79,7 @@ export function RecommendationBox({ recommendation, period }: { recommendation: 
         </h2>
         <p>{recommendation.body}</p>
         <div>
-          <ButtonLink href={analyticsTargetPath(recommendation.target, period)} variant="secondary">
+          <ButtonLink href={href} variant="secondary">
             {recommendation.actionLabel}
           </ButtonLink>
         </div>

@@ -222,8 +222,9 @@ describe('recommendation (one, grounded in the numbers)', () => {
   });
 
   it('targets keep the period where it matters', () => {
-    expect(analyticsTargetPath({ kind: 'products' }, '90d')).toBe('/analytics/products?period=90d');
-    expect(analyticsTargetPath({ kind: 'products' }, '30d')).toBe('/analytics/products');
+    expect(analyticsTargetPath({ kind: 'products' }, '90d')).toBe('/sell/insights?period=90d');
+    expect(analyticsTargetPath({ kind: 'products' }, '30d')).toBe('/sell/insights');
+    expect(analyticsTargetPath({ kind: 'inventory' }, '30d')).toBe('/sell?section=holding');
     expect(analyticsTargetPath({ kind: 'edit_hunt', huntId: 'h1' }, '7d')).toBe('/hunts/h1/edit');
     expect(periodLabel('365d')).toBe('Last 12 months');
     expect(periodLabel('all')).toBe('All time');

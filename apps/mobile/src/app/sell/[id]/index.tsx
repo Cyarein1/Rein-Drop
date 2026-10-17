@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Translator } from '@rein-drop/i18n';
 import { ApiError, type MarketplaceKey, type SellDraftSuggestion, type SellListing, type SellMarketplacesResponse } from '@rein-drop/api-client';
 import {
@@ -11,15 +11,17 @@ import {
   channelView,
   draftWouldReplace,
   formatMoney,
+  inventoryStatusLabel,
   listingConditionOptions,
   photoSrc,
+  removeManuallyView,
   sellListingStatusLabel,
   sellFormFrom,
   type SellForm,
 } from '@rein-drop/client-core';
 import { radius, space } from '@rein-drop/design-tokens';
 import { MarketplaceMark, MarketplaceName } from '@/brand/MarketplaceMark';
-import { AddRow, Section } from '@/components/FormRows';
+import { AddRow, LinkRow, Section } from '@/components/FormRows';
 import { apiBaseUrl, getApiClient } from '@/config/api';
 import { isOffline } from '@/data/useRefreshable';
 import { useDisplayContext, useT } from '@/i18n/useT';
@@ -39,6 +41,8 @@ type Load = { status: 'loading' } | { status: 'error'; message: string } | { sta
  * original listing, or a mix, any can be the cover - then the listing (written or "Use AI", which
  * fills the form and everything stays editable), the marketplaces, and Save / Publish in a fixed
  * bar. eBay is simulated for now; Facebook is assisted (copy, open, confirm).
+ * Step 90: Mark as sold ("Sold on…" sheet), discard / restore a draft, the item's status, and the
+ * "take it down yourself" reminder for listings Rein Drop ended but can't remove (Facebook).
  */
 export default function SellListingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -81,6 +85,7 @@ export default function SellListingScreen() {
 }
 
 function Editor({ initial, markets }: { initial: SellListing; markets: SellMarketplacesResponse }) {
+  const router = useRouter();
   const { localeTag, t } = useDisplayContext();
   const [listing, setListing] = useState(initial);
   const [form, setForm] = useState<SellForm>(() => sellFormFrom(initial));
@@ -99,6 +104,9 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
   // The item's currency (the API refuses any other); never a hard-coded one.
   const currency = listing.currency;
   const status = sellListingStatusLabel(listing.status, t);
+  const itemStatus = inventoryStatusLabel(listing.itemStatus, t);
+  const remove = removeManuallyView(listing.removeManually, t);
+  const discarded = listing.status === 'DISCARDED';
   const full = listing.photos.length >= PHOTOS_MAX;
 
   const edit = (patch: Partial<SellForm>) => {
@@ -112,7 +120,10 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
     setNotice(null);
     try {
       setListing(await call());
-      if (done) setNotice(done);
+      if (done) {
+        setNotice(done);
+        AccessibilityInfo.announceForAccessibility(done);
+      }
       return true;
     } catch (err) {
       setError(message(err, t));
@@ -189,19 +200,51 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
     if (await act('publish', () => api.publishSellListing(listing.id, chosen), t('sell.published'))) haptic.success();
   };
 
+  /** Discard a draft that isn't live anywhere (restorable): ask first. */
+  const discard = () =>
+    Alert.alert(t('sell.discard'), t('sell.discardConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('sell.discard'), style: 'destructive', onPress: () => void act('discard', () => api.discardSellListing(listing.id), t('sell.doneDiscarded')) },
+    ]);
+  /** "I've removed it": confirms each marketplace Rein Drop couldn't take it down on. */
+  const confirmRemoved = () =>
+    void act(
+      'removed',
+      async () => {
+        let next = listing;
+        for (const m of listing.removeManually) next = await api.endSellChannel(listing.id, m);
+        return next;
+      },
+      t('inventory.doneRemoved'),
+    );
+  const openItem = () => router.push({ pathname: '/inventory/[id]', params: { id: listing.inventoryItemId } });
+
+  // Discarded: only Restore. Item no longer held (sold, returned...): nothing to publish - open the item.
+  const footer = discarded ? (
+    <ActionBar>
+      <Button size="large" fullWidth loading={busy === 'restore'} disabled={busy !== null} onPress={() => void act('restore', () => api.restoreSellListing(listing.id), t('sell.doneRestored'))}>
+        {t('sell.restore')}
+      </Button>
+    </ActionBar>
+  ) : !listing.canSell ? (
+    <ActionBar>
+      <Button size="large" fullWidth onPress={openItem}>
+        {t('sell.openItem')}
+      </Button>
+    </ActionBar>
+  ) : (
+    <ActionBar>
+      <Button variant="secondary" size="large" fullWidth loading={busy === 'save'} disabled={!dirty || (busy !== null && busy !== 'save')} onPress={() => void save()}>
+        {t('sell.save')}
+      </Button>
+      <Button size="large" fullWidth loading={busy === 'publish'} disabled={chosen.length === 0 || busy !== null} onPress={() => void publish()}>
+        {listing.status === 'PUBLISHED' ? t('sell.publishMore') : t('sell.publish')}
+      </Button>
+    </ActionBar>
+  );
+
   return (
-    <Screen
-      footer={
-        <ActionBar>
-          <Button variant="secondary" size="large" fullWidth loading={busy === 'save'} disabled={!dirty || (busy !== null && busy !== 'save')} onPress={() => void save()}>
-            {t('sell.save')}
-          </Button>
-          <Button size="large" fullWidth loading={busy === 'publish'} disabled={chosen.length === 0 || busy !== null} onPress={() => void publish()}>
-            {listing.status === 'PUBLISHED' ? t('sell.publishMore') : t('sell.publish')}
-          </Button>
-        </ActionBar>
-      }
-    >
+    <Screen footer={footer}>
       <Stack.Screen options={{ title: t('sell.screenTitle') }} />
 
       {/* Photos: a strip that scrolls sideways (no scrollbar); the first is the cover. */}
@@ -276,7 +319,30 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
 
       <View style={styles.badges}>
         <Badge tone={status.tone}>{status.label}</Badge>
+        <Badge tone={itemStatus.tone}>{t('sell.itemStatus', { status: itemStatus.label })}</Badge>
         {listing.aiAssisted && <Badge tone="info">{t('sell.aiBadge')}</Badge>}
+      </View>
+      {discarded && <SystemBanner tone="info" title={t('sell.discardedNote')} />}
+      {remove && (
+        <SystemBanner
+          tone="warning"
+          title={remove.title}
+          message={remove.body}
+          action={
+            <Button variant="secondary" size="small" loading={busy === 'removed'} disabled={busy !== null && busy !== 'removed'} onPress={confirmRemoved}>
+              {remove.doneLabel}
+            </Button>
+          }
+        />
+      )}
+      <View>
+        {listing.canSell && !discarded && <LinkRow label={t('sell.markSold')} onPress={() => router.push({ pathname: '/sell/[id]/sold', params: { id: listing.id } })} />}
+        <LinkRow label={t('sell.openItem')} onPress={openItem} last={!listing.canDiscard} />
+        {listing.canDiscard && (
+          <Button variant="text" size="medium" loading={busy === 'discard'} disabled={busy !== null} onPress={discard}>
+            {t('sell.discard')}
+          </Button>
+        )}
       </View>
       {error && <SystemBanner tone="error" title={t('sell.actionFailed')} message={error} />}
       {notice && (

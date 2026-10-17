@@ -468,10 +468,11 @@ export function analyticsRecommendation(
 export function analyticsTargetPath(target: AnalyticsTarget, period: AnalyticsPeriod): string {
   const q = period === '30d' ? '' : `?period=${period}`;
   switch (target.kind) {
+    // Inventory merged into Sell (decision 0021); selling insights moved to Sell > Insights.
     case 'inventory':
-      return '/inventory';
+      return '/sell?section=holding';
     case 'products':
-      return `/analytics/products${q}`;
+      return `/sell/insights${q}`;
     case 'missed':
       return `/analytics/missed${q}`;
     case 'deals':

@@ -16,7 +16,7 @@ export const createDevWebAuthProvider: ((apiBaseUrl: string) => WebAuthProvider)
     ? undefined
     : (apiBaseUrl) => {
         const headers = { [DEV_AUTH_HEADER]: DEV_AUTH_SUBJECT };
-        const api = createApiClient({ baseUrl: apiBaseUrl, timeoutMs: 5000, getHeaders: () => headers });
+        const api = createApiClient({ baseUrl: apiBaseUrl, platform: "web", timeoutMs: 5000, getHeaders: () => headers });
 
         return {
           id: "dev",

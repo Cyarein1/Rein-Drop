@@ -4,6 +4,8 @@ export default {
   tabDeals: 'Deals',
   tabHunts: 'Hunts',
   tabInventory: 'Inventory',
+  /** The Sell area tab (Inventory merged into Sell, decision 0021). */
+  tabSell: 'Sell',
   tabAccount: 'Account',
   /** The central "+" in the tab bar: short label, full accessible name. */
   create: 'Create',

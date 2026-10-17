@@ -85,7 +85,7 @@ export default {
   recReviewBody: 'Your Hunts found {count, plural, one {# deal} other {# deals}} in this period and nothing was bought yet. Review the strongest ones.',
   recFirstSaleTitle: 'Log your sales',
   recFirstSaleBody: "You're holding {count, plural, one {# item} other {# items}}. Mark them sold when they go, so profit is calculated from what really happened.",
-  actionOpenInventory: 'Open Inventory',
+  actionOpenInventory: "See what you're holding",
   actionSeeProducts: 'See products',
   actionEditHunt: 'Edit Hunt',
   actionAlertSettings: 'Alert settings',

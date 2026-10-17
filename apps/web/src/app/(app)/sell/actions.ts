@@ -1,8 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ApiError, type MarketplaceKey, type SellDraftSuggestion, type SellListing, type UpdateSellListingRequest } from "@rein-drop/api-client";
+import { ApiError, type ListingSoldResponse, type MarketplaceKey, type RecordSaleRequest, type SellDraftSuggestion, type SellListing, type UpdateSellListingRequest } from "@rein-drop/api-client";
 import { getServerApiClient } from "@/auth";
+import { listingHref } from "@/sell/routes";
 
 export type SellActionResult = { ok: true; listing: SellListing } | { ok: false; message: string; field?: string };
 export type SellDraftResult = { ok: true; draft: SellDraftSuggestion } | { ok: false; message: string };
@@ -23,7 +24,9 @@ async function run(call: (api: Awaited<ReturnType<typeof getServerApiClient>>) =
   }
 }
 
-/** "List for sale" on an inventory item: opens its listing (created on first use). */
+export type ListingSoldResult = { ok: true; sold: ListingSoldResponse } | { ok: false; message: string; field?: string };
+
+/** "List for sale" on an inventory item: opens its listing (created on first use; a discarded draft is restored). */
 export async function startListing(inventoryItemId: string): Promise<{ ok: false; message: string }> {
   let id: string;
   try {
@@ -31,7 +34,7 @@ export async function startListing(inventoryItemId: string): Promise<{ ok: false
   } catch (err) {
     return failure(err);
   }
-  redirect(`/sell/${id}`);
+  redirect(listingHref(id));
 }
 
 export async function saveListing(id: string, update: UpdateSellListingRequest): Promise<SellActionResult> {
@@ -75,4 +78,22 @@ export async function confirmPosted(id: string, marketplace: MarketplaceKey, url
 
 export async function endChannel(id: string, marketplace: MarketplaceKey): Promise<SellActionResult> {
   return run((api) => api.endSellChannel(id, marketplace));
+}
+
+/** "Sold on eBay for $X" from the listing: records the sale and ends every other live listing. */
+export async function markListingSold(id: string, request: RecordSaleRequest): Promise<ListingSoldResult> {
+  try {
+    return { ok: true, sold: await (await getServerApiClient()).markSellListingSold(id, request) };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+/** Discard a draft (hidden, never deleted - it can be restored). */
+export async function discardListing(id: string): Promise<SellActionResult> {
+  return run((api) => api.discardSellListing(id));
+}
+
+export async function restoreListing(id: string): Promise<SellActionResult> {
+  return run((api) => api.restoreSellListing(id));
 }

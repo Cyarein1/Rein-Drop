@@ -17,9 +17,10 @@ import {
   type SaleFormErrors,
 } from "@rein-drop/client-core";
 import { Button, ChoiceGroup, Metric, SystemBanner, TextInput } from "@/components/ui";
+import { itemHref, itemResultHref } from "@/sell/routes";
 import { recordSale } from "../../actions";
 import { CostRows } from "../../CostRows";
-import styles from "../../inventory.module.css";
+import styles from "../../items.module.css";
 
 /**
  * Mark sold (screen 22): sale price, fees and costs, sale date, with a live preview of the
@@ -58,11 +59,11 @@ export function MarkSoldForm({ item, context: plain, today }: { item: InventoryI
             setError(result.message);
             return;
           }
-          router.push(`/inventory/${item.id}/result`);
+          router.push(itemResultHref(item.id));
         });
       }}
     >
-      <Link href={`/inventory/${item.id}`} className={styles.back}>
+      <Link href={itemHref(item.id)} className={styles.back}>
         ← {item.title}
       </Link>
       <h1 className={styles.title}>{defaults.correcting ? "Correct the sale" : "Mark sold"}</h1>
@@ -126,7 +127,7 @@ export function MarkSoldForm({ item, context: plain, today }: { item: InventoryI
         <Button type="submit" loading={pending}>
           {defaults.correcting ? "Save the sale" : "Mark sold"}
         </Button>
-        <Link href={`/inventory/${item.id}`} className={styles.back}>
+        <Link href={itemHref(item.id)} className={styles.back}>
           Cancel
         </Link>
       </div>

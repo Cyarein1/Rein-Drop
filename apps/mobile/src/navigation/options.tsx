@@ -44,13 +44,6 @@ export function NavIcon({ name, color, size: iconSize = 24 }: { name: SymbolName
   return <SymbolView name={name} tintColor={color} size={iconSize} />;
 }
 
-/** Inventory header: your listings (Sell, decision 0019). */
-export function ListingsHeaderButton() {
-  const t = useT();
-  const router = useRouter();
-  return <IconButton icon={icons.storefront} label={t('nav.titleListings')} onPress={() => router.push('/sell')} />;
-}
-
 /** Deals header: the in-app inbox (alerts). `unread` shows a dot. */
 export function InboxHeaderButton({ unread }: { unread?: number }) {
   const t = useT();

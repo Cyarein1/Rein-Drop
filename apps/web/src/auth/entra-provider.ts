@@ -25,7 +25,7 @@ export function createEntraWebAuthProvider(config: EntraWebConfig, apiBaseUrl: s
     async getSession(): Promise<SessionResult> {
       const session = await currentSession();
       if (!session) return { status: "unauthenticated", reason: "Sign in to continue" };
-      const api = createApiClient({ baseUrl: apiBaseUrl, timeoutMs: 5000, getHeaders: () => headersFor(session) });
+      const api = createApiClient({ baseUrl: apiBaseUrl, platform: "web", timeoutMs: 5000, getHeaders: () => headersFor(session) });
       try {
         const user = await api.getMe();
         return { status: "authenticated", session: { user, provider: "entra", isDevelopment: false } };

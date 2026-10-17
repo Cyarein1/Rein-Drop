@@ -36,6 +36,8 @@ export function getApiClient(): ApiClient {
   }
   client ??= createApiClient({
     baseUrl: apiBaseUrl.url,
+    // Item events (the inventory timeline) record that a change was made on the phone.
+    platform: 'mobile',
     getHeaders: () => (authSetup.ok ? authSetup.provider.getApiHeaders() : {}),
     fetch: async (input, init) => {
       const response = await fetch(input, init);

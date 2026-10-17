@@ -1,0 +1,496 @@
+/*
+ * Chart chrome (dataviz skill): thin marks with 4px rounded data-ends square at the baseline,
+ * hairline solid grid, text in text tokens (never the series colour).
+ *
+ * Series pair, validated with the dataviz palette validator on the white surface
+ * ("#2F5597,#FF6B35": lightness band, chroma floor, CVD dE 25.5, normal dE 38.2 - pass). Rein Navy
+ * itself is too dark for a mark (fails the band), so series 1 is a navy-family blue. Orange is
+ * 2.84:1 on white, so every orange mark has its value printed or in the table view.
+ * The app is light-only (design tokens define no dark theme).
+ */
+.figure {
+  --chart-series-1: #2f5597;
+  --chart-series-2: var(--rd-color-orange);
+  --chart-grid: var(--rd-neutral-border);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+  min-width: 0;
+}
+
+.tone_series1 {
+  background: #2f5597;
+}
+.tone_series2 {
+  background: var(--rd-color-orange);
+}
+.tone_profit {
+  background: var(--rd-color-green);
+}
+.tone_loss {
+  background: var(--rd-color-loss-red);
+}
+.tone_muted {
+  background: var(--rd-neutral-text-disabled);
+}
+
+.text_profit {
+  color: var(--rd-color-green);
+}
+.text_loss {
+  color: var(--rd-color-loss-red);
+}
+
+.small {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* Every clickable mark: no button chrome, a calm hover wash, the global focus ring. */
+.target {
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+.target:hover {
+  background: var(--rd-neutral-surface-subtle);
+}
+
+/* ---------- Horizontal bars ---------- */
+
+.barList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) minmax(3rem, 1fr) auto;
+  align-items: center;
+  gap: var(--rd-space-3);
+  width: 100%;
+  min-height: var(--rd-touch-target);
+  padding: var(--rd-space-1) var(--rd-space-2);
+  border-radius: var(--rd-radius-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+@media (max-width: 480px) {
+  .barRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "text value" "track track";
+    row-gap: var(--rd-space-1);
+  }
+  .barRow > .barText {
+    grid-area: text;
+  }
+  .barRow > .barTrack {
+    grid-area: track;
+  }
+  .barRow > .barValue {
+    grid-area: value;
+  }
+}
+
+.barText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.barLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rd-text);
+}
+
+.barSub {
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-xs);
+}
+
+.barTrack {
+  position: relative;
+  height: 12px;
+}
+
+.barZero {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--rd-text-muted);
+}
+
+.barFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0 4px 4px 0;
+}
+.barNeg {
+  border-radius: 4px 0 0 4px;
+}
+
+.barValue {
+  font-weight: var(--rd-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--rd-text);
+}
+
+/* ---------- Columns over time ---------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.columnsWrap {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--rd-space-2);
+  /* plot height + x-axis band, so axis labels never overflow the card */
+  padding-top: var(--rd-space-2);
+}
+
+.yAxis {
+  position: relative;
+  height: 160px;
+  min-width: 2.5rem;
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.yAxis > span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  white-space: nowrap;
+}
+
+.plot {
+  position: relative;
+  min-width: 0;
+}
+
+.gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--chart-grid);
+  pointer-events: none;
+}
+.baseline {
+  background: var(--rd-text-muted);
+}
+
+.columns {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.columnSlot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.columnGroup {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  height: 160px;
+  padding: 0 2px;
+  border-radius: var(--rd-radius-sm);
+}
+
+.columnLane {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 24px;
+  height: 100%;
+}
+
+.columnFill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 4px 4px 0 0;
+}
+.columnNeg {
+  border-radius: 0 0 4px 4px;
+}
+
+.xLabel {
+  min-height: 1.25rem;
+  padding-top: var(--rd-space-1);
+  overflow: visible;
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-xs);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tableView summary {
+  cursor: pointer;
+  color: var(--rd-text);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+.table {
+  width: 100%;
+  margin-top: var(--rd-space-2);
+  border-collapse: collapse;
+  font-size: var(--rd-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  padding: var(--rd-space-1) var(--rd-space-2);
+  border-bottom: 1px solid var(--chart-grid);
+  text-align: right;
+}
+.table th:first-child {
+  text-align: left;
+  font-weight: var(--rd-font-weight-medium);
+}
+
+/* ---------- Stat tiles ---------- */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--rd-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tiles > li {
+  display: flex;
+  min-width: 0;
+}
+
+.tile {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+  min-width: 0;
+  padding: var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+}
+
+.tileLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-2);
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: var(--rd-font-weight-medium);
+}
+
+/* Proportional figures on standalone values; never split a number. */
+.tileValue {
+  font-size: var(--rd-font-size-lg);
+  font-weight: var(--rd-font-weight-extrabold);
+  overflow-wrap: normal;
+  word-break: keep-all;
+  color: var(--rd-text);
+}
+
+@media (min-width: 640px) {
+  .tileValue {
+    font-size: var(--rd-font-size-xl);
+  }
+}
+
+.tileValue.text_profit {
+  color: var(--rd-color-green);
+}
+.tileValue.text_loss {
+  color: var(--rd-color-loss-red);
+}
+
+.basis {
+  padding: 0 var(--rd-space-2);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-tone-neutral-bg);
+  color: var(--rd-text);
+  font-size: var(--rd-font-size-xs);
+}
+
+.basisEstimated {
+  border: 1px dashed var(--rd-text-muted);
+  background: transparent;
+}
+
+/* ---------- Pop-up ---------- */
+
+.popover {
+  width: min(22rem, calc(100vw - 32px));
+  margin: auto;
+  padding: var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  box-shadow: var(--rd-shadow-lg, 0 12px 32px rgb(18 35 63 / 18%));
+}
+.popover:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-3);
+}
+.popover::backdrop {
+  background: rgb(18 35 63 / 20%);
+}
+
+.popoverHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+}
+
+.popoverTitle {
+  font-weight: var(--rd-font-weight-bold);
+}
+
+.popoverClose {
+  flex: none;
+  width: var(--rd-touch-target);
+  height: var(--rd-touch-target);
+  margin: calc(-1 * var(--rd-space-3));
+  border: 0;
+  background: transparent;
+  color: var(--rd-text);
+  font-size: var(--rd-font-size-lg);
+  cursor: pointer;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+  font-size: var(--rd-font-size-sm);
+}
+.fact dt {
+  color: var(--rd-text-muted);
+}
+.fact dd {
+  margin: 0;
+  font-weight: var(--rd-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.popoverLinks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.popoverLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--rd-touch-target);
+  color: var(--rd-text);
+  font-weight: var(--rd-font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Period selector ---------- */
+
+.periodTabs {
+  display: flex;
+  gap: var(--rd-space-2);
+  overflow-x: auto;
+  padding-bottom: var(--rd-space-1);
+}
+
+.periodTab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--rd-touch-target);
+  padding: 0 var(--rd-space-4);
+  border: 1px solid var(--rd-neutral-border);
+  border-radius: var(--rd-radius-full);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  text-decoration: none;
+}
+
+.periodTab[aria-current="page"] {
+  border: 2px solid var(--rd-text);
+  background: var(--rd-tone-info-bg);
+  font-weight: var(--rd-font-weight-semibold);
+}
+
+@media (forced-colors: active) {
+  .barFill,
+  .columnFill,
+  .swatch {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
+}

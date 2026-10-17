@@ -279,4 +279,12 @@ export default {
   removeManuallyTitle: 'Remember to take it down',
   removeManuallyBody: "Rein Drop can't remove listings on {marketplaces} - delete it there so nobody else buys it.",
   removedDone: "I've removed it",
+
+  // Step 91 (mobile): Sell area sections, item page, lifecycle sheets
+  emptyOtherTitle: 'Nothing returned or written off',
+  emptyOtherBody: 'Items you return, write off or undo stay here, with their history.',
+  moreActions: 'More actions',
+  historyLoadFailed: "Couldn't load the history",
+  doneRemoved: 'Marked as removed.',
+  whereOtherLabel: 'Where you bought it',
 } as const;

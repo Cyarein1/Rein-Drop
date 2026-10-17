@@ -28,5 +28,7 @@ async function DealLoader({ params }: { params: PageProps<"/deals/[id]">["params
     if (err instanceof ApiError && (err.status === 404 || err.code === "VALIDATION_FAILED")) notFound();
     throw err;
   });
-  return <DealDetailScreen initial={deal} context={plainContext(huntFormContext(session.user.locale))} />;
+  // Its purchase (if bought): what the item allows now decides whether "Undo bought" is offered.
+  const item = deal.decision.inventoryItemId ? await api.getInventoryItem(deal.decision.inventoryItemId).catch(() => null) : null;
+  return <DealDetailScreen initial={deal} initialItem={item} context={plainContext(huntFormContext(session.user.locale))} />;
 }

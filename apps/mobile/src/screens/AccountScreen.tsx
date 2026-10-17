@@ -94,7 +94,21 @@ function AccountBody() {
           <ListRow title={t('account.signOut')} destructive onPress={() => void signOut()} chevron={false} last />
         </ListSection>
       )}
+
+      {/* Account deletion must be reachable in the app (Apple 5.1.1(v), Google Play) - decision 0021. */}
+      {signedIn && <DeleteAccountRow />}
     </Screen>
+  );
+}
+
+/** Delete account: opens the confirmation screen (type DELETE). */
+function DeleteAccountRow() {
+  const t = useT();
+  const router = useRouter();
+  return (
+    <ListSection footer={t('account.deleteRowHint')}>
+      <ListRow title={t('account.deleteTitle')} destructive onPress={() => router.push('/account/delete')} last />
+    </ListSection>
   );
 }
 

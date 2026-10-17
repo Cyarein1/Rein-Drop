@@ -123,4 +123,17 @@ export default {
   channelEndedReturned: 'Ended - returned',
   channelEndedWrittenOff: 'Ended - written off',
   channelRemovePending: 'Remove it on {marketplace} yourself - Rein Drop can\'t.',
+
+  // Step 91 (mobile): the Sell tab and the listing editor
+  sectionsLegend: 'Sell sections',
+  listingTabsLegend: 'Listing tabs',
+  emptyDraftsTitle: 'No drafts',
+  emptyDraftsBody: 'Open something in stock and choose List for sale.',
+  emptyActiveTitle: 'Nothing live right now',
+  emptyActiveBody: 'Publish a draft to list it on a marketplace.',
+  emptyDiscardedTitle: 'No discarded drafts',
+  emptyDiscardedBody: 'Drafts you discard stay here, so you can restore them.',
+  itemStatus: 'Item: {status}',
+  openItem: 'Open the item',
+  discardedNote: 'This draft is discarded. Restore it to keep working on it.',
 } as const;

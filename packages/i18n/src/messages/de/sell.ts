@@ -120,4 +120,16 @@ export default {
   channelEndedReturned: 'Beendet – zurückgegeben',
   channelEndedWrittenOff: 'Beendet – abgeschrieben',
   channelRemovePending: 'Entferne es selbst bei {marketplace} – Rein Drop kann das nicht.',
+
+  sectionsLegend: 'Bereiche',
+  listingTabsLegend: 'Angebote filtern',
+  emptyDraftsTitle: 'Keine Entwürfe',
+  emptyDraftsBody: 'Öffne einen Artikel im Bestand und wähle „Zum Verkauf einstellen“.',
+  emptyActiveTitle: 'Gerade nichts aktiv',
+  emptyActiveBody: 'Veröffentliche einen Entwurf, um ihn auf einem Marktplatz einzustellen.',
+  emptyDiscardedTitle: 'Keine verworfenen Entwürfe',
+  emptyDiscardedBody: 'Verworfene Entwürfe bleiben hier, damit du sie wiederherstellen kannst.',
+  itemStatus: 'Artikel: {status}',
+  openItem: 'Artikel öffnen',
+  discardedNote: 'Dieser Entwurf ist verworfen. Stelle ihn wieder her, um daran weiterzuarbeiten.',
 } satisfies Messages<typeof en>;

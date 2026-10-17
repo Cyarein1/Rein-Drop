@@ -18,8 +18,11 @@ export function InventoryRow({ view, photo }: { view: InventoryRowView; photo?: 
   const router = useRouter();
   const t = useT();
   const open = () => router.push({ pathname: '/inventory/[id]', params: { id: view.id } });
+  // details = returned / written off / cancelled: no sale to show, so the button opens the item page.
   const act = () =>
-    router.push({ pathname: view.action.kind === 'sell' ? '/inventory/[id]/sell' : '/inventory/[id]/result', params: { id: view.id } });
+    view.action.kind === 'details'
+      ? open()
+      : router.push({ pathname: view.action.kind === 'sell' ? '/inventory/[id]/sell' : '/inventory/[id]/result', params: { id: view.id } });
   const actionA11y = t('inventory.labelValue', { label: view.action.label, value: view.title });
   return (
     <Pressable
@@ -29,7 +32,7 @@ export function InventoryRow({ view, photo }: { view: InventoryRowView; photo?: 
         .filter(Boolean)
         .join('. ')}
       accessibilityHint={t('inventory.openHint')}
-      accessibilityActions={[{ name: 'act', label: view.action.label }]}
+      accessibilityActions={view.action.kind === 'details' ? undefined : [{ name: 'act', label: view.action.label }]}
       onAccessibilityAction={(e) => e.nativeEvent.actionName === 'act' && act()}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
@@ -70,9 +73,11 @@ export function InventoryRow({ view, photo }: { view: InventoryRowView; photo?: 
             </Text>
           </View>
         )}
-        <Button size="small" variant={view.action.kind === 'sell' ? 'secondary' : 'text'} onPress={act} accessibilityLabel={actionA11y}>
-          {view.action.label}
-        </Button>
+        {view.action.kind !== 'details' && (
+          <Button size="small" variant={view.action.kind === 'sell' ? 'secondary' : 'text'} onPress={act} accessibilityLabel={actionA11y}>
+            {view.action.label}
+          </Button>
+        )}
       </View>
     </Pressable>
   );

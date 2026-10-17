@@ -267,4 +267,11 @@ export default {
   removeManuallyTitle: 'Denk daran, es zu entfernen',
   removeManuallyBody: 'Rein Drop kann Angebote bei {marketplaces} nicht entfernen – lösche es dort, damit es niemand anderes kauft.',
   removedDone: 'Ich habe es entfernt',
+
+  emptyOtherTitle: 'Nichts zurückgegeben oder abgeschrieben',
+  emptyOtherBody: 'Artikel, die du zurückgibst, abschreibst oder deren Kauf du rückgängig machst, bleiben hier – mit ihrem Verlauf.',
+  moreActions: 'Weitere Aktionen',
+  historyLoadFailed: 'Verlauf konnte nicht geladen werden',
+  doneRemoved: 'Als entfernt markiert.',
+  whereOtherLabel: 'Wo du es gekauft hast',
 } satisfies Messages<typeof en>;

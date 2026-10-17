@@ -3,15 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { DealDetail } from "@rein-drop/api-client";
+import type { DealDetail, InventoryItem } from "@rein-drop/api-client";
 import {
   boughtFormDefaults,
   buildBoughtRequest,
   buildIgnoreRequest,
+  cancelBlockedHint,
   CONFIDENCE_LABEL,
   dealActions,
   dealDetailView,
   IGNORE_REASON_MAX,
+  itemActionsView,
   NEXT_STEP_LABEL,
   REASON_EFFECT_LABEL,
   RISK_LEVEL_LABEL,
@@ -24,24 +26,44 @@ import {
 import { mascotAssets } from "@/brand/assets";
 import { MarketplaceName } from "@/components/MarketplaceName";
 import { Badge, Button, ButtonLink, Card, Disclosure, Metric, SystemBanner, TextInput } from "@/components/ui";
-import { dealAction, ignoreDeal, markDealBought, type DealActionResult } from "../actions";
+import { itemHref } from "@/sell/routes";
+import { dealAction, ignoreDeal, markDealBought, undoDealBought, type DealActionResult } from "../actions";
 import styles from "../deals.module.css";
 
-type Form = "none" | "bought" | "ignore";
+type Form = "none" | "bought" | "ignore" | "undo";
 
 /**
  * Deal Detail: why Rein Drop flagged it, the evidence it has (price, risk, the listing's own
  * words, the checks behind the score), View source, and the Save / Ignore / Bought decisions.
  */
-export function DealDetailScreen({ initial, context: plain }: { initial: DealDetail; context: PlainContext }) {
+export function DealDetailScreen({ initial, initialItem, context: plain }: { initial: DealDetail; initialItem: InventoryItem | null; context: PlainContext }) {
   const context = withTranslator(plain);
   const [deal, setDeal] = useState(initial);
+  const [item, setItem] = useState(initialItem);
   const [form, setForm] = useState<Form>("none");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const view = dealDetailView(deal, context);
   const can = dealActions(deal);
+  // "Undo bought" comes from the item's state machine (not sold, nothing live on a marketplace).
+  const undo = can.canBuy || !item ? null : (itemActionsView(item, context.t).find((a) => a.action === "cancel") ?? null);
+  const undoBlocked = !can.canBuy && item ? cancelBlockedHint(item, context.t) : null;
+
+  const runUndo = () =>
+    startTransition(async () => {
+      setError(null);
+      setNotice(null);
+      const result = await undoDealBought(deal.id);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setDeal(result.deal);
+      setItem(result.item);
+      setForm("none");
+      setNotice(context.t("inventory.doneCancelled"));
+    });
 
   // Opening the deal marks it seen (best effort - nothing to show if it fails).
   const markedSeen = useRef(false);
@@ -109,8 +131,8 @@ export function DealDetailScreen({ initial, context: plain }: { initial: DealDet
         </p>
       ))}
       {deal.decision.inventoryItemId && (
-        <ButtonLink href={`/inventory/${deal.decision.inventoryItemId}`} variant="secondary">
-          Open in Inventory
+        <ButtonLink href={itemHref(deal.decision.inventoryItemId)} variant="secondary">
+          Open the item in Sell
         </ButtonLink>
       )}
 
@@ -140,6 +162,11 @@ export function DealDetailScreen({ initial, context: plain }: { initial: DealDet
             Ignore
           </Button>
         )}
+        {undo && form !== "undo" && (
+          <Button variant="text" onClick={() => setForm("undo")} disabled={pending}>
+            {undo.label}
+          </Button>
+        )}
         {can.canUnignore && (
           <Button variant="text" loading={pending} onClick={() => run(() => dealAction(deal.id, "unignore"), "Back in your deals.")}>
             Undo ignore
@@ -148,7 +175,24 @@ export function DealDetailScreen({ initial, context: plain }: { initial: DealDet
       </div>
 
       {form === "bought" && (
-        <BoughtForm deal={deal} context={context} pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => markDealBought(deal.id, request), "Marked as bought. It's in your Inventory.")} />
+        <BoughtForm deal={deal} context={context} pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => markDealBought(deal.id, request), "Marked as bought. It's in Sell, under In stock.")} />
+      )}
+      {undoBlocked && <p className={styles.small}>{undoBlocked}</p>}
+      {form === "undo" && undo?.confirm && (
+        <div role="group" aria-labelledby="undo-bought-title" className={styles.inlineForm}>
+          <h2 id="undo-bought-title" className={styles.cardTitle}>
+            {undo.confirm.title}
+          </h2>
+          <p>{undo.confirm.body}</p>
+          <div className={styles.actions}>
+            <Button variant="destructive" loading={pending} onClick={runUndo}>
+              {undo.confirm.confirmLabel}
+            </Button>
+            <Button variant="text" onClick={() => setForm("none")} disabled={pending}>
+              {undo.confirm.cancelLabel}
+            </Button>
+          </div>
+        </div>
       )}
       {form === "ignore" && (
         <IgnoreForm pending={pending} onCancel={() => setForm("none")} onSubmit={(request) => run(() => ignoreDeal(deal.id, request), "Ignored. It's under Ignored if you change your mind.")} />

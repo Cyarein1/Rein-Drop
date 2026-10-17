@@ -11,7 +11,7 @@ export interface NavItem {
   feature: FeatureKey;
   /** Paths under this item that belong to a different destination. */
   excludes?: string[];
-  /** Other paths that belong to this destination (e.g. Inventory under Analytics). */
+  /** Other paths that belong to this destination (e.g. the old /inventory URLs under Sell). */
   includes?: string[];
 }
 
@@ -21,10 +21,10 @@ export const NAV = {
   hunts: { href: "/hunts", label: "Hunts", icon: Radar, excludes: ["/hunts/new"], feature: "hunts.manage" },
   createHunt: { href: "/hunts/new", label: "Create Hunt", shortLabel: "Create", icon: Plus, feature: "hunts.create" },
   deals: { href: "/deals", label: "Deals", icon: Tag, feature: "deals" },
-  // Listing bought items and cross-listing (decision 0019).
-  sell: { href: "/sell", label: "Sell", icon: Store, feature: "sell.workspace" },
-  // Inventory, Mark sold and Sale result sit with the outcome screens (screen map 21-24).
-  analytics: { href: "/analytics", label: "Analytics", icon: ChartColumn, includes: ["/inventory"], feature: "analytics" },
+  // One Sell area (decision 0021): what you hold, listings, sold, other endings and selling insights.
+  // Inventory was merged into it; old /inventory links redirect here.
+  sell: { href: "/sell", label: "Sell", icon: Store, includes: ["/inventory"], feature: "sell.workspace" },
+  analytics: { href: "/analytics", label: "Analytics", icon: ChartColumn, feature: "analytics" },
   settings: { href: "/settings", label: "Settings", icon: Settings, feature: "account.access" },
 } satisfies Record<string, NavItem>;
 

@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { newCostDraft, type CostDraft } from "@rein-drop/client-core";
 import { Button, TextInput } from "@/components/ui";
-import styles from "./inventory.module.css";
+import styles from "./items.module.css";
 
 const MAX_ROWS = 10;
 

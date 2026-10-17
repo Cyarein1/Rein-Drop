@@ -81,7 +81,7 @@ export default {
   recFirstSaleTitle: 'Erfasse deine Verkäufe',
   recFirstSaleBody:
     'Du hast {count, plural, one {# Artikel} other {# Artikel}} im Bestand. Markiere sie als verkauft, wenn sie weg sind – so wird der Gewinn aus dem berechnet, was wirklich passiert ist.',
-  actionOpenInventory: 'Bestand öffnen',
+  actionOpenInventory: 'Deinen Bestand ansehen',
   actionSeeProducts: 'Produkte ansehen',
   actionEditHunt: 'Hunt bearbeiten',
   actionAlertSettings: 'Benachrichtigungseinstellungen',

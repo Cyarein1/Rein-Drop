@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { huntFormContext, saleResultView } from "@rein-drop/client-core";
+import { huntFormContext, removeManuallyView, saleResultView } from "@rein-drop/client-core";
 import { verifySession } from "@/auth";
 import { Protected } from "@/auth/Protected";
 import { mascotAssets } from "@/brand/assets";
-import { ButtonLink, Card, EmptyState, Metric, Page } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Metric, Page, SystemBanner } from "@/components/ui";
 import { loadInventoryItem } from "../../load-item";
-import styles from "../../inventory.module.css";
+import { itemHref, itemSoldHref, sellHref } from "@/sell/routes";
+import styles from "../../items.module.css";
 
 export const metadata: Metadata = { title: "Sale result" };
 
 /** Sale result (screen 23): realized P/L first, then expected vs actual, one insight, Done. */
-export default function SaleResultPage({ params }: PageProps<"/inventory/[id]/result">) {
+export default function SaleResultPage({ params }: PageProps<"/sell/items/[id]/result">) {
   return (
     <Protected>
       <Page>
@@ -22,11 +23,14 @@ export default function SaleResultPage({ params }: PageProps<"/inventory/[id]/re
   );
 }
 
-async function ResultLoader({ params }: { params: PageProps<"/inventory/[id]/result">["params"] }) {
+async function ResultLoader({ params }: { params: PageProps<"/sell/items/[id]/result">["params"] }) {
   const { id } = await params;
   const session = await verifySession();
   const item = await loadInventoryItem(id);
-  const view = saleResultView(item, huntFormContext(session.user.locale));
+  const context = huntFormContext(session.user.locale);
+  const view = saleResultView(item, context);
+  // The sale ended its listings; assisted ones (Facebook) must be taken down by the seller.
+  const removal = removeManuallyView(item.sellListing?.removeManually ?? [], context.t);
 
   if (!view) {
     return (
@@ -34,7 +38,7 @@ async function ResultLoader({ params }: { params: PageProps<"/inventory/[id]/res
         <EmptyState
           title="Not sold yet"
           description="The result appears once you mark this item sold. Until then it's neither a profit nor a loss."
-          action={<ButtonLink href={`/inventory/${item.id}/sell`}>Mark sold</ButtonLink>}
+          action={<ButtonLink href={itemSoldHref(item.id)}>Mark sold</ButtonLink>}
         />
       </Card>
     );
@@ -45,11 +49,19 @@ async function ResultLoader({ params }: { params: PageProps<"/inventory/[id]/res
 
   return (
     <div className={styles.stack}>
-      <Link href={`/inventory/${item.id}`} className={styles.back}>
+      <Link href={itemHref(item.id)} className={styles.back}>
         ← {view.title}
       </Link>
       <h1 className={styles.title}>Sale result</h1>
       <p className={styles.meta}>{view.title}</p>
+      {removal && (
+        <SystemBanner
+          tone="warning"
+          title={removal.title}
+          message={removal.body}
+          action={<ButtonLink href={itemHref(item.id)} variant="secondary">Confirm it on the item page</ButtonLink>}
+        />
+      )}
 
       <div className={view.celebrate ? styles.celebrate : styles.preview}>
         {art && <Image src={art} alt="" width={96} height={Math.round((art.height / art.width) * 96)} />}
@@ -105,8 +117,8 @@ async function ResultLoader({ params }: { params: PageProps<"/inventory/[id]/res
       </Card>
 
       <div className={styles.actions}>
-        <ButtonLink href="/inventory?status=sold">Done</ButtonLink>
-        <ButtonLink href={`/inventory/${item.id}/sell`} variant="text">
+        <ButtonLink href={sellHref("sold")}>Done</ButtonLink>
+        <ButtonLink href={itemSoldHref(item.id)} variant="text">
           Correct the sale
         </ButtonLink>
       </div>

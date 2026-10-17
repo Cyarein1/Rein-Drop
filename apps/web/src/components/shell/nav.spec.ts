@@ -21,15 +21,21 @@ describe("isActive", () => {
 
   it("marks exactly one destination active per primary route", () => {
     const all = Object.values(NAV);
-    for (const path of ["/home", "/hunts", "/hunts/new", "/deals", "/analytics", "/settings", "/inventory", "/inventory/x/sell"]) {
+    for (const path of ["/home", "/hunts", "/hunts/new", "/deals", "/analytics", "/settings", "/sell", "/sell/items/x", "/sell/insights", "/inventory", "/inventory/x/sell"]) {
       expect(all.filter((item) => isActive(path, item))).toHaveLength(1);
     }
   });
 
-  it("inventory screens belong to Analytics", () => {
-    expect(isActive("/inventory", NAV.analytics)).toBe(true);
-    expect(isActive("/inventory/abc/result", NAV.analytics)).toBe(true);
-    expect(isActive("/inventoryx", NAV.analytics)).toBe(false);
+  it("the whole Sell area (and the old Inventory URLs) is one destination", () => {
+    for (const path of ["/sell", "/sell/items/new", "/sell/items/abc", "/sell/items/abc/result", "/sell/l1", "/sell/insights", "/inventory", "/inventory/abc/result"]) {
+      expect(isActive(path, NAV.sell), path).toBe(true);
+      expect(isActive(path, NAV.analytics), path).toBe(false);
+    }
+    expect(isActive("/inventoryx", NAV.sell)).toBe(false);
+  });
+
+  it("there is no separate Inventory entry", () => {
+    expect(Object.values(NAV).map((i) => i.label)).not.toContain("Inventory");
   });
 });
 

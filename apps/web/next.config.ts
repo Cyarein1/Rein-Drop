@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+import { LEGACY_REDIRECTS } from "./src/sell/routes";
 
 /**
  * Security headers for every page (docs/security/hardening-2026-10.md). A baseline CSP: no
@@ -34,6 +35,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  // Inventory was merged into Sell (decision 0021, step 91): old links keep working.
+  async redirects() {
+    return LEGACY_REDIRECTS.map((r) => ({ ...r }));
   },
 };
 

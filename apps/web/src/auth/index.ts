@@ -45,7 +45,7 @@ async function reportDetectedLocale(headersPromise: Promise<Record<string, strin
   if (!request) return null;
   try {
     const authHeaders = await headersPromise;
-    const api = createApiClient({ baseUrl: apiBaseUrl(), getHeaders: () => authHeaders });
+    const api = createApiClient({ baseUrl: apiBaseUrl(), platform: "web", getHeaders: () => authHeaders });
     return await api.updateLocale(request);
   } catch {
     return null;
@@ -63,11 +63,14 @@ export async function getServerApiRequest(): Promise<{ baseUrl: string; headers:
   return { baseUrl: apiBaseUrl(), headers: await setup.provider.getApiHeaders() };
 }
 
-/** API client acting as the current user. Verifies the session first. */
+/**
+ * API client acting as the current user. Verifies the session first. Sends `platform: "web"`
+ * (x-client-platform) so item history records changes as made in a browser.
+ */
 export const getServerApiClient = cache(async (): Promise<ApiClient> => {
   await verifySession();
   const setup = getAuthSetup();
   if (!setup.ok) redirect("/sign-in");
   const provider = setup.provider;
-  return createApiClient({ baseUrl: apiBaseUrl(), getHeaders: () => provider.getApiHeaders() });
+  return createApiClient({ baseUrl: apiBaseUrl(), platform: "web", getHeaders: () => provider.getApiHeaders() });
 });

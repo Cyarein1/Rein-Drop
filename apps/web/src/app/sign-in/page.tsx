@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { GOODBYE_CLEAR_PATH, GOODBYE_COOKIE } from "@/auth/goodbye";
 import { safeNextPath } from "@/auth/entra/session";
 import { getAuthSetup } from "@/auth/provider";
 import { Wordmark } from "@/brand/Wordmark";
@@ -37,6 +40,9 @@ async function SignInStatus({ searchParams }: { searchParams: PageProps<"/sign-i
   const params = await searchParams;
   const one = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : undefined);
   const setup = getAuthSetup();
+
+  // Back from the Microsoft sign-out after deleting the account: say goodbye instead.
+  if (one("signed_out") && (await cookies()).has(GOODBYE_COOKIE)) redirect(GOODBYE_CLEAR_PATH);
 
   if (!setup.ok) {
     return <SystemBanner tone="warning" title="Sign-in is not available" message={setup.reason} />;

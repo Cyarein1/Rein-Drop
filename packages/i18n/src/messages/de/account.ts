@@ -65,4 +65,6 @@ export default {
   deleting: 'Dein Konto wird gelöscht …',
   deleteDone: 'Dein Konto wurde gelöscht.',
   deleteFailed: 'Konto konnte nicht gelöscht werden: {message}',
+  deleteAccessEnds: 'Dein Zugang endet sofort.',
+  deleteRowHint: 'Löscht dein Konto und alles darin.',
 } satisfies Messages<typeof en>;

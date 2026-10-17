@@ -68,11 +68,19 @@ function RootStack() {
       <Stack.Screen name="deals/[id]/index" options={{ title: t('nav.titleDeal'), headerShown: false }} />
       <Stack.Screen name="deals/[id]/bought" options={sheetOptions([0.7, 0.95])} />
       <Stack.Screen name="deals/[id]/dismiss" options={sheetOptions([0.6, 0.9])} />
+      {/* Sell area (decision 0021): one item page; lifecycle forms are native sheets. */}
+      <Stack.Screen name="inventory/new" options={sheetOptions([0.95])} />
       <Stack.Screen name="inventory/[id]/index" options={{ title: t('nav.titleInventoryItem') }} />
       <Stack.Screen name="inventory/[id]/sell" options={sheetOptions([0.95])} />
+      <Stack.Screen name="inventory/[id]/return" options={sheetOptions([0.75, 0.95])} />
+      <Stack.Screen name="inventory/[id]/write-off" options={sheetOptions([0.75, 0.95])} />
       <Stack.Screen name="inventory/[id]/result" options={{ title: t('nav.titleSaleResult') }} />
-      <Stack.Screen name="sell/index" options={{ title: t('nav.titleListings') }} />
-      <Stack.Screen name="sell/[id]" options={{ title: t('nav.titleListForSale') }} />
+      {/* /sell redirects to the Sell tab's Listings (old links). */}
+      <Stack.Screen name="sell/index" options={{ headerShown: false }} />
+      <Stack.Screen name="sell/[id]/index" options={{ title: t('nav.titleListForSale') }} />
+      <Stack.Screen name="sell/[id]/sold" options={sheetOptions([0.95])} />
+      {/* Account deletion (Apple 5.1.1(v)): reachable in the app, Account > Delete account. */}
+      <Stack.Screen name="account/delete" options={{ title: t('account.deleteTitle') }} />
       <Stack.Screen name="alerts" options={{ title: t('nav.titleInbox') }} />
       {/* Developer-only screen: English. */}
       <Stack.Screen name="dev" options={{ title: 'Developer' }} />

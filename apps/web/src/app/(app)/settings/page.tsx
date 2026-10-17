@@ -29,6 +29,15 @@ export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
 
         <NotificationsCard />
 
+        <Card title="Delete account">
+          <p>Permanently delete your Rein Drop account and everything in it. A paid plan is cancelled right away.</p>
+          <div>
+            <ButtonLink href="/settings/delete-account" variant="secondary">
+              Delete account…
+            </ButtonLink>
+          </div>
+        </Card>
+
         <Card title="Developer">
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             <li>

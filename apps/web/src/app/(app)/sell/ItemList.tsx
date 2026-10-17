@@ -4,16 +4,19 @@ import { useState, useTransition } from "react";
 import type { InventoryItem, ListInventoryQueryInput, Page } from "@rein-drop/api-client";
 import { inventoryRowView, withTranslator, type PlainContext } from "@rein-drop/client-core";
 import { Button } from "@/components/ui";
-import { loadInventory } from "./actions";
-import { InventoryRow } from "./InventoryRow";
-import styles from "./inventory.module.css";
+import { loadInventory } from "./items/actions";
+import { ItemRow } from "./ItemRow";
+import styles from "./items/items.module.css";
 
 /** Newest purchase first, with "Show more" (cursor from the API). */
-export function InventoryList({
+export function ItemList({
+  label,
   initial,
   query,
   context: plain,
 }: {
+  /** Accessible name of the list, e.g. "Sold, newest purchase first". */
+  label: string;
   initial: Page<InventoryItem>;
   query: ListInventoryQueryInput;
   context: PlainContext;
@@ -39,10 +42,10 @@ export function InventoryList({
 
   return (
     <>
-      <ul className={styles.list} aria-label="Inventory, newest purchase first">
+      <ul className={styles.list} aria-label={label}>
         {items.map((item) => (
           <li key={item.id}>
-            <InventoryRow view={inventoryRowView(item, context)} />
+            <ItemRow view={inventoryRowView(item, context)} />
           </li>
         ))}
       </ul>

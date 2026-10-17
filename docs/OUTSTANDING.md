@@ -126,6 +126,32 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - **German, still to build** (renumbered after the step 89 redesign):
   - **step 90:** the web app (server and client translator, a Language switch in Settings), then remove client-core's deprecated English constants;
   - **step 91:** in the user's language: push / worker titles and bodies, API messages people see (go-live problems, alert reasons, risk notes, marketplace notes, AI-draft checks, errors, mapHuntErrors, cost labels). Also step 91: the German landing page (routing) and the German App Store / Play listing drafts - step 88.
+- **Apply step 90 to your development database:** `pnpm --filter @rein-drop/db db:deploy`, then restart the API and worker. The migration `20261017220638_item_lifecycle` adds the item history and the new statuses - step 90.
+- **Account deletion - owner decisions (decision 0021):**
+  - **Entra sign-in user:** it isn't deleted. Use Microsoft Graph `User.ReadWrite.All` or a manual step in the Entra admin centre; until then, signing in again creates a new, empty account.
+  - **Suspended accounts:** can they delete themselves? The default is no (support handles them).
+  - **Stripe customer:** it is deleted; confirm with the accountant that Stripe's own invoices are enough.
+  - **Home's 30-day profit:** should it include returns and write-offs? It is sales-only now - step 90.
+- **Browser and phone check of steps 90-91:**
+  - Sell sections and counts, Add item, the item page actions and history.
+  - Return, write off, undo bought and reopen.
+  - Mark as sold from a listing (the other listings end; the Facebook reminder appears).
+  - Discard / restore a draft.
+  - Analytics charts and their click-throughs, plus `/sell/insights`.
+  - Delete account on web (goodbye page) and mobile (sign-out) - step 91.
+- **Steps 90-91 follow-ups:**
+  - **Missing filters and data for the Analytics links:**
+    - Sell has no filter by product or by Hunt, so those links open the Sold section.
+    - `/alerts` can't be filtered by Hunt.
+    - Deals has no date filter.
+    - The missed-deals API returns only the top 20.
+    - Purchases over time and selling per marketplace are worked out from the inventory list, capped at 1,000 items.
+    - A time-series analytics endpoint would be the proper fix.
+  - **Mobile Listings limits:** items marked "listed elsewhere" by hand don't show under Listings, and there is no "closed listings" tab (sold items show under Sold).
+  - **Wording:** the mobile Holding chip reads "In stock"; rename it if you want it to say "Holding".
+  - **Code tidy-up:** the web analytics link builders should import `@/sell/routes`.
+- German wording from steps 90-91 for the native reviewer: „Verkaufen“ (tab), „Bereiche“, „Angebote filtern“, „Gerade nichts aktiv“, „Dein Zugang endet sofort.“, „Löscht dein Konto und alles darin.“, „Wo du es gekauft hast“, „Als entfernt markiert.“, „Deinen Bestand ansehen“, plus about 110 lifecycle keys (inventory / sell / account) - step 91.
+- **German, renumbered again:** web German is now step 92, and push / landing page / store German is step 93 (steps 90-91 are the lifecycle and the Sell restructure) - step 90.
 - **Phone check of the step 89 redesign (decision 0020)** on one iPhone and one Android phone (Expo Go is enough):
   - **Header icons** keep clear of the screen edge on every tab, and chip rows drag sideways with no scrollbar.
   - **Deal rows:** swipe right saves and swipe left is Not for me, with Undo. VoiceOver / TalkBack offer the same actions on the row.

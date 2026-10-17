@@ -19,7 +19,7 @@ export const LANDING_DESCRIPTION =
 export const SOCIAL_IMAGE_ALT = "Rein Drop - You flip it. We find it. The Rein Drop mascot holding a parcel.";
 
 /** Signed-in app, auth, API and development routes: never for search engines. */
-export const NON_PUBLIC_PATHS = ["/home", "/hunts", "/deals", "/alerts", "/analytics", "/inventory", "/settings", "/onboarding", "/sign-in", "/auth/", "/api/", "/dev"] as const;
+export const NON_PUBLIC_PATHS = ["/home", "/hunts", "/deals", "/alerts", "/analytics", "/inventory", "/sell", "/settings", "/onboarding", "/sign-in", "/auth/", "/api/", "/dev", "/goodbye"] as const;
 
 /** The public origin from SITE_URL (https; http only for localhost), or null when not configured. */
 export function siteUrl(env: Record<string, string | undefined> = process.env): URL | null {

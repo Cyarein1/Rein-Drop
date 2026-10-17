@@ -1,11 +1,104 @@
 # Build Status
 
-_Last updated: 2026-10-16 (step 89 - native, list-first mobile redesign)_
+_Last updated: 2026-10-18 (steps 90-91 - item lifecycle without deleting; Inventory merged into Sell; Analytics as charts)_
 
 Everything still open since step 1 - decisions needed, unbuilt work, unverified items - is
 collected in [`docs/OUTSTANDING.md`](OUTSTANDING.md), updated with every step.
 
 ## Completed steps
+
+### Step 90 - Item lifecycle without deleting (decision 0021): backend
+
+The owner's audit found missing create / read / update / delete actions and a confusing split
+between Inventory, Sell and Analytics. Owner decisions:
+- **Nothing is hard-deleted** (audit trail); mistakes and endings are statuses.
+- **Account deletion** is the one real erase.
+- **Manual "Add item".**
+- **Inventory merges into Sell** (step 91).
+- **Analytics becomes numbers and charts**, every figure clickable to the detail.
+
+Built, with the full detail in decision 0021, section "Implementation":
+- **Migration `20261017220638_item_lifecycle`:**
+  - item status CANCELLED and listing status DISCARDED;
+  - an `InventoryEvent` audit trail, backfilled from stored timestamps;
+  - columns for where an item was bought and how it was closed, and for ended channels.
+- **Item state machine** (contracts `inventory-lifecycle.ts`): return, write off, cancel (Undo
+  bought, which re-opens the deal), reopen, mark listed / unlisted. Every item response carries
+  `actions`, the moves allowed now.
+- **Endpoints:**
+  - Inventory: `POST /inventory` (manual Add item), `GET /inventory?section=`,
+    `GET /inventory/counts`, `GET /inventory/:id/events`, and `POST /inventory/:id/` followed by
+    `return`, `write-off`, `cancel` or `reopen`.
+  - Deals: `DELETE /deals/:id/bought`.
+  - Sell: `POST /sell/listings/:id/sold`, `POST /sell/listings/:id/discard` and `/restore`, and
+    `GET /sell/listings?view=`.
+  - Account: `POST /me/delete`.
+- **Sale ends the listings (data-risk fix):** recording a sale from Inventory or from the listing
+  ends every live marketplace listing. Facebook is flagged "remove it yourself".
+- **Analytics:** returns and write-offs are counted (`closed`, `netRealized`). Cancelled
+  purchases are left out of every figure.
+- **Account deletion:** cancels Stripe subscriptions immediately, deletes the Stripe customer,
+  then deletes the user (cascade) and their photos. Records without personal data are kept.
+- **Shared code:** client-core `item-lifecycle-view.ts` view helpers, about 110 en / de keys, and
+  the api-client `platform` option (the history records whether a change came from web or
+  mobile).
+
+Checks run:
+- turbo build / typecheck / lint / test: 70 of 70.
+- API integration, preview DB: 143 of 143 (12 new).
+- Worker integration: 61 of 61.
+
+**The owner's dev DB needs** `pnpm --filter @rein-drop/db db:deploy`, then a restart of the API
+and worker.
+
+### Step 91 - Sell area (Inventory merged into Sell), lifecycle UI, Analytics as charts
+
+- **Web Sell area:**
+  - **`/sell` with sections:** Holding · Listings (Drafts / Active, Discarded behind a link) ·
+    Sold · Other · Insights, with counts and "Add item" (`/sell/items/new`).
+  - **One item page (`/sell/items/[id]`):**
+    - status, figures and allowed actions;
+    - confirmations for Undo bought, Back in stock and Undo sale;
+    - return (refund) and write-off (reason) forms;
+    - the closed-item card, the Facebook "take it down" reminder, editable purchase details, and
+      the history timeline.
+  - **Listing editor:** Mark as sold (ends the other listings) and Discard / Restore.
+  - **Deal page:** Undo bought.
+  - **Settings:** Delete account (`/settings/delete-account`, then `/goodbye`; works with Entra
+    sign-out).
+  - **Redirects:** old `/inventory` URLs redirect with 307 (`apps/web/src/sell/routes.ts`), and
+    the nav has one "Sell" entry.
+  - **API client:** every web client sends `platform: "web"`.
+- **Web Analytics (buying side), numbers and charts only:**
+  - tiles and charts on `/analytics`, `/analytics/hunts` and `/analytics/missed`;
+  - every bar or tile links to its deals, Hunt or Sell section, or opens a small pop-up;
+  - time charts have a table view.
+  - **Selling insights** moved to **`/sell/insights`**: profit and time to sell per product and
+    marketplace, fees, returns / write-offs, slow sellers and money tied up.
+    `/analytics/products` redirects there.
+  - Charts are hand-made SVG with no new dependency. The first chart series is a navy-family
+    blue, `#2F5597`, because brand navy is too dark for a series colour.
+- **Mobile:**
+  - The Inventory tab is now **Sell** (storefront icon): Holding · Listings · Sold · Other, with
+    Drafts / Active / Discarded under Listings and Add item in the header. Insights stay
+    web-only.
+  - **Item page:** history, the allowed actions, the closure card and the remove-it-yourself
+    banner.
+  - **Sheets:** Add item, Return, Write off and "Sold on…" (`sell/[id]/sold`;
+    `sell/[id].tsx` moved to `sell/[id]/index.tsx`).
+  - **Listing editor:** Mark as sold and Discard / Restore.
+  - **Deal detail:** Undo bought.
+  - **Account:** Delete account (`account/delete`), then sign-out.
+  - `platform: 'mobile'` is set.
+- **client-core:** `analytics-charts.ts` (new, with spec). Analytics recommendation links now
+  point to `/sell?section=holding` and `/sell/insights`.
+
+Checks run:
+- turbo build / typecheck / lint / test: 70 of 70. Web lint has 2 older warnings.
+- client-core 247, web 220 and mobile vitest 19.
+- Mobile jest 47 of 47.
+- API integration on the preview DB: 143 of 143.
+- **Not opened in a browser or on a phone.**
 
 ### Step 89 - Native, list-first mobile redesign (decision 0020)
 

@@ -21,6 +21,7 @@ export * from './inventory-view.js';
 export * from './sell-view.js';
 export * from './item-lifecycle-view.js';
 export * from './analytics-view.js';
+export * from './analytics-charts.js';
 export * from './source-view.js';
 export * from './product-states.js';
 export * from './refreshable.js';
