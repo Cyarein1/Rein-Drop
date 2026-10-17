@@ -4,6 +4,7 @@ import { ApiError } from '@rein-drop/api-client';
 import { accessLoadFor, accessLoadReducer, type AccessLoad, type AccessLoadEvent } from '@rein-drop/client-core';
 import { useSessionState } from '@/auth/SessionProvider';
 import { getApiClient } from '@/config/api';
+import { isOffline } from '@/data/useRefreshable';
 
 /**
  * The signed-in account's effective access (`GET /me/access`, decision 0018) - the same rules the
@@ -39,8 +40,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         (access) => !cancelled && dispatch({ type: 'loaded', userId, access }),
         (err: unknown) => {
           if (cancelled) return;
-          // No HTTP status = the request never got an answer (offline, timeout, sign-in service unreachable).
-          const offline = !(err instanceof ApiError) || err.status === undefined;
+          // No answer at all (offline, timeout, sign-in service unreachable); code bugs are "failed".
+          if (__DEV__ && !(err instanceof ApiError)) console.error('[AccessProvider] access load failed:', err);
+          const offline = isOffline(err);
           dispatch({ type: 'failed', userId, reason: offline ? 'offline' : 'failed' });
         },
       );

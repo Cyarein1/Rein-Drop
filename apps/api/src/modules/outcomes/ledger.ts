@@ -1,7 +1,10 @@
 import {
+  closedResult,
   compareAmounts,
   expectedSnapshotSchema,
   HOLDING_STATUSES,
+  inventoryActions,
+  isClosedStatus,
   realizedResult,
   type CostCategory,
   type ExpectedSnapshot,
@@ -9,6 +12,7 @@ import {
   type InventoryStatus,
   type MarketplaceKey,
   type Money,
+  type SellListingStatus,
 } from '@rein-drop/contracts';
 import type { DealEconomics } from '@rein-drop/scoring';
 
@@ -50,7 +54,23 @@ export interface InventoryRow {
     marketplace: { key: string } | null;
     costs: CostRow[];
   } | null;
+  // Step 90 (optional so older fixtures stay valid).
+  boughtFromMarketplace?: string | null;
+  boughtFromText?: string | null;
+  closedAt?: Date | null;
+  closedNote?: string | null;
+  refundMinor?: number | null;
+  sellListing?: { id: string; status: SellListingStatus; priceMinor?: number | null; currency?: string | null; channels: ChannelRow[] } | null;
 }
+
+export interface ChannelRow {
+  marketplace: string;
+  status: 'PUBLISHED' | 'AWAITING_CONFIRMATION' | 'FAILED' | 'ENDED';
+  removalPending: boolean;
+}
+
+/** Live on a marketplace, or waiting for the seller to post it (assisted). */
+export const isActiveChannel = (c: Pick<ChannelRow, 'status'>) => c.status === 'PUBLISHED' || c.status === 'AWAITING_CONFIRMATION';
 
 const money = (amountMinor: number, currency: string): Money => ({ amountMinor, currency });
 const costMoney = (c: CostRow) => money(c.amountMinor, c.currency);
@@ -79,7 +99,16 @@ export function toInventoryItem(row: InventoryRow, now: Date): InventoryItem {
   const result =
     sale && salePrice ? realizedResult({ purchasePrice, purchaseCosts, salePrice, saleCosts: sale.costs.map(costMoney) }) : null;
   const expected = parseExpected(row.expected);
-  const heldUntil = sale?.soldAt ?? now;
+  const closedAt = isClosedStatus(row.status) ? (row.closedAt ?? row.updatedAt) : null;
+  const heldUntil = sale?.soldAt ?? closedAt ?? now;
+  const listing = row.sellListing ?? null;
+  const activeChannels = listing ? listing.channels.filter(isActiveChannel).length : 0;
+  const refund = row.status === 'RETURNED' ? money(row.refundMinor ?? row.purchasePriceMinor, row.currency) : null;
+  const boughtFrom = row.listing
+    ? { marketplace: row.listing.marketplace.key as MarketplaceKey, text: null }
+    : row.boughtFromMarketplace || row.boughtFromText
+      ? { marketplace: (row.boughtFromMarketplace as MarketplaceKey | null | undefined) ?? null, text: row.boughtFromText ?? null }
+      : null;
 
   return {
     id: row.id,
@@ -105,6 +134,30 @@ export function toInventoryItem(row: InventoryRow, now: Date): InventoryItem {
       : null,
     result,
     daysHeld: Math.max(0, Math.floor((heldUntil.getTime() - row.purchasedAt.getTime()) / DAY_MS)),
+    origin: row.huntMatchId ? 'deal' : 'manual',
+    boughtFrom,
+    closure:
+      closedAt && isClosedStatus(row.status)
+        ? {
+            status: row.status,
+            closedAt: closedAt.toISOString(),
+            note: row.closedNote ?? null,
+            refund,
+            // A cancelled item never counts, so it has no result.
+            result: row.status === 'CANCELLED' ? null : closedResult({ purchasePrice, purchaseCosts, recovered: refund }),
+          }
+        : null,
+    sellListing: listing
+      ? {
+          id: listing.id,
+          status: listing.status,
+          price: listing.priceMinor != null ? money(listing.priceMinor, listing.currency ?? row.currency) : null,
+          channels: listing.channels.map((c) => ({ marketplace: c.marketplace as MarketplaceKey, status: c.status })),
+          activeChannels,
+          removeManually: listing.channels.filter((c) => c.status === 'ENDED' && c.removalPending).map((c) => c.marketplace as MarketplaceKey),
+        }
+      : null,
+    actions: inventoryActions({ status: row.status, activeChannels }),
     expected,
     comparison: {
       purchasePrice: compareAmounts(expected?.askingPrice ?? null, purchasePrice),

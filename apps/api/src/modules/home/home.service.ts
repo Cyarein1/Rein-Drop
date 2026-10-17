@@ -43,7 +43,8 @@ export class HomeService {
       this.prisma.alert.count({ where: { userId, readAt: null } }),
       this.prisma.pushDevice.count({ where: { userId, disabledAt: null } }),
       this.prisma.inventoryItem.findMany({
-        where: { userId, purchasedAt: { gte: since } },
+        // Cancelled purchases (bought by mistake) never count (decision 0021).
+        where: { userId, purchasedAt: { gte: since }, status: { not: 'CANCELLED' } },
         select: { title: true, purchasePriceMinor: true, currency: true, purchasedAt: true, huntMatchId: true },
         orderBy: { purchasedAt: 'desc' },
       }),

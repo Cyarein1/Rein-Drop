@@ -53,4 +53,16 @@ export default {
   alwaysOn: '{label} (immer an)',
 
   settingsTitle: 'Einstellungen',
+
+  deleteTitle: 'Konto löschen',
+  deleteIntro: 'Damit löschst du dein Rein Drop-Konto und alles darin endgültig.',
+  deleteWhatGoes: 'Deine Hunts, Deals, dein Bestand, Verkäufe, Angebote, Fotos und Einstellungen werden gelöscht. Das kann nicht rückgängig gemacht werden.',
+  deleteBilling: 'Wenn du einen kostenpflichtigen Plan hast, wird er sofort gekündigt und du zahlst nichts mehr.',
+  deleteSignIn: 'Wenn du dich später wieder anmeldest, beginnt ein neues, leeres Konto.',
+  deleteTypeToConfirm: 'Gib {word} ein, um zu bestätigen',
+  deleteConfirm: 'Mein Konto löschen',
+  deleteCancel: 'Konto behalten',
+  deleting: 'Dein Konto wird gelöscht …',
+  deleteDone: 'Dein Konto wurde gelöscht.',
+  deleteFailed: 'Konto konnte nicht gelöscht werden: {message}',
 } satisfies Messages<typeof en>;

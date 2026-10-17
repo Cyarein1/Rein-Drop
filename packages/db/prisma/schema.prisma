@@ -105,12 +105,39 @@ enum DeliveryStatus {
   FAILED
 }
 
+/// Item lifecycle (decision 0021 - nothing is deleted; the allowed moves are INVENTORY_TRANSITIONS in
+/// @rein-drop/contracts). RETURNED / WRITTEN_OFF / CANCELLED are "closed" (closedAt set);
+/// CANCELLED = bought by mistake / undo bought, left out of every figure.
 enum InventoryStatus {
   IN_STOCK
   LISTED
   SOLD
   RETURNED
   WRITTEN_OFF
+  CANCELLED
+}
+
+/// What happened to an inventory item (append-only audit trail, step 90). Mirrors
+/// INVENTORY_EVENT_TYPES in @rein-drop/contracts.
+enum InventoryEventType {
+  BOUGHT
+  ADDED_MANUALLY
+  PURCHASE_EDITED
+  COSTS_EDITED
+  LISTED
+  UNLISTED
+  LISTING_STARTED
+  PUBLISHED
+  CHANNEL_ENDED
+  SOLD
+  SALE_CORRECTED
+  SALE_UNDONE
+  RETURNED
+  WRITTEN_OFF
+  CANCELLED
+  REOPENED
+  LISTING_DISCARDED
+  LISTING_RESTORED
 }
 
 /// Purchase costs (on the InventoryItem): TAX, SHIPPING, REPAIR, SUPPLIES, OTHER.
@@ -235,6 +262,7 @@ model User {
   pushDevices             PushDevice[]
   savedDeals              SavedDeal[]
   inventoryItems          InventoryItem[]
+  inventoryEvents         InventoryEvent[]
   sellListings            SellListing[]
   sales                   Sale[]
   costs                   Cost[]
@@ -843,37 +871,69 @@ model SavedDeal {
 /// An item the user bought to resell. Doubles as the purchase record.
 /// TODO(product): quantity/lots - currently one row per physical item.
 model InventoryItem {
-  id                 String          @id @default(uuid(7)) @db.Uuid
-  userId             String          @db.Uuid
+  id                    String          @id @default(uuid(7)) @db.Uuid
+  userId                String          @db.Uuid
   /// Source listing it was bought from, if sourced through Rein Drop.
-  listingId          String?         @db.Uuid
+  listingId             String?         @db.Uuid
   /// The deal (hunt match) marked Bought that created it - at most one item per deal.
-  huntMatchId        String?         @unique @db.Uuid
-  title              String
-  status             InventoryStatus @default(IN_STOCK)
-  purchasePriceMinor Int
-  currency           String          @db.Char(3)
-  purchasedAt        DateTime        @db.Timestamptz(3)
-  notes              String?
+  huntMatchId           String?         @unique @db.Uuid
+  title                 String
+  status                InventoryStatus @default(IN_STOCK)
+  purchasePriceMinor    Int
+  currency              String          @db.Char(3)
+  purchasedAt           DateTime        @db.Timestamptz(3)
+  notes                 String?
   /// What Rein Drop expected when it was bought (asking price, known costs, ESTIMATED resale /
   /// upside if there was one) - frozen at Bought, never edited, so expected vs actual survives
   /// corrections. Shape: ExpectedSnapshot in @rein-drop/contracts (outcomes.ts).
-  expected           Json?
-  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime        @updatedAt @db.Timestamptz(3)
+  expected              Json?
+  /// Added by hand ("Add item", bought outside Rein Drop): where it was bought - a marketplace key,
+  /// or free text such as "garage sale". Deal items use their listing instead.
+  boughtFromMarketplace String?
+  boughtFromText        String?
+  /// RETURNED / WRITTEN_OFF / CANCELLED: when it was closed, and the person's optional note.
+  closedAt              DateTime?       @db.Timestamptz(3)
+  closedNote            String?
+  /// RETURNED: what the seller refunded, in the item's currency (minor units).
+  refundMinor           Int?
+  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  huntMatch   HuntMatch?   @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing     Listing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  huntMatch   HuntMatch?       @relation(fields: [huntMatchId], references: [id], onDelete: SetNull)
   sale        Sale?
   costs       Cost[]
   sellListing SellListing?
+  events      InventoryEvent[]
 
   @@index([userId, status])
+  /// Analytics: returns / write-offs in a period.
+  @@index([userId, closedAt])
   /// Analytics: purchases in a period.
   @@index([userId, purchasedAt])
   /// Foreign key (SetNull when a listing is removed) - hardening 2026-10.
   @@index([listingId])
+}
+
+/// One thing that happened to an inventory item - the item's audit trail / timeline. Append-only:
+/// rows are never edited or deleted (only with the account).
+model InventoryEvent {
+  id              String             @id @default(uuid(7)) @db.Uuid
+  inventoryItemId String             @db.Uuid
+  userId          String             @db.Uuid
+  type            InventoryEventType
+  at              DateTime           @default(now()) @db.Timestamptz(3)
+  /// Where the change came from: "web" | "mobile" (x-client-platform header) | "system"; null = unknown.
+  source          String?
+  /// Small facts about the change (amounts, marketplace, reason) - InventoryEvent in @rein-drop/contracts.
+  details         Json?
+
+  item InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId, at])
+  @@index([userId, at])
 }
 
 // ---------------------------------------------------------------------------
@@ -884,8 +944,10 @@ enum SellListingStatus {
   DRAFT
   /// On at least one marketplace.
   PUBLISHED
-  /// Taken down everywhere (or the item sold).
+  /// Taken down everywhere (or the item sold / returned / written off).
   ENDED
+  /// A draft the seller threw away: hidden from the normal lists, restorable (never deleted).
+  DISCARDED
 }
 
 /// Mirrors LISTING_CONDITIONS in @rein-drop/contracts (sell.ts), upper-cased.
@@ -957,19 +1019,25 @@ enum SellChannelStatus {
 
 /// The listing on one marketplace (cross-listing).
 model SellChannel {
-  id            String            @id @default(uuid(7)) @db.Uuid
-  sellListingId String            @db.Uuid
+  id             String            @id @default(uuid(7)) @db.Uuid
+  sellListingId  String            @db.Uuid
   /// MarketplaceKey ("ebay" | "facebook").
-  marketplace   String
-  status        SellChannelStatus
+  marketplace    String
+  status         SellChannelStatus
   /// Publisher used: "mock" (no real listing - TODO(sell)), "assisted", or a real API later.
-  provider      String
-  externalId    String?
-  url           String?
-  error         String?
-  publishedAt   DateTime?         @db.Timestamptz(3)
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  provider       String
+  externalId     String?
+  url            String?
+  error          String?
+  publishedAt    DateTime?         @db.Timestamptz(3)
+  /// Why it ended: "user" | "sold_here" | "sold_elsewhere" | "returned" | "written_off".
+  endedReason    String?
+  endedAt        DateTime?         @db.Timestamptz(3)
+  /// Rein Drop ended it but can't take it down itself (assisted, e.g. Facebook): the seller must
+  /// remove it on the marketplace. Cleared when they confirm (end again).
+  removalPending Boolean           @default(false)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
 
   sellListing SellListing @relation(fields: [sellListingId], references: [id], onDelete: Cascade)
 

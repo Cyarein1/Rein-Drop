@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneyInputSchema, moneySchema } from './common.js';
+import { currencySchema, idSchema, isoDateTimeSchema, marketplaceKeySchema, moneyInputSchema, moneySchema } from './common.js';
+import { CHANNEL_END_REASONS, inventoryStatusSchema } from './inventory-lifecycle.js';
 
 /**
  * Sell workspace (decision 0019): list a bought inventory item for sale and cross-list it on
@@ -12,7 +13,12 @@ import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneyInputSchema, mo
  * (ready-to-paste text + open Facebook, then the seller confirms it's posted).
  */
 
-export const SELL_LISTING_STATUSES = ['DRAFT', 'PUBLISHED', 'ENDED'] as const;
+/**
+ * DRAFT -> PUBLISHED (live on a marketplace) -> ENDED (taken down everywhere, or the item sold /
+ * returned / written off). A DRAFT with nothing published can be DISCARDED (hidden, restorable -
+ * never deleted); "List" on the item again restores it. Mirrors the SellListingStatus database enum.
+ */
+export const SELL_LISTING_STATUSES = ['DRAFT', 'PUBLISHED', 'ENDED', 'DISCARDED'] as const;
 export const sellListingStatusSchema = z.enum(SELL_LISTING_STATUSES);
 export type SellListingStatus = z.infer<typeof sellListingStatusSchema>;
 
@@ -75,6 +81,13 @@ export const sellChannelSchema = z.object({
   assist: z.object({ text: z.string(), openUrl: z.string().url() }).nullable(),
   error: z.string().nullable(),
   publishedAt: isoDateTimeSchema.nullable(),
+  /** Why it ended (ENDED only): by you, sold here / elsewhere, item returned / written off. */
+  endedReason: z.enum(CHANNEL_END_REASONS).nullable(),
+  /**
+   * Rein Drop ended it but can't take it down on the marketplace itself (assisted, e.g. Facebook):
+   * show "Remember to remove it on Facebook". Cleared when the seller confirms (POST .../end again).
+   */
+  removalPending: z.boolean(),
 });
 export type SellChannel = z.infer<typeof sellChannelSchema>;
 
@@ -85,6 +98,8 @@ export const sellListingSchema = z.object({
   title: z.string(),
   description: z.string(),
   price: moneySchema.nullable(),
+  /** The currency the price must use - the item's (an update in another currency is refused). Set even before a price exists. */
+  currency: currencySchema,
   condition: listingConditionSchema.nullable(),
   itemSpecifics: z.array(itemSpecificSchema),
   photos: z.array(sellPhotoSchema),
@@ -95,6 +110,16 @@ export const sellListingSchema = z.object({
   aiAssisted: z.boolean(),
   /** What still blocks publishing, in words (empty = ready). */
   missing: z.array(z.string()),
+  /** The inventory item's status (e.g. SOLD for the Sold tab). */
+  itemStatus: inventoryStatusSchema,
+  /** The recorded sale of the item, if any (Sold tab). */
+  sale: z.object({ price: moneySchema, soldAt: isoDateTimeSchema, marketplace: marketplaceKeySchema.nullable() }).nullable(),
+  /** Marketplaces where the seller still has to take it down themselves (see channel.removalPending). */
+  removeManually: z.array(marketplaceKeySchema),
+  /** A draft with nothing live can be discarded. */
+  canDiscard: z.boolean(),
+  /** Item still held, so it can be published / marked sold from here. */
+  canSell: z.boolean(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
 });
@@ -112,7 +137,15 @@ export const sellMarketplacesResponseSchema = z.object({
 });
 export type SellMarketplacesResponse = z.infer<typeof sellMarketplacesResponseSchema>;
 
-export const listSellListingsQuerySchema = z.object({ status: sellListingStatusSchema.optional() });
+/** Sell tabs: drafts = DRAFT; active = PUBLISHED; closed = ENDED (sold or taken down); discarded = DISCARDED. */
+export const SELL_LISTING_VIEWS = ['drafts', 'active', 'closed', 'discarded'] as const;
+export type SellListingView = (typeof SELL_LISTING_VIEWS)[number];
+/**
+ * `GET /sell/listings` - `view` (a tab) or `status` (exact); neither = every listing except
+ * discarded ones (newest change first).
+ */
+export const listSellListingsQuerySchema = z.object({ status: sellListingStatusSchema.optional(), view: z.enum(SELL_LISTING_VIEWS).optional() });
+export type ListSellListingsQuery = z.infer<typeof listSellListingsQuerySchema>;
 export const sellListingListSchema = z.object({ items: z.array(sellListingSchema) });
 
 export const updateSellListingRequestSchema = z
@@ -155,3 +188,5 @@ export const publishSellListingRequestSchema = z.object({ marketplaces: z.array(
 export type PublishSellListingRequest = z.infer<typeof publishSellListingRequestSchema>;
 
 export const confirmSellChannelRequestSchema = z.object({ url: z.string().url().optional() });
+
+// `POST /sell/listings/:id/sold` (Sold on a marketplace): listingSoldResponseSchema in outcomes.ts.

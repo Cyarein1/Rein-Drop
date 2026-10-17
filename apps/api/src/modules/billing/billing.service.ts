@@ -175,6 +175,28 @@ export class BillingService {
     return { checked: subscriptions.length, failed };
   }
 
+  /**
+   * Account deletion: cancels every subscription the account still has at the provider NOW (no
+   * further charges) and deletes the provider customer (email, payment methods). Invoices and
+   * payments stay with the provider for its own legal retention. Throws when the provider can't be
+   * reached - the caller then deletes nothing. Development fake / no customer: nothing to do.
+   * Returns how many subscriptions were cancelled.
+   */
+  async closeAccount(userId: string): Promise<number> {
+    if (this.config.billing.provider !== 'stripe' || !this.provider) return 0;
+    const customer = await this.prisma.billingCustomer.findUnique({ where: { provider_userId: { provider: STRIPE_PROVIDER, userId } } });
+    if (!customer) return 0;
+    const subscriptions = await this.provider.listCustomerSubscriptions(customer.providerCustomerId);
+    let canceled = 0;
+    for (const sub of subscriptions) {
+      if (sub.status === 'CANCELED' || sub.status === 'EXPIRED') continue;
+      await this.provider.cancelSubscriptionNow(sub.id);
+      canceled += 1;
+    }
+    await this.provider.deleteCustomer(customer.providerCustomerId);
+    return canceled;
+  }
+
   // -------------------------------------------------------------------------
   // Webhooks
   // -------------------------------------------------------------------------

@@ -37,8 +37,14 @@ export const SELL_LISTING_STATUS_LABEL: Record<SellListingStatus, { label: strin
   DRAFT: { label: 'Draft', tone: 'neutral' },
   PUBLISHED: { label: 'Listed', tone: 'profit' },
   ENDED: { label: 'Ended', tone: 'neutral' },
+  DISCARDED: { label: 'Discarded', tone: 'neutral' },
 };
-const LISTING_STATUS_KEY: Record<SellListingStatus, MessageKey> = { DRAFT: 'sell.statusDraft', PUBLISHED: 'sell.statusListed', ENDED: 'sell.statusEnded' };
+const LISTING_STATUS_KEY: Record<SellListingStatus, MessageKey> = {
+  DRAFT: 'sell.statusDraft',
+  PUBLISHED: 'sell.statusListed',
+  ENDED: 'sell.statusEnded',
+  DISCARDED: 'sell.statusDiscarded',
+};
 /** Listing status badge in the UI language (same tones). Use this; SELL_LISTING_STATUS_LABEL will be removed in step 89. */
 export function sellListingStatusLabel(status: SellListingStatus, t: Translator): { label: string; tone: 'neutral' | 'profit' | 'info' } {
   return { label: t(LISTING_STATUS_KEY[status]), tone: SELL_LISTING_STATUS_LABEL[status].tone };
@@ -122,12 +128,25 @@ export interface ChannelView {
   /** Assisted marketplace waiting for the seller: show the text to copy, "Open", "I've posted it". */
   awaiting: boolean;
   canEnd: boolean;
+  /**
+   * Rein Drop ended it but the seller must remove it on the marketplace themselves: show the
+   * reminder and an "I've removed it" button (endSellChannel again clears it).
+   */
+  removalPending: boolean;
 }
+
+const ENDED_KEY: Record<NonNullable<SellChannel['endedReason']>, MessageKey> = {
+  user: 'sell.channelEnded',
+  sold_here: 'sell.channelEndedSoldHere',
+  sold_elsewhere: 'sell.channelEndedSoldElsewhere',
+  returned: 'sell.channelEndedReturned',
+  written_off: 'sell.channelEndedWrittenOff',
+};
 
 export function channelView(channel: SellChannel, localeTag: string, t: Translator = translator('en')): ChannelView {
   const name = MARKETPLACE_NAME[channel.marketplace];
   const since = channel.publishedAt ? new Intl.DateTimeFormat(localeTag, { dateStyle: 'medium' }).format(new Date(channel.publishedAt)) : null;
-  const base = { marketplace: channel.marketplace, name, awaiting: false, canEnd: channel.status === 'PUBLISHED' || channel.status === 'AWAITING_CONFIRMATION' };
+  const base = { marketplace: channel.marketplace, name, awaiting: false, canEnd: channel.status === 'PUBLISHED' || channel.status === 'AWAITING_CONFIRMATION', removalPending: false };
   switch (channel.status) {
     case 'PUBLISHED':
       return {
@@ -142,7 +161,13 @@ export function channelView(channel: SellChannel, localeTag: string, t: Translat
       // The marketplace's own error message is shown as it came.
       return { ...base, label: t('sell.channelFailed'), tone: 'loss', detail: channel.error ?? t('sell.channelTryAgain') };
     case 'ENDED':
-      return { ...base, label: t('sell.channelEnded'), tone: 'neutral', detail: null };
+      return {
+        ...base,
+        label: t(channel.endedReason ? ENDED_KEY[channel.endedReason] : 'sell.channelEnded'),
+        tone: channel.endedReason === 'sold_here' ? 'profit' : 'neutral',
+        detail: channel.removalPending ? t('sell.channelRemovePending', { marketplace: name }) : null,
+        removalPending: channel.removalPending,
+      };
   }
 }
 

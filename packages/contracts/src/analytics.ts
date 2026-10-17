@@ -10,6 +10,10 @@ import { idSchema, isoDateTimeSchema, marketplaceKeySchema, moneySchema } from '
  *   a sale whose purchase / costs are in another currency is counted but left out of profit.
  * - Held inventory is a point-in-time snapshot (now), never a loss.
  * - Missed potential is a separate endpoint and is never part of profit or loss.
+ * - Item lifecycle (decision 0021): CANCELLED items (bought by mistake) are left out of every
+ *   figure. RETURNED / WRITTEN_OFF items count as bought (and spent) and, by the date they were
+ *   closed, have a realized result without a sale: refund - cost basis / - cost basis (`closed`).
+ *   `realized` stays the result of SALES; `netRealized` adds the closed results to it.
  * - Period = rolling window ending now. Counts are by each event's own date ("activity in the
  *   period"), not by the cohort of deals found in the period.
  */
@@ -48,13 +52,29 @@ export const realizedByCurrencySchema = z.object({
 });
 export type RealizedByCurrency = z.infer<typeof realizedByCurrencySchema>;
 
+/** Items returned or written off in the period, in one currency (their realized result without a sale). */
+export const closedByCurrencySchema = z.object({
+  currency: z.string(),
+  returned: z.number().int().nonnegative(),
+  writtenOff: z.number().int().nonnegative(),
+  /** Purchase price + purchase costs of the comparable ones. */
+  costBasis: moneySchema,
+  /** Refunds received (returns); write-offs recover nothing. */
+  recovered: moneySchema,
+  /** recovered - costBasis: a realized loss when negative. */
+  realizedResult: moneySchema,
+  /** Left out of the amounts because a purchase cost was in another currency. */
+  excluded: z.number().int().nonnegative(),
+});
+export type ClosedByCurrency = z.infer<typeof closedByCurrencySchema>;
+
 // ---------------------------------------------------------------------------
 // Overview
 // ---------------------------------------------------------------------------
 
 export const analyticsOverviewSchema = z.object({
   period: analyticsPeriodInfoSchema,
-  /** Items bought in the period. */
+  /** Items bought in the period (cancelled purchases left out). */
   buys: z.number().int().nonnegative(),
   /** Items sold in the period. */
   sells: z.number().int().nonnegative(),
@@ -62,7 +82,12 @@ export const analyticsOverviewSchema = z.object({
   spent: z.array(moneySchema),
   /** Selling costs (fees, shipping to buyers) of sales in the period, per currency. */
   sellingCosts: z.array(moneySchema),
+  /** Realized results of SALES in the period. */
   realized: z.array(realizedByCurrencySchema),
+  /** Returns and write-offs in the period (by the date they were closed), per currency. */
+  closed: z.array(closedByCurrencySchema),
+  /** Realized profit of sales + realized results of returns / write-offs, per currency. Realized only - never estimates. */
+  netRealized: z.array(moneySchema),
   /** Average days from purchase to sale, sales in the period; null without sales. */
   avgDaysToSell: z.number().nullable(),
   /** Right now (not period-based): items bought and not sold yet. Never counted as a loss. */
@@ -121,6 +146,11 @@ export const productPerformanceSchema = z.object({
   spent: z.array(moneySchema),
   realized: z.array(realizedByCurrencySchema),
   avgDaysToSell: z.number().nullable(),
+  /** Returned / written off in the period. */
+  returned: z.number().int().nonnegative(),
+  writtenOff: z.number().int().nonnegative(),
+  /** Realized result of those returns / write-offs, per currency (usually a loss). */
+  closedResult: z.array(moneySchema),
 });
 export type ProductPerformance = z.infer<typeof productPerformanceSchema>;
 export const productAnalyticsSchema = z.object({

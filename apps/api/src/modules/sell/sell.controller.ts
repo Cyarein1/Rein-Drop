@@ -6,6 +6,7 @@ import {
   confirmSellChannelRequestSchema,
   idSchema,
   listSellListingsQuerySchema,
+  recordSaleRequestSchema,
   marketplaceKeySchema,
   publishSellListingRequestSchema,
   reorderPhotosRequestSchema,
@@ -13,6 +14,8 @@ import {
   sellDraftRequestSchema,
   startSellListingRequestSchema,
   updateSellListingRequestSchema,
+  type EventSource,
+  type ListingSoldResponse,
   type SellDraftSuggestion,
   type SellListing,
   type SellMarketplacesResponse,
@@ -22,6 +25,7 @@ import type { Principal } from '../../auth/auth.types.js';
 import { CurrentUser } from '../../auth/decorators.js';
 import { STRICT_LIMIT } from '../../common/rate-limit/rate-limit.guard.js';
 import { createZodDto } from '../../common/validation/zod-validation.pipe.js';
+import { Source } from '../outcomes/item-events.js';
 import { SellService, type UploadedPhoto } from './sell.service.js';
 
 class ListingIdParams extends createZodDto(z.object({ id: idSchema })) {}
@@ -35,6 +39,7 @@ class SourcePhotoDto extends createZodDto(addSourcePhotoRequestSchema) {}
 class ReorderDto extends createZodDto(reorderPhotosRequestSchema) {}
 class PublishDto extends createZodDto(publishSellListingRequestSchema) {}
 class ConfirmDto extends createZodDto(confirmSellChannelRequestSchema) {}
+class SoldDto extends createZodDto(recordSaleRequestSchema) {}
 
 /**
  * Sell workspace (decision 0019): the current user's sell listings. Protected by the global
@@ -51,16 +56,17 @@ export class SellController {
     return this.sell.marketplaces();
   }
 
+  /** view: drafts | active | closed | discarded (or an exact status); neither = all but discarded. */
   @Get('listings')
   list(@CurrentUser() user: Principal, @Query() query: ListQueryDto): Promise<{ items: SellListing[] }> {
-    return this.sell.list(user.userId, query.status);
+    return this.sell.list(user.userId, query);
   }
 
-  /** "List" on an inventory item: its listing, created on first use. */
+  /** "List" on an inventory item: its listing, created on first use (a discarded one is restored). */
   @Post('listings')
   @HttpCode(HttpStatus.OK)
-  start(@CurrentUser() user: Principal, @Body() body: StartDto): Promise<SellListing> {
-    return this.sell.startForItem(user.userId, body.inventoryItemId);
+  start(@CurrentUser() user: Principal, @Body() body: StartDto, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.startForItem(user.userId, body.inventoryItemId, source);
   }
 
   @Get('listings/:id')
@@ -106,19 +112,40 @@ export class SellController {
 
   @Post('listings/:id/publish')
   @HttpCode(HttpStatus.OK)
-  publish(@CurrentUser() user: Principal, @Param() params: ListingIdParams, @Body() body: PublishDto): Promise<SellListing> {
-    return this.sell.publish(user.userId, params.id, body.marketplaces);
+  publish(@CurrentUser() user: Principal, @Param() params: ListingIdParams, @Body() body: PublishDto, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.publish(user.userId, params.id, body.marketplaces, source);
   }
 
   @Post('listings/:id/channels/:marketplace/confirm')
   @HttpCode(HttpStatus.OK)
-  confirm(@CurrentUser() user: Principal, @Param() params: ChannelParams, @Body() body: ConfirmDto): Promise<SellListing> {
-    return this.sell.confirmPosted(user.userId, params.id, params.marketplace, body.url);
+  confirm(@CurrentUser() user: Principal, @Param() params: ChannelParams, @Body() body: ConfirmDto, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.confirmPosted(user.userId, params.id, params.marketplace, body.url, source);
   }
 
+  /** Take it down there; on a channel already ended by Rein Drop, confirms you removed it (clears removalPending). */
   @Post('listings/:id/channels/:marketplace/end')
   @HttpCode(HttpStatus.OK)
-  end(@CurrentUser() user: Principal, @Param() params: ChannelParams): Promise<SellListing> {
-    return this.sell.endChannel(user.userId, params.id, params.marketplace);
+  end(@CurrentUser() user: Principal, @Param() params: ChannelParams, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.endChannel(user.userId, params.id, params.marketplace, source);
+  }
+
+  /** "Sold on eBay for $X": records the sale (like PUT /inventory/:id/sale) and ends every other live listing. */
+  @Post('listings/:id/sold')
+  @HttpCode(HttpStatus.OK)
+  sold(@CurrentUser() user: Principal, @Param() params: ListingIdParams, @Body() body: SoldDto, @Source() source: EventSource | null): Promise<ListingSoldResponse> {
+    return this.sell.markSold(user.userId, params.id, body, source);
+  }
+
+  /** Throw away a draft that isn't live anywhere (hidden, restorable - never deleted). */
+  @Post('listings/:id/discard')
+  @HttpCode(HttpStatus.OK)
+  discard(@CurrentUser() user: Principal, @Param() params: ListingIdParams, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.discard(user.userId, params.id, source);
+  }
+
+  @Post('listings/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  restore(@CurrentUser() user: Principal, @Param() params: ListingIdParams, @Source() source: EventSource | null): Promise<SellListing> {
+    return this.sell.restore(user.userId, params.id, source);
   }
 }

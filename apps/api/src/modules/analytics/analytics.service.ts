@@ -14,7 +14,7 @@ import type {
 import { MARKETPLACE_IDS } from '@rein-drop/marketplace-core';
 import type { PrismaClient } from '@rein-drop/db';
 import { PRISMA } from '../../database/database.module.js';
-import { avgDays, byRealizedProfit, money, percent, periodWindow, realizedBy, toRealized } from './analytics.mapper.js';
+import { avgDays, byRealizedProfit, closedBy, money, netRealized, percent, periodWindow, realizedBy, toClosed, toRealized } from './analytics.mapper.js';
 import { huntQueries, marketplaceQueries, missedQueries, num, overviewQueries, productQueries, type Window } from './analytics.sql.js';
 
 const MAX_PRODUCTS = 50;
@@ -39,7 +39,9 @@ export class AnalyticsService {
 
   async overview(userId: string, period: AnalyticsPeriod): Promise<AnalyticsOverview> {
     const { w, info, generatedAt } = this.window(userId, period);
-    const [purchases, sales, holding] = await overviewQueries(this.prisma, w);
+    const [purchases, sales, holding, closedRows] = await overviewQueries(this.prisma, w);
+    const realized = sales.map(toRealized);
+    const closed = closedRows.map(toClosed);
     const salesCount = sales.reduce((s, r) => s + num(r.sales), 0);
     const days = sales.reduce((s, r) => s + num(r.daysTotal), 0);
     return {
@@ -48,7 +50,9 @@ export class AnalyticsService {
       sells: salesCount,
       spent: purchases.map((r) => money(r.spent, r.currency)),
       sellingCosts: sales.map((r) => money(r.sellingCosts, r.currency)),
-      realized: sales.map(toRealized),
+      realized,
+      closed,
+      netRealized: netRealized(realized, closed),
       avgDaysToSell: avgDays(days, salesCount),
       holding: {
         count: holding.reduce((s, r) => s + num(r.count), 0),
@@ -86,14 +90,28 @@ export class AnalyticsService {
 
   async products(userId: string, period: AnalyticsPeriod): Promise<ProductAnalytics> {
     const { w, info, generatedAt } = this.window(userId, period);
-    const [stockRows, realizedRows] = await productQueries(this.prisma, w);
+    const [stockRows, realizedRows, closedRows] = await productQueries(this.prisma, w);
     const realized = realizedBy(realizedRows, 'key');
+    const closed = closedBy(closedRows, 'key');
     const byKey = new Map<string, ProductPerformance>();
     const entry = (key: string, name: string) => {
       let p = byKey.get(key);
       if (!p) {
         const r = realized.get(key);
-        p = { key, name, bought: 0, sold: r?.sales ?? 0, holding: 0, spent: [], realized: r?.realized ?? [], avgDaysToSell: r ? avgDays(r.days, r.sales) : null };
+        const c = closed.get(key);
+        p = {
+          key,
+          name,
+          bought: 0,
+          sold: r?.sales ?? 0,
+          holding: 0,
+          spent: [],
+          realized: r?.realized ?? [],
+          avgDaysToSell: r ? avgDays(r.days, r.sales) : null,
+          returned: c?.returned ?? 0,
+          writtenOff: c?.writtenOff ?? 0,
+          closedResult: c?.results ?? [],
+        };
         byKey.set(key, p);
       }
       return p;
@@ -105,9 +123,10 @@ export class AnalyticsService {
       if (num(row.spent) !== 0) p.spent.push(money(row.spent, row.currency));
     }
     for (const row of realizedRows) entry(row.key, row.name); // sold items always have a stock row too
+    for (const row of closedRows) entry(row.key, row.name);
     const items = [...byKey.values()]
       // Only products with something in the period, or still held.
-      .filter((p) => p.bought + p.sold + p.holding > 0)
+      .filter((p) => p.bought + p.sold + p.holding + p.returned + p.writtenOff > 0)
       .sort(byRealizedProfit)
       .slice(0, MAX_PRODUCTS);
     return { period: info, items, generatedAt };

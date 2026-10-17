@@ -24,6 +24,7 @@ export * from './capabilities.js';
 export * from './listings.js';
 export * from './deals.js';
 export * from './notifications.js';
+export * from './inventory-lifecycle.js';
 export * from './outcomes.js';
 export * from './sell.js';
 export * from './analytics.js';

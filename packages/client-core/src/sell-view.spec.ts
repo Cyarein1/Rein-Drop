@@ -65,7 +65,7 @@ describe('photos and marketplaces', () => {
     expect(photoSrc('https://dev.example/img/a.jpg', 'http://x')).toBe('https://dev.example/img/a.jpg');
   });
 
-  const channel = (o: Partial<SellChannel>): SellChannel => ({ marketplace: 'ebay', mode: 'api', status: 'PUBLISHED', url: null, simulated: false, assist: null, error: null, publishedAt: '2026-10-15T08:00:00Z', ...o });
+  const channel = (o: Partial<SellChannel>): SellChannel => ({ marketplace: 'ebay', mode: 'api', status: 'PUBLISHED', url: null, simulated: false, assist: null, error: null, publishedAt: '2026-10-15T08:00:00Z', endedReason: null, removalPending: false, ...o });
   it('says plainly when a listing is simulated, waiting for the seller, failed or ended', () => {
     expect(channelView(channel({ simulated: true }), 'en-US')).toMatchObject({ label: 'Listed (simulated)', detail: 'Simulated for now - nothing was posted to eBay yet.', canEnd: true });
     expect(channelView(channel({}), 'en-US')).toMatchObject({ label: 'Listed', detail: 'Since Oct 15, 2026.' });

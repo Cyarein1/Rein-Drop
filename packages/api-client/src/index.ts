@@ -103,6 +103,27 @@ import {
   type Plan,
   inventoryItemSchema,
   inventoryPageSchema,
+  inventoryCountsSchema,
+  inventoryEventListSchema,
+  createInventoryItemRequestSchema,
+  returnItemRequestSchema,
+  writeOffItemRequestSchema,
+  cancelItemRequestSchema,
+  listingSoldResponseSchema,
+  listSellListingsQuerySchema,
+  deleteAccountRequestSchema,
+  deleteAccountResponseSchema,
+  DELETE_ACCOUNT_CONFIRMATION,
+  CLIENT_PLATFORM_HEADER,
+  type CancelItemRequest,
+  type CreateInventoryItemRequestInput,
+  type DeleteAccountResponse,
+  type InventoryCounts,
+  type InventoryEventList,
+  type ListingSoldResponse,
+  type ListSellListingsQuery,
+  type ReturnItemRequest,
+  type WriteOffItemRequest,
   listInventoryQuerySchema,
   recordSaleRequestSchema,
   replacePurchaseCostsRequestSchema,
@@ -160,6 +181,14 @@ import { normalizeBaseUrl, pathId, send, validateInput, type HttpOptions } from 
 export { ApiError } from './errors.js';
 export type * from '@rein-drop/contracts';
 export {
+  actionBlock,
+  CLIENT_PLATFORM_HEADER,
+  closedResult,
+  DELETE_ACCOUNT_CONFIRMATION,
+  INVENTORY_ACTIONS,
+  INVENTORY_SECTIONS,
+  INVENTORY_TRANSITIONS,
+  inventoryActions,
   AUTH_PROVIDER_IDS,
   DEV_AUTH_HEADER,
   DEV_AUTH_SUBJECT,
@@ -202,6 +231,11 @@ export interface ApiClientOptions {
    * TODO(auth): the auth provider is TBD; credentials will be supplied through this hook.
    */
   getHeaders?: HttpOptions['getHeaders'];
+  /**
+   * Which app this is ("web" | "mobile"), sent as x-client-platform so item events (the inventory
+   * timeline) record where a change was made. Optional.
+   */
+  platform?: Platform;
 }
 
 export interface ApiClient {
@@ -212,6 +246,8 @@ export interface ApiClient {
 
   /** Current account (placeholder until auth is chosen), including locale preferences. */
   getMe(): Promise<AccountIdentity>;
+  /** Deletes the signed-in account for good (cancels a paid subscription first). Sign out afterwards. */
+  deleteAccount(): Promise<DeleteAccountResponse>;
   getLocale(): Promise<UserLocale | null>;
   /** Set the locale, or report a detected one (`source: 'detected'` never overwrites). */
   updateLocale(input: UpdateUserLocaleRequestInput): Promise<UserLocale | null>;
@@ -289,6 +325,8 @@ export interface ApiClient {
   unignoreDeal(id: string): Promise<DealDetail>;
   /** Records the purchase (price defaults to the asking price). Idempotent. */
   markDealBought(id: string, input?: MarkDealBoughtRequest): Promise<DealDetail>;
+  /** Undo Bought (bought by mistake): cancels the purchase; the deal shows as not bought. 409 while sold / live. */
+  undoDealBought(id: string): Promise<DealDetail>;
 
   /** Per-category, per-channel notification choices (marketing separate, opt-in). */
   getNotificationPreferences(): Promise<NotificationPreferences>;
@@ -308,21 +346,36 @@ export interface ApiClient {
   /** Stop push to this phone. */
   unregisterPushDevice(id: string): Promise<PushDevice>;
 
-  /** Inventory: holding (default), sold or all; newest purchase first. */
+  /** Inventory: `section` (holding | listed | sold | other) or `status` (holding (default) | sold | closed | all); newest purchase first. */
   listInventory(query?: ListInventoryQueryInput): Promise<Page<InventoryItem>>;
+  /** Chip counts per section and listing tab. */
+  getInventoryCounts(): Promise<InventoryCounts>;
   getInventoryItem(id: string): Promise<InventoryItem>;
+  /** "Add item": something bought outside Rein Drop. */
+  createInventoryItem(input: CreateInventoryItemRequestInput): Promise<InventoryItem>;
+  /** The item's timeline (audit trail), oldest first. */
+  getInventoryEvents(id: string): Promise<InventoryEventList>;
+  /** Returned to the seller / refunded (refund defaults to the purchase price). */
+  returnInventoryItem(id: string, input?: ReturnItemRequest): Promise<InventoryItem>;
+  /** Lost, broken or unsellable - its cost becomes a realized loss. */
+  writeOffInventoryItem(id: string, input?: WriteOffItemRequest): Promise<InventoryItem>;
+  /** Bought by mistake / Undo bought (only while not sold and nothing live on a marketplace). */
+  cancelInventoryItem(id: string, input?: CancelItemRequest): Promise<InventoryItem>;
+  /** Back to In stock from Returned / Written off / Cancelled. */
+  reopenInventoryItem(id: string): Promise<InventoryItem>;
   /** Correct the purchase, or move between In stock and Listed. */
   updateInventoryItem(id: string, input: UpdateInventoryItemRequest): Promise<InventoryItem>;
   /** Replaces the purchase costs (tax, shipping to you, repair, supplies, other). */
   replacePurchaseCosts(id: string, input: ReplacePurchaseCostsRequest): Promise<InventoryItem>;
   /** Mark Sold, or correct the sale. The result is the realized P/L. */
   recordSale(id: string, input: RecordSaleRequestInput): Promise<InventoryItem>;
-  /** Undo the sale: the item is held again. */
+  /** Undo the sale: the item is held again (its marketplace listings stay ended). */
   undoSale(id: string): Promise<InventoryItem>;
 
   /** Sell (decision 0019): marketplaces you can list on, and whether uploads / AI drafts are available. */
   getSellMarketplaces(): Promise<SellMarketplacesResponse>;
-  listSellListings(status?: SellListingStatus): Promise<SellListing[]>;
+  /** A tab (`{ view: 'drafts' | 'active' | 'closed' | 'discarded' }`), an exact status, or nothing (all but discarded). */
+  listSellListings(filter?: SellListingStatus | ListSellListingsQuery): Promise<SellListing[]>;
   /** "List" on an inventory item: its sell listing, created on first use. */
   startSellListing(inventoryItemId: string): Promise<SellListing>;
   getSellListing(id: string): Promise<SellListing>;
@@ -340,7 +393,13 @@ export interface ApiClient {
   removeSellPhoto(id: string, photoId: string): Promise<SellListing>;
   publishSellListing(id: string, marketplaces: MarketplaceKey[]): Promise<SellListing>;
   confirmSellChannel(id: string, marketplace: MarketplaceKey, url?: string): Promise<SellListing>;
+  /** Take it down there; on a channel Rein Drop already ended, confirms you removed it (clears removalPending). */
   endSellChannel(id: string, marketplace: MarketplaceKey): Promise<SellListing>;
+  /** "Sold on eBay for $X": records the sale and ends every other live listing. */
+  markSellListingSold(id: string, input: RecordSaleRequestInput): Promise<ListingSoldResponse>;
+  /** Throw away a draft that isn't live anywhere (restorable). */
+  discardSellListing(id: string): Promise<SellListing>;
+  restoreSellListing(id: string): Promise<SellListing>;
   /** Period analytics (default: last 30 days). Realized results only; estimates are labelled. */
   getAnalyticsOverview(query?: AnalyticsQueryInput): Promise<AnalyticsOverview>;
   getHuntAnalytics(query?: AnalyticsQueryInput): Promise<HuntAnalytics>;
@@ -377,7 +436,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     baseUrl: normalizeBaseUrl(options.baseUrl),
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     fetch: options.fetch ?? ((...args) => globalThis.fetch(...args)),
-    getHeaders: options.getHeaders,
+    getHeaders: options.platform
+      ? async () => ({ [CLIENT_PLATFORM_HEADER]: options.platform!, ...(options.getHeaders ? await options.getHeaders() : {}) })
+      : options.getHeaders,
   };
 
   return {
@@ -391,6 +452,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
 
     getMe: () => send(http, { method: 'GET', path: '/me', response: accountIdentitySchema }),
+    deleteAccount: async () =>
+      send(http, {
+        method: 'POST',
+        path: '/me/delete',
+        body: validateInput(deleteAccountRequestSchema, { confirmation: DELETE_ACCOUNT_CONFIRMATION }, 'body'),
+        response: deleteAccountResponseSchema,
+        timeoutMs: 60_000,
+      }),
     getLocale: async () =>
       (await send(http, { method: 'GET', path: '/me/locale', response: userLocaleResponseSchema })).locale,
     updateLocale: async (input) =>
@@ -532,6 +601,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: validateInput(markDealBoughtRequestSchema, input, 'body'),
         response: dealDetailSchema,
       }),
+    undoDealBought: (id) => send(http, { method: 'DELETE', path: `/deals/${pathId(id)}/bought`, response: dealDetailSchema }),
 
     getNotificationPreferences: () =>
       send(http, { method: 'GET', path: '/me/notification-preferences', response: notificationPreferencesSchema }),
@@ -566,7 +636,18 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         query: validateInput(listInventoryQuerySchema, query, 'query'),
         response: inventoryPageSchema,
       }),
+    getInventoryCounts: () => send(http, { method: 'GET', path: '/inventory/counts', response: inventoryCountsSchema }),
     getInventoryItem: (id) => send(http, { method: 'GET', path: `/inventory/${pathId(id)}`, response: inventoryItemSchema }),
+    createInventoryItem: async (input) =>
+      send(http, { method: 'POST', path: '/inventory', body: validateInput(createInventoryItemRequestSchema, input, 'body'), response: inventoryItemSchema }),
+    getInventoryEvents: (id) => send(http, { method: 'GET', path: `/inventory/${pathId(id)}/events`, response: inventoryEventListSchema }),
+    returnInventoryItem: async (id, input = {}) =>
+      send(http, { method: 'POST', path: `/inventory/${pathId(id)}/return`, body: validateInput(returnItemRequestSchema, input, 'body'), response: inventoryItemSchema }),
+    writeOffInventoryItem: async (id, input = {}) =>
+      send(http, { method: 'POST', path: `/inventory/${pathId(id)}/write-off`, body: validateInput(writeOffItemRequestSchema, input, 'body'), response: inventoryItemSchema }),
+    cancelInventoryItem: async (id, input = {}) =>
+      send(http, { method: 'POST', path: `/inventory/${pathId(id)}/cancel`, body: validateInput(cancelItemRequestSchema, input, 'body'), response: inventoryItemSchema }),
+    reopenInventoryItem: (id) => send(http, { method: 'POST', path: `/inventory/${pathId(id)}/reopen`, body: {}, response: inventoryItemSchema }),
     updateInventoryItem: async (id, input) =>
       send(http, {
         method: 'PATCH',
@@ -591,7 +672,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     undoSale: (id) => send(http, { method: 'DELETE', path: `/inventory/${pathId(id)}/sale`, response: inventoryItemSchema }),
 
     getSellMarketplaces: () => send(http, { method: 'GET', path: '/sell/marketplaces', response: sellMarketplacesResponseSchema }),
-    listSellListings: async (status) => (await send(http, { method: 'GET', path: '/sell/listings', query: { status }, response: sellListingListSchema })).items,
+    listSellListings: async (filter) => {
+      const query = validateInput(listSellListingsQuerySchema, typeof filter === 'string' ? { status: filter } : (filter ?? {}), 'query');
+      return (await send(http, { method: 'GET', path: '/sell/listings', query: { status: query.status, view: query.view }, response: sellListingListSchema })).items;
+    },
     startSellListing: (inventoryItemId) => send(http, { method: 'POST', path: '/sell/listings', body: { inventoryItemId }, response: sellListingSchema }),
     getSellListing: (id) => send(http, { method: 'GET', path: `/sell/listings/${pathId(id)}`, response: sellListingSchema }),
     updateSellListing: async (id, input) =>
@@ -615,6 +699,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     confirmSellChannel: async (id, marketplace, url) =>
       send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/channels/${marketplace}/confirm`, body: validateInput(confirmSellChannelRequestSchema, url ? { url } : {}, 'body'), response: sellListingSchema }),
     endSellChannel: (id, marketplace) => send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/channels/${marketplace}/end`, body: {}, response: sellListingSchema }),
+    markSellListingSold: async (id, input) =>
+      send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/sold`, body: validateInput(recordSaleRequestSchema, input, 'body'), response: listingSoldResponseSchema }),
+    discardSellListing: (id) => send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/discard`, body: {}, response: sellListingSchema }),
+    restoreSellListing: (id) => send(http, { method: 'POST', path: `/sell/listings/${pathId(id)}/restore`, body: {}, response: sellListingSchema }),
     getAnalyticsOverview: async (query = {}) => analytics(http, 'overview', query, analyticsOverviewSchema),
     getHuntAnalytics: async (query = {}) => analytics(http, 'hunts', query, huntAnalyticsSchema),
     getProductAnalytics: async (query = {}) => analytics(http, 'products', query, productAnalyticsSchema),

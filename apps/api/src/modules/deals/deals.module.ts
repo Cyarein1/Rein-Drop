@@ -11,6 +11,7 @@ import { DealsService } from './deals.service.js';
  * composed read model; writes to Matching (decisions) and Outcomes (purchase) through their
  * services.
  * Endpoints: GET /deals, GET /deals/:id, POST /deals/:id/{seen,save,ignore,bought},
+ * DELETE /deals/:id/bought (undo bought - cancels the purchase),
  * DELETE /deals/:id/{save,ignore}.
  */
 @Module({

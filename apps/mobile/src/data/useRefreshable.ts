@@ -2,11 +2,17 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ApiError } from '@rein-drop/api-client';
 import { refreshFailed, refreshStarted, refreshSucceeded, refreshUpdated, type Refreshable } from '@rein-drop/client-core';
+import { SignInServiceUnreachable } from '@/auth/types';
 import { useT } from '@/i18n/useT';
 
-/** No HTTP status = no answer at all (offline, timeout, DNS). */
+/**
+ * No HTTP status = no answer at all (offline, timeout, DNS): the API client wraps every failed
+ * request in an ApiError without a status. Anything else (a TypeError from our own code, a failed
+ * sign-in header lookup) is NOT a connection problem - calling it "offline" hid real bugs.
+ */
 export function isOffline(err: unknown): boolean {
-  return !(err instanceof ApiError) || err.status === undefined;
+  if (err instanceof SignInServiceUnreachable) return true;
+  return err instanceof ApiError && err.status === undefined && !err.code;
 }
 
 const LOADING = { status: 'loading' } as const;
@@ -28,9 +34,12 @@ export function useRefreshable<T>(fetch: () => Promise<T>, key: string) {
       setStored((s) => ({ key, value: refreshStarted(s.key === key ? s.value : LOADING, visible) }));
       fetch().then(
         (data) => ticket === latest.current && setStored({ key, value: refreshSucceeded(data) }),
-        (err: unknown) =>
-          ticket === latest.current &&
-          setStored((s) => ({ key, value: refreshFailed(s.key === key ? s.value : LOADING, err instanceof Error ? err.message : String(err), isOffline(err), t) })),
+        (err: unknown) => {
+          // Development builds: the full error (with stack) in the Metro terminal / LogBox.
+          if (__DEV__ && !(err instanceof ApiError)) console.error('[useRefreshable] load failed:', err);
+          if (ticket === latest.current)
+            setStored((s) => ({ key, value: refreshFailed(s.key === key ? s.value : LOADING, err instanceof Error ? err.message : String(err), isOffline(err), t) }));
+        },
       );
     },
     [fetch, key, t],

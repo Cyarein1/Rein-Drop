@@ -8,6 +8,10 @@ import { Prisma, type PrismaClient } from '@rein-drop/db';
  *   sale price - selling costs - purchase price - purchase costs,
  * only for sales where the purchase, the sale and every cost share a currency ("comparable").
  * The integration test checks the SQL against the TypeScript formula.
+ *
+ * Item lifecycle (decision 0021): CANCELLED items are filtered out in the `item` CTE, so they never
+ * count (not bought, not spent, not held). RETURNED / WRITTEN_OFF items stay bought; their result
+ * without a sale (refund - cost basis / - cost basis, `closedResult` in contracts) is in `closed`.
  */
 
 export interface Window {
@@ -31,12 +35,12 @@ function ledger(w: Window): Prisma.Sql {
   return Prisma.sql`
     item AS (
       SELECT i."id", i."currency", i."purchasePriceMinor"::bigint AS "price", i."purchasedAt", i."status"::text AS "status",
-        i."huntMatchId", i."listingId", i."title",
+        i."huntMatchId", i."listingId", i."title", i."boughtFromMarketplace", i."closedAt", i."refundMinor"::bigint AS "refund",
         COALESCE(SUM(c."amountMinor") FILTER (WHERE c."currency" = i."currency"), 0)::bigint AS "pcosts",
         COUNT(c."id") FILTER (WHERE c."currency" <> i."currency")::int AS "pcostsOther"
       FROM "InventoryItem" i
       LEFT JOIN "Cost" c ON c."inventoryItemId" = i."id" AND c."saleId" IS NULL
-      WHERE i."userId" = ${w.userId}::uuid
+      WHERE i."userId" = ${w.userId}::uuid AND i."status" <> 'CANCELLED'
       GROUP BY i."id"
     ),
     sale AS (
@@ -50,11 +54,19 @@ function ledger(w: Window): Prisma.Sql {
     ),
     sold AS (
       SELECT sale."id", sale."inventoryItemId", sale."currency", sale."price", sale."scosts", sale."soldAt", sale."marketplaceId",
-        item."price" AS "buy", item."pcosts", item."huntMatchId", item."listingId",
+        item."price" AS "buy", item."pcosts", item."huntMatchId", item."listingId", item."boughtFromMarketplace",
         (item."currency" = sale."currency" AND item."pcostsOther" = 0 AND sale."scostsOther" = 0) AS "comparable",
         EXTRACT(EPOCH FROM (sale."soldAt" - item."purchasedAt")) / 86400.0 AS "days"
       FROM sale JOIN item ON item."id" = sale."inventoryItemId"
       WHERE ${inWindow(Prisma.sql`sale."soldAt"`, w)}
+    ),
+    closed AS (
+      SELECT item."id", item."currency", item."status", item."listingId", item."boughtFromMarketplace",
+        item."price" + item."pcosts" AS "basis",
+        CASE WHEN item."status" = 'RETURNED' THEN COALESCE(item."refund", item."price") ELSE 0 END AS "recovered",
+        (item."pcostsOther" = 0) AS "comparable"
+      FROM item
+      WHERE item."status" IN ('RETURNED', 'WRITTEN_OFF') AND item."closedAt" IS NOT NULL AND ${inWindow(Prisma.sql`item."closedAt"`, w)}
     ),
     product AS (
       SELECT item."id",
@@ -81,6 +93,24 @@ const REALIZED = Prisma.sql`
   COALESCE(SUM(sold."price" - sold."scosts" - sold."buy" - sold."pcosts") FILTER (WHERE sold."comparable"), 0)::bigint AS "profit",
   COALESCE(SUM(sold."price") FILTER (WHERE sold."comparable"), 0)::bigint AS "comparableRevenue",
   SUM(sold."days")::float8 AS "daysTotal"`;
+
+/** Closed-without-sale aggregate columns over `closed` (use with GROUP BY ..., closed."currency"). */
+const CLOSED = Prisma.sql`
+  closed."currency" AS "currency",
+  COUNT(*) FILTER (WHERE closed."status" = 'RETURNED')::int AS "returned",
+  COUNT(*) FILTER (WHERE closed."status" = 'WRITTEN_OFF')::int AS "writtenOff",
+  COALESCE(SUM(closed."basis") FILTER (WHERE closed."comparable"), 0)::bigint AS "basis",
+  COALESCE(SUM(closed."recovered") FILTER (WHERE closed."comparable"), 0)::bigint AS "recovered",
+  COUNT(*) FILTER (WHERE NOT closed."comparable")::int AS "excluded"`;
+
+export interface ClosedRow {
+  currency: string;
+  returned: number;
+  writtenOff: number;
+  basis: bigint;
+  recovered: bigint;
+  excluded: number;
+}
 
 export interface RealizedRow {
   currency: string;
@@ -114,6 +144,9 @@ export function overviewQueries(prisma: PrismaClient, w: Window) {
         FLOOR(MAX(EXTRACT(EPOCH FROM (${w.until}::timestamptz - item."purchasedAt")) / 86400.0))::int AS "oldestDays"
       FROM item WHERE item."status" IN ${HOLDING}
       GROUP BY item."currency" ORDER BY item."currency"`),
+    prisma.$queryRaw<ClosedRow[]>(Prisma.sql`
+      WITH ${ledger(w)}
+      SELECT ${CLOSED} FROM closed GROUP BY closed."currency" ORDER BY closed."currency"`),
   ]);
 }
 
@@ -144,7 +177,7 @@ export function huntQueries(prisma: PrismaClient, w: Window) {
           WHERE m."huntId" = h."id" AND ${inWindow(Prisma.sql`s."createdAt"`, w)})::int AS "saved",
         (SELECT COUNT(*) FROM "HuntMatch" m WHERE m."huntId" = h."id" AND m."status" = 'DISMISSED' AND ${inWindow(Prisma.sql`m."dismissedAt"`, w)})::int AS "ignored",
         (SELECT COUNT(*) FROM "InventoryItem" i JOIN "HuntMatch" m ON m."id" = i."huntMatchId"
-          WHERE m."huntId" = h."id" AND ${inWindow(Prisma.sql`i."purchasedAt"`, w)})::int AS "bought"
+          WHERE m."huntId" = h."id" AND i."status" <> 'CANCELLED' AND ${inWindow(Prisma.sql`i."purchasedAt"`, w)})::int AS "bought"
       FROM "Hunt" h
       WHERE h."userId" = ${w.userId}::uuid
       ORDER BY h."createdAt"`),
@@ -177,6 +210,11 @@ export function productQueries(prisma: PrismaClient, w: Window) {
       SELECT ${PRODUCT_KEY} AS "key", MIN(product."name") AS "name", ${REALIZED}
       FROM sold JOIN product ON product."id" = sold."inventoryItemId"
       GROUP BY ${PRODUCT_KEY}, sold."currency"`),
+    prisma.$queryRaw<(ClosedRow & { key: string; name: string })[]>(Prisma.sql`
+      WITH ${ledger(w)}
+      SELECT ${PRODUCT_KEY} AS "key", MIN(product."name") AS "name", ${CLOSED}
+      FROM closed JOIN product ON product."id" = closed."id"
+      GROUP BY ${PRODUCT_KEY}, closed."currency"`),
   ]);
 }
 
@@ -184,9 +222,9 @@ export function productQueries(prisma: PrismaClient, w: Window) {
 // Marketplaces
 // ---------------------------------------------------------------------------
 
-/** The marketplace a listing came from; 'other' when there is none. */
-const SOURCE_KEY = (listingId: Prisma.Sql) =>
-  Prisma.sql`COALESCE((SELECT mk."key" FROM "Listing" l JOIN "Marketplace" mk ON mk."id" = l."marketplaceId" WHERE l."id" = ${listingId}), 'other')`;
+/** Where an item was bought: its deal listing's marketplace, else the marketplace given with "Add item"; 'other' otherwise. */
+const SOURCE_KEY = (listingId: Prisma.Sql, boughtFrom: Prisma.Sql) =>
+  Prisma.sql`COALESCE((SELECT mk."key" FROM "Listing" l JOIN "Marketplace" mk ON mk."id" = l."marketplaceId" WHERE l."id" = ${listingId}), ${boughtFrom}, 'other')`;
 
 export function marketplaceQueries(prisma: PrismaClient, w: Window) {
   return Promise.all([
@@ -202,12 +240,12 @@ export function marketplaceQueries(prisma: PrismaClient, w: Window) {
       GROUP BY mk."key"`),
     prisma.$queryRaw<{ key: string; bought: number }[]>(Prisma.sql`
       WITH ${ledger(w)}
-      SELECT ${SOURCE_KEY(Prisma.sql`item."listingId"`)} AS "key", COUNT(*)::int AS "bought"
+      SELECT ${SOURCE_KEY(Prisma.sql`item."listingId"`, Prisma.sql`item."boughtFromMarketplace"`)} AS "key", COUNT(*)::int AS "bought"
       FROM item WHERE ${inWindow(Prisma.sql`item."purchasedAt"`, w)}
       GROUP BY 1`),
     prisma.$queryRaw<(RealizedRow & { key: string })[]>(Prisma.sql`
       WITH ${ledger(w)}
-      SELECT ${SOURCE_KEY(Prisma.sql`sold."listingId"`)} AS "key", ${REALIZED}
+      SELECT ${SOURCE_KEY(Prisma.sql`sold."listingId"`, Prisma.sql`sold."boughtFromMarketplace"`)} AS "key", ${REALIZED}
       FROM sold GROUP BY 1, sold."currency"`),
     prisma.$queryRaw<{ key: string; currency: string; sales: number; revenue: bigint }[]>(Prisma.sql`
       WITH ${ledger(w)}

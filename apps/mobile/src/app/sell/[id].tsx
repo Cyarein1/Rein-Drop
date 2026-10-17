@@ -96,7 +96,8 @@ function Editor({ initial, markets }: { initial: SellListing; markets: SellMarke
   const [notice, setNotice] = useState<string | null>(null);
   const api = getApiClient();
   const base = apiBaseUrl.url ?? '';
-  const currency = listing.price?.currency ?? 'ZAR';
+  // The item's currency (the API refuses any other); never a hard-coded one.
+  const currency = listing.currency;
   const status = sellListingStatusLabel(listing.status, t);
   const full = listing.photos.length >= PHOTOS_MAX;
 

@@ -55,4 +55,17 @@ export default {
 
   // Account screen sections (step 89 redesign)
   settingsTitle: 'Settings',
+
+  // Step 90: account deletion (Apple 5.1.1(v), Google Play, GDPR)
+  deleteTitle: 'Delete account',
+  deleteIntro: 'This permanently deletes your Rein Drop account and everything in it.',
+  deleteWhatGoes: "Your Hunts, deals, inventory, sales, listings, photos and settings are erased. This can't be undone.",
+  deleteBilling: "If you're on a paid plan, it's cancelled right away and you won't be charged again.",
+  deleteSignIn: 'Signing in again later starts a new, empty account.',
+  deleteTypeToConfirm: 'Type {word} to confirm',
+  deleteConfirm: 'Delete my account',
+  deleteCancel: 'Keep my account',
+  deleting: 'Deleting your account…',
+  deleteDone: 'Your account was deleted.',
+  deleteFailed: "Couldn't delete your account: {message}",
 } as const;

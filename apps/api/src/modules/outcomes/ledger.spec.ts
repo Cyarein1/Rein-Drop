@@ -99,3 +99,55 @@ describe('expectedSnapshot', () => {
     expect(expectedSnapshot({ asking: null, economics: null, strength: null, confidence: null, capturedAt: t0 }).askingPrice).toBeNull();
   });
 });
+
+describe('toInventoryItem - lifecycle (decision 0021)', () => {
+  it('a written-off item has a realized loss of its whole cost basis, and can only be reopened or edited', () => {
+    const item = toInventoryItem(row({ status: 'WRITTEN_OFF', closedAt: day(5), closedNote: 'cracked screen', costs: [cost('REPAIR', 20_00)] }), day(30));
+    expect(item).toMatchObject({
+      holding: false,
+      daysHeld: 5,
+      closure: { status: 'WRITTEN_OFF', note: 'cracked screen', refund: null, result: { status: 'ok', costBasis: zar(120_00), recovered: zar(0), realizedProfit: zar(-120_00) } },
+      result: null,
+      actions: ['edit_purchase', 'reopen'],
+    });
+  });
+
+  it('a returned item: refund minus cost basis (refund defaults to the price paid)', () => {
+    expect(toInventoryItem(row({ status: 'RETURNED', closedAt: day(2), refundMinor: 90_00 }), day(3)).closure).toMatchObject({ refund: zar(90_00), result: { realizedProfit: zar(-10_00) } });
+    expect(toInventoryItem(row({ status: 'RETURNED', closedAt: day(2), refundMinor: null }), day(3)).closure?.result).toMatchObject({ realizedProfit: zar(0) });
+  });
+
+  it('a cancelled purchase has no result at all and can only be reopened', () => {
+    const item = toInventoryItem(row({ status: 'CANCELLED', closedAt: day(1) }), day(3));
+    expect(item.closure).toMatchObject({ status: 'CANCELLED', result: null });
+    expect(item.actions).toEqual(['reopen']);
+  });
+
+  it('a live listing blocks Undo bought and shows the listing summary; manual items show where they were bought', () => {
+    const item = toInventoryItem(
+      row({
+        status: 'LISTED',
+        huntMatchId: null,
+        listing: null,
+        boughtFromText: 'garage sale',
+        sellListing: {
+          id: 'l1',
+          status: 'PUBLISHED',
+          priceMinor: 150_00,
+          currency: 'ZAR',
+          channels: [
+            { marketplace: 'ebay', status: 'PUBLISHED', removalPending: false },
+            { marketplace: 'facebook', status: 'ENDED', removalPending: true },
+          ],
+        },
+      }),
+      day(1),
+    );
+    expect(item.actions).not.toContain('cancel');
+    expect(item).toMatchObject({
+      origin: 'manual',
+      boughtFrom: { marketplace: null, text: 'garage sale' },
+      sellListing: { id: 'l1', status: 'PUBLISHED', price: zar(150_00), activeChannels: 1, removeManually: ['facebook'] },
+    });
+  });
+});

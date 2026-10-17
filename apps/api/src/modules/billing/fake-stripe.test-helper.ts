@@ -90,6 +90,17 @@ export function fakeStripe() {
       const s = subscriptions.get(id);
       return s ? json(200, subscriptionObject(s)) : notFound(`subscription: '${id}'`);
     }
+    if (call.method === 'DELETE' && resource === 'subscriptions' && id) {
+      const s = subscriptions.get(id);
+      if (!s) return notFound(`subscription: '${id}'`);
+      s.status = 'canceled';
+      s.canceledAt = Math.floor(Date.now() / 1000);
+      return json(200, subscriptionObject(s));
+    }
+    if (call.method === 'DELETE' && resource === 'customers' && id) {
+      if (!customers.delete(id)) return notFound(`customer: '${id}'`);
+      return json(200, { id, object: 'customer', deleted: true });
+    }
     if (call.method === 'GET' && resource === 'prices' && id) {
       const p = prices.get(id);
       return p ? json(200, { object: 'price', ...p }) : notFound(`price: '${id}'`);

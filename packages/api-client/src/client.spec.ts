@@ -306,3 +306,26 @@ describe('createApiClient', () => {
     });
   });
 });
+
+describe('item lifecycle and account deletion (step 90)', () => {
+  it('sends x-client-platform and the account-deletion confirmation', async () => {
+    const fetch = fakeFetch(200, { deleted: true, deletedAt: NOW, canceledSubscriptions: 1, signOut: true });
+    const api = createApiClient({ baseUrl: 'http://api.test', fetch: fetch as unknown as typeof globalThis.fetch, platform: 'mobile', getHeaders: () => ({ 'x-test': '1' }) });
+    expect(await api.deleteAccount()).toMatchObject({ deleted: true, canceledSubscriptions: 1 });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe('http://api.test/me/delete');
+    expect(JSON.parse(String(init?.body))).toEqual({ confirmation: 'DELETE' });
+    expect(init?.headers).toMatchObject({ 'x-client-platform': 'mobile', 'x-test': '1' });
+  });
+
+  it('lists Sell tabs by view and validates lifecycle bodies before sending', async () => {
+    const fetch = fakeFetch(200, { items: [] });
+    const api = client(fetch);
+    await api.listSellListings({ view: 'discarded' });
+    await api.listSellListings('DRAFT');
+    expect(fetch.mock.calls.map(([u]) => String(u))).toEqual(['http://api.test/sell/listings?view=discarded', 'http://api.test/sell/listings?status=DRAFT']);
+    await expect(api.returnInventoryItem(ID, { refund: { amountMinor: -1, currency: 'ZAR' } })).rejects.toThrow(ApiError);
+    await expect(api.createInventoryItem({ title: '', purchasePrice: { amountMinor: 1, currency: 'ZAR' }, purchasedAt: NOW })).rejects.toThrow(ApiError);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});

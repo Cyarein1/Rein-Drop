@@ -1,5 +1,5 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import type { DealDetail, DealStrength, DealSummary, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, MarketplaceKey, Money, Page } from '@rein-drop/contracts';
+import type { DealDetail, DealStrength, DealSummary, EventSource, IgnoreDealRequest, ListDealsQuery, MarkDealBoughtRequest, MarketplaceKey, Money, Page } from '@rein-drop/contracts';
 import type { PrismaClient } from '@rein-drop/db';
 import { feedRank, type DealEconomics } from '@rein-drop/scoring';
 import type { ProductEvents } from '@rein-drop/telemetry';
@@ -112,9 +112,10 @@ export class DealsService {
 
   /**
    * Records the purchase once (InventoryItem) and marks the deal BOUGHT. Repeating it returns the
-   * deal unchanged - editing the purchase comes with the Outcomes screens (Build Prompt 28).
+   * deal unchanged - editing the purchase comes with the Outcomes screens (Build Prompt 28). A deal
+   * whose purchase was cancelled (Undo bought) is bought again on its existing item.
    */
-  async markBought(userId: string, id: string, request: MarkDealBoughtRequest): Promise<DealDetail> {
+  async markBought(userId: string, id: string, request: MarkDealBoughtRequest, source: EventSource | null = null): Promise<DealDetail> {
     await this.owned(userId, id);
     const listing = await this.prisma.listing.findFirstOrThrow({ where: { huntMatches: { some: { id } } }, include: { marketplace: { select: { key: true } } } });
     const now = this.clock();
@@ -149,7 +150,11 @@ export class DealsService {
     const recorded = await this.prisma.$transaction(async (tx) => {
       // The conditional status change serializes concurrent requests: only one records the purchase.
       if (!(await this.matching.markBought(tx, id, now))) return false;
-      await this.outcomes.recordDealPurchase(tx, { userId, huntMatchId: id, listingId: listing.id, title: listing.title, price, purchasedAt, costs, expected });
+      await this.outcomes.recordDealPurchase(
+        tx,
+        { userId, huntMatchId: id, listingId: listing.id, title: listing.title, price, purchasedAt, costs, expected, marketplace: listing.marketplace.key as MarketplaceKey },
+        source,
+      );
       return true;
     });
     if (recorded) {
@@ -159,6 +164,14 @@ export class DealsService {
         strength: (analysis?.strength as DealStrength | null | undefined) ?? null,
       });
     }
+    return this.get(userId, id);
+  }
+
+  /** Undo Bought: cancels the deal's purchase (the item stays, CANCELLED) and re-opens the deal. Idempotent. */
+  async undoBought(userId: string, id: string, source: EventSource | null = null): Promise<DealDetail> {
+    await this.owned(userId, id);
+    const item = await this.prisma.inventoryItem.findFirst({ where: { huntMatchId: id, userId }, select: { id: true, status: true } });
+    if (item && item.status !== 'CANCELLED') await this.outcomes.cancel(userId, item.id, {}, source);
     return this.get(userId, id);
   }
 
@@ -179,7 +192,7 @@ export class DealsService {
         listing: { include: { marketplace: { select: { key: true } } } },
         // Same "latest analysis" as the feed SQL.
         dealAnalyses: { orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }], take: 1 },
-        inventoryItem: { select: { id: true } },
+        inventoryItem: { select: { id: true, status: true } },
       },
     });
     const [saved, polls, sourceOf] = await Promise.all([
@@ -203,7 +216,8 @@ export class DealsService {
         analysis,
         savedAt: savedAt.get(m.listingId) ?? null,
         poll: poll.get(`${m.huntId}:${m.listing.marketplaceId}`) ?? null,
-        inventoryItemId: m.inventoryItem?.id ?? null,
+        // A cancelled purchase (Undo bought) no longer links the deal to an item.
+        inventoryItemId: m.inventoryItem && m.inventoryItem.status !== 'CANCELLED' ? m.inventoryItem.id : null,
         sourceHealth: sourceOf(m.listing.marketplace.key as MarketplaceKey),
         rank: feedRank(analysis?.score ?? null, (now.getTime() - from.getTime()) / 3_600_000),
       };

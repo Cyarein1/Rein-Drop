@@ -44,7 +44,15 @@ function render(nodes: Node[], values: MessageValues, language: string, hash: nu
 }
 
 const pluralRules = new Map<string, Intl.PluralRules>();
-function pluralCategory(n: number, language: string): string {
+/** Hermes (React Native's engine) has no Intl.PluralRules - `new Intl.PluralRules` crashes the app there. */
+const hasPluralRules = typeof Intl !== 'undefined' && typeof Intl.PluralRules === 'function';
+
+export function pluralCategory(n: number, language: string, useIntl = hasPluralRules): string {
+  if (!useIntl) {
+    // English and German (the supported languages) share one cardinal rule: "one" for exactly 1
+    // with no fraction, otherwise "other". A new language with other rules needs its own branch here.
+    return Math.abs(n) === 1 ? 'one' : 'other';
+  }
   let rules = pluralRules.get(language);
   if (!rules) {
     rules = new Intl.PluralRules(language);

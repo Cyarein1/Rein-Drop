@@ -6,12 +6,14 @@ import {
   markDealBoughtRequestSchema,
   type DealDetail,
   type DealSummary,
+  type EventSource,
   type Page,
 } from '@rein-drop/contracts';
 import { z } from 'zod';
 import type { Principal } from '../../auth/auth.types.js';
 import { CurrentUser } from '../../auth/decorators.js';
 import { createZodDto } from '../../common/validation/zod-validation.pipe.js';
+import { Source } from '../outcomes/item-events.js';
 import { DealsService } from './deals.service.js';
 
 class ListDealsQueryDto extends createZodDto(listDealsQuerySchema) {}
@@ -71,7 +73,16 @@ export class DealsController {
   /** Records the purchase (price defaults to the asking price) and marks the deal bought. */
   @Post(':id/bought')
   @HttpCode(HttpStatus.OK)
-  bought(@CurrentUser() user: Principal, @Param() params: DealIdParams, @Body() body: MarkDealBoughtDto): Promise<DealDetail> {
-    return this.deals.markBought(user.userId, params.id, body);
+  bought(@CurrentUser() user: Principal, @Param() params: DealIdParams, @Body() body: MarkDealBoughtDto, @Source() source: EventSource | null): Promise<DealDetail> {
+    return this.deals.markBought(user.userId, params.id, body, source);
+  }
+
+  /**
+   * Undo Bought (bought by mistake): cancels the purchase - same rules as POST /inventory/:id/cancel
+   * (409 while it is sold or live on a marketplace) - and the deal shows as not bought again.
+   */
+  @Delete(':id/bought')
+  undoBought(@CurrentUser() user: Principal, @Param() params: DealIdParams, @Source() source: EventSource | null): Promise<DealDetail> {
+    return this.deals.undoBought(user.userId, params.id, source);
   }
 }

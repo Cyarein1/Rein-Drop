@@ -25,6 +25,8 @@ export const DEV_PRODUCTS: readonly DevProduct[] = [
   { key: 'pixel7', title: 'Google Pixel 7 128GB', category: 'phones', keywords: ['phone', 'smartphone', 'android'], typicalUsd: 260 },
   { key: 'ipad9', title: 'Apple iPad 9th Gen 64GB Wi-Fi', category: 'tablets', keywords: ['tablet', 'ipad9'], typicalUsd: 210 },
   { key: 'switcholed', title: 'Nintendo Switch OLED', category: 'consoles', keywords: ['console', 'gaming'], typicalUsd: 260 },
+  { key: 'ps4slim', title: 'Sony PlayStation 4 (PS4) Slim 1TB', category: 'consoles', keywords: ['ps4', 'console', 'gaming', 'playstation4'], typicalUsd: 170 },
+  { key: 'ps4pro', title: 'Sony PlayStation 4 (PS4) Pro 1TB', category: 'consoles', keywords: ['ps4', 'console', 'gaming', 'playstation4'], typicalUsd: 230 },
   { key: 'ps5disc', title: 'Sony PlayStation 5 Disc Edition', category: 'consoles', keywords: ['ps5', 'console', 'gaming', 'playstation5'], typicalUsd: 400 },
   { key: 'xboxseriesx', title: 'Microsoft Xbox Series X 1TB', category: 'consoles', keywords: ['console', 'gaming', 'xsx'], typicalUsd: 380 },
   { key: 'airpodspro2', title: 'Apple AirPods Pro (2nd generation)', category: 'audio', keywords: ['earbuds', 'headphones', 'airpods'], typicalUsd: 150 },

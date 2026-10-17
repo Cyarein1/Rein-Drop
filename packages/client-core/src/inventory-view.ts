@@ -79,6 +79,7 @@ export const INVENTORY_STATUS_LABEL: Record<InventoryStatus, Labelled> = {
   SOLD: { label: 'Sold', tone: 'action' },
   RETURNED: { label: 'Returned', tone: 'neutral' },
   WRITTEN_OFF: { label: 'Written off', tone: 'neutral' },
+  CANCELLED: { label: 'Cancelled', tone: 'neutral' },
 };
 const STATUS_KEY: Record<InventoryStatus, MessageKey> = {
   IN_STOCK: 'inventory.statusInStock',
@@ -86,6 +87,7 @@ const STATUS_KEY: Record<InventoryStatus, MessageKey> = {
   SOLD: 'inventory.statusSold',
   RETURNED: 'inventory.statusReturned',
   WRITTEN_OFF: 'inventory.statusWrittenOff',
+  CANCELLED: 'inventory.statusCancelled',
 };
 /** Item status badge in the UI language (same tones). Use this; the English INVENTORY_STATUS_LABEL will be removed in step 89. */
 export function inventoryStatusLabel(status: InventoryStatus, t: Translator): Labelled {
@@ -233,12 +235,18 @@ export interface InventoryRowView {
   cost: string;
   /** "Held 12 days" / "Sold after 8 days". */
   held: string;
-  /** Realized result once sold; null while holding (holding is not a loss). */
+  /**
+   * Realized result once sold - or once returned / written off (closure.result); null while holding
+   * (holding is not a loss) and for a cancelled purchase (left out of every figure).
+   */
   result: { label: string; value: string; tone: 'profit' | 'loss' | 'neutral' } | null;
   /** Holding only: the estimate at purchase, clearly labelled. */
   estimate: string | null;
-  /** Where the primary action goes. */
-  action: { label: string; kind: 'sell' | 'result' };
+  /**
+   * Where the primary action goes: sell = Mark sold form; result = Sale result; details = the item
+   * page (returned / written off / cancelled items have no sale to show).
+   */
+  action: { label: string; kind: 'sell' | 'result' | 'details' };
 }
 
 const costText = (item: InventoryItem, fmt: (m: Money) => string, t: Translator) =>
@@ -254,7 +262,13 @@ export function inventoryRowView(item: InventoryItem, ctx: HuntFormContext): Inv
     result = { label: t(p < 0 ? 'inventory.realizedLoss' : 'inventory.realizedProfit'), value: fmt(item.result.realizedProfit), tone: toneOf(p) };
   } else if (item.result) {
     result = { label: t('inventory.result'), value: t('inventory.notCalculated'), tone: 'neutral' };
+  } else if (item.closure?.result?.status === 'ok') {
+    const p = item.closure.result.realizedProfit.amountMinor;
+    result = { label: t(p < 0 ? 'inventory.realizedLoss' : 'inventory.realizedProfit'), value: fmt(item.closure.result.realizedProfit), tone: toneOf(p) };
+  } else if (item.closure?.result) {
+    result = { label: t('inventory.result'), value: t('inventory.notCalculated'), tone: 'neutral' };
   }
+  const closed = item.closure !== null;
   return {
     id: item.id,
     title: item.title,
@@ -264,8 +278,12 @@ export function inventoryRowView(item: InventoryItem, ctx: HuntFormContext): Inv
     cost: t('inventory.rowCost', { cost: costText(item, fmt, t) }),
     held: t(sold ? 'inventory.rowSoldAfter' : 'inventory.rowHeld', { days: item.daysHeld }),
     result,
-    estimate: !sold && item.expected?.estimatedResale ? t('inventory.rowEstimate', { amount: fmt(item.expected.estimatedResale) }) : null,
-    action: sold ? { label: t('inventory.actionSaleResult'), kind: 'result' } : { label: t('inventory.actionMarkSold'), kind: 'sell' },
+    estimate: item.holding && item.expected?.estimatedResale ? t('inventory.rowEstimate', { amount: fmt(item.expected.estimatedResale) }) : null,
+    action: sold
+      ? { label: t('inventory.actionSaleResult'), kind: 'result' }
+      : closed || !item.actions.includes('mark_sold')
+        ? { label: t('inventory.actionDetails'), kind: 'details' }
+        : { label: t('inventory.actionMarkSold'), kind: 'sell' },
   };
 }
 

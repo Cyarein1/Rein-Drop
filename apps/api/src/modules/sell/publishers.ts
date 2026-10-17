@@ -21,9 +21,17 @@ export type PublishOutcome =
   | { status: 'AWAITING_CONFIRMATION'; provider: 'assisted' }
   | { status: 'FAILED'; provider: string; error: string };
 
+/**
+ * Taking a listing down: `ended` = the marketplace no longer shows it; `manual` = Rein Drop can't
+ * take it down there (assisted), so the seller must remove it themselves.
+ */
+export type EndOutcome = 'ended' | 'manual';
+
 export interface ListingPublisher {
   readonly info: SellMarketplace;
   publish(input: PublishInput): Promise<PublishOutcome>;
+  /** Ends a live listing (a sale elsewhere, a return, a write-off, or the seller's choice). */
+  end(input: { listingId: string; externalId: string | null }): Promise<EndOutcome>;
 }
 
 export const MARKETPLACE_NAME: Record<MarketplaceKey, string> = { ebay: 'eBay', facebook: 'Facebook Marketplace' };
@@ -64,6 +72,11 @@ class MockEbayPublisher implements ListingPublisher {
     const externalId = `mock-${input.listingId.replaceAll('-', '').slice(-12)}`;
     return { status: 'PUBLISHED', provider: 'mock', externalId, url: `https://dev.example/ebay/itm/${externalId}` };
   }
+
+  /** Nothing is really on eBay. TODO(sell): the real Inventory API withdraw-offer call. */
+  async end(): Promise<EndOutcome> {
+    return 'ended';
+  }
 }
 
 class AssistedFacebookPublisher implements ListingPublisher {
@@ -77,6 +90,11 @@ class AssistedFacebookPublisher implements ListingPublisher {
 
   async publish(): Promise<PublishOutcome> {
     return { status: 'AWAITING_CONFIRMATION', provider: 'assisted' };
+  }
+
+  /** No API: the seller removes it on Facebook (the app reminds them). */
+  async end(): Promise<EndOutcome> {
+    return 'manual';
   }
 }
 

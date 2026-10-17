@@ -6,7 +6,7 @@ import { MatchingService } from './matching.service.js';
  *
  * Owns: HuntMatch
  * The matching rules live in @rein-drop/matching and run in the worker. This module owns the
- * user's decisions on a match (seen, ignore, bought) through MatchingService.
+ * user's decisions on a match (seen, ignore, bought, undo bought) through MatchingService.
  */
 @Module({
   providers: [MatchingService],

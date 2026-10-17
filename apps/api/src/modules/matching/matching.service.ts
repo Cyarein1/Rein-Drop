@@ -43,4 +43,14 @@ export class MatchingService {
     });
     return count === 1;
   }
+
+  /**
+   * Undo Bought (the item was cancelled - bought by mistake): BOUGHT -> SEEN, so the deal shows as
+   * not bought again. The history stays in the item's events; the next search re-checks availability.
+   */
+  async unmarkBought(tx: Tx, matchId: string, at: Date): Promise<boolean> {
+    const { count } = await tx.huntMatch.updateMany({ where: { id: matchId, status: 'BOUGHT' }, data: { status: 'SEEN', boughtAt: null } });
+    if (count === 1) await tx.huntMatch.updateMany({ where: { id: matchId, seenAt: null }, data: { seenAt: at } });
+    return count === 1;
+  }
 }

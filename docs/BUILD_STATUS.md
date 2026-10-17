@@ -72,6 +72,39 @@ What changed:
 Kept: behaviour, API calls, accessibility and the billing-free companion rules. The guard test
 passes.
 
+**Dev data for the owner's end-to-end test (2026-10-17):** the owner's live Hunt "ps4" never got
+results, because the development marketplace catalogue had no PS4. I added
+`ps4slim` (typical $170) and `ps4pro` ($230) to
+`packages/marketplace-core/src/adapters/dev/catalogue.ts`. This is synthetic development data
+only; marketplace-core tests pass (202).
+
+**Sell editor currency bug (owner, 2026-10-17):** a new listing's price showed in ZAR, and saving
+failed "Use USD, like the item".
+- **Cause:** both the web and mobile editors hard-coded `'ZAR'` as the fallback when a listing
+  had no price yet. The API never told them the item's currency.
+- **Fix:** `SellListing.currency` (contracts and API) is now always set, from the listing or else
+  the item. Both editors use it.
+- **Checks:** turbo build / typecheck / lint / test pass. The API health test failed once under
+  load and passed on rerun. The sell and journey integration tests pass on the preview DB, 29 of
+  29; the preview container had stopped and was restarted.
+
+**Mobile "offline" message hid real errors:** `isOffline` treated every error that isn't an
+ApiError as "You're offline". Now:
+- only an ApiError without a status or code counts as offline, or the sign-in service being
+  unreachable;
+- other errors show their message;
+- development builds log the full error.
+
+**Fix found during the owner's phone testing (2026-10-17):** pressing "Start watching" showed a
+render error, "undefined cannot be used as a constructor".
+- **Cause:** step 88's message formatter called `new Intl.PluralRules`. Hermes, React Native's
+  engine, doesn't have it; Node does, so the tests passed.
+- **Fix:** `pluralCategory` in `packages/i18n/src/format.ts` falls back to the shared English /
+  German rule ("one" only for ±1) when `Intl.PluralRules` is missing.
+- **Test:** a new spec checks that the fallback matches `Intl` for both languages.
+- **Also checked:** no other Hermes-missing APIs are used (ListFormat, RelativeTimeFormat,
+  toSorted, structuredClone, …).
+
 Checks run:
 - `pnpm turbo run build typecheck lint test`: 70 of 70 tasks passed, including the iOS and
   Android export.

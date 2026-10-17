@@ -54,7 +54,8 @@ export function SellEditor({ initial, marketplaces, localeTag }: { initial: Sell
   const fileInput = useRef<HTMLInputElement>(null);
   const descriptionId = useId();
   const status = SELL_LISTING_STATUS_LABEL[listing.status];
-  const currency = listing.price?.currency ?? initial.price?.currency ?? "ZAR";
+  // The item's currency (the API refuses any other); never a hard-coded one.
+  const currency = listing.currency;
 
   const edit = (patch: Partial<SellForm>) => {
     setForm((f) => ({ ...f, ...patch }));

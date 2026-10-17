@@ -131,6 +131,24 @@ export class StripeBillingProvider implements BillingProvider {
     return page.data.map(toProviderSubscription);
   }
 
+  async cancelSubscriptionNow(id: string): Promise<void> {
+    try {
+      await this.stripe.subscriptions.cancel(id, undefined, { idempotencyKey: `reindrop-cancel-${id}` });
+    } catch (err) {
+      if (err instanceof Stripe.errors.StripeInvalidRequestError && err.statusCode === 404) return; // already gone
+      throw err;
+    }
+  }
+
+  async deleteCustomer(customerId: string): Promise<void> {
+    try {
+      await this.stripe.customers.del(customerId);
+    } catch (err) {
+      if (err instanceof Stripe.errors.StripeInvalidRequestError && err.statusCode === 404) return; // already gone
+      throw err;
+    }
+  }
+
   async getPrices(priceIds: readonly string[]) {
     const result = new Map<string, { status: 'priced'; amount: { amountMinor: number; currency: string }; interval: (typeof BILLING_INTERVALS)[number]; intervalCount: number }>();
     await Promise.all(

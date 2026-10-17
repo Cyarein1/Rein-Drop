@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { createAIProvider } from '@rein-drop/ai-core';
 import { API_CONFIG, type ApiConfig } from '../../config/api-config.js';
+import { OutcomesModule } from '../outcomes/outcomes.module.js';
 import { MediaController } from './media.controller.js';
 import { createMediaStorage, MEDIA_STORAGE } from './media-storage.js';
 import { createListingPublishers, LISTING_PUBLISHERS } from './publishers.js';
@@ -13,11 +14,14 @@ import { SELL_AI, SellService } from './sell.service.js';
  * Owns: SellListing, SellPhoto, SellChannel (and listing photo files in media storage).
  * AI drafts: AI_PROVIDER (mock in development; Foundry when configured; none in production without it).
  * Publishing: eBay mock (TODO(sell)), Facebook assisted. Photos: MEDIA_STORAGE (local in development).
+ * Sales go through Outcomes (OutcomesService); Sell registers the exit listener that ends an item's
+ * listings when it is sold / returned / written off (decision 0021).
  * Endpoints: GET /sell/marketplaces, GET|POST /sell/listings, GET|PATCH /sell/listings/:id,
  * POST /sell/listings/:id/draft, photos (upload, source, order, delete), publish, channel confirm / end,
- * and the public signed-link GET /media/:key.
+ * POST /sell/listings/:id/{sold,discard,restore}, and the public signed-link GET /media/:key.
  */
 @Module({
+  imports: [OutcomesModule],
   controllers: [SellController, MediaController],
   providers: [
     SellService,
@@ -25,5 +29,6 @@ import { SELL_AI, SellService } from './sell.service.js';
     { provide: LISTING_PUBLISHERS, useFactory: createListingPublishers },
     { provide: SELL_AI, inject: [API_CONFIG], useFactory: (config: ApiConfig) => (config.ai ? createAIProvider(config.ai.provider, config.ai.foundry) : null) },
   ],
+  exports: [MEDIA_STORAGE],
 })
 export class SellModule {}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMessage, messageArguments } from './format.js';
+import { formatMessage, messageArguments, pluralCategory } from './format.js';
 import { de } from './messages/de/index.js';
 import { en } from './messages/en/index.js';
 import { resolveLanguage, translator } from './translator.js';
@@ -30,6 +30,16 @@ describe('formatMessage', () => {
 
   it('lists argument names', () => {
     expect(messageArguments('{a} and {count, plural, one {# {b}} other {#}}')).toEqual(['a', 'b', 'count']);
+  });
+});
+
+describe('pluralCategory without Intl.PluralRules (Hermes / React Native)', () => {
+  it('gives the same category as Intl for English and German', () => {
+    for (const language of ['en', 'de']) {
+      for (const n of [0, 1, 2, 3, 5, 10, 11, 21, 100, 1.5, 0.5, -1]) {
+        expect(pluralCategory(n, language, false), `${language} ${n}`).toBe(pluralCategory(n, language, true));
+      }
+    }
   });
 });
 

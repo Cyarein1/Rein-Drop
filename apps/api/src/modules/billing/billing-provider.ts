@@ -47,6 +47,10 @@ export interface BillingProvider {
   getSubscription(id: string): Promise<ProviderSubscription | null>;
   /** Every subscription of a customer as the provider sees it now (reconciliation without webhooks). */
   listCustomerSubscriptions(customerId: string): Promise<ProviderSubscription[]>;
+  /** Cancels a subscription NOW (no further charges; account deletion). Already-ended ones are fine. */
+  cancelSubscriptionNow(id: string): Promise<void>;
+  /** Deletes the provider customer (their email and payment methods); invoices stay with the provider. */
+  deleteCustomer(customerId: string): Promise<void>;
   /** Current prices for these price ids (missing / inactive ones are left out). */
   getPrices(priceIds: readonly string[]): Promise<Map<string, Extract<PlanPricing, { status: 'priced' }>>>;
 }
