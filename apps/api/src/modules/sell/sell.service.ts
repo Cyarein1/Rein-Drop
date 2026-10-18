@@ -53,6 +53,9 @@ type ListingRow = Prisma.SellListingGetPayload<{ include: typeof LISTING_INCLUDE
 /** Sell tabs -> listing statuses. No view and no status = everything but discarded drafts. */
 const VIEW_STATUS = { drafts: 'DRAFT', active: 'PUBLISHED', closed: 'ENDED', discarded: 'DISCARDED' } as const;
 
+/** Item statuses a draft / active listing can belong to (the item is still for sale). */
+export const OPEN_ITEM_STATUSES: ('IN_STOCK' | 'LISTED')[] = ['IN_STOCK', 'LISTED'];
+
 const NO_CHANNELS: ChannelsClosed = { ended: [], removeManually: [] };
 const endReason = (value: string | null): ChannelEndReason | null =>
   (CHANNEL_END_REASONS as readonly string[]).includes(value ?? '') ? (value as ChannelEndReason) : null;
@@ -116,8 +119,11 @@ export class SellService implements OnModuleInit {
 
   async list(userId: string, query: ListSellListingsQuery = {}): Promise<{ items: SellListing[] }> {
     const status = query.status ?? (query.view ? VIEW_STATUS[query.view] : undefined);
+    // One listing sells ONE item: drafts and active listings only while the item is still held
+    // (a sale / return / write-off ends the listing; this also guards against older data).
+    const openOnly = status === 'DRAFT' || status === 'PUBLISHED';
     const rows = await this.prisma.sellListing.findMany({
-      where: { userId, status: status ?? { not: 'DISCARDED' } },
+      where: { userId, status: status ?? { not: 'DISCARDED' }, ...(openOnly ? { inventoryItem: { status: { in: OPEN_ITEM_STATUSES } } } : {}) },
       include: LISTING_INCLUDE,
       orderBy: { updatedAt: 'desc' },
       take: 100,

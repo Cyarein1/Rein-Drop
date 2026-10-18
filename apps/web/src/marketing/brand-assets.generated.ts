@@ -15,10 +15,11 @@ export const brandImages = {
   "logo/wordmark-3d": { src: "/assets/brand/logo/wordmark-3d.webp", width: 563, height: 192, bytes: 23914, source: "packages/brand-assets/logo/wordmark-3d.png" },
   "logo/lockup-horizontal": { src: "/assets/brand/logo/lockup-horizontal.webp", width: 1200, height: 474, bytes: 73354, source: "packages/brand-assets/logo/logo-mascot-horizontal.png" },
   "logo/lockup-hero-dark": { src: "/assets/brand/logo/lockup-hero-dark.webp", width: 1024, height: 854, bytes: 122544, source: "packages/brand-assets/logo/logo-mascot-hero-dark.png" },
-  "icon/app-icon": { src: "/assets/brand/icon/app-icon.webp", width: 512, height: 497, bytes: 46082, source: "packages/brand-assets/app-icon/app-icon-mascot.png" },
-  "icon/app-icon-512": { src: "/assets/brand/icon/app-icon-512.png", width: 512, height: 512, bytes: 71912, source: "packages/brand-assets/app-icon/app-icon-mascot.png" },
-  "icon/app-icon-192": { src: "/assets/brand/icon/app-icon-192.png", width: 192, height: 192, bytes: 16293, source: "packages/brand-assets/app-icon/app-icon-mascot.png" },
-  "icon/apple-touch-icon": { src: "/assets/brand/icon/apple-touch-icon.png", width: 180, height: 180, bytes: 14899, source: "packages/brand-assets/app-icon/app-icon-mascot.png" },
+  "icon/app-icon": { src: "/assets/brand/icon/app-icon.webp", width: 512, height: 510, bytes: 26784, source: "packages/brand-assets/app-icon/app-icon-package-search.png" },
+  "icon/app-icon-512": { src: "/assets/brand/icon/app-icon-512.png", width: 512, height: 512, bytes: 6664, source: "packages/brand-assets/app-icon/app-icon-package-search-square.png" },
+  "icon/app-icon-192": { src: "/assets/brand/icon/app-icon-192.png", width: 192, height: 192, bytes: 6053, source: "packages/brand-assets/app-icon/app-icon-package-search.png" },
+  "icon/favicon-48": { src: "/assets/brand/icon/favicon-48.png", width: 48, height: 48, bytes: 1346, source: "packages/brand-assets/app-icon/app-icon-package-search.png" },
+  "icon/apple-touch-icon": { src: "/assets/brand/icon/apple-touch-icon.png", width: 180, height: 180, bytes: 2522, source: "packages/brand-assets/app-icon/app-icon-package-search-square.png" },
 } as const;
 
 export type BrandImageKey = keyof typeof brandImages;

@@ -51,6 +51,19 @@ Checks run:
 **The owner's dev DB needs** `pnpm --filter @rein-drop/db db:deploy`, then a restart of the API
 and worker.
 
+**Fix (owner, 2026-10-18): sold item still under Active listings.** The owner's PS4 was sold on
+16 October, before step 90, when a sale didn't end listings. Its listing stayed PUBLISHED on eBay
+and Facebook. Owner rule: one listing = one item = quantity 1 (decision 0021, point 6).
+- **Repair migration `20261018001500_end_listings_of_closed_items`:** ends the live channels and
+  listings of every sold, returned, written-off or cancelled item. The reason is
+  sold_here / sold_elsewhere / returned / written_off; Facebook is flagged "remove it yourself";
+  a cancelled item's draft becomes DISCARDED; each ending writes a CHANNEL_ENDED event with
+  `repaired: true`.
+- **Safety net in the API:** the Drafts / Active views and their counts only include listings
+  whose item is IN_STOCK or LISTED.
+- **Checks:** the repair was verified on the preview DB with a reproduced broken listing. One new
+  integration test; lifecycle + sell 15 of 15; API unit 186.
+
 ### Step 91 - Sell area (Inventory merged into Sell), lifecycle UI, Analytics as charts
 
 - **Web Sell area:**

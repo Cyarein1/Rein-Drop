@@ -49,6 +49,11 @@ three areas, and Analytics mixed "am I buying well?" with "am I selling well?".
      bar opens those deals, and a product's profit opens its sold items. Details live in the
      areas above or in a pop-up, never as long lists in Analytics.
 
+6. **One listing = one item = quantity 1** (owner, 2026-10-18). Rein Drop only lists what the
+   seller bought, and every bought item is a single unit. Multi-quantity listings don't exist in
+   the platform. Once an item is sold, returned, written off or cancelled, its listing is over
+   everywhere. Drafts and Active never show a listing whose item is no longer held.
+
 ## Consequences
 
 - New migration: item status Cancelled, listing status Discarded, and an item event table.

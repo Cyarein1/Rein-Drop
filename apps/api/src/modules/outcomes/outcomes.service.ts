@@ -246,7 +246,12 @@ export class OutcomesService {
   async counts(userId: string): Promise<InventoryCounts> {
     const [holding, listed, sold, other, listings] = await Promise.all([
       ...INVENTORY_SECTIONS.map((section) => this.prisma.inventoryItem.count({ where: { userId, ...sectionWhere(section) } })),
-      this.prisma.sellListing.groupBy({ by: ['status'], where: { userId }, _count: { _all: true } }),
+      // Drafts / active only while the item is still held - one listing sells one item.
+      this.prisma.sellListing.groupBy({
+        by: ['status'],
+        where: { userId, OR: [{ status: 'DISCARDED' }, { status: { in: ['DRAFT', 'PUBLISHED'] }, inventoryItem: { status: { in: ['IN_STOCK', 'LISTED'] } } }] },
+        _count: { _all: true },
+      }),
     ] as const);
     const of = (status: string) => (listings as { status: string; _count: { _all: number } }[]).find((l) => l.status === status)?._count._all ?? 0;
     return {

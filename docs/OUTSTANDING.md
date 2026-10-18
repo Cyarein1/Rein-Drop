@@ -126,7 +126,11 @@ backlog id). Release order: [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 - **German, still to build** (renumbered after the step 89 redesign):
   - **step 90:** the web app (server and client translator, a Language switch in Settings), then remove client-core's deprecated English constants;
   - **step 91:** in the user's language: push / worker titles and bodies, API messages people see (go-live problems, alert reasons, risk notes, marketplace notes, AI-draft checks, errors, mapHuntErrors, cost labels). Also step 91: the German landing page (routing) and the German App Store / Play listing drafts - step 88.
-- **Apply step 90 to your development database:** `pnpm --filter @rein-drop/db db:deploy`, then restart the API and worker. The migration `20261017220638_item_lifecycle` adds the item history and the new statuses - step 90.
+- **Apply steps 90-91 to your development database:** `pnpm --filter @rein-drop/db db:deploy`, then restart the API and worker. It applies two migrations:
+  - `20261017220638_item_lifecycle`: the item history and the new statuses;
+  - `20261018001500_end_listings_of_closed_items`: ends the listings of items that were already sold.
+  
+  Step 90.
 - **Account deletion - owner decisions (decision 0021):**
   - **Entra sign-in user:** it isn't deleted. Use Microsoft Graph `User.ReadWrite.All` or a manual step in the Entra admin centre; until then, signing in again creates a new, empty account.
   - **Suspended accounts:** can they delete themselves? The default is no (support handles them).

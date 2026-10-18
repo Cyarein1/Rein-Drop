@@ -23,7 +23,10 @@ mascot/      individual production mascot poses (transparent PNG)
 | `logo/wordmark-3d.png` | Glossy ReinDrop 3D Wordmark | Expressive/marketing moments (splash), not UI chrome |
 | `logo/logo-mascot-horizontal.png` | ReinDrop Mascot Delivery Logo | Mascot + wordmark lock-up (welcome/splash) |
 | `logo/logo-mascot-hero-dark.png` | Glossy ReinDrop Delivery Mascot Logo | Marketing hero; **has a dark glow baked in - not for light UI** |
-| `app-icon/app-icon-mascot.png` | Cheerful Orange Mascot App Icon | Source for the mobile app icon (not wired yet) |
+| `app-icon/app-icon-package-search.png` | Orange Package Search Icon (owner, 2026-10-18) on flat Rein Orange | **The app icon / favicon.** Rounded tile: web favicon (48, 192) and the landing page |
+| `app-icon/app-icon-package-search-square.png` | same, full-bleed 1024 square | iOS / Expo `icon.png`, web apple-touch-icon and 512 logo (the OS rounds the corners; must not be transparent) |
+| `app-icon/app-icon-package-search-original.png` | Orange Package Search Icon (the owner's file, gradient) | Source only - the owner chose plain orange, no gradient |
+| `app-icon/app-icon-mascot.png` | Cheerful Orange Mascot App Icon | Former app icon candidate, no longer used |
 | `mascot/mascot-wave.png` | Glossy Orange Mascot Waving | `welcome` |
 | `mascot/mascot-thumbs-up.png` | Cheerful Orange Mascot Thumbs-Up | `confirmed` |
 | `mascot/mascot-holding-box.png` | Cheerful Orange Mascot Delivering a Package | `inventory` |
@@ -75,6 +78,15 @@ re-run the script. They are the only copies allowed outside this package.
 
 - Optimized sizes: originals are 1-2 MB, ~1200-2000 px. Web: done for the landing page
   (derivatives above). Mobile: export @1x/@2x/@3x before shipping a release build.
-- Wire `app-icon/app-icon-mascot.png` into `apps/mobile/app.json` (icon + adaptive icon) once the
-  icon is confirmed for store use.
+- App icon: done 2026-10-18. The mobile set in `apps/mobile/assets` was generated from
+  `app-icon-package-search-original.png`: the white glyph is lifted onto flat #FF6B35.
+  - `icon.png` (1024, no transparency).
+  - Android adaptive icon: `android-icon-background.png` (flat orange) +
+    `android-icon-foreground.png` (the glyph, inside the safe zone) +
+    `android-icon-monochrome.png` (themed icons).
+  - `favicon.png`.
+
+  To rebuild the set, run
+  `python packages/brand-assets/scripts/make_app_icons.py <source.png> <repo root>` (needs Pillow),
+  then `pnpm --filter web assets:brand`.
 - SVG versions of the wordmarks, if available, would scale better than PNG.

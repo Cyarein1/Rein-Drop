@@ -28,7 +28,13 @@ export const metadata: Metadata = {
   title: { default: "Rein Drop", template: "%s · Rein Drop" },
   description: "AI-powered reseller sourcing",
   // Approved app icon (no /favicon.ico existed - every page logged a 404).
-  icons: { icon: [{ url: "/assets/brand/icon/app-icon-192.png", type: "image/png", sizes: "192x192" }], apple: "/assets/brand/icon/apple-touch-icon.png" },
+  icons: {
+    icon: [
+      { url: "/assets/brand/icon/favicon-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/assets/brand/icon/app-icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: "/assets/brand/icon/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

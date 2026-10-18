@@ -41,11 +41,14 @@ const ASSETS = [
   { key: "logo/wordmark-3d", source: "logo/wordmark-3d.png", height: 192 },
   { key: "logo/lockup-horizontal", source: "logo/logo-mascot-horizontal.png", maxSide: 1200 },
   { key: "logo/lockup-hero-dark", source: "logo/logo-mascot-hero-dark.png", maxSide: 1024 },
-  // App icon: WebP for the page, PNG sizes for browser / home-screen icons.
-  { key: "icon/app-icon", source: "app-icon/app-icon-mascot.png", maxSide: 512 },
-  { key: "icon/app-icon-512", source: "app-icon/app-icon-mascot.png", square: 512, format: "png" },
-  { key: "icon/app-icon-192", source: "app-icon/app-icon-mascot.png", square: 192, format: "png" },
-  { key: "icon/apple-touch-icon", source: "app-icon/app-icon-mascot.png", square: 180, format: "png" },
+  // App icon (owner, 2026-10-18: package + magnifier on flat Rein Orange). WebP for the page, PNG
+  // sizes for browser / home-screen icons. The rounded tile for favicons and the page; the
+  // full-bleed square where the OS rounds it (apple-touch-icon) or a square logo is expected.
+  { key: "icon/app-icon", source: "app-icon/app-icon-package-search.png", maxSide: 512 },
+  { key: "icon/app-icon-512", source: "app-icon/app-icon-package-search-square.png", square: 512, format: "png" },
+  { key: "icon/app-icon-192", source: "app-icon/app-icon-package-search.png", square: 192, format: "png" },
+  { key: "icon/favicon-48", source: "app-icon/app-icon-package-search.png", square: 48, format: "png" },
+  { key: "icon/apple-touch-icon", source: "app-icon/app-icon-package-search-square.png", square: 180, format: "png" },
 ];
 
 async function build(asset) {

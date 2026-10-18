@@ -299,6 +299,17 @@ describe('Item lifecycle without deleting (integration, real database)', () => {
     expect(res).toMatchObject({ removeManually: [], listing: { status: 'ENDED' }, item: { status: 'SOLD' } });
   });
 
+  it('one listing sells one item: a sold item\'s leftover published listing (older data) is never in Active or its count', async () => {
+    const a = await account();
+    const item = await addItem(a);
+    const id = await liveEverywhere(a, item.id);
+    // Older data (before step 90): item sold, listing left PUBLISHED.
+    await prisma.inventoryItem.update({ where: { id: item.id }, data: { status: 'SOLD' } });
+    const active = (await a.get('/sell/listings?view=active').expect(200)).body as { items: SellListing[] };
+    expect(active.items.map((l) => l.id)).not.toContain(id);
+    expect(((await a.get('/inventory/counts').expect(200)).body as { listings: { active: number } }).listings.active).toBe(0);
+  });
+
   it('a return or write-off also ends live listings', async () => {
     const a = await account();
     const item = await addItem(a);
